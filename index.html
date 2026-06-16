@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebSwan Task Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getAnalytics }    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp }
+      from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM",
+      authDomain:        "webswan-gigoia-task.firebaseapp.com",
+      projectId:         "webswan-gigoia-task",
+      storageBucket:     "webswan-gigoia-task.firebasestorage.app",
+      messagingSenderId: "970866236717",
+      appId:             "1:970866236717:web:63ddb5c2557d083b8bc7a4",
+      measurementId:     "G-YQ70H661LZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const db = getFirestore(app);
+
+    window._fb = {
+      async saveTask(task) {
+        return await addDoc(collection(db, "tasks"), { ...task, createdAt: Timestamp.now() });
+      },
+      async loadTasks() {
+        const q    = query(collection(db, "tasks"), orderBy("dueDate", "asc"));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+      async deleteTask(id) {
+        await deleteDoc(doc(db, "tasks", id));
+      }
+    };
+
+    window.dispatchEvent(new Event("fbReady"));
+  </script>
+
+  <style>
+    :root {
+      --teal:         #50cbd9;
+      --teal-dark:    #38b9c9;
+      --navy:         #081c4d;
+      --glass-border: rgba(255,255,255,0.28);
+      --text-light:   rgba(255,255,255,0.92);
+      --text-muted:   rgba(255,255,255,0.55);
+      --card-bg:      rgba(8,28,77,0.65);
+      --input-bg:     rgba(255,255,255,0.09);
+      --input-border: rgba(80,203,217,0.35);
+      --danger:       #ff6b8a;
+      --success:      #4dd9a0;
+      --radius-lg:    18px;
+      --radius-md:    12px;
+      --radius-sm:    8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(145deg, #050e2b 0%, #081c4d 45%, #0a3060 100%);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-light);
+    }
+
+    /* ══════════════ LOCK SCREEN ══════════════ */
+    #lock-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .lock-card {
+      background: rgba(8,28,77,0.82);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 3rem 2.25rem 2.5rem;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset;
+    }
+
+    .lock-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      background: linear-gradient(90deg, #fff 0%, var(--teal) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.2rem;
+    }
+
+    .lock-sub {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--teal);
+      display: block;
+      margin-bottom: 2.5rem;
+    }
+
+    #lock-emoji {
+      font-size: 3.5rem;
+      cursor: pointer;
+      display: inline-block;
+      transition: transform 0.1s ease;
+      user-select: none;
+      line-height: 1;
+      margin-bottom: 0.75rem;
+    }
+
+    #lock-emoji:active { transform: scale(0.88); }
+
+    #lock-emoji.shake {
+      animation: lockShake 0.4s ease;
+    }
+
+    @keyframes lockShake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px) rotate(-4deg); }
+      40%      { transform: translateX(6px)  rotate(4deg); }
+      60%      { transform: translateX(-4px) rotate(-2deg); }
+      80%      { transform: translateX(4px)  rotate(2deg); }
+    }
+
+    @keyframes lockBounce {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.25) rotate(-8deg); }
+      60%  { transform: scale(0.92) rotate(4deg); }
+      100% { transform: scale(1); }
+    }
+
+    .lock-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      min-height: 1.1em;
+      transition: color 0.2s;
+    }
+
+
+
+    /* password field — hidden until 7 clicks */
+    #pass-section {
+      display: none;
+      margin-top: 0.5rem;
+    }
+
+    #pass-section.visible { display: block; }
+
+    .pass-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.9rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: var(--text-light);
+      outline: none;
+      text-align: center;
+      letter-spacing: 0.25em;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .pass-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(80,203,217,0.18);
+    }
+
+    .pass-input::placeholder { letter-spacing: 0.05em; color: var(--text-muted); }
+
+    .btn-unlock {
+      width: 100%;
+      padding: 0.8rem;
+      background: linear-gradient(135deg, var(--teal) 0%, #2aa8bc 100%);
+      color: var(--navy);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(80,203,217,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-unlock:hover  { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(80,203,217,0.55); }
+    .btn-unlock:active { transform: scale(0.97); }
+
+    .lock-error {
+      font-size: 0.78rem;
+      color: var(--danger);
+      margin-top: 0.65rem;
+      min-height: 1.1em;
+    }
+
+    /* ══════════════ APP ══════════════ */
+    #app-screen { display: none; padding: 2rem 1rem 4rem; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 860px;
+      margin: 0 auto 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand { display: flex; align-items: center; gap: 0.6rem; }
+    .brand-swan { font-size: 1.5rem; }
+
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      background: linear-gradient(90deg, #fff 0%, var(--teal) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand-sub {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--teal);
+      display: block;
+      margin-top: -2px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-topbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.5rem 1.1rem;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-email {
+      background: linear-gradient(135deg, var(--teal) 0%, #2aa8bc 100%);
+      color: var(--navy);
+      box-shadow: 0 4px 18px rgba(80,203,217,0.35);
+    }
+
+    .btn-email:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(80,203,217,0.5); }
+
+    .btn-lock-app {
+      background: rgba(255,255,255,0.07);
+      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .btn-lock-app:hover { background: rgba(255,255,255,0.12); color: var(--text-light); }
+
+    .fb-status {
+      font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+      font-weight: 700; background: rgba(255,255,255,0.08);
+      color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .fb-status.connected { background: rgba(77,217,160,0.15); color: var(--success); border-color: rgba(77,217,160,0.25); }
+    .fb-status.error     { background: rgba(255,107,138,0.15); color: var(--danger);  border-color: rgba(255,107,138,0.25); }
+
+    /* ── layout ── */
+    .layout {
+      max-width: 860px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06) inset;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+    }
+
+    .field { margin-bottom: 0.9rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.35rem;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      color: var(--text-light);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      resize: none;
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--text-muted); }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: var(--teal);
+      background: rgba(255,255,255,0.13);
+      box-shadow: 0 0 0 3px rgba(80,203,217,0.18);
+    }
+
+    .field textarea { min-height: 110px; line-height: 1.5; }
+
+    .char-count { text-align: right; font-size: 0.68rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .char-count.warn { color: #f9c74f; }
+    .char-count.over { color: var(--danger); }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    /* ── calendar ── */
+    .calendar-wrap { position: relative; }
+
+    .cal-trigger {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      color: var(--text-light);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .cal-trigger:hover, .cal-trigger.open {
+      border-color: var(--teal);
+      background: rgba(255,255,255,0.13);
+    }
+
+    .cal-trigger .placeholder { color: var(--text-muted); }
+
+    .cal-dropdown {
+      position: absolute;
+      top: calc(100% + 6px); left: 0;
+      width: 280px;
+      background: #0d2154;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+      z-index: 200;
+      overflow: hidden;
+      display: none;
+    }
+
+    .cal-dropdown.open { display: block; }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: rgba(80,203,217,0.1);
+      border-bottom: 1px solid rgba(80,203,217,0.15);
+    }
+
+    .cal-header span { font-weight: 700; font-size: 0.9rem; color: #fff; }
+
+    .cal-nav {
+      background: none; border: none; color: var(--teal);
+      font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm); transition: background 0.15s;
+    }
+    .cal-nav:hover { background: rgba(80,203,217,0.15); }
+
+    .cal-grid { padding: 0.5rem; }
+
+    .cal-days-header { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 0.3rem; }
+    .cal-days-header span {
+      text-align: center; font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.08em; color: var(--teal); padding: 0.25rem 0;
+    }
+
+    .cal-cells { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+
+    .cal-cell {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; border-radius: 6px; cursor: pointer;
+      color: rgba(255,255,255,0.8); transition: background 0.1s, color 0.1s; position: relative;
+    }
+    .cal-cell:hover        { background: rgba(80,203,217,0.2); }
+    .cal-cell.other-month  { color: rgba(255,255,255,0.2); }
+    .cal-cell.today        { color: var(--teal); font-weight: 700; }
+    .cal-cell.today::after {
+      content:''; position:absolute; bottom:3px; left:50%;
+      transform:translateX(-50%); width:4px; height:4px;
+      border-radius:50%; background:var(--teal);
+    }
+    .cal-cell.selected      { background: var(--teal); color: var(--navy); font-weight: 700; }
+    .cal-cell.selected:hover{ background: var(--teal-dark); }
+    .cal-cell.has-task::before {
+      content:''; position:absolute; top:3px; right:3px;
+      width:5px; height:5px; border-radius:50%; background:#f9c74f;
+    }
+
+    .btn-save {
+      width: 100%; padding: 0.85rem;
+      background: linear-gradient(135deg, var(--teal) 0%, #2aa8bc 100%);
+      color: var(--navy); font-family: 'Inter', sans-serif; font-size: 1rem;
+      font-weight: 700; letter-spacing: 0.04em; border: none; border-radius: 999px;
+      cursor: pointer; margin-top: 0.5rem; box-shadow: 0 4px 20px rgba(80,203,217,0.4);
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .btn-save:hover  { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(80,203,217,0.55); }
+    .btn-save:active { transform: scale(0.97); }
+    .btn-save:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--success); color: #003322;
+      font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 700;
+      padding: 0.65rem 1.5rem; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.3s;
+      z-index: 9999; opacity: 0; white-space: nowrap;
+    }
+    #toast.show  { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error { background: var(--danger); color: #fff; }
+
+    .tasks-panel .card-title { justify-content: space-between; }
+
+    .task-count {
+      font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700;
+      background: rgba(80,203,217,0.18); color: var(--teal);
+      border-radius: 999px; padding: 0.2rem 0.65rem;
+    }
+
+    .task-list {
+      display: flex; flex-direction: column; gap: 0.65rem;
+      max-height: 520px; overflow-y: auto; padding-right: 4px;
+    }
+    .task-list::-webkit-scrollbar       { width: 4px; }
+    .task-list::-webkit-scrollbar-track { background: transparent; }
+    .task-list::-webkit-scrollbar-thumb { background: rgba(80,203,217,0.3); border-radius: 2px; }
+
+    .task-item {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-md); padding: 0.85rem 1rem;
+      transition: background 0.15s; position: relative;
+    }
+    .task-item:hover { background: rgba(255,255,255,0.1); }
+
+    .task-item-date {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--teal); margin-bottom: 0.3rem;
+    }
+    .task-item-name  { font-weight: 700; font-size: 0.9rem; color: #fff; margin-bottom: 0.15rem; }
+    .task-item-meta  { font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.1rem; }
+    .task-item-comment {
+      font-size: 0.78rem; color: rgba(255,255,255,0.65); margin-top: 0.4rem;
+      line-height: 1.45; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.4rem;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .task-delete {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      background: none; border: none; color: rgba(255,107,138,0.5);
+      cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.35rem;
+      border-radius: 6px; transition: color 0.15s, background 0.15s;
+    }
+    .task-delete:hover { color: var(--danger); background: rgba(255,107,138,0.12); }
+
+    .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem; }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(80,203,217,0.25), transparent);
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ LOCK SCREEN ══════════════ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-brand">🦢 WebSwan</div>
+    <span class="lock-sub">Task Manager — Private</span>
+
+    <div id="lock-emoji">🔐</div>
+    <div class="lock-hint" id="lock-hint">Click the lock to unlock</div>
+
+
+
+    <div id="pass-section">
+      <input class="pass-input" type="password" id="pass-input" placeholder="Enter password" maxlength="20" />
+      <button class="btn-unlock" id="btn-unlock">Unlock 🔓</button>
+      <div class="lock-error" id="lock-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP SCREEN ══════════════ -->
+<div id="app-screen">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-swan">🦢</span>
+      <div>
+        <span class="brand-name">WebSwan</span>
+        <span class="brand-sub">Task Manager</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="fb-status" id="fb-status">⏳ Connecting…</span>
+      <a class="btn-topbar btn-email" href="https://s15097.usc1.stableserver.net:2096/logout?" target="_blank" rel="noopener">
+        ✉️ Webmail
+      </a>
+      <button class="btn-topbar btn-lock-app" id="btn-relock">🔐 Lock</button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> New Task</div>
+
+      <div class="field">
+        <label>📅 Due Date</label>
+        <div class="calendar-wrap" id="cal-wrap">
+          <button type="button" class="cal-trigger" id="cal-trigger">
+            <span id="cal-display" class="placeholder">Select a date…</span>
+            <span>▾</span>
+          </button>
+          <div class="cal-dropdown" id="cal-dropdown">
+            <div class="cal-header">
+              <button class="cal-nav" id="cal-prev">‹</button>
+              <span id="cal-month-label"></span>
+              <button class="cal-nav" id="cal-next">›</button>
+            </div>
+            <div class="cal-grid">
+              <div class="cal-days-header">
+                <span>Su</span><span>Mo</span><span>Tu</span>
+                <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+              </div>
+              <div class="cal-cells" id="cal-cells"></div>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="f-due-date" />
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>👤 Name</label>
+          <input type="text" id="f-name" placeholder="Jane Smith" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>📞 Phone</label>
+          <input type="tel" id="f-phone" placeholder="+1 (555) 000-0000" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>✉️ Email</label>
+        <input type="email" id="f-email" placeholder="jane@example.com" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>🌐 Website URL</label>
+        <input type="url" id="f-url" placeholder="https://www.yourdomain.com" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>💬 Comment <span style="font-weight:400;opacity:.55;font-size:.68rem;">(up to 500 characters)</span></label>
+        <textarea id="f-comment" placeholder="Add notes about this task…" maxlength="500"></textarea>
+        <div class="char-count" id="char-count">0 / 500</div>
+      </div>
+
+      <button class="btn-save" id="btn-save" disabled>Save Task</button>
+    </div>
+
+    <div class="tasks-panel">
+      <div class="card">
+        <div class="card-title">
+          <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot"></span> Saved Tasks</span>
+          <span class="task-count" id="task-count">0</span>
+        </div>
+        <div class="task-list" id="task-list">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <div>No tasks yet.<br>Create your first one!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  /* ════════════════════════════════════════
+     LOCK SCREEN — 7 clicks + password 333777
+  ═══════════════════════════════════════════ */
+  const REQUIRED_CLICKS = 7;
+  const PASSWORD        = "333777";
+
+  let clickCount = 0;
+
+  const lockEmoji  = document.getElementById("lock-emoji");
+  const lockHint   = document.getElementById("lock-hint");
+  const passSection= document.getElementById("pass-section");
+  const passInput  = document.getElementById("pass-input");
+  const btnUnlock  = document.getElementById("btn-unlock");
+  const lockError  = document.getElementById("lock-error");
+
+  lockEmoji.addEventListener("click", () => {
+    if (passSection.classList.contains("visible")) return;
+
+    clickCount++;
+
+    lockEmoji.style.animation = "none";
+    lockEmoji.offsetHeight; // reflow
+    lockEmoji.style.animation = "lockBounce 0.35s ease forwards";
+
+    const remaining = REQUIRED_CLICKS - clickCount;
+
+    if (clickCount < REQUIRED_CLICKS) {
+      lockHint.textContent = remaining === 1
+        ? "One more click…"
+        : `${remaining} more clicks to go`;
+      lockHint.style.color = "rgba(80,203,217,0.8)";
+    } else {
+      lockHint.textContent = "Enter your password below";
+      lockHint.style.color = "var(--teal)";
+      passSection.classList.add("visible");
+      setTimeout(() => passInput.focus(), 100);
+    }
+  });
+
+  function tryUnlock() {
+    lockError.textContent = "";
+    if (passInput.value === PASSWORD) {
+      document.getElementById("lock-screen").style.display = "none";
+      document.getElementById("app-screen").style.display  = "block";
+    } else {
+      lockError.textContent = "Wrong password. Try again.";
+      passInput.value = "";
+      passInput.focus();
+      // shake the lock emoji on wrong password
+      lockEmoji.style.animation = "none";
+      lockEmoji.offsetHeight;
+      lockEmoji.style.animation = "lockShake 0.4s ease";
+    }
+  }
+
+  btnUnlock.addEventListener("click", tryUnlock);
+  passInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+
+  // Re-lock button inside app
+  document.getElementById("btn-relock").addEventListener("click", () => {
+    // reset lock state
+    clickCount = 0;
+    passSection.classList.remove("visible");
+    passInput.value = "";
+    lockError.textContent = "";
+    lockHint.textContent = "Click the lock to unlock";
+    lockHint.style.color = "";
+    lockEmoji.style.animation = "none";
+    document.getElementById("app-screen").style.display  = "none";
+    document.getElementById("lock-screen").style.display = "flex";
+  });
+
+  /* ════════════════════════════════════════
+     CALENDAR
+  ═══════════════════════════════════════════ */
+  const MONTHS = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"];
+
+  let calDate = new Date(), selectedDate = null, taskDates = new Set();
+
+  const trigger   = document.getElementById("cal-trigger");
+  const dropdown  = document.getElementById("cal-dropdown");
+  const display   = document.getElementById("cal-display");
+  const cells     = document.getElementById("cal-cells");
+  const monthLbl  = document.getElementById("cal-month-label");
+  const hiddenDue = document.getElementById("f-due-date");
+
+  function renderCal() {
+    const y = calDate.getFullYear(), m = calDate.getMonth();
+    monthLbl.textContent = `${MONTHS[m]} ${y}`;
+    cells.innerHTML = "";
+    const firstDay    = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const daysInPrev  = new Date(y, m, 0).getDate();
+    const today       = new Date();
+
+    for (let i = 0; i < firstDay; i++)
+      cells.appendChild(mkCell(daysInPrev - firstDay + 1 + i, m-1, y, true));
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = mkCell(d, m, y, false);
+      if (today.getFullYear()===y && today.getMonth()===m && today.getDate()===d)
+        cell.classList.add("today");
+      if (selectedDate && selectedDate.getFullYear()===y &&
+          selectedDate.getMonth()===m && selectedDate.getDate()===d)
+        cell.classList.add("selected");
+      const key = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      if (taskDates.has(key)) cell.classList.add("has-task");
+      cells.appendChild(cell);
+    }
+    const rem = 42 - firstDay - daysInMonth;
+    for (let d = 1; d <= rem; d++) cells.appendChild(mkCell(d, m+1, y, true));
+  }
+
+  function mkCell(day, month, year, other) {
+    const cell = document.createElement("div");
+    cell.className = "cal-cell" + (other ? " other-month" : "");
+    cell.textContent = day;
+    cell.addEventListener("click", () => {
+      const rm = ((month % 12) + 12) % 12;
+      const ry = year + Math.floor(month / 12);
+      selectedDate    = new Date(ry, rm, day);
+      calDate         = new Date(ry, rm, 1);
+      hiddenDue.value = `${ry}-${String(rm+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+      display.textContent = selectedDate.toLocaleDateString("en-US",
+        { month:"long", day:"numeric", year:"numeric" });
+      display.classList.remove("placeholder");
+      trigger.classList.remove("open");
+      dropdown.classList.remove("open");
+      renderCal();
+    });
+    return cell;
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = dropdown.classList.toggle("open");
+    trigger.classList.toggle("open", open);
+    renderCal();
+  });
+  document.getElementById("cal-prev").addEventListener("click", (e) => {
+    e.stopPropagation(); calDate.setMonth(calDate.getMonth()-1); renderCal();
+  });
+  document.getElementById("cal-next").addEventListener("click", (e) => {
+    e.stopPropagation(); calDate.setMonth(calDate.getMonth()+1); renderCal();
+  });
+  document.addEventListener("click", (e) => {
+    if (!document.getElementById("cal-wrap").contains(e.target)) {
+      dropdown.classList.remove("open"); trigger.classList.remove("open");
+    }
+  });
+
+  /* ════════════════════════════════════════
+     CHAR COUNTER
+  ═══════════════════════════════════════════ */
+  const commentEl = document.getElementById("f-comment");
+  const charCount = document.getElementById("char-count");
+  commentEl.addEventListener("input", () => {
+    const n = commentEl.value.length;
+    charCount.textContent = `${n} / 500`;
+    charCount.className = "char-count" + (n >= 500 ? " over" : n > 450 ? " warn" : "");
+  });
+
+  /* ════════════════════════════════════════
+     TASKS / FIREBASE
+  ═══════════════════════════════════════════ */
+  const saveBtn   = document.getElementById("btn-save");
+  const taskList  = document.getElementById("task-list");
+  const taskCount = document.getElementById("task-count");
+  const statusEl  = document.getElementById("fb-status");
+  const toast     = document.getElementById("toast");
+  let toastTimer;
+
+  function showToast(msg, isError=false) {
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.className = "show" + (isError ? " error" : "");
+    toastTimer = setTimeout(() => { toast.className = ""; }, 3000);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "—";
+    const [y,m,d] = iso.split("-");
+    return new Date(y, m-1, d).toLocaleDateString("en-US",
+      { month:"short", day:"numeric", year:"numeric" });
+  }
+
+  function renderTasks(tasks) {
+    taskDates = new Set(tasks.map(t => t.dueDate).filter(Boolean));
+    taskCount.textContent = tasks.length;
+    if (!tasks.length) {
+      taskList.innerHTML = `<div class="empty-state"><div class="icon">📋</div><div>No tasks yet.<br>Create your first one!</div></div>`;
+      return;
+    }
+    taskList.innerHTML = tasks.map(t => `
+      <div class="task-item">
+        <div class="task-item-date">${formatDate(t.dueDate)}</div>
+        <div class="task-item-name">${t.name || "—"}</div>
+        <div class="task-item-meta">
+          ${t.phone   ? `<span>📞 ${t.phone}</span>`   : ""}
+          ${t.email   ? `<span>✉️ ${t.email}</span>`   : ""}
+          ${t.website ? `<span>🌐 ${t.website}</span>` : ""}
+        </div>
+        ${t.comment ? `<div class="task-item-comment">${t.comment}</div>` : ""}
+        <button class="task-delete" data-id="${t.id}" title="Delete">✕</button>
+      </div>
+    `).join("");
+
+    taskList.querySelectorAll(".task-delete").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm("Delete this task?")) return;
+        try {
+          await window._fb.deleteTask(btn.dataset.id);
+          await refresh();
+          showToast("Task deleted.");
+        } catch { showToast("Delete failed.", true); }
+      });
+    });
+  }
+
+  async function refresh() {
+    try {
+      const tasks = await window._fb.loadTasks();
+      renderTasks(tasks);
+      if (selectedDate) renderCal();
+    } catch(err) { console.error(err); }
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+    try {
+      await window._fb.saveTask({
+        dueDate: hiddenDue.value || null,
+        name:    document.getElementById("f-name").value.trim(),
+        phone:   document.getElementById("f-phone").value.trim(),
+        email:   document.getElementById("f-email").value.trim(),
+        website: document.getElementById("f-url").value.trim(),
+        comment: commentEl.value.trim()
+      });
+      ["f-name","f-phone","f-email","f-url"].forEach(id => document.getElementById(id).value="");
+      commentEl.value=""; charCount.textContent="0 / 500"; charCount.className="char-count";
+      hiddenDue.value=""; selectedDate=null;
+      display.textContent="Select a date…"; display.classList.add("placeholder");
+      await refresh(); showToast("✅ Task saved!");
+    } catch(err) { console.error(err); showToast("Save failed.", true); }
+    finally { saveBtn.disabled=false; saveBtn.textContent="Save Task"; }
+  });
+
+  window.addEventListener("fbReady", () => {
+    statusEl.textContent = "✓ Connected";
+    statusEl.className   = "fb-status connected";
+    saveBtn.disabled     = false;
+    refresh();
+  });
+
+  renderCal();
+</script>
+</body>
+</html>
