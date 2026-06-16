@@ -29,6 +29,7 @@
     const db = getFirestore(app);
 
     window._fb = {
+      /* ── TASKS ── */
       async saveTask(task) {
         return await addDoc(collection(db, "tasks"), { ...task, createdAt: Timestamp.now() });
       },
@@ -39,6 +40,19 @@
       },
       async deleteTask(id) {
         await deleteDoc(doc(db, "tasks", id));
+      },
+
+      /* ── RESIDUALS — separate collection ── */
+      async saveResidual(entry) {
+        return await addDoc(collection(db, "residuals"), { ...entry, createdAt: Timestamp.now() });
+      },
+      async loadResiduals() {
+        const q    = query(collection(db, "residuals"), orderBy("paymentDate", "asc"));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+      async deleteResidual(id) {
+        await deleteDoc(doc(db, "residuals", id));
       }
     };
 
@@ -58,6 +72,7 @@
       --input-border: rgba(80,203,217,0.35);
       --danger:       #ff6b8a;
       --success:      #4dd9a0;
+      --gold:         #f9c74f;
       --radius-lg:    18px;
       --radius-md:    12px;
       --radius-sm:    8px;
@@ -125,10 +140,7 @@
     }
 
     #lock-emoji:active { transform: scale(0.88); }
-
-    #lock-emoji.shake {
-      animation: lockShake 0.4s ease;
-    }
+    #lock-emoji.shake  { animation: lockShake 0.4s ease; }
 
     @keyframes lockShake {
       0%,100% { transform: translateX(0); }
@@ -153,14 +165,7 @@
       transition: color 0.2s;
     }
 
-
-
-    /* password field — hidden until 7 clicks */
-    #pass-section {
-      display: none;
-      margin-top: 0.5rem;
-    }
-
+    #pass-section { display: none; margin-top: 0.5rem; }
     #pass-section.visible { display: block; }
 
     .pass-input {
@@ -218,7 +223,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      max-width: 860px;
+      max-width: 960px;
       margin: 0 auto 2rem;
       flex-wrap: wrap;
       gap: 1rem;
@@ -275,15 +280,20 @@
       color: var(--navy);
       box-shadow: 0 4px 18px rgba(80,203,217,0.35);
     }
-
     .btn-email:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(80,203,217,0.5); }
+
+    .btn-residual {
+      background: linear-gradient(135deg, #f9c74f 0%, #f4a01c 100%);
+      color: #1a1000;
+      box-shadow: 0 4px 18px rgba(249,199,79,0.35);
+    }
+    .btn-residual:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(249,199,79,0.5); }
 
     .btn-lock-app {
       background: rgba(255,255,255,0.07);
       color: var(--text-muted);
       border: 1px solid rgba(255,255,255,0.12);
     }
-
     .btn-lock-app:hover { background: rgba(255,255,255,0.12); color: var(--text-light); }
 
     .fb-status {
@@ -294,9 +304,48 @@
     .fb-status.connected { background: rgba(77,217,160,0.15); color: var(--success); border-color: rgba(77,217,160,0.25); }
     .fb-status.error     { background: rgba(255,107,138,0.15); color: var(--danger);  border-color: rgba(255,107,138,0.25); }
 
+    /* ── TAB SWITCHER ── */
+    .tab-bar {
+      max-width: 960px;
+      margin: 0 auto 1.75rem;
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 0.3rem;
+      width: fit-content;
+    }
+
+    .tab-btn {
+      padding: 0.55rem 1.4rem;
+      border-radius: 999px;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+      background: transparent;
+      letter-spacing: 0.03em;
+    }
+
+    .tab-btn.active-tasks {
+      background: linear-gradient(135deg, var(--teal) 0%, #2aa8bc 100%);
+      color: var(--navy);
+      box-shadow: 0 4px 16px rgba(80,203,217,0.4);
+    }
+
+    .tab-btn.active-residual {
+      background: linear-gradient(135deg, #f9c74f 0%, #f4a01c 100%);
+      color: #1a1000;
+      box-shadow: 0 4px 16px rgba(249,199,79,0.4);
+    }
+
     /* ── layout ── */
     .layout {
-      max-width: 860px;
+      max-width: 960px;
       margin: 0 auto;
       display: grid;
       grid-template-columns: 1fr 340px;
@@ -333,6 +382,13 @@
       flex-shrink: 0;
     }
 
+    .card-title .dot-gold {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
     .field { margin-bottom: 0.9rem; }
 
     .field label {
@@ -345,8 +401,11 @@
       margin-bottom: 0.35rem;
     }
 
+    .field label.gold { color: var(--gold); }
+
     .field input,
-    .field textarea {
+    .field textarea,
+    .field select {
       width: 100%;
       background: var(--input-bg);
       border: 1.5px solid var(--input-border);
@@ -360,14 +419,24 @@
       resize: none;
     }
 
+    .field select { cursor: pointer; appearance: none; }
+    .field select option { background: #0d2154; color: #fff; }
+
     .field input::placeholder,
     .field textarea::placeholder { color: var(--text-muted); }
 
     .field input:focus,
-    .field textarea:focus {
+    .field textarea:focus,
+    .field select:focus {
       border-color: var(--teal);
       background: rgba(255,255,255,0.13);
       box-shadow: 0 0 0 3px rgba(80,203,217,0.18);
+    }
+
+    .field input.gold-border:focus,
+    .field select.gold-border:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(249,199,79,0.18);
     }
 
     .field textarea { min-height: 110px; line-height: 1.5; }
@@ -376,7 +445,8 @@
     .char-count.warn { color: #f9c74f; }
     .char-count.over { color: var(--danger); }
 
-    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .field-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
 
     /* ── calendar ── */
     .calendar-wrap { position: relative; }
@@ -480,6 +550,18 @@
     .btn-save:active { transform: scale(0.97); }
     .btn-save:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
+    .btn-save-gold {
+      width: 100%; padding: 0.85rem;
+      background: linear-gradient(135deg, #f9c74f 0%, #f4a01c 100%);
+      color: #1a1000; font-family: 'Inter', sans-serif; font-size: 1rem;
+      font-weight: 700; letter-spacing: 0.04em; border: none; border-radius: 999px;
+      cursor: pointer; margin-top: 0.5rem; box-shadow: 0 4px 20px rgba(249,199,79,0.4);
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .btn-save-gold:hover  { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(249,199,79,0.55); }
+    .btn-save-gold:active { transform: scale(0.97); }
+    .btn-save-gold:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
     #toast {
       position: fixed; bottom: 2rem; left: 50%;
       transform: translateX(-50%) translateY(80px);
@@ -493,6 +575,7 @@
     #toast.show  { transform: translateX(-50%) translateY(0); opacity: 1; }
     #toast.error { background: var(--danger); color: #fff; }
 
+    /* ── TASKS PANEL ── */
     .tasks-panel .card-title { justify-content: space-between; }
 
     .task-count {
@@ -536,6 +619,75 @@
     }
     .task-delete:hover { color: var(--danger); background: rgba(255,107,138,0.12); }
 
+    /* ── RESIDUAL PANEL ── */
+    .residual-total-band {
+      background: linear-gradient(135deg, rgba(249,199,79,0.15) 0%, rgba(244,160,28,0.1) 100%);
+      border: 1px solid rgba(249,199,79,0.3);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .residual-total-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .residual-total-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .residual-count {
+      font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700;
+      background: rgba(249,199,79,0.18); color: var(--gold);
+      border-radius: 999px; padding: 0.2rem 0.65rem;
+    }
+
+    .residual-list {
+      display: flex; flex-direction: column; gap: 0.65rem;
+      max-height: 460px; overflow-y: auto; padding-right: 4px;
+    }
+    .residual-list::-webkit-scrollbar       { width: 4px; }
+    .residual-list::-webkit-scrollbar-track { background: transparent; }
+    .residual-list::-webkit-scrollbar-thumb { background: rgba(249,199,79,0.3); border-radius: 2px; }
+
+    .residual-item {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(249,199,79,0.15);
+      border-radius: var(--radius-md); padding: 0.85rem 1rem;
+      transition: background 0.15s; position: relative;
+    }
+    .residual-item:hover { background: rgba(255,255,255,0.09); }
+
+    .residual-item-date {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: 0.3rem;
+    }
+    .residual-item-name  { font-weight: 700; font-size: 0.9rem; color: #fff; margin-bottom: 0.15rem; }
+    .residual-item-company { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .residual-item-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem; color: var(--gold); font-weight: 700;
+    }
+
+    .residual-delete {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      background: none; border: none; color: rgba(255,107,138,0.5);
+      cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.35rem;
+      border-radius: 6px; transition: color 0.15s, background 0.15s;
+    }
+    .residual-delete:hover { color: var(--danger); background: rgba(255,107,138,0.12); }
+
     .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem; }
     .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
 
@@ -544,6 +696,30 @@
       background: linear-gradient(90deg, transparent, rgba(80,203,217,0.25), transparent);
       margin: 1rem 0;
     }
+
+    .divider-gold {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(249,199,79,0.25), transparent);
+      margin: 1rem 0;
+    }
+
+    /* month filter */
+    .month-filter {
+      display: flex; gap: 0.5rem; align-items: center;
+      margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .month-filter label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--gold);
+    }
+    .month-filter select {
+      background: var(--input-bg); border: 1.5px solid rgba(249,199,79,0.3);
+      border-radius: var(--radius-sm); padding: 0.4rem 0.75rem;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--text-light);
+      outline: none; cursor: pointer; appearance: none;
+    }
+    .month-filter select:focus { border-color: var(--gold); }
+    .month-filter select option { background: #0d2154; }
   </style>
 </head>
 <body>
@@ -556,8 +732,6 @@
 
     <div id="lock-emoji">🔐</div>
     <div class="lock-hint" id="lock-hint">Click the lock to unlock</div>
-
-
 
     <div id="pass-section">
       <input class="pass-input" type="password" id="pass-input" placeholder="Enter password" maxlength="20" />
@@ -587,119 +761,233 @@
     </div>
   </div>
 
-  <div class="layout">
-
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> New Task</div>
-
-      <div class="field">
-        <label>📅 Due Date</label>
-        <div class="calendar-wrap" id="cal-wrap">
-          <button type="button" class="cal-trigger" id="cal-trigger">
-            <span id="cal-display" class="placeholder">Select a date…</span>
-            <span>▾</span>
-          </button>
-          <div class="cal-dropdown" id="cal-dropdown">
-            <div class="cal-header">
-              <button class="cal-nav" id="cal-prev">‹</button>
-              <span id="cal-month-label"></span>
-              <button class="cal-nav" id="cal-next">›</button>
-            </div>
-            <div class="cal-grid">
-              <div class="cal-days-header">
-                <span>Su</span><span>Mo</span><span>Tu</span>
-                <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-              </div>
-              <div class="cal-cells" id="cal-cells"></div>
-            </div>
-          </div>
-        </div>
-        <input type="hidden" id="f-due-date" />
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="field-row">
-        <div class="field">
-          <label>👤 Name</label>
-          <input type="text" id="f-name" placeholder="Jane Smith" autocomplete="off" />
-        </div>
-        <div class="field">
-          <label>📞 Phone</label>
-          <input type="tel" id="f-phone" placeholder="+1 (555) 000-0000" autocomplete="off" />
-        </div>
-      </div>
-
-      <div class="field">
-        <label>✉️ Email</label>
-        <input type="email" id="f-email" placeholder="jane@example.com" autocomplete="off" />
-      </div>
-
-      <div class="field">
-        <label>🌐 Website URL</label>
-        <input type="url" id="f-url" placeholder="https://www.yourdomain.com" autocomplete="off" />
-      </div>
-
-      <div class="field">
-        <label>💬 Comment <span style="font-weight:400;opacity:.55;font-size:.68rem;">(up to 500 characters)</span></label>
-        <textarea id="f-comment" placeholder="Add notes about this task…" maxlength="500"></textarea>
-        <div class="char-count" id="char-count">0 / 500</div>
-      </div>
-
-      <button class="btn-save" id="btn-save" disabled>Save Task</button>
+  <!-- TAB BAR -->
+  <div style="max-width:960px;margin:0 auto 1.75rem;display:flex;justify-content:center;">
+    <div class="tab-bar">
+      <button class="tab-btn active-tasks" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
+      <button class="tab-btn" id="tab-residual" onclick="switchTab('residual')">💰 Residual Income</button>
     </div>
-
-    <div class="tasks-panel">
-      <div class="card">
-        <div class="card-title">
-          <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot"></span> Saved Tasks</span>
-          <span class="task-count" id="task-count">0</span>
-        </div>
-        <div class="task-list" id="task-list">
-          <div class="empty-state">
-            <div class="icon">📋</div>
-            <div>No tasks yet.<br>Create your first one!</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
-</div>
+
+  <!-- ══════ TASKS VIEW ══════ -->
+  <div id="view-tasks">
+    <div class="layout">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> New Task</div>
+
+        <div class="field">
+          <label>📅 Due Date</label>
+          <div class="calendar-wrap" id="cal-wrap">
+            <button type="button" class="cal-trigger" id="cal-trigger">
+              <span id="cal-display" class="placeholder">Select a date…</span>
+              <span>▾</span>
+            </button>
+            <div class="cal-dropdown" id="cal-dropdown">
+              <div class="cal-header">
+                <button class="cal-nav" id="cal-prev">‹</button>
+                <span id="cal-month-label"></span>
+                <button class="cal-nav" id="cal-next">›</button>
+              </div>
+              <div class="cal-grid">
+                <div class="cal-days-header">
+                  <span>Su</span><span>Mo</span><span>Tu</span>
+                  <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                </div>
+                <div class="cal-cells" id="cal-cells"></div>
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="f-due-date" />
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>👤 Name</label>
+            <input type="text" id="f-name" placeholder="Jane Smith" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label>📞 Phone</label>
+            <input type="tel" id="f-phone" placeholder="+1 (555) 000-0000" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>✉️ Email</label>
+          <input type="email" id="f-email" placeholder="jane@example.com" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>🌐 Website URL</label>
+          <input type="url" id="f-url" placeholder="https://www.yourdomain.com" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>💬 Comment <span style="font-weight:400;opacity:.55;font-size:.68rem;">(up to 500 characters)</span></label>
+          <textarea id="f-comment" placeholder="Add notes about this task…" maxlength="500"></textarea>
+          <div class="char-count" id="char-count">0 / 500</div>
+        </div>
+
+        <button class="btn-save" id="btn-save" disabled>Save Task</button>
+      </div>
+
+      <div class="tasks-panel">
+        <div class="card">
+          <div class="card-title">
+            <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot"></span> Saved Tasks</span>
+            <span class="task-count" id="task-count">0</span>
+          </div>
+          <div class="task-list" id="task-list">
+            <div class="empty-state">
+              <div class="icon">📋</div>
+              <div>No tasks yet.<br>Create your first one!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ RESIDUAL VIEW ══════ -->
+  <div id="view-residual" style="display:none;">
+    <div class="layout">
+
+      <!-- LEFT: Add Residual Form -->
+      <div class="card">
+        <div class="card-title"><span class="dot-gold"></span> Add Residual Income</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="gold">👤 Client Name</label>
+            <input type="text" id="r-name" class="gold-border" placeholder="Jane Smith" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="gold">🏢 Company Name</label>
+            <input type="text" id="r-company" class="gold-border" placeholder="Acme Corp" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="divider-gold"></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="gold">💵 Monthly Payment ($)</label>
+            <input type="number" id="r-amount" class="gold-border" placeholder="0.00" min="0" step="0.01" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="gold">📅 Payment Date (day of month)</label>
+            <select id="r-pay-day" class="gold-border">
+              <option value="">Select day…</option>
+              <option value="1">1st</option><option value="2">2nd</option>
+              <option value="3">3rd</option><option value="4">4th</option>
+              <option value="5">5th</option><option value="6">6th</option>
+              <option value="7">7th</option><option value="8">8th</option>
+              <option value="9">9th</option><option value="10">10th</option>
+              <option value="11">11th</option><option value="12">12th</option>
+              <option value="13">13th</option><option value="14">14th</option>
+              <option value="15">15th</option><option value="16">16th</option>
+              <option value="17">17th</option><option value="18">18th</option>
+              <option value="19">19th</option><option value="20">20th</option>
+              <option value="21">21st</option><option value="22">22nd</option>
+              <option value="23">23rd</option><option value="24">24th</option>
+              <option value="25">25th</option><option value="26">26th</option>
+              <option value="27">27th</option><option value="28">28th</option>
+              <option value="29">29th</option><option value="30">30th</option>
+              <option value="31">31st</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="gold">📝 Notes</label>
+          <input type="text" id="r-notes" class="gold-border" placeholder="e.g. Website maintenance, SEO retainer…" autocomplete="off" />
+        </div>
+
+        <div class="divider-gold"></div>
+
+        <!-- Live preview before saving -->
+        <div id="r-preview" style="display:none;background:rgba(249,199,79,0.08);border:1px solid rgba(249,199,79,0.25);border-radius:var(--radius-md);padding:0.9rem 1.1rem;margin-bottom:1rem;">
+          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem;">Preview</div>
+          <div id="r-preview-text" style="font-size:0.85rem;color:rgba(255,255,255,0.8);line-height:1.55;"></div>
+        </div>
+
+        <button class="btn-save-gold" id="btn-save-residual" disabled>💰 Save Residual Entry</button>
+      </div>
+
+      <!-- RIGHT: Residual List -->
+      <div>
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot-gold"></span> Residual Entries</span>
+            <span class="residual-count" id="residual-count">0</span>
+          </div>
+
+          <!-- Month Filter -->
+          <div class="month-filter">
+            <label>Filter Month:</label>
+            <select id="r-filter-month">
+              <option value="all">All Months</option>
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+
+          <!-- Total band -->
+          <div class="residual-total-band">
+            <div>
+              <div class="residual-total-label">Total Monthly Residual</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;" id="r-total-note">All active entries</div>
+            </div>
+            <div class="residual-total-amount" id="residual-total">$0.00</div>
+          </div>
+
+          <div class="residual-list" id="residual-list">
+            <div class="empty-state">
+              <div class="icon">💰</div>
+              <div>No residual entries yet.<br>Add your first client!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end app-screen -->
 
 <div id="toast"></div>
 
 <script>
   /* ════════════════════════════════════════
-     LOCK SCREEN — 7 clicks + password 333777
+     LOCK SCREEN
   ═══════════════════════════════════════════ */
   const REQUIRED_CLICKS = 7;
   const PASSWORD        = "333777";
-
   let clickCount = 0;
 
-  const lockEmoji  = document.getElementById("lock-emoji");
-  const lockHint   = document.getElementById("lock-hint");
-  const passSection= document.getElementById("pass-section");
-  const passInput  = document.getElementById("pass-input");
-  const btnUnlock  = document.getElementById("btn-unlock");
-  const lockError  = document.getElementById("lock-error");
+  const lockEmoji   = document.getElementById("lock-emoji");
+  const lockHint    = document.getElementById("lock-hint");
+  const passSection = document.getElementById("pass-section");
+  const passInput   = document.getElementById("pass-input");
+  const btnUnlock   = document.getElementById("btn-unlock");
+  const lockError   = document.getElementById("lock-error");
 
   lockEmoji.addEventListener("click", () => {
     if (passSection.classList.contains("visible")) return;
-
     clickCount++;
-
     lockEmoji.style.animation = "none";
-    lockEmoji.offsetHeight; // reflow
+    lockEmoji.offsetHeight;
     lockEmoji.style.animation = "lockBounce 0.35s ease forwards";
-
     const remaining = REQUIRED_CLICKS - clickCount;
-
     if (clickCount < REQUIRED_CLICKS) {
-      lockHint.textContent = remaining === 1
-        ? "One more click…"
-        : `${remaining} more clicks to go`;
+      lockHint.textContent = remaining === 1 ? "One more click…" : `${remaining} more clicks to go`;
       lockHint.style.color = "rgba(80,203,217,0.8)";
     } else {
       lockHint.textContent = "Enter your password below";
@@ -718,7 +1006,6 @@
       lockError.textContent = "Wrong password. Try again.";
       passInput.value = "";
       passInput.focus();
-      // shake the lock emoji on wrong password
       lockEmoji.style.animation = "none";
       lockEmoji.offsetHeight;
       lockEmoji.style.animation = "lockShake 0.4s ease";
@@ -728,9 +1015,7 @@
   btnUnlock.addEventListener("click", tryUnlock);
   passInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
 
-  // Re-lock button inside app
   document.getElementById("btn-relock").addEventListener("click", () => {
-    // reset lock state
     clickCount = 0;
     passSection.classList.remove("visible");
     passInput.value = "";
@@ -741,6 +1026,17 @@
     document.getElementById("app-screen").style.display  = "none";
     document.getElementById("lock-screen").style.display = "flex";
   });
+
+  /* ════════════════════════════════════════
+     TAB SWITCHER
+  ═══════════════════════════════════════════ */
+  function switchTab(tab) {
+    const isTask = tab === 'tasks';
+    document.getElementById('view-tasks').style.display    = isTask ? 'block' : 'none';
+    document.getElementById('view-residual').style.display = isTask ? 'none'  : 'block';
+    document.getElementById('tab-tasks').className    = 'tab-btn' + (isTask ? ' active-tasks' : '');
+    document.getElementById('tab-residual').className = 'tab-btn' + (!isTask ? ' active-residual' : '');
+  }
 
   /* ════════════════════════════════════════
      CALENDAR
@@ -768,7 +1064,6 @@
 
     for (let i = 0; i < firstDay; i++)
       cells.appendChild(mkCell(daysInPrev - firstDay + 1 + i, m-1, y, true));
-
     for (let d = 1; d <= daysInMonth; d++) {
       const cell = mkCell(d, m, y, false);
       if (today.getFullYear()===y && today.getMonth()===m && today.getDate()===d)
@@ -834,21 +1129,24 @@
   });
 
   /* ════════════════════════════════════════
-     TASKS / FIREBASE
+     TOAST
   ═══════════════════════════════════════════ */
-  const saveBtn   = document.getElementById("btn-save");
-  const taskList  = document.getElementById("task-list");
-  const taskCount = document.getElementById("task-count");
-  const statusEl  = document.getElementById("fb-status");
-  const toast     = document.getElementById("toast");
+  const toast = document.getElementById("toast");
   let toastTimer;
-
   function showToast(msg, isError=false) {
     clearTimeout(toastTimer);
     toast.textContent = msg;
     toast.className = "show" + (isError ? " error" : "");
     toastTimer = setTimeout(() => { toast.className = ""; }, 3000);
   }
+
+  /* ════════════════════════════════════════
+     TASKS
+  ═══════════════════════════════════════════ */
+  const saveBtn   = document.getElementById("btn-save");
+  const taskList  = document.getElementById("task-list");
+  const taskCount = document.getElementById("task-count");
+  const statusEl  = document.getElementById("fb-status");
 
   function formatDate(iso) {
     if (!iso) return "—";
@@ -884,14 +1182,14 @@
         if (!confirm("Delete this task?")) return;
         try {
           await window._fb.deleteTask(btn.dataset.id);
-          await refresh();
+          await refreshTasks();
           showToast("Task deleted.");
         } catch { showToast("Delete failed.", true); }
       });
     });
   }
 
-  async function refresh() {
+  async function refreshTasks() {
     try {
       const tasks = await window._fb.loadTasks();
       renderTasks(tasks);
@@ -914,16 +1212,145 @@
       commentEl.value=""; charCount.textContent="0 / 500"; charCount.className="char-count";
       hiddenDue.value=""; selectedDate=null;
       display.textContent="Select a date…"; display.classList.add("placeholder");
-      await refresh(); showToast("✅ Task saved!");
+      await refreshTasks(); showToast("✅ Task saved!");
     } catch(err) { console.error(err); showToast("Save failed.", true); }
     finally { saveBtn.disabled=false; saveBtn.textContent="Save Task"; }
   });
 
+  /* ════════════════════════════════════════
+     RESIDUAL INCOME
+  ═══════════════════════════════════════════ */
+  const rName      = document.getElementById("r-name");
+  const rCompany   = document.getElementById("r-company");
+  const rAmount    = document.getElementById("r-amount");
+  const rPayDay    = document.getElementById("r-pay-day");
+  const rNotes     = document.getElementById("r-notes");
+  const rPreview   = document.getElementById("r-preview");
+  const rPreviewTx = document.getElementById("r-preview-text");
+  const btnSaveRes = document.getElementById("btn-save-residual");
+  const resList    = document.getElementById("residual-list");
+  const resCount   = document.getElementById("residual-count");
+  const resTotal   = document.getElementById("residual-total");
+  const rFilterMo  = document.getElementById("r-filter-month");
+
+  function ordinal(n) {
+    const s = ["th","st","nd","rd"];
+    const v = n % 100;
+    return n + (s[(v-20)%10] || s[v] || s[0]);
+  }
+
+  function updateResidualPreview() {
+    const name    = rName.value.trim();
+    const company = rCompany.value.trim();
+    const amount  = parseFloat(rAmount.value) || 0;
+    const day     = rPayDay.value;
+    const notes   = rNotes.value.trim();
+
+    const valid = name && amount > 0 && day;
+    btnSaveRes.disabled = !valid;
+
+    if (valid) {
+      rPreview.style.display = "block";
+      rPreviewTx.innerHTML =
+        `<strong style="color:#fff">${name}</strong>${company ? ` · <span style="color:var(--text-muted)">${company}</span>` : ""}<br>` +
+        `<span style="color:var(--gold);font-family:'Playfair Display',serif;font-size:1.05rem;">$${amount.toFixed(2)}/month</span>` +
+        ` — due on the <strong>${ordinal(parseInt(day))}</strong>` +
+        (notes ? `<br><span style="color:var(--text-muted);font-size:0.78rem;">${notes}</span>` : "");
+    } else {
+      rPreview.style.display = "none";
+    }
+  }
+
+  [rName, rCompany, rAmount, rNotes].forEach(el => el.addEventListener("input", updateResidualPreview));
+  rPayDay.addEventListener("change", updateResidualPreview);
+
+  function renderResiduals(entries) {
+    const filterMonth = rFilterMo.value;
+    const filtered = filterMonth === "all"
+      ? entries
+      : entries.filter(e => String(e.paymentDay) !== "" && true); // show all when no month stored
+
+    resCount.textContent = entries.length;
+
+    // Calculate total for filtered view
+    const total = entries.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+    resTotal.textContent = "$" + total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const note = document.getElementById("r-total-note");
+    note.textContent = entries.length === 1 ? "1 active client" : `${entries.length} active clients`;
+
+    if (!entries.length) {
+      resList.innerHTML = `<div class="empty-state"><div class="icon">💰</div><div>No residual entries yet.<br>Add your first client!</div></div>`;
+      return;
+    }
+
+    // Sort by payment day
+    const sorted = [...entries].sort((a,b) => (parseInt(a.paymentDay)||99) - (parseInt(b.paymentDay)||99));
+
+    resList.innerHTML = sorted.map(e => `
+      <div class="residual-item">
+        <div class="residual-item-date">Due: ${e.paymentDay ? ordinal(parseInt(e.paymentDay)) + ' of month' : '—'}</div>
+        <div class="residual-item-name">${e.clientName || "—"}</div>
+        ${e.companyName ? `<div class="residual-item-company">🏢 ${e.companyName}</div>` : ""}
+        <div class="residual-item-amount">$${parseFloat(e.amount || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}<span style="font-size:0.7rem;font-family:'Inter',sans-serif;color:var(--text-muted);font-weight:400;">/month</span></div>
+        ${e.notes ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">${e.notes}</div>` : ""}
+        <button class="residual-delete" data-id="${e.id}" title="Delete">✕</button>
+      </div>
+    `).join("");
+
+    resList.querySelectorAll(".residual-delete").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm("Remove this residual entry?")) return;
+        try {
+          await window._fb.deleteResidual(btn.dataset.id);
+          await refreshResiduals();
+          showToast("Entry removed.");
+        } catch { showToast("Delete failed.", true); }
+      });
+    });
+  }
+
+  async function refreshResiduals() {
+    try {
+      const entries = await window._fb.loadResiduals();
+      renderResiduals(entries);
+    } catch(err) { console.error(err); }
+  }
+
+  btnSaveRes.addEventListener("click", async () => {
+    btnSaveRes.disabled = true; btnSaveRes.textContent = "Saving…";
+    try {
+      await window._fb.saveResidual({
+        clientName:  rName.value.trim(),
+        companyName: rCompany.value.trim(),
+        amount:      parseFloat(rAmount.value) || 0,
+        paymentDay:  rPayDay.value,
+        notes:       rNotes.value.trim(),
+        paymentDate: `2026-${String(rPayDay.value).padStart(2,"0")}`  // for orderBy
+      });
+      [rName, rCompany, rAmount, rNotes].forEach(el => el.value = "");
+      rPayDay.value = "";
+      rPreview.style.display = "none";
+      await refreshResiduals();
+      showToast("💰 Residual entry saved!");
+    } catch(err) { console.error(err); showToast("Save failed.", true); }
+    finally { btnSaveRes.disabled = false; btnSaveRes.textContent = "💰 Save Residual Entry"; }
+  });
+
+  rFilterMo.addEventListener("change", async () => {
+    await refreshResiduals();
+  });
+
+  /* ════════════════════════════════════════
+     FIREBASE READY
+  ═══════════════════════════════════════════ */
   window.addEventListener("fbReady", () => {
     statusEl.textContent = "✓ Connected";
     statusEl.className   = "fb-status connected";
     saveBtn.disabled     = false;
-    refresh();
+    refreshTasks();
+    refreshResiduals();
   });
 
   renderCal();
