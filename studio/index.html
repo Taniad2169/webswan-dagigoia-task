@@ -954,6 +954,18 @@ function start(){
     }, err => say("Couldn't load hot leads: " + (err?.message || "")));
   };
   if (window.WSFB?.ready) go(); else window.addEventListener("wsfb-ready", go, {once:true});
+  /* Opened from WorkPilot "Send to → WebSwan Studio": prefill a new hot lead. */
+  const P = new URLSearchParams(location.search);
+  if (P.get("hot")) {
+    const openIt = () => {
+      setTab("projects"); vizAll = true; drawViz();
+      const notes = [P.get("notes") || "", P.get("url") ? "Website: " + P.get("url") : ""].filter(Boolean).join("\n");
+      openHot({business: P.get("business") || "", contact: P.get("contact") || "", phone: P.get("phone") || "", email: P.get("email") || "", notes, wants: [], next: ""});
+      history.replaceState(null, "", location.pathname);
+      say("Lead from WorkPilot: add the state, what they want and the follow-up date, then Save.");
+    };
+    if (window.WSFB?.ready) setTimeout(openIt, 300); else window.addEventListener("wsfb-ready", () => setTimeout(openIt, 300), {once:true});
+  }
 }
 $("moveBtn").onclick = async () => {
   const note = $("moveNote"); let d;
