@@ -1041,9 +1041,18 @@
             </div>
             <div class="residual-total-amount" id="residual-total">$0.00</div>
           </div>
+          <div class="residual-total-band" style="margin-top:.8rem;">
+            <div>
+              <div class="residual-total-label">💰 Earned so far</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;" id="t-earned-note">Residuals + one-time payments, to today</div>
+            </div>
+            <div class="residual-total-amount" id="t-earned">$0.00</div>
+          </div>
           <div class="totals-grid">
-            <div><span>Per year</span><b id="t-year">$0</b></div>
-            <div><span>One-time fees</span><b id="t-setup">$0</b></div>
+            <div><span>Residuals earned</span><b id="t-earned-res">$0</b></div>
+            <div><span>One-time earned</span><b id="t-earned-one">$0</b></div>
+            <div><span>Expected per year</span><b id="t-year">$0</b></div>
+            <div><span>One-time fees (listed)</span><b id="t-setup">$0</b></div>
             <div><span>Late</span><b id="t-late">0</b></div>
           </div>
 
@@ -1410,9 +1419,17 @@
     try {
       const existing = await window._fb.loadResiduals();
       const have = new Set(existing.map(e => e.studioRef).filter(Boolean));
-      let added = 0, skipped = 0;
+      let added = 0, skipped = 0, updated = 0;
       for (const c of list) {
-        if (!c || !c.ref || have.has(c.ref)) { skipped++; continue; }
+        if (!c || !c.ref) { skipped++; continue; }
+        if (have.has(c.ref)) {
+          const cur = existing.find(e => e.studioRef === c.ref);
+          const upd = {};
+          ["paidResidual","paidOneTime"].forEach(k => { if (c[k] !== undefined) upd[k] = parseFloat(c[k]) || 0; });
+          if (c.paidAsOf) upd.paidAsOf = String(c.paidAsOf);
+          if (cur && Object.keys(upd).length) { await window._fb.updateResidual(cur.id, upd); updated++; } else skipped++;
+          continue;
+        }
         const num = v => parseFloat(v) || 0, txt = v => String(v ?? "").trim();
         await window._fb.saveResidual({
           clientName: txt(c.clientName), companyName: txt(c.companyName), projectName: txt(c.projectName),
@@ -1420,13 +1437,14 @@
           brand: PLANS[c.brand] ? c.brand : "The WebSwan", plan: c.plan === "Yearly" ? "Yearly" : "Monthly",
           setupFee: num(c.setupFee), setupDate: txt(c.setupDate) || null, startDate: txt(c.startDate) || null,
           status: ["Active","Late","Paused","Cancelled"].includes(c.status) ? c.status : "Active", studioRef: c.ref,
+          ...(c.paidAsOf ? { paidResidual: num(c.paidResidual), paidOneTime: num(c.paidOneTime), paidAsOf: txt(c.paidAsOf) } : {}),
           paymentDate: `2026-${c.paymentDay ? String(c.paymentDay).padStart(2,"0") : "99"}`
         });
         have.add(c.ref); added++;
       }
       await refreshResiduals();
       history.replaceState(null, "", location.pathname);
-      showToast(`✅ ${added} ${added === 1 ? "client" : "clients"} registered from WebSwan Studio${skipped ? ` · ${skipped} already here` : ""}.`);
+      showToast(`✅ ${added} ${added === 1 ? "client" : "clients"} registered from WebSwan Studio${updated ? ` · ${updated} updated` : ""}${skipped ? ` · ${skipped} already here` : ""}.`);
     } catch (err) { console.error(err); autoDone = false; showToast("Couldn't register them automatically. Try again from Studio.", true); }
   }
 
@@ -1464,6 +1482,32 @@
   rProject.addEventListener("input", updateResidualPreview);
   rPayDay.addEventListener("change", updateResidualPreview);
 
+  /* Money earned so far. If an entry has paidResidual/paidOneTime/paidAsOf (from real payment history),
+     start from those; then add each residual payment due after that date up to today, for Active clients only. */
+  const todayISO = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  function paymentsBetween(e, afterISO, untilISO) {
+    const amt = parseFloat(e.amount) || 0; if (!amt || !e.startDate) return 0;
+    const yearly = e.plan === "Yearly", day = parseInt(e.paymentDay) || parseInt(e.startDate.slice(8,10));
+    let y = +e.startDate.slice(0,4), m = +e.startDate.slice(5,7), n = 0;
+    const iso = (yy, mm) => { const last = new Date(yy, mm, 0).getDate(); return yy+"-"+String(mm).padStart(2,"0")+"-"+String(Math.min(day,last)).padStart(2,"0"); };
+    let d = iso(y, m); if (d < e.startDate) { m++; if (m > 12) { m = 1; y++; } d = iso(y, m); }
+    for (let i = 0; i < 600 && d <= untilISO; i++) {
+      if (!afterISO || d > afterISO) n++;
+      if (yearly) y++; else { m++; if (m > 12) { m = 1; y++; } }
+      d = iso(y, m);
+    }
+    return n * amt;
+  }
+  function earned(e) {
+    const t = todayISO(), st = e.status || "Active";
+    if (e.paidAsOf) {
+      const more = st === "Active" ? paymentsBetween(e, e.paidAsOf, t) : 0;
+      return { res: (parseFloat(e.paidResidual) || 0) + more, one: parseFloat(e.paidOneTime) || 0 };
+    }
+    const one = (parseFloat(e.setupFee) || 0) && (!e.setupDate || e.setupDate <= t) ? parseFloat(e.setupFee) : 0;
+    return { res: st === "Active" || st === "Late" ? paymentsBetween(e, null, t) : 0, one };
+  }
+
   let allResiduals = [];
   function renderResiduals(entries) {
     allResiduals = entries;
@@ -1476,6 +1520,10 @@
     resCount.textContent = shown.length;
     resTotal.textContent = money(perMonth);
     document.getElementById("t-year").textContent = money(perMonth * 12);
+    const ear = shown.reduce((a, e) => { const x = earned(e); a.res += x.res; a.one += x.one; return a; }, { res: 0, one: 0 });
+    document.getElementById("t-earned").textContent = money(ear.res + ear.one);
+    document.getElementById("t-earned-res").textContent = money(ear.res);
+    document.getElementById("t-earned-one").textContent = money(ear.one);
     document.getElementById("t-setup").textContent = money(shown.reduce((s, e) => s + (parseFloat(e.setupFee)||0), 0));
     document.getElementById("t-late").textContent = shown.filter(e => e.status === "Late").length;
     document.getElementById("r-total-note").textContent = `${live.length} paying ${live.length === 1 ? "client" : "clients"}`;
@@ -1496,6 +1544,7 @@
         ${e.projectName ? `<div class="residual-item-company">📁 ${escH(e.projectName)}</div>` : ""}
         <div class="residual-item-amount">${money(e.amount)}<span style="font-size:0.7rem;font-family:'Inter',sans-serif;color:var(--text-muted);font-weight:400;">/${yearly ? "year" : "month"}</span></div>
         <div class="r-meta">
+          ${(() => { const x = earned(e); return x.res + x.one > 0 ? `<span>💰 Earned so far ${money(x.res + x.one)}</span>` : ""; })()}
           ${parseFloat(e.setupFee) > 0 ? `<span>🧾 Project ${money(e.setupFee)}${e.setupDate ? ` · ${formatDate(e.setupDate)}` : ""}</span>` : ""}
           ${e.startDate ? `<span>📆 Residual from ${formatDate(e.startDate)}</span>` : ""}
           ${e.phone ? `<a href="tel:${escH(String(e.phone).replace(/[^0-9+]/g,""))}">📞 ${escH(e.phone)}</a>` : ""}
