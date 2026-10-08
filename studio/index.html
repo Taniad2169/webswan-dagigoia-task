@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan Studio</title>
+<style>
+#gate{position:fixed;inset:0;z-index:50;background:var(--bg,#f3f6f9);display:flex;align-items:center;justify-content:center;padding:16px}
+#gate .box{background:var(--panel,#fff);border:1px solid var(--line,#d9e1ea);border-radius:14px;padding:28px;max-width:420px;width:100%;text-align:center;display:flex;flex-direction:column;gap:12px}
+#gate h1{font-size:26px}
+#who{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+#moveBox textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h1>WebSwan Studio</h1>
+  <p class="note" id="gateMsg" style="margin:0">Private. Sign in with your WebSwan Google account.</p>
+  <button class="btn primary" id="gateBtn">Sign in with Google</button>
+</div></div>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: left rail of filters, right work area that switches between a project card grid and a two-pane mockup builder. */
+:root{
+  --bg:#f3f6f9; --panel:#ffffff; --ink:#12233a; --muted:#5b6b80; --line:#d9e1ea;
+  --accent:#0d7c86; --accent-ink:#ffffff; --soft:#e3f1f2;
+  --ok:#1f7a4d; --warn:#9a6200; --idle:#5b6b80; --danger:#b3261e;
+  --display:"Bricolage Grotesque","Trebuchet MS",sans-serif; --body:"Figtree","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1622; --panel:#152232; --ink:#e8eef5; --muted:#9aabbf; --line:#283a4f;
+  --accent:#4cc3cc; --accent-ink:#06262a; --soft:#17343b;
+  --ok:#6fd3a0; --warn:#f0b95a; --idle:#9aabbf; --danger:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1622; --panel:#152232; --ink:#e8eef5; --muted:#9aabbf; --line:#283a4f;
+  --accent:#4cc3cc; --accent-ink:#06262a; --soft:#17343b;
+  --ok:#6fd3a0; --warn:#f0b95a; --idle:#9aabbf; --danger:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.top h1{font-size:26px;font-weight:700}
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px}
+.tabs button{border:0;background:none;padding:8px 14px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.shell{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.rail{flex:0 0 200px;display:flex;flex-direction:column;gap:18px}
+.rail h3{font-family:var(--body);font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.rail ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.rail button{width:100%;text-align:left;border:0;background:none;padding:7px 10px;border-radius:7px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.rail button[aria-pressed="true"]{background:var(--soft);font-weight:600}
+.rail .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.main{flex:1 1 420px;min-width:0}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.bar input{flex:1 1 200px;min-width:0}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+textarea{resize:vertical;min-height:70px}
+.btn{border:1px solid var(--line);background:var(--panel);padding:9px 14px;border-radius:8px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column}
+.card:hover{border-color:var(--accent)}
+.thumb{aspect-ratio:16/8;display:flex;align-items:flex-end;padding:12px;font-family:var(--display);font-weight:700;font-size:28px;color:#fff}
+.card .meta{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.card .name{font-weight:600;overflow-wrap:anywhere}
+.card .sub{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pill{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;border:1px solid currentColor}
+.pill.Active{color:var(--ok)} .pill.Lead{color:var(--warn)} .pill.Paused,.pill.Done{color:var(--idle)}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:28px;color:var(--muted);max-width:60ch}
+.note{color:var(--muted);font-size:13px;margin:0 0 12px}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.checks{display:flex;flex-wrap:wrap;gap:8px 16px}
+.checks label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-weight:500}
+.checks input{width:auto}
+.build{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.build .form{flex:1 1 300px;min-width:0}
+.build .view{flex:2 1 380px;min-width:0}
+/* Mockup preview keeps its own fixed look, like a real client site in a browser frame. */
+.frame{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;color:#1b2430}
+.chrome{background:#e9edf2;color:#55606e;font-size:12px;padding:7px 12px;overflow-wrap:anywhere}
+.seg{display:flex;gap:4px;margin-bottom:10px}
+.seg button{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--soft);color:var(--ink);border-color:var(--accent)}
+.files{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.files li{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.files span{overflow-wrap:anywhere;min-width:0}
+.btn.small{padding:4px 10px;font-size:13px}
+h4{margin:6px 0 0;font-family:var(--display);font-size:16px}
+[hidden]{display:none !important}
+.colorpick{display:flex;gap:10px;flex-wrap:wrap}
+.cslot{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;flex:1 1 170px;background:var(--panel)}
+.cslot[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--soft)}
+.cslot input[type=color]{width:42px;height:42px;padding:2px;border-radius:8px;flex:0 0 auto;cursor:pointer}
+.cslot b{display:block;font-size:13px;color:var(--ink)}
+.cslot .hex{font-family:ui-monospace,Menlo,Consolas,monospace;padding:5px 8px;margin-top:3px;width:110px;text-transform:uppercase}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
+.sw{border:1px solid var(--line);border-radius:8px;padding:0;overflow:hidden;cursor:pointer;background:var(--panel);text-align:center}
+.sw i{display:block;height:30px}
+.sw span{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;padding:3px 0;color:var(--muted)}
+.sw:hover,.sw:focus-visible{border-color:var(--accent)}
+.viz{--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;--s8:#e34948;--grid:#e3e8ee;--axis:#5b6b80}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;--grid:#283a4f;--axis:#9aabbf}}
+:root[data-theme="dark"] .viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;--grid:#283a4f;--axis:#9aabbf}
+.viz{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:22px;position:relative}
+.viz-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.viz-head h2{font-size:19px}
+.viz-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin:4px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.vscroll{overflow-x:auto}
+.viz svg{display:block}
+.viz svg text{fill:var(--axis);font-family:var(--body)}
+.viz .val{fill:var(--ink);font-size:11px;font-weight:600}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--panel);font-size:12px;padding:6px 9px;border-radius:7px;white-space:nowrap;z-index:5}
+.viz table{border-collapse:collapse;font-size:13px;width:100%;margin-top:8px}
+.viz th,.viz td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:right}
+.viz th:first-child,.viz td:first-child{text-align:left}
+.viz summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:6px}
+a.btn{text-decoration:none;color:var(--ink);display:inline-flex;align-items:center}
+.group{margin-bottom:26px}
+.group-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.group-head h2{font-size:20px}
+.group-head span{color:var(--muted);font-size:13px}
+.card{cursor:default}
+.card .open{all:unset;cursor:pointer;display:block}
+.card .open:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.contact{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.contact a{color:var(--accent);text-decoration:none;overflow-wrap:anywhere}
+.contact a:hover{text-decoration:underline}
+.links{display:flex;gap:6px;flex-wrap:wrap}
+.links a{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.links a.new{background:var(--soft);border-color:var(--accent)}
+.links a:hover{border-color:var(--accent)}
+.count{font-size:12px;color:var(--muted);text-align:right}
+.count.over{color:var(--danger);font-weight:600}
+.urlrow{display:flex;gap:6px}
+.urlrow input{flex:1 1 auto;min-width:0}
+.urlrow .btn{padding:9px 12px}
+.hot{border-top:1px solid var(--line);margin-top:14px;padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.hot-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hot-head h3{font-size:17px}
+.hchart{position:relative}
+.hchart svg{display:block;width:100%;height:auto}
+.hchart .lbl{fill:var(--ink);font-size:12px;font-weight:600}
+.hchart .tot{fill:var(--muted);font-size:12px}
+.hot-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.hl{border:1px solid var(--line);border-left:4px solid var(--hc,var(--line));border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;background:var(--panel)}
+.hl b{overflow-wrap:anywhere}
+.hl .sub{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.hl .contact a{font-size:13px}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;border:1px solid var(--line);display:inline-flex;align-items:center;gap:5px}
+.tag i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.due{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.due.over{color:var(--danger)} .due.today{color:var(--warn)} .due.soon{color:var(--ok)} .due.later{color:var(--muted)}
+.hl .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.hl p{margin:0;font-size:13px;white-space:pre-wrap;max-height:4.4em;overflow:hidden}
+#vzAll .badge{margin-left:6px;background:var(--danger);color:#fff;border-radius:99px;padding:0 7px;font-size:11.5px}
+</style>
+
+<header class="top">
+  <h1>WebSwan Studio</h1>
+  <div id="who"><span id="whoEmail"></span><a class="btn small" href="../" title="Residual Income and tasks">Residual file</a><button class="btn small" id="signOut">Sign out</button></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-projects" aria-selected="true">Projects</button>
+    <button role="tab" id="tab-builder" aria-selected="false">Mockup builder</button>
+  </div>
+</header>
+
+<div id="view-projects" class="shell">
+  <aside class="rail">
+    <div><h3>Brand</h3><ul id="brandList"></ul></div>
+    <div><h3>Status</h3><ul id="statusList"></ul></div>
+    <div><h3>Built</h3><ul id="originList"></ul></div>
+  </aside>
+  <div class="main">
+    <div class="bar">
+      <input id="search" type="search" placeholder="Search by client, business, phone, email or state" aria-label="Search projects">
+      <a class="btn" id="bulkBtn" target="_blank" rel="noopener" hidden></a>
+      <button class="btn" id="codeBtn" hidden>Import code</button>
+      <button class="btn" id="oldBtn">Add existing client</button>
+      <button class="btn primary" id="newBtn">New project</button>
+    </div>
+    <section class="viz" id="viz" aria-labelledby="vizTitle">
+      <div class="viz-head">
+        <div><h2 id="vizTitle">Clients by state</h2><p id="vizSub">Your 11 states, by service</p></div>
+        <div class="seg" role="group" aria-label="Who to count" style="margin:0">
+          <button id="vzClients" aria-pressed="true">Clients only</button>
+          <button id="vzAll" aria-pressed="false">Include leads</button>
+        </div>
+      </div>
+      <div class="legend" id="vizLegend"></div>
+      <div class="vscroll"><svg id="vizSvg" role="img" aria-labelledby="vizTitle"></svg></div>
+      <div class="tip" id="vizTip" hidden></div>
+      <details><summary>Show as a table</summary><div id="vizTable"></div></details>
+      <div class="hot" id="hot" hidden>
+        <div class="hot-head">
+          <div><h3>Hot leads</h3><p class="note" id="hotSub" style="margin:2px 0 0"></p></div>
+          <button class="btn primary" id="hotNew">Add hot lead</button>
+        </div>
+        <div id="hotForm" hidden></div>
+        <div class="hchart" id="hotChart">
+          <h4 style="margin:0">Hot leads by state and service</h4>
+          <p class="note" style="margin:2px 0 6px">Every state where you have a hot lead. A lead that wants two services shows in both colors.</p>
+          <div class="legend" id="hotLegend"></div>
+          <svg id="hotSvg" role="img" aria-label="Hot leads by state and service"></svg>
+          <details><summary>Show as a table</summary><div id="hotTable"></div></details>
+        </div>
+        <ul class="hot-list" id="hotList"></ul>
+      </div>
+    </section>
+    <div class="sheet" id="codeBox" hidden>
+      <h4 style="margin:0">Import code for your Residual file</h4>
+      <p class="note" style="margin:0">Copy all of this. On your Residual page, open <b>Import clients from WebSwan Studio</b>, paste it and press Import. Clients already there are skipped.</p>
+      <textarea id="codeText" rows="4" readonly style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px"></textarea>
+      <div class="row"><button class="btn primary" id="codeCopy">Copy code</button><button class="btn" id="codeClose">Close</button><span class="note" id="codeNote" style="margin:0"></span></div>
+    </div>
+    <p class="note" id="saveNote" hidden></p>
+    <div id="editor" hidden></div>
+    <div id="grid" class="grid"></div>
+    <details id="moveBox" class="sheet" style="margin-top:22px"><summary style="cursor:pointer;font-weight:600">Move data from the old Studio</summary>
+      <p class="note" style="margin:0">Paste the code Claude gave you and press Import. Projects and hot leads with the same name are replaced, not doubled.</p>
+      <textarea id="moveCode" rows="4" placeholder="WSSTUDIO:..."></textarea>
+      <div class="row"><button class="btn primary" id="moveBtn">Import</button><span class="note" id="moveNote" style="margin:0"></span></div>
+    </details>
+    <div id="empty" class="empty">Your projects will appear here as cards, newest first. Choose <b>New project</b> to add the first one.</div>
+  </div>
+</div>
+
+<div id="view-builder" class="build" hidden>
+  <div class="form sheet">
+    <h2 style="font-size:19px">Client details</h2>
+    <label>Load from project<select id="mProject"><option value="">Not linked to a project</option></select></label>
+    <div class="fields">
+      <label>Business name<input id="mName" value="Lakeside Family Dental"></label>
+      <label>Type of business<input id="mType" list="mTypes" value="Dentist" placeholder="Type anything, or pick one"></label>
+      <label>City<input id="mCity" value="Oakland, CA"></label>
+      <label>Phone<input id="mPhone" value="(555) 010-0142"></label>
+    </div>
+    <datalist id="mTypes"></datalist>
+    <div>
+      <label style="margin-bottom:6px">Colors</label>
+      <div class="colorpick">
+        <div class="cslot" id="slotMain" aria-pressed="true" role="button" tabindex="0">
+          <input id="mColor" type="color" value="#0d7c86" aria-label="Main color">
+          <div><b>Main color</b><input id="mHex" class="hex" value="#0d7c86" aria-label="Main color hex code" maxlength="7"></div>
+        </div>
+        <div class="cslot" id="slotSec" aria-pressed="false" role="button" tabindex="0">
+          <input id="mSecond" type="color" value="#1e3a5f" aria-label="Second color">
+          <div><b>Second color</b><input id="mSecHex" class="hex" value="#1E3A5F" aria-label="Second color hex code" maxlength="7"></div>
+        </div>
+        <div class="cslot" id="slotAcc" aria-pressed="false" role="button" tabindex="0">
+          <input id="mAccent" type="color" value="#e8a33d" aria-label="Button color">
+          <div><b>Button color</b><input id="mAccHex" class="hex" value="#e8a33d" aria-label="Button color hex code" maxlength="7"></div>
+        </div>
+      </div>
+      <p class="note" style="margin:8px 0 6px">Pick a slot, then tap a color below, type a hex code, or use the color wheel.</p>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <label>Headline<input id="mHead" value=""></label>
+    <label>About paragraph<textarea id="mAbout"></textarea></label>
+    <div class="fields">
+      <label>Main button text<input id="mBtn" placeholder="Book a visit"></label>
+      <label>Top button text<input id="mPortal" placeholder="Patient portal"></label>
+    </div>
+    <label>Services, one per line<textarea id="mServices" rows="4"></textarea></label>
+    <div>
+      <label style="margin-bottom:6px">Sections</label>
+      <div class="checks" id="mSections"></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="mSave">Save to project</button>
+      <span class="note" id="mNote" style="margin:0"></span>
+    </div>
+    <p class="note" style="margin:0">The starting details are an example. Type any business: a dentist, restaurant, realtor, salon, plumber. Services fill in for the common types and you can change every line.</p>
+  </div>
+  <div class="view">
+    <div class="seg">
+      <button id="vSite" aria-pressed="true">Demo website</button>
+      <button id="vList" aria-pressed="false">Media Network listing</button>
+    </div>
+    <div class="frame">
+      <div class="chrome" id="mUrl"></div>
+      <div class="site" id="site"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SITE_CSS = ".site{--m:#0d7c86;--a:#e8a33d;--s:#1e3a5f;font-family:var(--body)}\n.site nav{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #e6eaef}\n.site nav b{font-family:var(--display);font-size:18px}\n.site .cta{background:var(--a);color:var(--at,#fff);padding:8px 14px;border-radius:7px;font-weight:600;font-size:14px;display:inline-block}\n.site .hero{background:var(--m);color:#fff;padding:38px 20px}\n.site .hero h2{font-size:30px;line-height:1.1;margin-bottom:10px}\n.site .hero p{margin:0 0 16px;max-width:52ch}\n.site .hero .cta{background:var(--a);color:var(--at,#fff)}\n.site section{padding:24px 20px;border-bottom:1px solid #e6eaef}\n.site section h3{font-size:20px;margin-bottom:10px;color:var(--s)}\n.site .svc{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}\n.site .svc div{border:1px solid #e6eaef;border-top:3px solid var(--s);border-radius:9px;padding:12px;font-weight:600}\n.site footer{padding:16px 20px;font-size:12px;color:var(--st,#fff);background:var(--s)}\n.listing{padding:24px 20px}\n.listing .lcard{border:1px solid #e6eaef;border-radius:12px;padding:18px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}\n.listing .av{width:64px;height:64px;border-radius:12px;background:var(--m);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;flex:0 0 auto}\n.listing .info{flex:1 1 220px;min-width:0}\n.listing h3{font-size:20px;margin:0 0 4px}\n.listing p{margin:0 0 10px;color:#55606e}\n.listing .acts{display:flex;gap:8px;flex-wrap:wrap}\n.listing .ghost{border:1px solid var(--m);color:var(--m);padding:7px 13px;border-radius:7px;font-weight:600;font-size:14px}\n.listing .crumb{font-size:12px;color:#55606e;margin-bottom:10px}";
+document.head.appendChild(Object.assign(document.createElement("style"),{textContent:SITE_CSS}));
+const BRANDS = ["The WebSwan","WebSwan Digital Solutions","WebSwan Media Network","Personal"];
+const STATUSES = ["Lead","Active","Paused","Done"];
+const BRAND_TYPES = {
+  "The WebSwan":["Website","Phone app (SBPA)","E-card"],
+  "WebSwan Media Network":["Advertising listing","Virtual assistant"],
+  "WebSwan Digital Solutions":["Compliance website"],
+  "Personal":["Tool","Other"]
+};
+const TYPES = Object.values(BRAND_TYPES).flat();
+const BRAND_NOTE = {"The WebSwan":"Websites, SBPA phone apps and e-cards","WebSwan Media Network":"Advertising and virtual assistants","WebSwan Digital Solutions":"Websites that started from a compliance review","Personal":"Your own tools"};
+const MAXW = 500;
+const ORIGINS = ["New with Studio","Existing on SiteSwan","Existing on GitHub","Existing elsewhere"];
+const PLANS = {"The WebSwan":["Monthly","Yearly"],"WebSwan Media Network":["Monthly","Yearly"],"WebSwan Digital Solutions":["Monthly"],"Personal":["Monthly","Yearly"]};
+const PRICE_HINT = {"WebSwan Media Network":{setup:400, Monthly:29, Yearly:289}};
+const PAY_STATUS = ["Active","Late","Paused","Cancelled"];
+const RESIDUAL_URL = "https://taniad2169.github.io/webswan-dagigoia-task/";
+const fmt$ = n => "$" + (Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
+const MY_STATES = ["New York","Texas","Florida","Georgia","Nevada","California","Connecticut","Washington DC","New Jersey","Utah","Arizona"];
+const ST_ABBR = {"New York":"NY","Texas":"TX","Florida":"FL","Georgia":"GA","Nevada":"NV","California":"CA","Connecticut":"CT","Washington DC":"DC","New Jersey":"NJ","Utah":"UT","Arizona":"AZ"};
+const SERIES = [["The WebSwan","Web design","--s1"],["WebSwan Media Network","Advertising","--s2"],["WebSwan Digital Solutions","ADA and compliance","--s3"]];
+let vizAll = false, hot = [], hotEdit = null;
+const WANTS = [["Web design","--s1"],["Advertising","--s2"],["ADA","--s3"],["SBPA phone app","--s4"],["AI receptionist","--s5"],["Social media","--s6"],["Email marketing","--s7"],["E-card","--s8"]];
+const ALL_STATES = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Washington DC","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"];
+const OTHER_STATES = ALL_STATES.filter(x => !MY_STATES.includes(x));
+const HOTW = 300;
+const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const daysTo = d => Math.round((new Date(d+"T12:00") - new Date(today()+"T12:00")) / 864e5);
+const words = s => (String(s||"").trim().match(/\S+/g) || []).length;
+const href = u => { u = String(u||"").trim(); if (!u) return ""; return /^https?:\/\//i.test(u) ? u : "https://" + u; };
+const SECTIONS = ["Services","About","Client portal button","Contact","Accessibility statement"];
+const SERVICES = {
+  "Dentist":["Cleanings and exams","Crowns and fillings","Whitening","Emergency visits"],
+  "Doctor":["Annual physicals","Same-week sick visits","Lab work","Telehealth"],
+  "Chiropractor":["Adjustments","Sports injuries","Posture care","Massage therapy"],
+  "Plastic surgeon":["Consultations","Facial procedures","Body contouring","Non-surgical care"],
+  "Attorney":["Free case review","Personal injury","Family law","Estate planning"]
+};
+const PORTAL = {"Attorney":"Client portal"};
+Object.assign(SERVICES, {
+  "Restaurant":["Dine in","Takeout and delivery","Catering","Private events"],
+  "Realtor":["Buying a home","Selling a home","Free home valuation","Relocation help"],
+  "Hair salon":["Cuts and styling","Color","Braids and natural hair","Bridal and events"],
+  "Plumber":["Leak repair","Drain cleaning","Water heaters","24/7 emergencies"],
+  "Insurance agent":["Auto","Home","Life","Business"],
+  "Accountant":["Tax preparation","Bookkeeping","Payroll","Business advisory"]
+});
+const BTN = {"Attorney":"Request a consultation","Restaurant":"Order online","Realtor":"Schedule a showing","Hair salon":"Book an appointment","Plumber":"Request service","Insurance agent":"Get a quote","Accountant":"Book a consultation"};
+const MED = ["Dentist","Doctor","Chiropractor","Plastic surgeon"];
+const PALETTE = ["#0d7c86","#0b5563","#1e3a5f","#2a78d6","#5b8def","#4a3aa7","#7c3aed","#a855f7","#be185d","#e11d48","#e34948","#b3261e","#eb6834","#e8a33d","#f5c518","#84cc16","#1baf7a","#15803d","#065f46","#14b8a6","#0ea5e9","#c2410c","#92400e","#a16207","#d4af37","#c08081","#f4c2c2","#ffe4e1","#f5f0e6","#ffffff","#94a3b8","#475569","#1f2937","#111111","#000000"];
+const textOn = hex => { const n = parseInt(String(hex).slice(1),16); const r=(n>>16)&255,g=(n>>8)&255,b=n&255; return (0.299*r+0.587*g+0.114*b) > 160 ? "#111111" : "#ffffff"; };
+const isHex = v => /^#[0-9a-fA-F]{6}$/.test(v);
+const CHECKS = [["ada","Accessibility tool (ADA)"],["cookie","Cookie consent banner"],["privacy","Privacy policy page"],["forms","Forms that collect patient or client details"]];
+const STATES = ["Not checked","Issue found","Fixed","No issue seen"];
+let db = null, assets = null, downloads = null, projects = [], mView = "site";
+let filter = {brand:"All", status:"All", origin:"All", q:""}, editing = null;
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hue = s => { let h = 0; for (const c of String(s)) h = (h*31 + c.charCodeAt(0)) % 360; return h; };
+const initials = s => String(s||"?").split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join("");
+const when = t => t ? new Date(t).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "";
+
+function setTab(name){
+  const b = name === "builder";
+  $("view-projects").hidden = b; $("view-builder").hidden = !b;
+  $("tab-projects").setAttribute("aria-selected", String(!b));
+  $("tab-builder").setAttribute("aria-selected", String(b));
+  try { localStorage.setItem("ws-tab", name); } catch(e){}
+}
+$("tab-projects").onclick = () => setTab("projects");
+$("tab-builder").onclick = () => setTab("builder");
+
+function railList(el, key, values){
+  el.innerHTML = ["All", ...values].map(v => {
+    const n = v === "All" ? projects.length : projects.filter(p => (p[key] || (key === "origin" ? ORIGINS[0] : "")) === v).length;
+    return `<li><button data-v="${esc(v)}" aria-pressed="${filter[key] === v}">${esc(v)}<span class="n">${n}</span></button></li>`;
+  }).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => { filter[key] = b.dataset.v; render(); });
+}
+
+function drawViz(){
+  const counted = projects.filter(p => vizAll || p.status === "Active" || p.status === "Done");
+  const data = MY_STATES.map(st => ({st, v: SERIES.map(([b], k) => counted.filter(p => p.state === st && p.brand === b).length
+    + (vizAll ? hot.filter(h => h.state === st && (h.wants||[]).includes(WANTS[k][0])).length : 0))}));
+  const max = Math.max(1, ...data.flatMap(d => d.v));
+  const step = max <= 5 ? 1 : Math.ceil(max / 5);
+  const top = Math.ceil(max / step) * step;
+  const W = 760, H = 260, L = 34, R = 8, T = 18, B = 34, gw = (W - L - R) / data.length, bw = Math.min(16, (gw - 14) / 3);
+  const y = v => T + (H - T - B) * (1 - v / top);
+  let g = "";
+  for (let v = 0; v <= top; v += step) g += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11">${v}</text>`;
+  data.forEach((d, i) => {
+    const x0 = L + i * gw + (gw - bw * 3 - 4) / 2;
+    d.v.forEach((v, k) => {
+      const x = x0 + k * (bw + 2), yy = y(v), h = (H - B) - yy;
+      if (v > 0) {
+        const r = Math.min(4, h);
+        g += `<path d="M${x},${H-B} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+bw-r} Q${x+bw},${yy} ${x+bw},${yy+r} V${H-B} Z" fill="var(${SERIES[k][2]})"/>`;
+        g += `<text class="val" x="${x+bw/2}" y="${yy-4}" text-anchor="middle">${v}</text>`;
+      }
+      g += `<rect class="hit" x="${x-1}" y="${T}" width="${bw+2}" height="${H-B-T}" fill="transparent" data-t="${esc(d.st)} · ${esc(SERIES[k][1])}: ${v} ${vizAll ? "" : (v === 1 ? "client" : "clients")}${vizAll ? (() => { const n = hot.filter(h => h.state === d.st && (h.wants||[]).includes(WANTS[k][0])).length; return n ? `(${n} hot)` : ""; })() : ""}"/>`;
+    });
+    g += `<text x="${L + i*gw + gw/2}" y="${H-B+18}" text-anchor="middle" font-size="12" font-weight="600">${ST_ABBR[d.st]}</text>`;
+  });
+  g += `<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="var(--axis)" stroke-width="1"/>`;
+  const svg = $("vizSvg"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H); svg.style.minWidth = "620px"; svg.style.width = "100%"; svg.style.height = "auto";
+  svg.innerHTML = g;
+  const tip = $("vizTip"), box = $("viz");
+  svg.querySelectorAll(".hit").forEach(r => {
+    r.onmousemove = e => { const b = box.getBoundingClientRect(); tip.textContent = r.dataset.t; tip.hidden = false; tip.style.left = Math.min(e.clientX - b.left + 12, b.width - 200) + "px"; tip.style.top = (e.clientY - b.top - 34) + "px"; };
+    r.onmouseleave = () => tip.hidden = true;
+  });
+  $("vizLegend").innerHTML = SERIES.map(([, n, c]) => `<span><i style="background:var(${c})"></i>${esc(n)}</span>`).join("");
+  const total = data.reduce((a, d) => a + d.v.reduce((x, y) => x + y, 0), 0);
+  $("vizTitle").textContent = vizAll ? "Clients and leads by state" : "Clients by state";
+  $("vizSub").textContent = total ? `${total} ${vizAll ? "projects and hot leads" : "clients"} across your 11 states. Hover a bar for details.` : (vizAll ? "No projects have a state yet. Add a state when you edit a project." : "No active or finished clients with a state yet. Add a state when you edit a project, or choose Include leads.");
+  $("vizTable").innerHTML = `<table><thead><tr><th>State</th>${SERIES.map(s => `<th>${esc(s[1])}</th>`).join("")}<th>Total</th></tr></thead><tbody>${data.map(d => `<tr><td>${esc(d.st)}</td>${d.v.map(v => `<td>${v}</td>`).join("")}<td>${d.v.reduce((a,b)=>a+b,0)}</td></tr>`).join("")}</tbody></table>`;
+  $("vzClients").setAttribute("aria-pressed", String(!vizAll)); $("vzAll").setAttribute("aria-pressed", String(vizAll));
+  const due = hot.filter(h => h.next && daysTo(h.next) <= 0).length;
+  $("vzAll").innerHTML = "Include leads" + (due ? `<span class="badge" title="Hot leads to contact today or overdue">${due}</span>` : "");
+  $("hot").hidden = !vizAll;
+  if (vizAll) drawHot();
+}
+
+/* Hot leads: prospects to follow up on a future date */
+function dueTag(d){
+  if (!d) return `<span class="due later">No date</span>`;
+  const n = daysTo(d), lbl = when(new Date(d+"T12:00").getTime());
+  if (n < 0) return `<span class="due over">Overdue · ${lbl}</span>`;
+  if (n === 0) return `<span class="due today">Today</span>`;
+  if (n <= 7) return `<span class="due soon">${n === 1 ? "Tomorrow" : "In " + n + " days"} · ${lbl}</span>`;
+  return `<span class="due later">${lbl}</span>`;
+}
+function drawHot(){
+  const q = filter.q.toLowerCase(), qd = q.replace(/\D/g,"");
+  const list = hot.filter(h => { if (!q) return true; const hay = [h.business,h.contact,h.phone,h.email,h.state,ST_ABBR[h.state],(h.wants||[]).join(" "),h.notes].join(" ").toLowerCase();
+      return hay.includes(q) || (qd.length >= 3 && hay.replace(/\D/g,"").includes(qd)); })
+    .sort((a,b) => (a.next||"9999") < (b.next||"9999") ? -1 : (a.next||"9999") > (b.next||"9999") ? 1 : 0);
+  const due = hot.filter(h => h.next && daysTo(h.next) <= 0).length;
+  $("hotSub").textContent = hot.length ? `${hot.length} hot ${hot.length === 1 ? "lead" : "leads"}, soonest follow-up first${due ? ` · ${due} to contact today or overdue` : ""}.` : "Add prospects you want to call back on a set date. They also count in the chart above.";
+  const col = w => (WANTS.find(x => x[0] === w) || [,"--axis"])[1];
+  drawHotChart();
+  $("hotList").innerHTML = list.map(h => `<li class="hl" style="--hc:var(${col((h.wants||[])[0])})">
+      <div class="row" style="align-items:flex-start"><b>${esc(h.business || h.contact || "Unnamed lead")}</b>${dueTag(h.next)}</div>
+      <div class="sub">${esc([h.contact && h.business ? h.contact : "", h.state].filter(Boolean).join(" · "))}</div>
+      ${(h.wants||[]).length ? `<div class="tags">${h.wants.map(w => `<span class="tag"><i style="background:var(${col(w)})"></i>${esc(w)}</span>`).join("")}</div>` : ""}
+      ${h.phone || h.email ? `<div class="contact">${h.phone ? `<a href="tel:${esc(String(h.phone).replace(/[^0-9+]/g,""))}">${esc(h.phone)}</a>` : ""}${h.email ? `<a href="mailto:${esc(h.email)}">${esc(h.email)}</a>` : ""}</div>` : ""}
+      ${h.notes ? `<p>${esc(h.notes)}</p>` : ""}
+      <div class="acts"><button class="btn small" data-he="${esc(h.id)}">Open</button><button class="btn small" data-hp="${esc(h.id)}">Make it a project</button></div>
+    </li>`).join("") || (hot.length ? `<li class="note">No hot leads match your search.</li>` : "");
+  $("hotList").querySelectorAll("[data-he]").forEach(b => b.onclick = () => openHot(hot.find(h => h.id === b.dataset.he)));
+  $("hotList").querySelectorAll("[data-hp]").forEach(b => b.onclick = () => {
+    const h = hot.find(x => x.id === b.dataset.hp), w = h.wants || [];
+    const brand = w.includes("ADA") ? "WebSwan Digital Solutions" : w.includes("Advertising") ? "WebSwan Media Network" : "The WebSwan";
+    openEditor({name:h.business || h.contact || "", brand, type:BRAND_TYPES[brand][0], status:"Lead", state:h.state, contact:h.contact, company:h.business,
+      phone:h.phone, email:h.email, notes:[w.length ? "Interested in: " + w.join(", ") : "", h.next ? "Follow up: " + h.next : "", h.notes].filter(Boolean).join("\n")});
+  });
+}
+function drawHotChart(){
+  const box = $("hotChart");
+  const states = [...new Set(hot.map(h => h.state).filter(Boolean))];
+  box.hidden = !states.length;
+  if (!states.length) return;
+  const rows = states.map(st => { const L = hot.filter(h => h.state === st);
+      return {st, n:L.length, v:WANTS.map(([w]) => L.filter(h => (h.wants||[]).includes(w)).length)}; })
+    .sort((a,b) => b.n - a.n || a.st.localeCompare(b.st));
+  const used = WANTS.map((w,k) => rows.some(r => r.v[k])); 
+  const max = Math.max(1, ...rows.map(r => r.v.reduce((a,b) => a+b, 0)));
+  const W = 760, L = 130, R = 70, rh = 26, bh = 16, T = 4, H = T + rows.length * rh + 4;
+  const x = v => (W - L - R) * v / max;
+  let g = "";
+  rows.forEach((r, i) => {
+    const y = T + i * rh + (rh - bh) / 2; let cx = L;
+    g += `<text class="lbl" x="${L - 8}" y="${y + bh/2 + 4}" text-anchor="end">${esc(r.st)}</text>`;
+    const segs = r.v.map((v,k) => [v,k]).filter(([v]) => v);
+    segs.forEach(([v,k], j) => {
+      const w = Math.max(2, x(v) - 2), last = j === segs.length - 1, rr = last ? Math.min(4, w) : 0;
+      g += `<path d="M${cx},${y} H${cx+w-rr} Q${cx+w},${y} ${cx+w},${y+rr} V${y+bh-rr} Q${cx+w},${y+bh} ${cx+w-rr},${y+bh} H${cx} Z" fill="var(${WANTS[k][1]})"/>`;
+      g += `<rect class="hit" x="${cx}" y="${y-4}" width="${w+2}" height="${bh+8}" fill="transparent" data-t="${esc(r.st)} · ${esc(WANTS[k][0])}: ${v} ${v === 1 ? "lead" : "leads"}"/>`;
+      cx += w + 2;
+    });
+    g += `<text class="tot" x="${cx + 6}" y="${y + bh/2 + 4}">${r.n} ${r.n === 1 ? "lead" : "leads"}</text>`;
+  });
+  const svg = $("hotSvg"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = g;
+  const tip = $("vizTip"), vb = $("viz");
+  svg.querySelectorAll(".hit").forEach(r => {
+    r.onmousemove = e => { const b = vb.getBoundingClientRect(); tip.textContent = r.dataset.t; tip.hidden = false; tip.style.left = Math.min(e.clientX - b.left + 12, b.width - 200) + "px"; tip.style.top = (e.clientY - b.top - 34) + "px"; };
+    r.onmouseleave = () => tip.hidden = true;
+  });
+  $("hotLegend").innerHTML = WANTS.filter((w,k) => used[k]).map(([n,c]) => `<span><i style="background:var(${c})"></i>${esc(n)}</span>`).join("");
+  const cols = WANTS.filter((w,k) => used[k]);
+  $("hotTable").innerHTML = `<table><thead><tr><th>State</th>${cols.map(c => `<th>${esc(c[0])}</th>`).join("")}<th>Leads</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.st)}</td>${r.v.filter((v,k) => used[k]).map(v => `<td>${v}</td>`).join("")}<td>${r.n}</td></tr>`).join("")}</tbody></table>`;
+}
+function openHot(h){
+  hotEdit = h || {wants:[], next:""};
+  const f = $("hotForm"); f.hidden = false;
+  f.innerHTML = `<div class="sheet" style="margin:0">
+    <h4 style="margin:0">${hotEdit.id ? "Edit hot lead" : "New hot lead"}</h4>
+    <div class="fields">
+      <label>Business<input id="hBiz" value="${esc(hotEdit.business)}" autocomplete="off"></label>
+      <label>Contact person<input id="hCon" value="${esc(hotEdit.contact)}" autocomplete="off"></label>
+      <label>Phone<input id="hPhone" type="tel" value="${esc(hotEdit.phone)}" autocomplete="off"></label>
+      <label>Email<input id="hEmail" type="email" value="${esc(hotEdit.email)}" autocomplete="off"></label>
+      <label>State<select id="hState"><option value="">Choose a state</option><optgroup label="Your 11 states">${opts(MY_STATES, hotEdit.state)}</optgroup><optgroup label="All other states">${opts(OTHER_STATES, hotEdit.state)}</optgroup>${hotEdit.state && !ALL_STATES.includes(hotEdit.state) ? opts([hotEdit.state], hotEdit.state) : ""}</select></label>
+      <label>Contact again on<input id="hNext" type="date" value="${esc(hotEdit.next || "")}"></label>
+    </div>
+    <div><label style="margin-bottom:6px">What they're going for</label>
+      <div class="checks">${WANTS.map(([w,c]) => `<label><input type="checkbox" value="${esc(w)}"${(hotEdit.wants||[]).includes(w) ? " checked" : ""}><i style="width:10px;height:10px;border-radius:3px;background:var(${c});display:inline-block"></i>${esc(w)}</label>`).join("")}</div></div>
+    <label>Comment (up to ${HOTW} words)<textarea id="hNotes" rows="5">${esc(hotEdit.notes)}</textarea></label>
+    <div class="count" id="hCount"></div>
+    <div class="row"><div class="row"><button class="btn primary" id="hSave">Save</button><button class="btn" id="hCancel">Cancel</button></div>
+      ${hotEdit.id ? `<button class="btn danger" id="hDel">Delete</button>` : ""}</div></div>`;
+  const wc = () => { const n = words($("hNotes").value), c = $("hCount"); c.textContent = n + " / " + HOTW + " words"; c.classList.toggle("over", n > HOTW); };
+  $("hNotes").oninput = wc; wc();
+  $("hCancel").onclick = closeHot;
+  $("hSave").onclick = async () => {
+    const business = $("hBiz").value.trim(), contact = $("hCon").value.trim();
+    if (!business && !contact) { say("Add a business or contact name for the hot lead."); $("hBiz").focus(); return; }
+    if (words($("hNotes").value) > HOTW) { say("The comment is over " + HOTW + " words. Trim it a little, then save."); $("hNotes").focus(); return; }
+    const data = {business, contact, phone:$("hPhone").value.trim(), email:$("hEmail").value.trim(), state:$("hState").value, next:$("hNext").value,
+      wants:[...f.querySelectorAll(".checks input:checked")].map(x => x.value), notes:$("hNotes").value.trim(), updatedAt:Date.now()};
+    const id = hotEdit.id;
+    if (await run(() => id ? db.doc("hotleads/" + id).update(data) : db.collection("hotleads").add({...data, createdAt:Date.now()}), "Hot lead saved")) closeHot();
+  };
+  if ($("hDel")) $("hDel").onclick = function(){
+    if (this.dataset.sure) { run(() => db.doc("hotleads/" + hotEdit.id).delete(), "Hot lead deleted"); closeHot(); }
+    else { this.dataset.sure = "1"; this.textContent = "Click again to delete for good"; }
+  };
+  f.scrollIntoView({block:"nearest"}); $("hBiz").focus();
+}
+function closeHot(){ $("hotForm").hidden = true; $("hotForm").innerHTML = ""; hotEdit = null; }
+$("hotNew").onclick = () => openHot(null);
+$("vzClients").onclick = () => { vizAll = false; drawViz(); };
+$("vzAll").onclick = () => { vizAll = true; drawViz(); };
+
+const unsent = () => projects.filter(p => p.pay && (Number(p.pay.amount) > 0 || Number(p.pay.setup) > 0) && !p.pay.ref);
+function render(){
+  drawViz();
+  const u = unsent(); $("bulkBtn").hidden = !u.length;
+  $("bulkBtn").textContent = `Register ${u.length} ${u.length === 1 ? "client" : "clients"} in Residual file`;
+  railList($("brandList"), "brand", BRANDS);
+  railList($("statusList"), "status", STATUSES);
+  railList($("originList"), "origin", ORIGINS);
+  const q = filter.q.toLowerCase();
+  const list = projects.filter(p =>
+    (filter.brand === "All" || p.brand === filter.brand) &&
+    (filter.status === "All" || p.status === filter.status) &&
+    (filter.origin === "All" || (p.origin || ORIGINS[0]) === filter.origin) &&
+    (!q || (() => { const hay = [p.name,p.client,p.company,p.contact,p.phone,p.email,p.state,ST_ABBR[p.state],p.contact2?.name,p.contact2?.phone,p.contact2?.email,p.oldUrl,p.newUrl,p.notes].join(" ").toLowerCase();
+      const qd = q.replace(/\D/g,""), hd = hay.replace(/\D/g,"");
+      return hay.includes(q) || (qd.length >= 3 && hd.includes(qd)); })()));
+  $("empty").hidden = projects.length > 0;
+  const card = p => {
+    const bg = p.mockup?.color || `hsl(${hue(p.company || p.name)} 45% 38%)`;
+    const site = href(p.newUrl || p.url), old = href(p.oldUrl), c2 = p.contact2;
+    return `<article class="card">
+      <button class="open" data-id="${esc(p.id)}" aria-label="Open ${esc(p.name)}">
+        <div class="thumb" style="background:${esc(bg)}">${esc(initials(p.company || p.name))}</div>
+        <div class="meta" style="padding-bottom:4px">
+          <div class="name">${esc(p.name)}</div>
+          <div class="sub">${esc([p.company || p.client, p.type].filter(Boolean).join(" · "))}</div>
+          ${p.origin && p.origin !== ORIGINS[0] ? `<div class="sub" style="font-weight:600">${esc(p.origin.replace("Existing on ","On ").replace("Existing elsewhere","Built elsewhere"))}${p.since ? ` · client since ${esc(when(new Date(p.since + "T12:00").getTime()))}` : ""}</div>` : ""}
+          <div class="row"><span class="pill ${esc(p.status)}">${esc(p.status)}</span><span class="sub">${esc(when(p.updatedAt))}</span></div>
+        </div>
+      </button>
+      <div class="meta" style="padding-top:4px">
+        ${p.contact || p.phone || p.email ? `<div class="contact">
+          ${p.contact ? `<span>${esc(p.contact)}</span>` : ""}
+          ${p.phone ? `<a href="tel:${esc(String(p.phone).replace(/[^0-9+]/g,""))}">${esc(p.phone)}</a>` : ""}
+          ${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ""}
+        </div>` : ""}
+        ${c2 && (c2.name || c2.phone || c2.email) ? `<div class="contact" style="border-top:1px solid var(--line);padding-top:6px">
+          <span>${esc(c2.name || "Contact 2")}${c2.role ? ` · <span class="sub">${esc(c2.role)}</span>` : ""}</span>
+          ${c2.phone ? `<a href="tel:${esc(String(c2.phone).replace(/[^0-9+]/g,""))}">${esc(c2.phone)}</a>` : ""}
+          ${c2.email ? `<a href="mailto:${esc(c2.email)}">${esc(c2.email)}</a>` : ""}
+        </div>` : ""}
+        ${p.pay && (p.pay.amount || p.pay.setup) ? `<div class="sub">${p.pay.amount ? `<b style="color:var(--ink)">${fmt$(p.pay.amount)}</b>/${p.pay.plan === "Yearly" ? "yr" : "mo"}` : ""}${p.pay.setup ? ` · ${fmt$(p.pay.setup)} project` : ""}${p.pay.ref ? ` · <span title="Sent to your Residual file">✓ Residual</span>` : ""}${p.pay.status && p.pay.status !== "Active" ? ` · <span style="color:${p.pay.status === "Late" ? "var(--danger)" : "var(--muted)"};font-weight:600">${esc(p.pay.status)}</span>` : ""}</div>` : ""}
+        ${old || site ? `<div class="links">
+          ${old ? `<a href="${esc(old)}" target="_blank" rel="noopener">Former site ↗</a>` : ""}
+          ${site ? `<a class="new" href="${esc(site)}" target="_blank" rel="noopener">New site ↗</a>` : ""}
+        </div>` : ""}
+      </div></article>`;
+  };
+  const groups = filter.brand === "All" ? BRANDS : [filter.brand];
+  $("grid").className = "";
+  $("grid").innerHTML = groups.map(b => {
+    const items = list.filter(p => p.brand === b);
+    if (!items.length) return "";
+    return `<section class="group"><div class="group-head"><h2>${esc(b)}</h2><span>${esc(BRAND_NOTE[b] || "")} · ${items.length}</span></div>
+      <div class="grid">${items.map(card).join("")}</div></section>`;
+  }).join("") || (projects.length ? `<div class="empty">No projects match these filters.</div>` : "");
+  $("grid").querySelectorAll(".open").forEach(c => c.onclick = () => openEditor(projects.find(p => p.id === c.dataset.id)));
+  const sel = $("mProject"), cur = sel.value;
+  sel.innerHTML = `<option value="">Not linked to a project</option>` + projects.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+  sel.value = projects.some(p => p.id === cur) ? cur : "";
+}
+
+function opts(list, cur){ return list.map(v => `<option${v === cur ? " selected" : ""}>${esc(v)}</option>`).join(""); }
+
+function openEditor(p){
+  editing = p || {name:"", brand:BRANDS[0], type:BRAND_TYPES[BRANDS[0]][0], status:"Lead", notes:""};
+  const typesFor = b => BRAND_TYPES[b] || TYPES;
+  const curType = typesFor(editing.brand).includes(editing.type) ? editing.type : typesFor(editing.brand)[0];
+  const e = $("editor"); e.hidden = false;
+  e.innerHTML = `<div class="sheet">
+    <h2 style="font-size:19px">${editing.id ? "Edit project" : (editing.origin && editing.origin !== ORIGINS[0] ? "Add existing client" : "New project")}</h2>
+    <div class="fields">
+      <label>Project name<input id="eName" value="${esc(editing.name)}"></label>
+      <label>Brand<select id="eBrand">${opts(BRANDS, editing.brand)}</select></label>
+      <label>Type<select id="eType">${opts(typesFor(editing.brand), curType)}</select></label>
+      <label>Status<select id="eStatus">${opts(STATUSES, editing.status)}</select></label>
+      <label>State<select id="eState"><option value="">Choose a state</option>${opts([...MY_STATES, "Other"], editing.state)}</select></label>
+      <label>Where it was built<select id="eOrigin">${opts(ORIGINS, editing.origin || ORIGINS[0])}</select></label>
+      <label>Client since<input id="eSince" type="date" value="${esc(editing.since || "")}"></label>
+    </div>
+    <h4>Lead</h4>
+    <div class="fields">
+      <label>Contact name<input id="eContact" value="${esc(editing.contact)}" autocomplete="off"></label>
+      <label>Company<input id="eCompany" value="${esc(editing.company || editing.client)}" autocomplete="off"></label>
+      <label>Phone<input id="ePhone" type="tel" value="${esc(editing.phone)}" autocomplete="off"></label>
+      <label>Email<input id="eEmail" type="email" value="${esc(editing.email)}" autocomplete="off"></label>
+    </div>
+    <h4>Contact 2 <span class="sub" style="font-family:var(--body);font-weight:500;font-size:13px;color:var(--muted)">the person the doctor or attorney asked you to work with</span></h4>
+    <div class="fields">
+      <label>Name<input id="eC2Name" value="${esc(editing.contact2?.name)}" autocomplete="off"></label>
+      <label>Role<input id="eC2Role" value="${esc(editing.contact2?.role)}" placeholder="Office manager, assistant…" autocomplete="off"></label>
+      <label>Phone<input id="eC2Phone" type="tel" value="${esc(editing.contact2?.phone)}" autocomplete="off"></label>
+      <label>Email<input id="eC2Email" type="email" value="${esc(editing.contact2?.email)}" autocomplete="off"></label>
+    </div>
+    <h4>Websites</h4>
+    <div class="fields">
+      <label>Former website<span class="urlrow"><input id="eOld" value="${esc(editing.oldUrl)}" placeholder="https://"><a class="btn" id="oOld" target="_blank" rel="noopener">Open</a></span></label>
+      <label>New website (the one you're building)<span class="urlrow"><input id="eNew" value="${esc(editing.newUrl || editing.url)}" placeholder="https://"><a class="btn" id="oNew" target="_blank" rel="noopener">Open</a></span></label>
+    </div>
+    <label>Comment (up to ${MAXW} words)<textarea id="eNotes" rows="7">${esc(editing.notes)}</textarea></label>
+    <div class="count" id="wCount"></div>
+    <h4>Price and payment plan</h4>
+    <div class="fields">
+      <label>Project total, one-time ($)<input id="pSetup" type="number" min="0" step="0.01" value="${esc(editing.pay?.setup ?? "")}"></label>
+      <label>One-time payment date<input id="pSetupDate" type="date" value="${esc(editing.pay?.setupDate || "")}"></label>
+      <label>Payment plan<select id="pPlan"></select></label>
+      <label><span id="pAmtLbl">Monthly payment ($)</span><input id="pAmt" type="number" min="0" step="0.01" value="${esc(editing.pay?.amount ?? "")}"></label>
+      <label>Payment day of month<select id="pDay"><option value="">Choose</option>${Array.from({length:31},(_,i)=>`<option${String(editing.pay?.day)===String(i+1)?" selected":""}>${i+1}</option>`).join("")}</select></label>
+      <label>First residual payment date<input id="pStart" type="date" value="${esc(editing.pay?.start || "")}"></label>
+      <label>Payment status<select id="pStatus">${opts(PAY_STATUS, editing.pay?.status || "Active")}</select></label>
+    </div>
+    <p class="note" id="pHint" style="margin:0"></p>
+    <div class="checks"><label><input type="checkbox" id="pReg" checked>${editing.pay?.ref ? "Update this client in my Residual file when I save" : "Register in my Residual file when I save"}</label></div>
+    <p class="note" style="margin:0">Saving puts the client straight into your Residual file: name, phone, project, project total, monthly payment and dates. Money already earned there is kept.</p>
+    <div class="row"><a class="btn" id="pSend" target="_blank" rel="noopener">Open in Residual tracker ↗</a><span class="note" style="margin:0">Fills in the form there without saving, so you can check it first.</span></div>
+    ${editing.id ? `
+    <h4>Website review checklist</h4>
+    <div class="fields">${CHECKS.map(([k,l]) => `<label>${esc(l)}<select id="c_${k}">${opts(STATES, editing.compliance?.[k] || STATES[0])}</select></label>`).join("")}</div>
+    <label>What you found<textarea id="cNotes" placeholder="Plain notes for the client. No legal conclusions.">${esc(editing.compliance?.notes)}</textarea></label>
+    <h4>Reports and files</h4>
+    <p class="note" style="margin:0">Add links to the PDFs from your Compliance Checker and Business Audit (for example a Google Drive share link).</p>
+    <ul class="files" id="fileList"></ul>
+    <div class="fields"><label>Report name<input id="fileName" placeholder="ADA compliance report"></label><label>Link<input id="fileUrl" placeholder="https://"></label></div>
+    <div class="row"><button class="btn" id="fileAdd">Add report link</button><span class="note" id="fileNote" style="margin:0"></span></div>
+    <div class="row"><button class="btn primary" id="ePacket">Download client copy</button><span class="note" id="pkNote" style="margin:0"></span></div>
+    ` : `<p class="note" style="margin:0">Save the project first, then open it again to add the review checklist, reports and client copy.</p>`}
+    <div class="row">
+      <div class="row">
+        <button class="btn primary" id="eSave">Save</button>
+        <button class="btn" id="eCancel">Cancel</button>
+        ${editing.id ? `<button class="btn" id="eMock">Open in mockup builder</button>` : ""}
+      </div>
+      ${editing.id ? `<button class="btn danger" id="eDel">Delete</button>` : ""}
+    </div></div>`;
+  $("eCancel").onclick = closeEditor;
+  const fillPlan = keep => {
+    const list = PLANS[$("eBrand").value] || ["Monthly"], v = list.includes(keep) ? keep : list[0];
+    $("pPlan").innerHTML = opts(list, v);
+    $("pAmtLbl").textContent = v === "Yearly" ? "Yearly payment ($)" : "Monthly payment ($)";
+    const h = PRICE_HINT[$("eBrand").value];
+    $("pHint").textContent = h ? `Usual price: ${fmt$(h.setup)} one-time, then ${fmt$(h.Monthly)} a month or ${fmt$(h.Yearly)} a year.` : "";
+  };
+  const sendLink = () => {
+    const q = new URLSearchParams({add:"1", name:$("eContact").value.trim() || $("eName").value.trim(), company:$("eCompany").value.trim(),
+      phone:$("ePhone").value.trim(), email:$("eEmail").value.trim(), brand:$("eBrand").value, plan:$("pPlan").value,
+      setup:$("pSetup").value, amount:$("pAmt").value, day:$("pDay").value, start:$("pStart").value, status:$("pStatus").value, project:$("eName").value.trim(), setupDate:$("pSetupDate").value,
+      notes:[$("eType").value, $("eNew").value.trim()].filter(Boolean).join(" · ")});
+    $("pSend").href = RESIDUAL_URL + "?" + q.toString();
+    return q;
+  };
+  editing._link = sendLink;
+  $("pStart").addEventListener("change", () => { if (!$("pDay").value && $("pStart").value) { $("pDay").value = String(Number($("pStart").value.slice(8,10))); sendLink(); } });
+  fillPlan(editing.pay?.plan);
+  $("pPlan").onchange = () => { fillPlan($("pPlan").value); sendLink(); };
+  $("editor").querySelectorAll("input,select").forEach(el => el.addEventListener("input", sendLink));
+  sendLink();
+  $("eBrand").onchange = () => { $("eType").innerHTML = opts(typesFor($("eBrand").value), typesFor($("eBrand").value)[0]); fillPlan($("pPlan").value); sendLink(); };
+  const linkBtn = (inp, btn) => { const u = href($(inp).value); const a = $(btn); a.hidden = !u; if (u) a.href = u; };
+  ["Old","New"].forEach(k => { linkBtn("e"+k, "o"+k); $("e"+k).oninput = () => linkBtn("e"+k, "o"+k); });
+  const wc = () => { const n = words($("eNotes").value), c = $("wCount"); c.textContent = n + " / " + MAXW + " words"; c.classList.toggle("over", n > MAXW); };
+  $("eNotes").oninput = wc; wc();
+  $("eSave").onclick = saveProject;
+  if ($("eMock")) $("eMock").onclick = () => { $("mProject").value = editing.id; loadMock(); setTab("builder"); };
+  if ($("eDel")) $("eDel").onclick = function(){
+    if (this.dataset.sure) { run(() => db.doc("projects/" + editing.id).delete(), "Deleted"); closeEditor(); }
+    else { this.dataset.sure = "1"; this.textContent = "Click again to delete for good"; }
+  };
+  if (editing.id) wireFiles();
+  e.scrollIntoView({block:"nearest"}); $("eName").focus();
+}
+function closeEditor(){ $("editor").hidden = true; $("editor").innerHTML = ""; editing = null; }
+
+function say(msg){ const n = $("saveNote"); n.textContent = msg; n.hidden = !msg; }
+async function run(fn, done){
+  if (!db) { say("Saving isn't available in this view, so changes can't be kept."); return false; }
+  try { await fn(); say(done); return true; }
+  catch(err){ say("Couldn't save: " + (err?.message || "try again in a moment.")); return false; }
+}
+async function saveProject(){
+  const name = $("eName").value.trim();
+  if (!name) { say("Give the project a name before saving."); $("eName").focus(); return; }
+  if (words($("eNotes").value) > MAXW) { say("The comment is over " + MAXW + " words. Trim it a little, then save."); $("eNotes").focus(); return; }
+  const company = $("eCompany").value.trim();
+  const amt = Number($("pAmt").value) || 0, setup = Number($("pSetup").value) || 0;
+  let ref = editing.pay?.ref || null, reg = false;
+  if ($("pReg")?.checked && (amt > 0 || setup > 0)) {
+    if (amt > 0 && !$("pDay").value) { say("Add the first residual payment date or the payment day so it can be registered."); $("pStart").focus(); return; }
+    ref = ref || ("ws-" + Date.now().toString(36) + Math.random().toString(36).slice(2,7));
+    reg = true;
+  }
+  const data = {name, brand:$("eBrand").value, type:$("eType").value, status:$("eStatus").value,
+    state:$("eState").value, origin:$("eOrigin").value, since:$("eSince").value,
+    pay:{setup:$("pSetup").value === "" ? null : Number($("pSetup").value), plan:$("pPlan").value, amount:$("pAmt").value === "" ? null : Number($("pAmt").value),
+      day:$("pDay").value, start:$("pStart").value, status:$("pStatus").value, setupDate:$("pSetupDate").value, ref},
+    contact:$("eContact").value.trim(), company, client:company, phone:$("ePhone").value.trim(), email:$("eEmail").value.trim(),
+    contact2:{name:$("eC2Name").value.trim(), role:$("eC2Role").value.trim(), phone:$("eC2Phone").value.trim(), email:$("eC2Email").value.trim()},
+    oldUrl:$("eOld").value.trim(), newUrl:$("eNew").value.trim(), url:$("eNew").value.trim(),
+    notes:$("eNotes").value.trim(), updatedAt:Date.now()};
+  if (editing.id) { data.compliance = {notes:$("cNotes").value.trim()}; CHECKS.forEach(([k]) => data.compliance[k] = $("c_"+k).value); }
+  const id = editing.id;
+  const ok = await run(() => id ? db.doc("projects/" + id).update(data) : db.collection("projects").add(data), "Saved");
+  if (ok && reg) {
+    try { const r = await WSFB.registerResidual(bulkList([{...data, id:"x"}])[0], ref); say(r === "added" ? "Saved · Registered in your Residual file" : "Saved · Updated in your Residual file"); }
+    catch(err){ say("Saved, but the Residual file didn't update: " + (err?.message || "try again.")); }
+  }
+  if (ok) closeEditor();
+}
+$("newBtn").onclick = () => openEditor(null);
+function bulkList(u){ return u.map(p => ({ref: p.pay?.ref || ("ws-" + p.id), clientName: p.contact || p.company || p.name, companyName: p.company || p.client || "", projectName: p.name,
+    phone: p.phone || "", email: p.email || "", brand: p.brand, plan: p.pay.plan || "Monthly", amount: p.pay.amount || 0, paymentDay: p.pay.day || "",
+    setupFee: p.pay.setup || 0, setupDate: p.pay.setupDate || "", startDate: p.pay.start || "", status: p.pay.status || "Active",
+    notes: [p.type, p.newUrl || p.url].filter(Boolean).join(" · ")})); }
+const importCode = list => "WSIMPORT:" + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(list))));
+$("codeBtn").onclick = async () => {
+  const u = projects.filter(p => p.pay && (Number(p.pay.amount) > 0 || Number(p.pay.setup) > 0));
+  if (!u.length) { say("No projects have a price yet. Add the payment plan to a project first."); return; }
+  const list = bulkList(u).map((x, i) => ({...x, ref: u[i].pay.ref || x.ref}));
+  $("codeText").value = importCode(list); $("codeBox").hidden = false; $("codeNote").textContent = `${list.length} ${list.length === 1 ? "client" : "clients"} in this code.`;
+  $("codeText").select();
+  const fresh = u.filter(p => !p.pay.ref);
+  if (fresh.length && db) try { await Promise.all(fresh.map(p => db.doc("projects/" + p.id).update({pay:{...p.pay, ref:"ws-" + p.id}}))); } catch(e){}
+};
+$("codeCopy").onclick = async () => { $("codeText").select(); let ok = false; try { await navigator.clipboard.writeText($("codeText").value); ok = true; } catch(e){ try { ok = document.execCommand("copy"); } catch(_){} }
+  $("codeNote").textContent = ok ? "Copied. Paste it on your Residual page." : "Select all the text in the box and copy it (Ctrl+C)."; };
+$("codeClose").onclick = () => $("codeBox").hidden = true;
+$("bulkBtn").onclick = async e => {
+  e.preventDefault();
+  const u = unsent(); if (!u.length) return;
+  say("Registering " + u.length + " in your Residual file…");
+  try {
+    for (const p of u) { const ref = "ws-" + p.id; await WSFB.registerResidual(bulkList([{...p, pay:{...p.pay, ref}}])[0], ref); await db.doc("projects/" + p.id).update({pay:{...p.pay, ref}}); }
+    say(`${u.length} ${u.length === 1 ? "client" : "clients"} registered in your Residual file.`);
+  } catch(err){ say("Couldn't register them: " + (err?.message || "try again.")); }
+};
+$("oldBtn").onclick = () => openEditor({name:"", brand:BRANDS[0], type:BRAND_TYPES[BRANDS[0]][0], status:"Active", origin:"Existing on SiteSwan", notes:"", pay:{status:"Active"}});
+$("search").oninput = e => { filter.q = e.target.value; render(); };
+
+/* Files and client copy */
+function drawFiles(){
+  const ul = $("fileList"); if (!ul || !editing) return;
+  const files = editing.files || [];
+  ul.innerHTML = files.map((f,i) => `<li><span>${esc(f.name)}</span><span><button class="btn small" data-dl="${i}">${f.url ? "Open" : "Download"}</button> <button class="btn small danger" data-rm="${i}">Remove</button></span></li>`).join("")
+    || `<li><span class="note" style="margin:0">No files yet.</span></li>`;
+  ul.querySelectorAll("[data-dl]").forEach(b => b.onclick = () => saveFile(files[b.dataset.dl], $("fileNote")));
+  ul.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    const f = files[b.dataset.rm], next = files.filter(x => x !== f);
+    try { await db.doc("projects/" + editing.id).update({files:next}); editing.files = next; drawFiles();
+      try { await assets?.delete(f.id); } catch(e){} }
+    catch(err){ $("fileNote").textContent = "Couldn't remove it: " + (err?.message || "try again."); }
+  });
+}
+async function saveFile(f, note){
+  if (f.url) { window.open(f.url, "_blank", "noopener"); return; }
+  if (!downloads) { note.textContent = "Downloads aren't available in this view."; return; }
+  try {
+    const blob = await (await fetch("/_blob/" + f.id)).blob();
+    await downloads.save({filename:f.name, data:blob}); note.textContent = "Saved " + f.name + ".";
+  } catch(err){ note.textContent = err?.code === "declined" ? "Download cancelled." : "Couldn't download: " + (err?.message || "try again."); }
+}
+function wireFiles(){
+  drawFiles();
+  $("fileAdd").onclick = async () => {
+    const note = $("fileNote"), name = $("fileName").value.trim(), url = href($("fileUrl").value);
+    if (!url) { note.textContent = "Paste the link to the report first."; return; }
+    const id = editing.id, files = [...(editing.files || []), {name: name || url, url}];
+    try { await db.doc("projects/" + id).update({files, updatedAt:Date.now()}); if (editing?.id === id) { editing.files = files; drawFiles(); }
+      $("fileName").value = ""; $("fileUrl").value = ""; note.textContent = "Added."; }
+    catch(err){ note.textContent = "Couldn't add it: " + (err?.message || "try again."); }
+  };
+  $("ePacket").onclick = async () => {
+    const note = $("pkNote"), p = projects.find(x => x.id === editing.id) || editing;
+    const c = {notes:$("cNotes").value.trim()}; CHECKS.forEach(([k]) => c[k] = $("c_"+k).value);
+    if (!downloads) { note.textContent = "Downloads aren't available in this view."; return; }
+    const fname = (p.client || p.name).replace(/[^A-Za-z0-9]+/g,"-").replace(/^-|-$/g,"") + "-WebSwan-client-copy.html";
+    try { await downloads.save({filename:fname, data:packet({...p, compliance:c})});
+      note.textContent = "Saved " + fname + ". Send it with the report PDFs listed above."; }
+    catch(err){ note.textContent = err?.code === "declined" ? "Download cancelled." : "Couldn't download: " + (err?.message || "try again."); }
+  };
+}
+function packet(p){
+  const m = p.mockup, c = p.compliance || {}, who = esc(p.client || p.name);
+  const rows = CHECKS.map(([k,l]) => `<tr><td>${esc(l)}</td><td>${esc(c[k] || STATES[0])}</td></tr>`).join("");
+  const files = (p.files || []).map(f => `<li>${esc(f.name)}</li>`).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${who} · The WebSwan</title><style>
+:root{--body:"Segoe UI",system-ui,sans-serif;--display:"Trebuchet MS","Segoe UI",sans-serif}
+body{margin:0;background:#f3f6f9;color:#12233a;font-family:var(--body);line-height:1.5;padding:24px 16px}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--display);margin:0;font-size:26px}h2{font-family:var(--display);font-size:19px;margin:0 0 4px}
+.by{color:#5b6b80;margin:0 0 10px;font-size:14px}
+.box{background:#fff;border:1px solid #d9e1ea;border-radius:12px;overflow:hidden}
+.pad{padding:18px}table{border-collapse:collapse;width:100%}td{padding:8px 10px;border-bottom:1px solid #e6eaef}td:last-child{font-weight:600}
+${SITE_CSS}</style></head><body><main>
+<header><h1>Prepared for ${who}</h1><p class="by">${new Date().toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})} · The WebSwan · Call 239-667-0151</p></header>
+${m ? `<section><h2>Website demo</h2><p class="by">The WebSwan. A first look at layout and wording, not the finished site.</p><div class="box"><div class="site" style="--m:${esc(m.color)};--a:${esc(m.accent||m.color)};--at:${textOn(m.accent||m.color)};--s:${esc(m.second||m.color)};--st:${textOn(m.second||m.color)}">${siteHTML(m)}</div></div></section>` : ""}
+<section><h2>Website review</h2><p class="by">WebSwan Digital Solutions. Observations from your public website. This is not legal advice.</p><div class="box pad"><table>${rows}</table>${c.notes ? `<p style="margin:14px 0 0;white-space:pre-wrap">${esc(c.notes)}</p>` : ""}</div></section>
+${m ? `<section><h2>Directory listing preview</h2><p class="by">WebSwan Media Network. How your listing could appear.</p><div class="box"><div class="site" style="--m:${esc(m.color)};--a:${esc(m.accent||m.color)};--at:${textOn(m.accent||m.color)};--s:${esc(m.second||m.color)};--st:${textOn(m.second||m.color)}">${listingHTML(m)}</div></div></section>` : ""}
+${files ? `<section><h2>Reports sent with this copy</h2><div class="box pad"><ul style="margin:0;padding-left:18px">${files}</ul></div></section>` : ""}
+</main></body></html>`;
+}
+
+/* Mockup builder */
+$("mSections").innerHTML = SECTIONS.map((s,i) => `<label><input type="checkbox" id="mS${i}" checked>${esc(s)}</label>`).join("");
+function defaults(m){
+  const legal = m.type === "Attorney", med = MED.includes(m.type);
+  if (legal || med) return {
+    head: legal ? "Straight answers when you need a lawyer" : "Care that fits your schedule",
+    about: `${m.name || "Our practice"} has served ${m.city || "the community"} with ${legal ? "clear, practical legal help" : "attentive, unhurried care"}. Call us to ask a question or set up a first visit.`
+  };
+  return {
+    head: `${m.type || "Local business"} you can count on in ${m.city || "your city"}`,
+    about: `${m.name || "Our business"} proudly serves ${m.city || "the community"}. Call us with any question, we are happy to help.`
+  };
+}
+function mockState(){
+  return {name:$("mName").value, type:$("mType").value, city:$("mCity").value, phone:$("mPhone").value, color:$("mColor").value,
+    accent:$("mAccent").value, second:$("mSecond").value, button:$("mBtn").value.trim(), portal:$("mPortal").value.trim(),
+    services:$("mServices").value.split("\n").map(x => x.trim()).filter(Boolean),
+    head:$("mHead").value, about:$("mAbout").value, sections:SECTIONS.filter((s,i) => $("mS"+i).checked)};
+}
+function siteHTML(m){
+  const d = defaults(m), on = x => (m.sections || SECTIONS).includes(x);
+  const med = MED.includes(m.type);
+  const portal = m.portal || PORTAL[m.type] || (med ? "Patient portal" : "Call us"), book = m.button || BTN[m.type] || (med ? "Book a visit" : "Contact us");
+  const svc = (m.services && m.services.length) ? m.services : (SERVICES[m.type] || []);
+  return `
+    <nav><b>${esc(m.name || "Practice name")}</b><span>${on("Client portal button") ? `<span class="cta">${esc(portal)}</span>` : esc(m.phone)}</span></nav>
+    <div class="hero"><h2>${esc(m.head || d.head)}</h2><p>${esc(m.type)} in ${esc(m.city || "your city")}</p><span class="cta">${esc(book)}</span></div>
+    ${on("Services") ? `<section><h3>Services</h3><div class="svc">${svc.map(x => `<div>${esc(x)}</div>`).join("")}</div></section>` : ""}
+    ${on("About") ? `<section><h3>About ${med || m.type === "Attorney" ? "the practice" : "us"}</h3><p style="margin:0;max-width:62ch">${esc(m.about || d.about)}</p></section>` : ""}
+    ${on("Contact") ? `<section><h3>Contact</h3><p style="margin:0">${esc(m.phone)}<br>${esc(m.city)}</p></section>` : ""}
+    <footer>${on("Accessibility statement") ? "Accessibility statement · Privacy and cookie choices · " : ""}Demo site by The WebSwan</footer>`;
+}
+function listingHTML(m){
+  const med = MED.includes(m.type), portal = m.portal || PORTAL[m.type] || (med ? "Patient portal" : "Contact"), group = m.type === "Attorney" ? "Attorneys" : (med ? "Doctors" : (m.type || "Businesses"));
+  return `<div class="listing">
+    <div class="crumb">WebSwan Media Network · ${esc(group)} · ${esc(m.city || "City")}</div>
+    <div class="lcard"><div class="av">${esc(initials(m.name))}</div>
+      <div class="info"><h3>${esc(m.name || "Practice name")}</h3><p>${esc(m.type)} · ${esc(m.city)}<br>${esc(m.phone)}</p>
+        <div class="acts"><span class="cta">${esc(portal)}</span><span class="ghost">Visit website</span><span class="ghost">Call</span></div></div></div>
+  </div>`;
+}
+function draw(){
+  const m = mockState(), slug = (m.name || "practice").toLowerCase().replace(/[^a-z0-9]+/g,"");
+  const site = $("site"); site.style.setProperty("--m", m.color); site.style.setProperty("--a", m.accent || m.color); site.style.setProperty("--at", textOn(m.accent || m.color)); site.style.setProperty("--s", m.second || m.color); site.style.setProperty("--st", textOn(m.second || m.color));
+  if (mView === "list") { $("mUrl").textContent = "Preview · webswanmedianetwork.com listing"; site.innerHTML = listingHTML(m); }
+  else { $("mUrl").textContent = "Preview · www." + slug + ".com"; site.innerHTML = siteHTML(m); }
+}
+function setView(v){ mView = v; $("vSite").setAttribute("aria-pressed", String(v === "site")); $("vList").setAttribute("aria-pressed", String(v === "list")); draw(); }
+$("vSite").onclick = () => setView("site"); $("vList").onclick = () => setView("list");
+["mName","mCity","mPhone","mHead","mAbout","mBtn","mPortal","mServices"].forEach(id => $(id).addEventListener("input", draw));
+$("mTypes").innerHTML = Object.keys(SERVICES).map(t => `<option value="${esc(t)}">`).join("");
+let lastAuto = (SERVICES["Dentist"]||[]).join("\n");
+$("mServices").value = lastAuto;
+$("mType").addEventListener("input", () => {
+  const auto = (SERVICES[$("mType").value] || []).join("\n");
+  if (auto && ($("mServices").value.trim() === "" || $("mServices").value === lastAuto)) { $("mServices").value = auto; lastAuto = auto; }
+  const t = $("mType").value, med = MED.includes(t);
+  $("mBtn").placeholder = BTN[t] || (med ? "Book a visit" : "Contact us");
+  $("mPortal").placeholder = PORTAL[t] || (med ? "Patient portal" : "Call us");
+  draw();
+});
+let cSlot = "main";
+const slots = {main:["mColor","mHex","slotMain"], sec:["mSecond","mSecHex","slotSec"], acc:["mAccent","mAccHex","slotAcc"]};
+function setColor(slot, v){ const [c,h] = slots[slot]; $(c).value = v.toLowerCase(); $(h).value = v.toUpperCase(); draw(); }
+function pickSlot(slot){ cSlot = slot; Object.entries(slots).forEach(([k,v]) => $(v[2]).setAttribute("aria-pressed", String(k === slot))); }
+Object.entries(slots).forEach(([k,[c,h,box]]) => {
+  $(box).addEventListener("click", () => pickSlot(k));
+  $(box).addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { if (e.target === $(box)) { e.preventDefault(); pickSlot(k); } } });
+  $(c).addEventListener("input", () => { $(h).value = $(c).value.toUpperCase(); draw(); });
+  $(h).addEventListener("input", () => { let v = $(h).value.trim(); if (v && v[0] !== "#") v = "#" + v; if (isHex(v)) { $(c).value = v.toLowerCase(); draw(); } });
+});
+$("swatches").innerHTML = PALETTE.map(c => `<button class="sw" data-c="${c}" title="${c.toUpperCase()}" aria-label="Use ${c.toUpperCase()}"><i style="background:${c}"></i><span>${c.toUpperCase()}</span></button>`).join("");
+$("swatches").querySelectorAll(".sw").forEach(b => b.onclick = () => setColor(cSlot, b.dataset.c));
+SECTIONS.forEach((s,i) => $("mS"+i).addEventListener("change", draw));
+function loadMock(){
+  const p = projects.find(x => x.id === $("mProject").value); $("mNote").textContent = "";
+  if (!p) return;
+  const m = p.mockup;
+  if (m) {
+    $("mName").value = m.name||""; $("mType").value = m.type||"Dentist"; $("mCity").value = m.city||""; $("mPhone").value = m.phone||"";
+    setColor("main", m.color||"#0d7c86"); setColor("acc", m.accent||m.color||"#e8a33d"); setColor("sec", m.second||m.color||"#1e3a5f");
+    $("mHead").value = m.head||""; $("mAbout").value = m.about||""; $("mBtn").value = m.button||""; $("mPortal").value = m.portal||"";
+    $("mServices").value = (m.services && m.services.length ? m.services : (SERVICES[m.type]||[])).join("\n"); lastAuto = "";
+    SECTIONS.forEach((s,i) => $("mS"+i).checked = (m.sections||SECTIONS).includes(s));
+  } else { $("mName").value = p.client || p.name; }
+  draw();
+}
+$("mProject").onchange = loadMock;
+$("mSave").onclick = async () => {
+  const m = mockState(), id = $("mProject").value, note = $("mNote");
+  if (!db) { note.textContent = "Saving isn't available in this view."; return; }
+  try {
+    if (id) await db.doc("projects/" + id).update({mockup:m, updatedAt:Date.now()});
+    else {
+      const ref = await db.collection("projects").add({name:(m.name||"Untitled") + " demo site", client:m.name, brand:"The WebSwan",
+        type:"Website", status:"Lead", url:"", notes:"", mockup:m, updatedAt:Date.now()});
+      $("mProject").dataset.want = ref.id;
+    }
+    note.textContent = id ? "Mockup saved to the project." : "Saved as a new project.";
+  } catch(err){ note.textContent = "Couldn't save: " + (err?.message || "try again."); }
+};
+
+function start(){
+  try { if (localStorage.getItem("ws-tab") === "builder") setTab("builder"); } catch(e){}
+  if (location.hash === "#builder") setTab("builder");
+  render(); draw();
+  downloads = { save: async ({filename, data}) => { const blob = data instanceof Blob ? data : new Blob([data], {type:"text/html"});
+    const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(blob), download: filename}); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); } };
+  const go = () => {
+    db = WSFB.db;
+    db.collection("projects").onSnapshot(snap => {
+      projects = snap.docs.map(x => ({id:x.id, ...x.data()})).sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+      render();
+      const want = $("mProject").dataset.want;
+      if (want && projects.some(p => p.id === want)) { $("mProject").value = want; delete $("mProject").dataset.want; }
+    }, err => say("Couldn't load projects: " + (err?.message || "")));
+    db.collection("hotleads").onSnapshot(snap => {
+      hot = snap.docs.map(x => ({id:x.id, ...x.data()}));
+      drawViz();
+    }, err => say("Couldn't load hot leads: " + (err?.message || "")));
+  };
+  if (window.WSFB?.ready) go(); else window.addEventListener("wsfb-ready", go, {once:true});
+}
+$("moveBtn").onclick = async () => {
+  const note = $("moveNote"); let d;
+  try { let c = $("moveCode").value.trim(); if (c.startsWith("WSSTUDIO:")) { const bin = atob(c.slice(9).replace(/\s+/g,"")); c = new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))); } d = JSON.parse(c); }
+  catch(e){ note.textContent = "That code couldn't be read. Copy it again in full."; return; }
+  try { let n = 0;
+    for (const [col, docs] of Object.entries(d)) { if (!["projects","hotleads"].includes(col)) continue;
+      for (const [id, data] of Object.entries(docs)) { await db.doc(col + "/" + id).set(data); n++; } }
+    note.textContent = n + " items imported."; $("moveCode").value = "";
+  } catch(err){ note.textContent = "Couldn't import: " + (err?.message || "try again."); }
+};
+start();
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDocs, query, where, Timestamp }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({
+    apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task",
+    storageBucket: "webswan-gigoia-task.firebasestorage.app", messagingSenderId: "970866236717", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4"
+  });
+  const fs = getFirestore(app), auth = getAuth(app);
+  /* Only these Google accounts can open Studio. The same list is in the Firestore rules, which is what really protects the data. */
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  const NAME = c => "studio_" + c;   // Studio keeps its own collections: studio_projects, studio_hotleads
+  const strip = o => JSON.parse(JSON.stringify(o));
+  const adb = {
+    collection: c => ({
+      onSnapshot: (cb, err) => onSnapshot(collection(fs, NAME(c)), snap => cb({docs: snap.docs.map(d => ({id: d.id, data: () => d.data()}))}), err),
+      add: data => addDoc(collection(fs, NAME(c)), strip(data))
+    }),
+    doc: p => { const [c, id] = p.split("/"); const r = doc(fs, NAME(c), id);
+      return { update: data => updateDoc(r, strip(data)), set: data => setDoc(r, strip(data)), delete: () => deleteDoc(r) }; }
+  };
+  /* Put a client in the Residual file (collection "residuals"), or update them if they're already there. */
+  async function registerResidual(c, ref) {
+    const num = v => parseFloat(v) || 0, txt = v => String(v ?? "").trim();
+    const entry = { clientName: txt(c.clientName), companyName: txt(c.companyName), projectName: txt(c.projectName),
+      amount: num(c.amount), paymentDay: txt(c.paymentDay), notes: txt(c.notes), phone: txt(c.phone), email: txt(c.email),
+      brand: ["The WebSwan","WebSwan Media Network","WebSwan Digital Solutions"].includes(c.brand) ? c.brand : "The WebSwan",
+      plan: c.plan === "Yearly" ? "Yearly" : "Monthly", setupFee: num(c.setupFee), setupDate: txt(c.setupDate) || null,
+      startDate: txt(c.startDate) || null, status: ["Active","Late","Paused","Cancelled"].includes(c.status) ? c.status : "Active",
+      studioRef: ref, paymentDate: `2026-${c.paymentDay ? String(c.paymentDay).padStart(2,"0") : "99"}` };
+    const found = await getDocs(query(collection(fs, "residuals"), where("studioRef", "==", ref)));
+    if (found.empty) { await addDoc(collection(fs, "residuals"), { ...entry, createdAt: Timestamp.now() }); return "added"; }
+    await updateDoc(found.docs[0].ref, entry); return "updated";
+  }
+  window.WSFB = { db: adb, registerResidual, ready: false };
+  const gate = document.getElementById("gate"), msg = document.getElementById("gateMsg");
+  document.getElementById("gateBtn").onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { msg.textContent = "Sign-in didn't finish. Try again."; } };
+  document.getElementById("signOut").onclick = () => signOut(auth);
+  onAuthStateChanged(auth, async user => {
+    const ok = !!user && OWNERS.includes((user.email || "").toLowerCase());
+    if (user && !ok) { msg.textContent = "This Google account can't open WebSwan Studio."; await signOut(auth); }
+    gate.style.display = ok ? "none" : "flex";
+    document.getElementById("whoEmail").textContent = ok ? user.email : "";
+    if (ok && !window.WSFB.ready) { window.WSFB.ready = true; window.dispatchEvent(new Event("wsfb-ready")); }
+    if (!ok && window.WSFB.ready) location.reload();
+  });
+</script>
+</body>
+</html>
