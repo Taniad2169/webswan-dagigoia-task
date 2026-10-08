@@ -13,6 +13,8 @@
     import { getAnalytics }    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
     import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, Timestamp }
       from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+      from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey:            "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM",
@@ -59,7 +61,18 @@
       }
     };
 
-    window.dispatchEvent(new Event("fbReady"));
+    /* Private access: only these Google accounts can read or write. The same list is in the Firestore rules. */
+    const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+    const auth = getAuth(app);
+    window._fbAuth = {
+      async signIn() { await signInWithPopup(auth, new GoogleAuthProvider()); },
+      async signOut() { await signOut(auth); }
+    };
+    onAuthStateChanged(auth, (user) => {
+      const ok = !!user && OWNERS.includes((user.email || "").toLowerCase());
+      window.dispatchEvent(new CustomEvent("fbAuth", { detail: { user, ok } }));
+      if (ok) window.dispatchEvent(new Event("fbReady"));
+    });
   </script>
 
   <style>
@@ -773,6 +786,7 @@
     </div>
     <div class="topbar-right">
       <span class="fb-status" id="fb-status">⏳ Connecting…</span>
+      <button class="btn-topbar btn-email" id="btn-google" style="display:none;">🔑 Sign in with Google</button>
       <a class="btn-topbar btn-email" href="https://s15097.usc1.stableserver.net:2096/logout?" target="_blank" rel="noopener">
         ✉️ Webmail
       </a>
@@ -1468,6 +1482,21 @@
   /* ════════════════════════════════════════
      FIREBASE READY
   ═══════════════════════════════════════════ */
+  const btnGoogle = document.getElementById("btn-google");
+  btnGoogle.addEventListener("click", async () => {
+    try { await window._fbAuth.signIn(); }
+    catch (err) { console.error(err); showToast("Google sign-in did not finish.", true); }
+  });
+  window.addEventListener("fbAuth", async (e) => {
+    const { user, ok } = e.detail;
+    if (ok) { btnGoogle.style.display = "none"; return; }
+    btnGoogle.style.display = "inline-flex";
+    statusEl.textContent = user ? "✕ Not your account" : "🔒 Sign in to load data";
+    statusEl.className   = "fb-status error";
+    saveBtn.disabled = true;
+    renderTasks([]); renderResiduals([]);
+    if (user) { showToast("This account can't open your records. Signing out.", true); await window._fbAuth.signOut(); }
+  });
   window.addEventListener("fbReady", () => {
     statusEl.textContent = "✓ Connected";
     statusEl.className   = "fb-status connected";
