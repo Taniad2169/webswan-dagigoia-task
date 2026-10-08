@@ -914,6 +914,11 @@
           </div>
         </div>
 
+        <div class="field">
+          <label class="gold">📁 Project Name</label>
+          <input type="text" id="r-project" class="gold-border" placeholder="e.g. Marché Haïtien website" autocomplete="off" />
+        </div>
+
         <div class="field-row">
           <div class="field">
             <label class="gold">🦢 Brand</label>
@@ -933,13 +938,18 @@
 
         <div class="field-row">
           <div class="field">
-            <label class="gold">🧾 One-time Fee ($)</label>
+            <label class="gold">🧾 Project Total, One-time ($)</label>
             <input type="number" id="r-setup" class="gold-border" placeholder="0.00" min="0" step="0.01" autocomplete="off" />
           </div>
           <div class="field">
-            <label class="gold">📆 Start Date</label>
-            <input type="date" id="r-start" class="gold-border" />
+            <label class="gold">🗓️ One-time Payment Date</label>
+            <input type="date" id="r-setup-date" class="gold-border" />
           </div>
+        </div>
+
+        <div class="field">
+          <label class="gold">📆 First Residual Payment Date</label>
+          <input type="date" id="r-start" class="gold-border" />
         </div>
 
         <div class="field-row">
@@ -1318,6 +1328,7 @@
   const rBrand = document.getElementById("r-brand"), rPlan = document.getElementById("r-plan");
   const rSetup = document.getElementById("r-setup"), rStart = document.getElementById("r-start");
   const rStatus = document.getElementById("r-status"), rAmtLbl = document.getElementById("r-amount-label");
+  const rProject = document.getElementById("r-project"), rSetupDate = document.getElementById("r-setup-date");
   const PLANS = { "The WebSwan":["Monthly","Yearly"], "WebSwan Media Network":["Monthly","Yearly"], "WebSwan Digital Solutions":["Monthly"] };
   const BRAND_CLASS = { "The WebSwan":"b1", "WebSwan Media Network":"b2", "WebSwan Digital Solutions":"b3" };
   const money = n => "$" + (Number(n)||0).toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
@@ -1338,12 +1349,27 @@
     set(rName,"name"); set(rCompany,"company"); set(rPhone,"phone"); set(rEmail,"email");
     if (QP.get("brand") && PLANS[QP.get("brand")]) rBrand.value = QP.get("brand");
     fillPlans(QP.get("plan") || "Monthly");
-    set(rSetup,"setup"); set(rAmount,"amount"); set(rStart,"start"); set(rNotes,"notes");
+    set(rSetup,"setup"); set(rAmount,"amount"); set(rStart,"start"); set(rNotes,"notes"); set(rProject,"project"); set(rSetupDate,"setupDate");
     if (QP.get("day")) rPayDay.value = QP.get("day");
     if (QP.get("status")) rStatus.value = QP.get("status");
     switchTab("residual");
     updateResidualPreview();
-    showToast("Client details filled in from WebSwan Studio. Check them, then Save.");
+    prefilled = true;
+    if (QP.get("auto") && QP.get("ref")) { showToast("Registering this client from WebSwan Studio…"); autoRegister(); }
+    else showToast("Client details filled in from WebSwan Studio. Check them, then Save.");
+  }
+  /* Studio "Save" sends auto=1 and a ref. Once unlocked and signed in, save it once; the ref stops duplicates. */
+  let prefilled = false, fbOk = false, autoDone = false;
+  async function autoRegister() {
+    if (autoDone || !prefilled || !fbOk || !QP.get("auto") || !QP.get("ref")) return;
+    autoDone = true;
+    try {
+      const existing = await window._fb.loadResiduals();
+      if (existing.some(e => e.studioRef === QP.get("ref"))) { showToast("This client is already in your Residual file."); return; }
+      await saveResidualEntry(QP.get("ref"));
+      showToast("✅ Registered in your Residual file from WebSwan Studio.");
+      history.replaceState(null, "", location.pathname);
+    } catch (err) { console.error(err); autoDone = false; showToast("Couldn't register it automatically. Check the form and press Save.", true); }
   }
 
   function ordinal(n) {
@@ -1359,16 +1385,16 @@
     const day     = rPayDay.value;
     const notes   = rNotes.value.trim();
 
-    const valid = name && amount > 0 && day;
+    const valid = name && ((amount > 0 && day) || (parseFloat(rSetup.value) || 0) > 0);
     btnSaveRes.disabled = !valid;
 
     if (valid) {
       rPreview.style.display = "block";
       rPreviewTx.innerHTML =
-        `<strong style="color:#fff">${name}</strong>${company ? ` · <span style="color:var(--text-muted)">${company}</span>` : ""}<br>` +
-        `<span style="color:var(--gold);font-family:'Playfair Display',serif;font-size:1.05rem;">$${amount.toFixed(2)}/${rPlan.value === "Yearly" ? "year" : "month"}</span>` +
-        ` — due on the <strong>${ordinal(parseInt(day))}</strong>` +
-        `<br><span style="color:var(--text-muted);font-size:0.78rem;">${rBrand.value}${parseFloat(rSetup.value) > 0 ? ` · one-time fee $${parseFloat(rSetup.value).toFixed(2)}` : ""}${rStart.value ? ` · started ${formatDate(rStart.value)}` : ""} · ${rStatus.value}</span>` +
+        `<strong style="color:#fff">${escH(name)}</strong>${company ? ` · <span style="color:var(--text-muted)">${escH(company)}</span>` : ""}${rProject.value.trim() ? ` · 📁 ${escH(rProject.value.trim())}` : ""}<br>` +
+        (amount > 0 && day ? `<span style="color:var(--gold);font-family:'Playfair Display',serif;font-size:1.05rem;">$${amount.toFixed(2)}/${rPlan.value === "Yearly" ? "year" : "month"}</span>` +
+        ` — due on the <strong>${ordinal(parseInt(day))}</strong>` : `<span style="color:var(--gold)">One-time project only</span>`) +
+        `<br><span style="color:var(--text-muted);font-size:0.78rem;">${rBrand.value}${parseFloat(rSetup.value) > 0 ? ` · project total $${parseFloat(rSetup.value).toFixed(2)}${rSetupDate.value ? ` on ${formatDate(rSetupDate.value)}` : ""}` : ""}${rStart.value ? ` · first residual ${formatDate(rStart.value)}` : ""} · ${rStatus.value}</span>` +
         (notes ? `<br><span style="color:var(--text-muted);font-size:0.78rem;">${notes}</span>` : "");
     } else {
       rPreview.style.display = "none";
@@ -1376,7 +1402,8 @@
   }
 
   [rName, rCompany, rAmount, rNotes, rSetup, rPhone, rEmail].forEach(el => el.addEventListener("input", updateResidualPreview));
-  [rStart, rStatus].forEach(el => el.addEventListener("change", updateResidualPreview));
+  [rStart, rStatus, rSetupDate].forEach(el => el.addEventListener("change", updateResidualPreview));
+  rProject.addEventListener("input", updateResidualPreview);
   rPayDay.addEventListener("change", updateResidualPreview);
 
   let allResiduals = [];
@@ -1408,10 +1435,11 @@
         <div class="residual-item-date"><span class="r-chip ${BRAND_CLASS[br] || "b1"}">${escH(br)}</span> Due: ${e.paymentDay ? ordinal(parseInt(e.paymentDay)) + (yearly ? " (yearly)" : " of month") : "—"}</div>
         <div class="residual-item-name">${escH(e.clientName || "—")} <span class="r-status ${escH(st)}">${escH(st)}</span></div>
         ${e.companyName ? `<div class="residual-item-company">🏢 ${escH(e.companyName)}</div>` : ""}
+        ${e.projectName ? `<div class="residual-item-company">📁 ${escH(e.projectName)}</div>` : ""}
         <div class="residual-item-amount">${money(e.amount)}<span style="font-size:0.7rem;font-family:'Inter',sans-serif;color:var(--text-muted);font-weight:400;">/${yearly ? "year" : "month"}</span></div>
         <div class="r-meta">
-          ${parseFloat(e.setupFee) > 0 ? `<span>🧾 One-time ${money(e.setupFee)}</span>` : ""}
-          ${e.startDate ? `<span>📆 Since ${formatDate(e.startDate)}</span>` : ""}
+          ${parseFloat(e.setupFee) > 0 ? `<span>🧾 Project ${money(e.setupFee)}${e.setupDate ? ` · ${formatDate(e.setupDate)}` : ""}</span>` : ""}
+          ${e.startDate ? `<span>📆 Residual from ${formatDate(e.startDate)}</span>` : ""}
           ${e.phone ? `<a href="tel:${escH(String(e.phone).replace(/[^0-9+]/g,""))}">📞 ${escH(e.phone)}</a>` : ""}
           ${e.email ? `<a href="mailto:${escH(e.email)}">✉️ ${escH(e.email)}</a>` : ""}
         </div>
@@ -1449,32 +1477,37 @@
     } catch(err) { console.error(err); }
   }
 
+  async function saveResidualEntry(ref) {
+    await window._fb.saveResidual({
+      clientName:  rName.value.trim(),
+      companyName: rCompany.value.trim(),
+      projectName: rProject.value.trim(),
+      amount:      parseFloat(rAmount.value) || 0,
+      paymentDay:  rPayDay.value,
+      notes:       rNotes.value.trim(),
+      phone:       rPhone.value.trim(),
+      email:       rEmail.value.trim(),
+      brand:       rBrand.value,
+      plan:        rPlan.value,
+      setupFee:    parseFloat(rSetup.value) || 0,
+      setupDate:   rSetupDate.value || null,
+      startDate:   rStart.value || null,
+      status:      rStatus.value,
+      studioRef:   ref || null,
+      paymentDate: `2026-${rPayDay.value ? String(rPayDay.value).padStart(2,"0") : "99"}`  // for orderBy
+    });
+    [rName, rCompany, rProject, rAmount, rNotes, rPhone, rEmail, rSetup, rSetupDate, rStart].forEach(el => el.value = "");
+    rStatus.value = "Active";
+    rPayDay.value = "";
+    rPreview.style.display = "none";
+    btnSaveRes.disabled = true;
+    await refreshResiduals();
+  }
   btnSaveRes.addEventListener("click", async () => {
     btnSaveRes.disabled = true; btnSaveRes.textContent = "Saving…";
-    try {
-      await window._fb.saveResidual({
-        clientName:  rName.value.trim(),
-        companyName: rCompany.value.trim(),
-        amount:      parseFloat(rAmount.value) || 0,
-        paymentDay:  rPayDay.value,
-        notes:       rNotes.value.trim(),
-        phone:       rPhone.value.trim(),
-        email:       rEmail.value.trim(),
-        brand:       rBrand.value,
-        plan:        rPlan.value,
-        setupFee:    parseFloat(rSetup.value) || 0,
-        startDate:   rStart.value || null,
-        status:      rStatus.value,
-        paymentDate: `2026-${String(rPayDay.value).padStart(2,"0")}`  // for orderBy
-      });
-      [rName, rCompany, rAmount, rNotes, rPhone, rEmail, rSetup, rStart].forEach(el => el.value = "");
-      rStatus.value = "Active";
-      rPayDay.value = "";
-      rPreview.style.display = "none";
-      await refreshResiduals();
-      showToast("💰 Residual entry saved!");
-    } catch(err) { console.error(err); showToast("Save failed.", true); }
-    finally { btnSaveRes.disabled = false; btnSaveRes.textContent = "💰 Save Residual Entry"; }
+    try { await saveResidualEntry(null); showToast("💰 Residual entry saved!"); }
+    catch(err) { console.error(err); showToast("Save failed.", true); btnSaveRes.disabled = false; }
+    finally { btnSaveRes.textContent = "💰 Save Residual Entry"; }
   });
 
   rFilterMo.addEventListener("change", () => renderResiduals(allResiduals));
@@ -1503,6 +1536,7 @@
     saveBtn.disabled     = false;
     refreshTasks();
     refreshResiduals();
+    fbOk = true; autoRegister();
   });
 
   renderCal();
