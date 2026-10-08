@@ -1344,6 +1344,7 @@
   /* Prefill from a WebSwan Studio link: ?add=1&name=..&company=..&brand=..&plan=..&setup=..&amount=..&day=..&start=..&phone=..&email=..&notes=.. */
   const QP = new URLSearchParams(location.search);
   function applyPrefill() {
+    if (QP.get("bulk")) { prefilled = true; switchTab("residual"); showToast("Registering clients from WebSwan Studio…"); autoRegister(); return; }
     if (!QP.get("add")) return;
     const set = (el, k) => { if (QP.get(k) !== null) el.value = QP.get(k); };
     set(rName,"name"); set(rCompany,"company"); set(rPhone,"phone"); set(rEmail,"email");
@@ -1361,7 +1362,9 @@
   /* Studio "Save" sends auto=1 and a ref. Once unlocked and signed in, save it once; the ref stops duplicates. */
   let prefilled = false, fbOk = false, autoDone = false;
   async function autoRegister() {
-    if (autoDone || !prefilled || !fbOk || !QP.get("auto") || !QP.get("ref")) return;
+    if (autoDone || !prefilled || !fbOk) return;
+    if (QP.get("bulk")) return bulkRegister();
+    if (!QP.get("auto") || !QP.get("ref")) return;
     autoDone = true;
     try {
       const existing = await window._fb.loadResiduals();
@@ -1370,6 +1373,34 @@
       showToast("✅ Registered in your Residual file from WebSwan Studio.");
       history.replaceState(null, "", location.pathname);
     } catch (err) { console.error(err); autoDone = false; showToast("Couldn't register it automatically. Check the form and press Save.", true); }
+  }
+
+  /* Studio "Send to Residual file" for several clients at once: ?bulk=[{ref,clientName,...}] */
+  async function bulkRegister() {
+    autoDone = true;
+    let list = [];
+    try { list = JSON.parse(QP.get("bulk")); if (!Array.isArray(list)) list = []; } catch (e) { showToast("The client list from Studio couldn't be read.", true); return; }
+    try {
+      const existing = await window._fb.loadResiduals();
+      const have = new Set(existing.map(e => e.studioRef).filter(Boolean));
+      let added = 0, skipped = 0;
+      for (const c of list) {
+        if (!c || !c.ref || have.has(c.ref)) { skipped++; continue; }
+        const num = v => parseFloat(v) || 0, txt = v => String(v ?? "").trim();
+        await window._fb.saveResidual({
+          clientName: txt(c.clientName), companyName: txt(c.companyName), projectName: txt(c.projectName),
+          amount: num(c.amount), paymentDay: txt(c.paymentDay), notes: txt(c.notes), phone: txt(c.phone), email: txt(c.email),
+          brand: PLANS[c.brand] ? c.brand : "The WebSwan", plan: c.plan === "Yearly" ? "Yearly" : "Monthly",
+          setupFee: num(c.setupFee), setupDate: txt(c.setupDate) || null, startDate: txt(c.startDate) || null,
+          status: ["Active","Late","Paused","Cancelled"].includes(c.status) ? c.status : "Active", studioRef: c.ref,
+          paymentDate: `2026-${c.paymentDay ? String(c.paymentDay).padStart(2,"0") : "99"}`
+        });
+        have.add(c.ref); added++;
+      }
+      await refreshResiduals();
+      history.replaceState(null, "", location.pathname);
+      showToast(`✅ ${added} ${added === 1 ? "client" : "clients"} registered from WebSwan Studio${skipped ? ` · ${skipped} already here` : ""}.`);
+    } catch (err) { console.error(err); autoDone = false; showToast("Couldn't register them automatically. Try again from Studio.", true); }
   }
 
   function ordinal(n) {
