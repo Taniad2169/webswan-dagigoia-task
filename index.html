@@ -1012,6 +1012,14 @@
             <span class="residual-count" id="residual-count">0</span>
           </div>
 
+          <!-- Import clients from WebSwan Studio by pasting a code -->
+          <details id="r-import" style="margin:0 0 1rem;border:1px solid rgba(249,199,79,0.25);border-radius:var(--radius-md);padding:.6rem .9rem;">
+            <summary style="cursor:pointer;color:var(--gold);font-weight:700;">📥 Import clients from WebSwan Studio</summary>
+            <p style="font-size:.8rem;color:var(--text-muted);margin:.5rem 0;">Paste the import code from Studio (or from Claude), then press Import. Clients already here are skipped.</p>
+            <textarea id="r-import-code" rows="4" class="gold-border" style="width:100%;font-family:monospace;font-size:.75rem;" placeholder="WSIMPORT:..."></textarea>
+            <button class="btn-save-gold" id="r-import-btn" style="margin-top:.6rem;">📥 Import</button>
+          </details>
+
           <!-- Month Filter -->
           <div class="month-filter">
             <label>Show:</label>
@@ -1376,10 +1384,29 @@
   }
 
   /* Studio "Send to Residual file" for several clients at once: ?bulk=[{ref,clientName,...}] */
-  async function bulkRegister() {
+  function decodeImport(code) {
+    code = String(code || "").trim();
+    if (code.startsWith("WSIMPORT:")) {
+      const bin = atob(code.slice(9).replace(/\s+/g, ""));
+      code = new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0)));
+    }
+    const list = JSON.parse(code);
+    return Array.isArray(list) ? list : [];
+  }
+  document.getElementById("r-import-btn").addEventListener("click", async () => {
+    if (!fbOk) { showToast("Sign in with Google first, then import.", true); return; }
+    let list;
+    try { list = decodeImport(document.getElementById("r-import-code").value); } catch (e) { showToast("That import code couldn't be read. Copy it again in full.", true); return; }
+    if (!list.length) { showToast("No clients found in that code.", true); return; }
+    const btn = document.getElementById("r-import-btn"); btn.disabled = true; btn.textContent = "Importing…";
+    await bulkRegister(list);
+    btn.disabled = false; btn.textContent = "📥 Import";
+    document.getElementById("r-import-code").value = "";
+  });
+  async function bulkRegister(given) {
     autoDone = true;
-    let list = [];
-    try { list = JSON.parse(QP.get("bulk")); if (!Array.isArray(list)) list = []; } catch (e) { showToast("The client list from Studio couldn't be read.", true); return; }
+    let list = given || [];
+    if (!given) { try { list = decodeImport(QP.get("bulk")); } catch (e) { showToast("The client list from Studio couldn't be read.", true); return; } }
     try {
       const existing = await window._fb.loadResiduals();
       const have = new Set(existing.map(e => e.studioRef).filter(Boolean));
