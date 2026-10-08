@@ -11,7 +11,7 @@
   <script type="module">
     import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
     import { getAnalytics }    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp }
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, Timestamp }
       from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -53,6 +53,9 @@
       },
       async deleteResidual(id) {
         await deleteDoc(doc(db, "residuals", id));
+      },
+      async updateResidual(id, data) {
+        await updateDoc(doc(db, "residuals", id), data);
       }
     };
 
@@ -720,6 +723,22 @@
     }
     .month-filter select:focus { border-color: var(--gold); }
     .month-filter select option { background: #0d2154; }
+    .r-chip { display:inline-block; font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:0.15rem 0.5rem; border-radius:999px; margin-right:0.3rem; }
+    .r-chip.b1 { background:rgba(80,203,217,0.18); color:var(--teal); }
+    .r-chip.b2 { background:rgba(249,199,79,0.18); color:var(--gold); }
+    .r-chip.b3 { background:rgba(77,217,160,0.18); color:var(--success); }
+    .r-status { font-size:0.68rem; font-weight:700; border-radius:999px; padding:0.15rem 0.55rem; border:1px solid currentColor; }
+    .r-status.Active { color:var(--success); } .r-status.Late { color:var(--danger); } .r-status.Paused { color:var(--gold); } .r-status.Cancelled { color:var(--text-muted); }
+    .residual-item.is-late { border-color: rgba(255,107,138,0.55); }
+    .residual-item.is-cancelled { opacity:0.55; }
+    .r-meta { font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem; display:flex; flex-wrap:wrap; gap:0.25rem 0.8rem; }
+    .r-meta a { color:var(--teal); text-decoration:none; }
+    .r-status-select { margin-top:0.5rem; background:var(--input-bg); border:1px solid rgba(249,199,79,0.3); border-radius:var(--radius-sm); color:var(--text-light); font-size:0.75rem; padding:0.25rem 0.5rem; font-family:'Inter',sans-serif; }
+    .r-status-select option { background:#0d2154; }
+    .totals-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.25rem; }
+    .totals-grid div { background:rgba(255,255,255,0.05); border:1px solid rgba(249,199,79,0.18); border-radius:var(--radius-sm); padding:0.55rem 0.7rem; }
+    .totals-grid b { display:block; font-family:'Playfair Display',serif; color:var(--gold); font-size:1.05rem; }
+    .totals-grid span { font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
   </style>
 </head>
 <body>
@@ -870,11 +889,48 @@
           </div>
         </div>
 
+        <div class="field-row">
+          <div class="field">
+            <label class="gold">📞 Phone</label>
+            <input type="tel" id="r-phone" class="gold-border" placeholder="(555) 000-0000" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="gold">✉️ Email</label>
+            <input type="email" id="r-email" class="gold-border" placeholder="client@example.com" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="gold">🦢 Brand</label>
+            <select id="r-brand" class="gold-border">
+              <option>The WebSwan</option>
+              <option>WebSwan Media Network</option>
+              <option>WebSwan Digital Solutions</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="gold">🔁 Payment Plan</label>
+            <select id="r-plan" class="gold-border"></select>
+          </div>
+        </div>
+
         <div class="divider-gold"></div>
 
         <div class="field-row">
           <div class="field">
-            <label class="gold">💵 Monthly Payment ($)</label>
+            <label class="gold">🧾 One-time Fee ($)</label>
+            <input type="number" id="r-setup" class="gold-border" placeholder="0.00" min="0" step="0.01" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="gold">📆 Start Date</label>
+            <input type="date" id="r-start" class="gold-border" />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="gold" id="r-amount-label">💵 Monthly Payment ($)</label>
             <input type="number" id="r-amount" class="gold-border" placeholder="0.00" min="0" step="0.01" autocomplete="off" />
           </div>
           <div class="field">
@@ -899,6 +955,13 @@
               <option value="31">31st</option>
             </select>
           </div>
+        </div>
+
+        <div class="field">
+          <label class="gold">🚦 Status</label>
+          <select id="r-status" class="gold-border">
+            <option>Active</option><option>Late</option><option>Paused</option><option>Cancelled</option>
+          </select>
         </div>
 
         <div class="field">
@@ -927,25 +990,29 @@
 
           <!-- Month Filter -->
           <div class="month-filter">
-            <label>Filter Month:</label>
+            <label>Show:</label>
             <select id="r-filter-month">
-              <option value="all">All Months</option>
-              <option value="1">January</option><option value="2">February</option>
-              <option value="3">March</option><option value="4">April</option>
-              <option value="5">May</option><option value="6">June</option>
-              <option value="7">July</option><option value="8">August</option>
-              <option value="9">September</option><option value="10">October</option>
-              <option value="11">November</option><option value="12">December</option>
+              <option value="all">All clients</option>
+              <option value="The WebSwan">The WebSwan</option>
+              <option value="WebSwan Media Network">WebSwan Media Network</option>
+              <option value="WebSwan Digital Solutions">WebSwan Digital Solutions</option>
+              <option value="Late">Late payers</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
 
           <!-- Total band -->
           <div class="residual-total-band">
             <div>
-              <div class="residual-total-label">Total Monthly Residual</div>
+              <div class="residual-total-label">Monthly Recurring (yearly ÷ 12)</div>
               <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;" id="r-total-note">All active entries</div>
             </div>
             <div class="residual-total-amount" id="residual-total">$0.00</div>
+          </div>
+          <div class="totals-grid">
+            <div><span>Per year</span><b id="t-year">$0</b></div>
+            <div><span>One-time fees</span><b id="t-setup">$0</b></div>
+            <div><span>Late</span><b id="t-late">0</b></div>
           </div>
 
           <div class="residual-list" id="residual-list">
@@ -1002,6 +1069,7 @@
     if (passInput.value === PASSWORD) {
       document.getElementById("lock-screen").style.display = "none";
       document.getElementById("app-screen").style.display  = "block";
+      applyPrefill();
     } else {
       lockError.textContent = "Wrong password. Try again.";
       passInput.value = "";
@@ -1232,6 +1300,37 @@
   const resCount   = document.getElementById("residual-count");
   const resTotal   = document.getElementById("residual-total");
   const rFilterMo  = document.getElementById("r-filter-month");
+  const rPhone = document.getElementById("r-phone"), rEmail = document.getElementById("r-email");
+  const rBrand = document.getElementById("r-brand"), rPlan = document.getElementById("r-plan");
+  const rSetup = document.getElementById("r-setup"), rStart = document.getElementById("r-start");
+  const rStatus = document.getElementById("r-status"), rAmtLbl = document.getElementById("r-amount-label");
+  const PLANS = { "The WebSwan":["Monthly","Yearly"], "WebSwan Media Network":["Monthly","Yearly"], "WebSwan Digital Solutions":["Monthly"] };
+  const BRAND_CLASS = { "The WebSwan":"b1", "WebSwan Media Network":"b2", "WebSwan Digital Solutions":"b3" };
+  const money = n => "$" + (Number(n)||0).toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const escH = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function fillPlans(keep) {
+    const list = PLANS[rBrand.value] || ["Monthly"];
+    rPlan.innerHTML = list.map(p => `<option${p===keep?" selected":""}>${p}</option>`).join("");
+    rAmtLbl.textContent = rPlan.value === "Yearly" ? "💵 Yearly Payment ($)" : "💵 Monthly Payment ($)";
+  }
+  rBrand.addEventListener("change", () => { fillPlans(rPlan.value); updateResidualPreview(); });
+  rPlan.addEventListener("change", () => { fillPlans(rPlan.value); updateResidualPreview(); });
+  fillPlans();
+  /* Prefill from a WebSwan Studio link: ?add=1&name=..&company=..&brand=..&plan=..&setup=..&amount=..&day=..&start=..&phone=..&email=..&notes=.. */
+  const QP = new URLSearchParams(location.search);
+  function applyPrefill() {
+    if (!QP.get("add")) return;
+    const set = (el, k) => { if (QP.get(k) !== null) el.value = QP.get(k); };
+    set(rName,"name"); set(rCompany,"company"); set(rPhone,"phone"); set(rEmail,"email");
+    if (QP.get("brand") && PLANS[QP.get("brand")]) rBrand.value = QP.get("brand");
+    fillPlans(QP.get("plan") || "Monthly");
+    set(rSetup,"setup"); set(rAmount,"amount"); set(rStart,"start"); set(rNotes,"notes");
+    if (QP.get("day")) rPayDay.value = QP.get("day");
+    if (QP.get("status")) rStatus.value = QP.get("status");
+    switchTab("residual");
+    updateResidualPreview();
+    showToast("Client details filled in from WebSwan Studio. Check them, then Save.");
+  }
 
   function ordinal(n) {
     const s = ["th","st","nd","rd"];
@@ -1253,51 +1352,69 @@
       rPreview.style.display = "block";
       rPreviewTx.innerHTML =
         `<strong style="color:#fff">${name}</strong>${company ? ` · <span style="color:var(--text-muted)">${company}</span>` : ""}<br>` +
-        `<span style="color:var(--gold);font-family:'Playfair Display',serif;font-size:1.05rem;">$${amount.toFixed(2)}/month</span>` +
+        `<span style="color:var(--gold);font-family:'Playfair Display',serif;font-size:1.05rem;">$${amount.toFixed(2)}/${rPlan.value === "Yearly" ? "year" : "month"}</span>` +
         ` — due on the <strong>${ordinal(parseInt(day))}</strong>` +
+        `<br><span style="color:var(--text-muted);font-size:0.78rem;">${rBrand.value}${parseFloat(rSetup.value) > 0 ? ` · one-time fee $${parseFloat(rSetup.value).toFixed(2)}` : ""}${rStart.value ? ` · started ${formatDate(rStart.value)}` : ""} · ${rStatus.value}</span>` +
         (notes ? `<br><span style="color:var(--text-muted);font-size:0.78rem;">${notes}</span>` : "");
     } else {
       rPreview.style.display = "none";
     }
   }
 
-  [rName, rCompany, rAmount, rNotes].forEach(el => el.addEventListener("input", updateResidualPreview));
+  [rName, rCompany, rAmount, rNotes, rSetup, rPhone, rEmail].forEach(el => el.addEventListener("input", updateResidualPreview));
+  [rStart, rStatus].forEach(el => el.addEventListener("change", updateResidualPreview));
   rPayDay.addEventListener("change", updateResidualPreview);
 
+  let allResiduals = [];
   function renderResiduals(entries) {
-    const filterMonth = rFilterMo.value;
-    const filtered = filterMonth === "all"
-      ? entries
-      : entries.filter(e => String(e.paymentDay) !== "" && true); // show all when no month stored
+    allResiduals = entries;
+    const f = rFilterMo.value;
+    const shown = f === "all" ? entries
+      : (f === "Late" || f === "Cancelled") ? entries.filter(e => (e.status || "Active") === f)
+      : entries.filter(e => (e.brand || "The WebSwan") === f);
+    const live = shown.filter(e => !["Cancelled","Paused"].includes(e.status || "Active"));
+    const perMonth = live.reduce((s, e) => s + ((e.plan === "Yearly") ? (parseFloat(e.amount)||0) / 12 : (parseFloat(e.amount)||0)), 0);
+    resCount.textContent = shown.length;
+    resTotal.textContent = money(perMonth);
+    document.getElementById("t-year").textContent = money(perMonth * 12);
+    document.getElementById("t-setup").textContent = money(shown.reduce((s, e) => s + (parseFloat(e.setupFee)||0), 0));
+    document.getElementById("t-late").textContent = shown.filter(e => e.status === "Late").length;
+    document.getElementById("r-total-note").textContent = `${live.length} paying ${live.length === 1 ? "client" : "clients"}`;
 
-    resCount.textContent = entries.length;
-
-    // Calculate total for filtered view
-    const total = entries.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-    resTotal.textContent = "$" + total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const note = document.getElementById("r-total-note");
-    note.textContent = entries.length === 1 ? "1 active client" : `${entries.length} active clients`;
-
-    if (!entries.length) {
-      resList.innerHTML = `<div class="empty-state"><div class="icon">💰</div><div>No residual entries yet.<br>Add your first client!</div></div>`;
+    if (!shown.length) {
+      resList.innerHTML = `<div class="empty-state"><div class="icon">💰</div><div>${entries.length ? "No clients match this filter." : "No residual entries yet.<br>Add your first client!"}</div></div>`;
       return;
     }
-
-    // Sort by payment day
-    const sorted = [...entries].sort((a,b) => (parseInt(a.paymentDay)||99) - (parseInt(b.paymentDay)||99));
-
-    resList.innerHTML = sorted.map(e => `
-      <div class="residual-item">
-        <div class="residual-item-date">Due: ${e.paymentDay ? ordinal(parseInt(e.paymentDay)) + ' of month' : '—'}</div>
-        <div class="residual-item-name">${e.clientName || "—"}</div>
-        ${e.companyName ? `<div class="residual-item-company">🏢 ${e.companyName}</div>` : ""}
-        <div class="residual-item-amount">$${parseFloat(e.amount || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}<span style="font-size:0.7rem;font-family:'Inter',sans-serif;color:var(--text-muted);font-weight:400;">/month</span></div>
-        ${e.notes ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">${e.notes}</div>` : ""}
+    const rank = { Late:0, Active:1, Paused:2, Cancelled:3 };
+    const sorted = [...shown].sort((a,b) => (rank[a.status||"Active"] - rank[b.status||"Active"]) || ((parseInt(a.paymentDay)||99) - (parseInt(b.paymentDay)||99)));
+    resList.innerHTML = sorted.map(e => {
+      const st = e.status || "Active", br = e.brand || "The WebSwan", yearly = e.plan === "Yearly";
+      return `
+      <div class="residual-item${st === "Late" ? " is-late" : ""}${st === "Cancelled" ? " is-cancelled" : ""}">
+        <div class="residual-item-date"><span class="r-chip ${BRAND_CLASS[br] || "b1"}">${escH(br)}</span> Due: ${e.paymentDay ? ordinal(parseInt(e.paymentDay)) + (yearly ? " (yearly)" : " of month") : "—"}</div>
+        <div class="residual-item-name">${escH(e.clientName || "—")} <span class="r-status ${escH(st)}">${escH(st)}</span></div>
+        ${e.companyName ? `<div class="residual-item-company">🏢 ${escH(e.companyName)}</div>` : ""}
+        <div class="residual-item-amount">${money(e.amount)}<span style="font-size:0.7rem;font-family:'Inter',sans-serif;color:var(--text-muted);font-weight:400;">/${yearly ? "year" : "month"}</span></div>
+        <div class="r-meta">
+          ${parseFloat(e.setupFee) > 0 ? `<span>🧾 One-time ${money(e.setupFee)}</span>` : ""}
+          ${e.startDate ? `<span>📆 Since ${formatDate(e.startDate)}</span>` : ""}
+          ${e.phone ? `<a href="tel:${escH(String(e.phone).replace(/[^0-9+]/g,""))}">📞 ${escH(e.phone)}</a>` : ""}
+          ${e.email ? `<a href="mailto:${escH(e.email)}">✉️ ${escH(e.email)}</a>` : ""}
+        </div>
+        ${e.notes ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">${escH(e.notes)}</div>` : ""}
+        <select class="r-status-select" data-id="${e.id}" aria-label="Change status">
+          ${["Active","Late","Paused","Cancelled"].map(o => `<option${o === st ? " selected" : ""}>${o}</option>`).join("")}
+        </select>
         <button class="residual-delete" data-id="${e.id}" title="Delete">✕</button>
-      </div>
-    `).join("");
+      </div>`;
+    }).join("");
 
+    resList.querySelectorAll(".r-status-select").forEach(sel => {
+      sel.addEventListener("change", async () => {
+        try { await window._fb.updateResidual(sel.dataset.id, { status: sel.value }); await refreshResiduals(); showToast("Status updated."); }
+        catch { showToast("Update failed.", true); }
+      });
+    });
     resList.querySelectorAll(".residual-delete").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -1327,9 +1444,17 @@
         amount:      parseFloat(rAmount.value) || 0,
         paymentDay:  rPayDay.value,
         notes:       rNotes.value.trim(),
+        phone:       rPhone.value.trim(),
+        email:       rEmail.value.trim(),
+        brand:       rBrand.value,
+        plan:        rPlan.value,
+        setupFee:    parseFloat(rSetup.value) || 0,
+        startDate:   rStart.value || null,
+        status:      rStatus.value,
         paymentDate: `2026-${String(rPayDay.value).padStart(2,"0")}`  // for orderBy
       });
-      [rName, rCompany, rAmount, rNotes].forEach(el => el.value = "");
+      [rName, rCompany, rAmount, rNotes, rPhone, rEmail, rSetup, rStart].forEach(el => el.value = "");
+      rStatus.value = "Active";
       rPayDay.value = "";
       rPreview.style.display = "none";
       await refreshResiduals();
@@ -1338,9 +1463,7 @@
     finally { btnSaveRes.disabled = false; btnSaveRes.textContent = "💰 Save Residual Entry"; }
   });
 
-  rFilterMo.addEventListener("change", async () => {
-    await refreshResiduals();
-  });
+  rFilterMo.addEventListener("change", () => renderResiduals(allResiduals));
 
   /* ════════════════════════════════════════
      FIREBASE READY
