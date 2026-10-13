@@ -137,6 +137,13 @@ export default async (req) => {
     Object.entries(meta).forEach(([k, v]) => { params[`metadata[${k}]`] = v; });
     if (clientEmail) params["metadata[client_email]"] = clientEmail;
     params["restrictions[completed_sessions][limit]"] = "1";   // one payment per link, like an invoice
+    if (recur <= 0) {
+      // one-time payment: Stripe creates a real invoice and emails it (with the receipt) to the client after they pay
+      params["invoice_creation[enabled]"] = "true";
+      params["invoice_creation[invoice_data][description]"] = `${planName} (${brand})`.slice(0, 500);
+      params["invoice_creation[invoice_data][footer]"] = `Thank you for choosing ${brand}!`;
+      Object.entries(meta).forEach(([k, v]) => { params[`invoice_creation[invoice_data][metadata][${k}]`] = v; });
+    }
     if (recur > 0) {
       Object.entries(meta).forEach(([k, v]) => { params[`subscription_data[metadata][${k}]`] = v; });
       if (delayDays > 0) params["subscription_data[trial_period_days]"] = String(delayDays);
