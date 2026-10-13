@@ -394,6 +394,10 @@
     .b-item-meta { font-size:.75rem; color:var(--text-muted); margin-top:.2rem; }
     .b-chip { font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:.15rem .5rem; border-radius:999px; background:rgba(147,229,250,.18); color:#93e5fa; }
     .b-item .b-row-btns button { padding:.35rem .8rem; font-size:.75rem; }
+    .b-pay { font-size:.75rem; font-weight:700; padding:.15rem .55rem; border-radius:999px; }
+    .b-pay.paid { background:rgba(77,217,160,.18); color:var(--success); }
+    .b-pay.wait { background:rgba(249,199,79,.15); color:var(--gold); }
+    .b-item.is-paid { border-color:rgba(77,217,160,.45); }
     .b-plan-pick { display:flex; gap:.4rem; align-items:center; }
     .b-plan-pick select { flex:1; }
 
@@ -1810,6 +1814,7 @@
   ═══════════════════════════════════════════ */
   (function () {
     const BILLING_ENDPOINT = "https://webswan-billing.netlify.app/.netlify/functions/create-payment-link";
+    const CHECK_ENDPOINT   = "https://webswan-billing.netlify.app/.netlify/functions/check-payment";
     const QUICK_LINKS = [
       { name: "The WebSwan (client types the amount)", url: "https://buy.stripe.com/eVq00l4MT7SMeVM5xK3Nm00" },
       { name: "Setup Fee (client types the amount)",    url: "https://buy.stripe.com/28EcN7cfldd67tk6BO3Nm01" },
@@ -1947,8 +1952,7 @@
         if (f.email) url += (url.includes("?") ? "&" : "?") + "prefilled_email=" + encodeURIComponent(f.email);
         lastLink = { ...f, url };
         el.url.value = url; el.result.style.display = "block";
-        const rec = { ...f, url, stripeLinkId: data.id || null, status: "Link sent" };
-        try { await window._fb.saveBilling(rec); } catch (e) { console.error(e); showToast("Link created, but saving the history failed.", true); }
+        const rec = { ...f, url, stripeLinkId: data.id || null, status: "Link sent", residualId: el.pick.value || null };
         if (el.savePlan.checked) {
           try { const ref = await window._fb.savePlan({ brand: f.brand, name: f.planName, setup: f.setup, recur: f.recur, interval: f.interval }); plans.push({ id: ref.id, brand: f.brand, name: f.planName, setup: f.setup, recur: f.recur, interval: f.interval }); fillPlans(); }
           catch (e) { console.error(e); }
@@ -1956,15 +1960,17 @@
         }
         if (el.addRes.checked && !el.pick.value) {
           try {
-            await window._fb.saveResidual({
+            const resRef = await window._fb.saveResidual({
               clientName: f.clientName, companyName: f.company, projectName: f.planName, amount: f.recur, paymentDay: "",
               notes: "Payment link sent " + new Date().toLocaleDateString() + ": " + url, phone: "", email: f.email,
               brand: f.brand, plan: f.interval === "year" ? "Yearly" : "Monthly", setupFee: f.setup, setupDate: null, startDate: null,
               status: "Link sent", studioRef: null, paymentDate: "2026-99"
             });
+            rec.residualId = resRef.id;
             if (typeof refreshResiduals === "function") refreshResiduals();
           } catch (e) { console.error(e); }
         }
+        try { await window._fb.saveBilling(rec); } catch (e) { console.error(e); showToast("Link created, but saving the history failed.", true); }
         el.key.value = "";
         showToast("💳 Payment link created!");
         await loadBilling();
@@ -1992,20 +1998,70 @@
       el.list.innerHTML = list.map(b => {
         const when = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().toLocaleDateString() : "";
         const terms = money(b.setup) + " setup" + (b.recur ? " + " + money(b.recur) + "/" + (b.interval === "year" ? "yr" : "mo") : "");
-        return `<div class="b-item"><div class="b-item-top"><span class="b-item-name">${esc(b.company || b.clientName)}${b.company && b.clientName ? " · " + esc(b.clientName) : ""}</span><span class="b-chip">${esc(b.brand)}</span></div>
-          <div class="b-item-meta">${esc(b.planName)}: ${terms}${when ? " · " + when : ""}${b.email ? " · " + esc(b.email) : ""}</div>
-          <div class="b-row-btns"><button type="button" class="btn-blue" data-copy="${esc(b.id)}">📋 Copy link</button><button type="button" class="btn-ghost" data-msg="${esc(b.id)}">✉️ Copy message</button></div></div>`;
+        const paid = b.status === "Paid";
+        const pay = paid
+          ? `<span class="b-pay paid">✅ Paid${b.paidAt ? " on " + new Date(b.paidAt).toLocaleDateString() : ""}${b.paidAmount ? " · " + money(b.paidAmount) : ""}</span>`
+          : `<span class="b-pay wait">🟡 Not paid yet</span>`;
+        return `<div class="b-item${paid ? " is-paid" : ""}"><div class="b-item-top"><span class="b-item-name">${esc(b.company || b.clientName)}${b.company && b.clientName ? " · " + esc(b.clientName) : ""}</span><span class="b-chip">${esc(b.brand)}</span></div>
+          <div class="b-item-meta">${esc(b.planName)}: ${terms}${when ? " · sent " + when : ""}${b.email ? " · " + esc(b.email) : ""}</div>
+          <div style="margin-top:.35rem;">${pay}</div>
+          <div class="b-row-btns"><button type="button" class="btn-blue" data-copy="${esc(b.id)}">📋 Copy link</button><button type="button" class="btn-ghost" data-msg="${esc(b.id)}">✉️ Copy message</button>${paid || !b.stripeLinkId ? "" : `<button type="button" class="btn-ghost" data-check="${esc(b.id)}">🔄 Check payment</button>`}</div></div>`;
       }).join("");
     }
     el.list.addEventListener("click", (e) => {
+      const k = e.target.closest("[data-check]");
+      if (k) { const b = billing.find(x => x.id === k.dataset.check); if (b) { k.disabled = true; k.textContent = "Checking…"; checkPayments([b], true); } return; }
       const c = e.target.closest("[data-copy]"), m = e.target.closest("[data-msg]");
       const id = (c || m) && (c || m).dataset[c ? "copy" : "msg"]; const b = billing.find(x => x.id === id); if (!b) return;
       copyText(c ? b.url : message(b), c ? "Link copied!" : "Message copied!");
     });
     el.filter.addEventListener("change", renderBilling);
 
+    /* payment status from Stripe */
+    function addDaysISO(ms, days) { const d = new Date(ms); d.setDate(d.getDate() + (days || 0)); return d.toISOString().slice(0, 10); }
+    async function markPaid(b, r) {
+      const upd = { status: "Paid", paidAt: r.paidAt, paidAmount: r.amount || 0 };
+      await window._fb.updateBilling(b.id, upd); Object.assign(b, upd);
+      let resId = b.residualId;
+      if (!resId && typeof allResiduals !== "undefined") {
+        const m = allResiduals.find(x => (x.notes || "").includes(b.url.split("?")[0])); if (m) resId = m.id;
+      }
+      if (resId) {
+        const first = addDaysISO(r.paidAt, b.recur ? (b.delayDays || 0) : 0);
+        try {
+          await window._fb.updateResidual(resId, {
+            status: "Active", setupDate: addDaysISO(r.paidAt, 0), startDate: b.recur ? first : null,
+            paymentDay: b.recur ? String(new Date(first + "T12:00:00").getDate()) : "",
+            paymentDate: "2026-" + (b.recur ? String(new Date(first + "T12:00:00").getDate()).padStart(2, "0") : "99")
+          });
+          if (typeof refreshResiduals === "function") refreshResiduals();
+        } catch (e) { console.error(e); }
+      }
+    }
+    async function checkPayments(list, loud) {
+      const todo = list.filter(b => b.status !== "Paid" && b.stripeLinkId).slice(0, 25);
+      if (!todo.length) { if (loud) showToast("Nothing to check."); return; }
+      try {
+        const token = await window._fbAuth.token(); if (!token) throw new Error("Please sign in with Google first.");
+        const res = await fetch(CHECK_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+          body: JSON.stringify({ links: todo.map(b => ({ id: b.stripeLinkId, brand: b.brand })) }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not check payments.");
+        let newly = 0, err = null;
+        for (const b of todo) {
+          const r = (data.results || {})[b.stripeLinkId]; if (!r) continue;
+          if (r.error) { err = r.error; continue; }
+          if (r.paid) { await markPaid(b, r); newly++; }
+        }
+        renderBilling();
+        if (newly) showToast("💰 " + newly + " new payment" + (newly > 1 ? "s" : "") + " received!");
+        else if (err && loud) showToast(err, true);
+        else if (loud) showToast("Not paid yet.");
+      } catch (e) { console.error(e); if (loud) showToast(e.message, true); renderBilling(); }
+    }
+
     async function loadBilling() {
-      try { billing = await window._fb.loadBilling(); renderBilling(); }
+      try { billing = await window._fb.loadBilling(); renderBilling(); checkPayments(billing, false); }
       catch (e) { console.error(e); el.list.innerHTML = '<p class="b-note">Could not load your billing history. Check that you are signed in.</p>'; }
     }
     async function loadAll() {
