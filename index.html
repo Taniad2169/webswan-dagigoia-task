@@ -58,7 +58,26 @@
       },
       async updateResidual(id, data) {
         await updateDoc(doc(db, "residuals", id), data);
-      }
+      },
+
+      /* ── BILLING: payment links + saved plans ── */
+      async saveBilling(entry) {
+        return await addDoc(collection(db, "billing"), { ...entry, createdAt: Timestamp.now() });
+      },
+      async loadBilling() {
+        const q    = query(collection(db, "billing"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+      async updateBilling(id, data) { await updateDoc(doc(db, "billing", id), data); },
+      async savePlan(plan) {
+        return await addDoc(collection(db, "billing_plans"), { ...plan, createdAt: Timestamp.now() });
+      },
+      async loadPlans() {
+        const snap = await getDocs(collection(db, "billing_plans"));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      },
+      async deletePlan(id) { await deleteDoc(doc(db, "billing_plans", id)); }
     };
 
     /* Private access: only these Google accounts can read or write. The same list is in the Firestore rules. */
@@ -66,7 +85,8 @@
     const auth = getAuth(app);
     window._fbAuth = {
       async signIn() { await signInWithPopup(auth, new GoogleAuthProvider()); },
-      async signOut() { await signOut(auth); }
+      async signOut() { await signOut(auth); },
+      async token() { return auth.currentUser ? await auth.currentUser.getIdToken() : null; }
     };
     onAuthStateChanged(auth, (user) => {
       const ok = !!user && OWNERS.includes((user.email || "").toLowerCase());
@@ -352,6 +372,30 @@
       color: var(--navy);
       box-shadow: 0 4px 16px rgba(80,203,217,0.4);
     }
+
+    .tab-btn.active-billing {
+      background: linear-gradient(135deg, #93e5fa 0%, #339cde 100%);
+      color: #06213d;
+      box-shadow: 0 4px 16px rgba(51,156,222,0.45);
+    }
+    .b-note { font-size:.78rem; color:var(--text-muted); margin:.2rem 0 .8rem; line-height:1.5; }
+    .b-seg { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.9rem; }
+    .b-seg button { flex:1; min-width:120px; padding:.55rem .7rem; border-radius:999px; border:1px solid rgba(147,229,250,.4); background:transparent; color:var(--text-light); font-weight:700; cursor:pointer; }
+    .b-seg button[aria-pressed="true"] { background:#339cde; border-color:#339cde; color:#fff; }
+    .b-result { display:none; background:rgba(51,156,222,.12); border:1px solid rgba(147,229,250,.45); border-radius:var(--radius-md); padding:1rem; margin-top:1rem; }
+    .b-result input { width:100%; font-family:monospace; font-size:.8rem; }
+    .b-row-btns { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.6rem; }
+    .btn-blue { padding:.65rem 1.1rem; border:none; border-radius:999px; background:linear-gradient(135deg,#93e5fa 0%,#339cde 100%); color:#06213d; font-weight:700; cursor:pointer; }
+    .btn-blue:disabled { opacity:.55; cursor:not-allowed; }
+    .btn-ghost { padding:.65rem 1.1rem; border-radius:999px; background:transparent; border:1px solid rgba(255,255,255,.3); color:var(--text-light); font-weight:700; cursor:pointer; }
+    .b-item { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:var(--radius-md); padding:.75rem .9rem; margin-bottom:.6rem; }
+    .b-item-top { display:flex; justify-content:space-between; gap:.5rem; flex-wrap:wrap; }
+    .b-item-name { font-weight:700; color:#fff; }
+    .b-item-meta { font-size:.75rem; color:var(--text-muted); margin-top:.2rem; }
+    .b-chip { font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:.15rem .5rem; border-radius:999px; background:rgba(147,229,250,.18); color:#93e5fa; }
+    .b-item .b-row-btns button { padding:.35rem .8rem; font-size:.75rem; }
+    .b-plan-pick { display:flex; gap:.4rem; align-items:center; }
+    .b-plan-pick select { flex:1; }
 
     .tab-btn.active-residual {
       background: linear-gradient(135deg, #f9c74f 0%, #f4a01c 100%);
@@ -742,6 +786,7 @@
     .r-chip.b3 { background:rgba(77,217,160,0.18); color:var(--success); }
     .r-status { font-size:0.68rem; font-weight:700; border-radius:999px; padding:0.15rem 0.55rem; border:1px solid currentColor; }
     .r-status.Active { color:var(--success); } .r-status.Late { color:var(--danger); } .r-status.Paused { color:var(--gold); } .r-status.Cancelled { color:var(--text-muted); }
+    .residual-item.is-pending { border-color: rgba(147,229,250,0.55); }
     .residual-item.is-late { border-color: rgba(255,107,138,0.55); }
     .residual-item.is-cancelled { opacity:0.55; }
     .r-meta { font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem; display:flex; flex-wrap:wrap; gap:0.25rem 0.8rem; }
@@ -800,6 +845,7 @@
     <div class="tab-bar">
       <button class="tab-btn active-tasks" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
       <button class="tab-btn" id="tab-residual" onclick="switchTab('residual')">💰 Residual Income</button>
+      <button class="tab-btn" id="tab-billing" onclick="switchTab('billing')">💳 Billing</button>
     </div>
   </div>
 
@@ -882,6 +928,112 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ══════ BILLING VIEW ══════ -->
+  <div id="view-billing" style="display:none;">
+    <div class="layout">
+
+      <!-- LEFT: create a payment link -->
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Create a payment link</div>
+        <p class="b-note">Pick the brand, the client and the plan, then create the link and send it to your client. The client does not need to be on any website or in the advertiser directory.</p>
+
+        <div class="field">
+          <label>🦢 Brand</label>
+          <select id="b-brand">
+            <option>The WebSwan</option>
+            <option>WebSwan Media Network</option>
+            <option>WebSwan Digital Solutions</option>
+          </select>
+        </div>
+
+        <label style="font-size:.8rem;font-weight:700;color:var(--text-light);display:block;margin-bottom:.4rem;">👤 Client</label>
+        <div class="b-seg" role="group" aria-label="Client type">
+          <button type="button" id="b-new" aria-pressed="true">New client</button>
+          <button type="button" id="b-existing" aria-pressed="false">From my Residual list</button>
+        </div>
+        <div class="field" id="b-existing-wrap" style="display:none;">
+          <select id="b-client-pick"><option value="">Choose a client…</option></select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Client name</label><input type="text" id="b-name" placeholder="Jane Smith" autocomplete="off"></div>
+          <div class="field"><label>Company</label><input type="text" id="b-company" placeholder="Smith Dental" autocomplete="off"></div>
+        </div>
+        <div class="field"><label>✉️ Client email (fills in on the payment page)</label><input type="email" id="b-email" placeholder="client@example.com" autocomplete="off"></div>
+
+        <div class="divider-gold"></div>
+
+        <div class="field">
+          <label>📦 Plan</label>
+          <div class="b-plan-pick">
+            <select id="b-plan-pick"><option value="">Custom plan (type it below)</option></select>
+            <button type="button" class="btn-ghost" id="b-plan-del" title="Delete this saved plan" style="display:none;">🗑</button>
+          </div>
+        </div>
+        <div class="field"><label>Plan name (the client sees this)</label><input type="text" id="b-plan-name" placeholder="Website + SBPA package" autocomplete="off"></div>
+        <div class="field-row">
+          <div class="field"><label>🧾 Setup fee, one time ($)</label><input type="number" id="b-setup" placeholder="0.00" min="0" step="0.01"></div>
+          <div class="field"><label>🔁 Recurring charge ($)</label><input type="number" id="b-recur" placeholder="0.00" min="0" step="0.01"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Every</label>
+            <select id="b-interval"><option value="month">Month</option><option value="year">Year</option><option value="none">No recurring charge</option></select>
+          </div>
+          <div class="field">
+            <label>📆 First recurring charge</label>
+            <select id="b-delay">
+              <option value="0">Today, with the setup fee</option>
+              <option value="7">In 7 days</option>
+              <option value="14">In 14 days</option>
+              <option value="30">In 30 days</option>
+              <option value="60">In 60 days</option>
+              <option value="90">In 90 days</option>
+            </select>
+          </div>
+        </div>
+        <label style="display:flex;gap:.5rem;align-items:center;font-size:.8rem;color:var(--text-light);margin:.2rem 0 .8rem;">
+          <input type="checkbox" id="b-save-plan"> Save this plan so I can pick it next time
+        </label>
+
+        <div class="divider-gold"></div>
+
+        <div class="field"><label>🔑 Billing security key</label><input type="password" id="b-key" placeholder="Your billing key" autocomplete="off" maxlength="64"></div>
+        <label style="display:flex;gap:.5rem;align-items:center;font-size:.8rem;color:var(--text-light);margin:0 0 .8rem;">
+          <input type="checkbox" id="b-add-res" checked> Also add this client to my Residual list (status: Link sent)
+        </label>
+
+        <div id="b-summary" class="b-note" style="color:#93e5fa;"></div>
+        <button type="button" class="btn-blue" id="b-create" style="width:100%;padding:.85rem;font-size:1rem;">💳 Create payment link</button>
+
+        <div class="b-result" id="b-result" role="status" aria-live="polite">
+          <div style="font-weight:700;color:#93e5fa;margin-bottom:.4rem;">✅ Link ready. Send it to your client:</div>
+          <div class="field" style="margin:0;"><input type="text" id="b-url" readonly aria-label="Payment link"></div>
+          <div class="b-row-btns">
+            <button type="button" class="btn-blue" id="b-copy">📋 Copy link</button>
+            <button type="button" class="btn-ghost" id="b-copy-msg">✉️ Copy message + link</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: history + quick links -->
+      <div>
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot"></span> Links I've sent</span>
+            <span class="residual-count" id="b-count">0</span>
+          </div>
+          <div class="field"><select id="b-filter"><option value="all">All brands</option><option>The WebSwan</option><option>WebSwan Media Network</option><option>WebSwan Digital Solutions</option></select></div>
+          <div id="b-list" class="residual-list"><p class="b-note">No links yet.</p></div>
+        </div>
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-title"><span class="dot"></span> My saved Stripe links</div>
+          <p class="b-note">Ready-made links from Stripe. The client types the amount on these.</p>
+          <div id="b-quick"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -985,7 +1137,7 @@
         <div class="field">
           <label class="gold">🚦 Status</label>
           <select id="r-status" class="gold-border">
-            <option>Active</option><option>Late</option><option>Paused</option><option>Cancelled</option>
+            <option>Active</option><option>Late</option><option>Paused</option><option>Cancelled</option><option>Link sent</option>
           </select>
         </div>
 
@@ -1031,6 +1183,7 @@
               <option value="WebSwan Digital Solutions">WebSwan Digital Solutions</option>
               <option value="Late">Late payers</option>
               <option value="Cancelled">Cancelled</option>
+              <option value="Link sent">Link sent (not paid yet)</option>
             </select>
           </div>
 
@@ -1141,11 +1294,13 @@
      TAB SWITCHER
   ═══════════════════════════════════════════ */
   function switchTab(tab) {
-    const isTask = tab === 'tasks';
-    document.getElementById('view-tasks').style.display    = isTask ? 'block' : 'none';
-    document.getElementById('view-residual').style.display = isTask ? 'none'  : 'block';
-    document.getElementById('tab-tasks').className    = 'tab-btn' + (isTask ? ' active-tasks' : '');
-    document.getElementById('tab-residual').className = 'tab-btn' + (!isTask ? ' active-residual' : '');
+    document.getElementById('view-tasks').style.display    = tab === 'tasks'    ? 'block' : 'none';
+    document.getElementById('view-residual').style.display = tab === 'residual' ? 'block' : 'none';
+    document.getElementById('view-billing').style.display  = tab === 'billing'  ? 'block' : 'none';
+    document.getElementById('tab-tasks').className    = 'tab-btn' + (tab === 'tasks'    ? ' active-tasks' : '');
+    document.getElementById('tab-residual').className = 'tab-btn' + (tab === 'residual' ? ' active-residual' : '');
+    document.getElementById('tab-billing').className  = 'tab-btn' + (tab === 'billing'  ? ' active-billing' : '');
+    if (tab === 'billing' && window.billingOpened) window.billingOpened();
   }
 
   /* ════════════════════════════════════════
@@ -1501,6 +1656,7 @@
   }
   function earned(e) {
     const t = todayISO(), st = e.status || "Active";
+    if (st === "Link sent") return { res: 0, one: 0 };   // not paid yet
     if (e.paidAsOf) {
       const more = st === "Active" ? paymentsBetween(e, e.paidAsOf, t) : 0;
       return { res: (parseFloat(e.paidResidual) || 0) + more, one: parseFloat(e.paidOneTime) || 0 };
@@ -1514,9 +1670,9 @@
     allResiduals = entries;
     const f = rFilterMo.value;
     const shown = f === "all" ? entries
-      : (f === "Late" || f === "Cancelled") ? entries.filter(e => (e.status || "Active") === f)
+      : (f === "Late" || f === "Cancelled" || f === "Link sent") ? entries.filter(e => (e.status || "Active") === f)
       : entries.filter(e => (e.brand || "The WebSwan") === f);
-    const live = shown.filter(e => !["Cancelled","Paused"].includes(e.status || "Active"));
+    const live = shown.filter(e => !["Cancelled","Paused","Link sent"].includes(e.status || "Active"));
     const perMonth = live.reduce((s, e) => s + ((e.plan === "Yearly") ? (parseFloat(e.amount)||0) / 12 : (parseFloat(e.amount)||0)), 0);
     resCount.textContent = shown.length;
     resTotal.textContent = money(perMonth);
@@ -1533,12 +1689,12 @@
       resList.innerHTML = `<div class="empty-state"><div class="icon">💰</div><div>${entries.length ? "No clients match this filter." : "No residual entries yet.<br>Add your first client!"}</div></div>`;
       return;
     }
-    const rank = { Late:0, Active:1, Paused:2, Cancelled:3 };
+    const rank = { Late:0, Active:1, "Link sent":2, Paused:3, Cancelled:4 };
     const sorted = [...shown].sort((a,b) => (rank[a.status||"Active"] - rank[b.status||"Active"]) || ((parseInt(a.paymentDay)||99) - (parseInt(b.paymentDay)||99)));
     resList.innerHTML = sorted.map(e => {
       const st = e.status || "Active", br = e.brand || "The WebSwan", yearly = e.plan === "Yearly";
       return `
-      <div class="residual-item${st === "Late" ? " is-late" : ""}${st === "Cancelled" ? " is-cancelled" : ""}">
+      <div class="residual-item${st === "Late" ? " is-late" : ""}${st === "Cancelled" ? " is-cancelled" : ""}${st === "Link sent" ? " is-pending" : ""}">
         <div class="residual-item-date"><span class="r-chip ${BRAND_CLASS[br] || "b1"}">${escH(br)}</span> Due: ${e.paymentDay ? ordinal(parseInt(e.paymentDay)) + (yearly ? " (yearly)" : " of month") : "—"}</div>
         <div class="residual-item-name">${escH(e.clientName || "—")} <span class="r-status ${escH(st)}">${escH(st)}</span></div>
         ${e.companyName ? `<div class="residual-item-company">🏢 ${escH(e.companyName)}</div>` : ""}
@@ -1553,7 +1709,7 @@
         </div>
         ${e.notes ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">${escH(e.notes)}</div>` : ""}
         <select class="r-status-select" data-id="${e.id}" aria-label="Change status">
-          ${["Active","Late","Paused","Cancelled"].map(o => `<option${o === st ? " selected" : ""}>${o}</option>`).join("")}
+          ${["Active","Late","Paused","Cancelled","Link sent"].map(o => `<option${o === st ? " selected" : ""}>${o}</option>`).join("")}
         </select>
         <button class="residual-delete" data-id="${e.id}" title="Delete">✕</button>
       </div>`;
@@ -1648,6 +1804,219 @@
   });
 
   renderCal();
+
+  /* ════════════════════════════════════════
+     BILLING: create Stripe payment links
+  ═══════════════════════════════════════════ */
+  (function () {
+    const BILLING_ENDPOINT = "https://webswan-billing.netlify.app/.netlify/functions/create-payment-link";
+    const QUICK_LINKS = [
+      { name: "The WebSwan (client types the amount)", url: "https://buy.stripe.com/eVq00l4MT7SMeVM5xK3Nm00" },
+      { name: "Setup Fee (client types the amount)",    url: "https://buy.stripe.com/28EcN7cfldd67tk6BO3Nm01" },
+      { name: "Mache Haitien Global Monthly Plan ($1,019/mo, 15-day trial)", url: "https://buy.stripe.com/aFa4gBa7d2ys00Sd0c3Nm02" },
+      { name: "WebSwan Media Network (link on ads site)", url: "https://buy.stripe.com/5kQ28rgWs0m9fIO3hY5ZC04" }
+    ];
+    const DEFAULT_PLANS = [
+      { brand: "WebSwan Media Network",     name: "Media Network Listing - Yearly",           setup: 400, recur: 289, interval: "year" },
+      { brand: "WebSwan Media Network",     name: "Media Network Maintenance - Monthly",      setup: 0,   recur: 29,  interval: "month" },
+      { brand: "WebSwan Digital Solutions", name: "ADA Button + Cookie Banner",               setup: 499, recur: 59,  interval: "month" },
+      { brand: "WebSwan Digital Solutions", name: "ADA Button + Cookie Banner (WebSwan site)", setup: 299, recur: 49,  interval: "month" },
+      { brand: "WebSwan Digital Solutions", name: "ADA Accessibility Button",                 setup: 399, recur: 49,  interval: "month" },
+      { brand: "WebSwan Digital Solutions", name: "Cookie Consent Banner",                    setup: 399, recur: 49,  interval: "month" },
+      { brand: "The WebSwan",               name: "Standard Website Package",                 setup: 499, recur: 49,  interval: "month" }
+    ];
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      brand: $("b-brand"), btnNew: $("b-new"), btnEx: $("b-existing"), exWrap: $("b-existing-wrap"), pick: $("b-client-pick"),
+      name: $("b-name"), company: $("b-company"), email: $("b-email"),
+      planPick: $("b-plan-pick"), planDel: $("b-plan-del"), planName: $("b-plan-name"), setup: $("b-setup"), recur: $("b-recur"),
+      interval: $("b-interval"), delay: $("b-delay"), savePlan: $("b-save-plan"), key: $("b-key"), addRes: $("b-add-res"),
+      summary: $("b-summary"), create: $("b-create"), result: $("b-result"), url: $("b-url"), copy: $("b-copy"), copyMsg: $("b-copy-msg"),
+      list: $("b-list"), count: $("b-count"), filter: $("b-filter"), quick: $("b-quick")
+    };
+    let plans = [], billing = [], loaded = false, lastLink = null;
+    const money = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+    async function copyText(text, msg) {
+      try { await navigator.clipboard.writeText(text); showToast(msg || "Copied!"); }
+      catch (e) {
+        const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); showToast(msg || "Copied!"); } catch (e2) { showToast("Select the text and copy it.", true); }
+        ta.remove();
+      }
+    }
+
+    /* quick links */
+    el.quick.innerHTML = QUICK_LINKS.map((q, i) =>
+      `<div class="b-item"><div class="b-item-name">${esc(q.name)}</div>
+       <div class="b-item-meta" style="word-break:break-all;">${esc(q.url)}</div>
+       <div class="b-row-btns"><button type="button" class="btn-blue" data-q="${i}">📋 Copy</button></div></div>`).join("");
+    el.quick.addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (b) copyText(QUICK_LINKS[+b.dataset.q].url, "Link copied!"); });
+
+    /* client: new or from residuals */
+    function setMode(existing) {
+      el.btnNew.setAttribute("aria-pressed", String(!existing));
+      el.btnEx.setAttribute("aria-pressed", String(existing));
+      el.exWrap.style.display = existing ? "block" : "none";
+      if (existing) fillClients();
+    }
+    el.btnNew.addEventListener("click", () => { setMode(false); el.pick.value = ""; });
+    el.btnEx.addEventListener("click", () => setMode(true));
+    function fillClients() {
+      const list = (typeof allResiduals !== "undefined" ? allResiduals : []).slice()
+        .sort((a, b) => (a.clientName || a.companyName || "").localeCompare(b.clientName || b.companyName || ""));
+      el.pick.innerHTML = '<option value="">Choose a client…</option>' + list.map(r =>
+        `<option value="${esc(r.id)}">${esc((r.companyName || r.clientName || "Client") + (r.clientName && r.companyName ? " · " + r.clientName : "") + " (" + (r.brand || "") + ")")}</option>`).join("");
+    }
+    el.pick.addEventListener("change", () => {
+      const r = (allResiduals || []).find(x => x.id === el.pick.value); if (!r) return;
+      el.name.value = r.clientName || ""; el.company.value = r.companyName || ""; el.email.value = r.email || "";
+      if (r.brand) el.brand.value = r.brand;
+      updateSummary();
+    });
+
+    /* plans */
+    function allPlans() { return DEFAULT_PLANS.map((p, i) => ({ ...p, id: "default-" + i, builtIn: true })).concat(plans); }
+    function fillPlans() {
+      const keep = el.planPick.value;
+      const list = allPlans().filter(p => p.brand === el.brand.value);
+      el.planPick.innerHTML = '<option value="">Custom plan (type it below)</option>' + list.map(p =>
+        `<option value="${esc(p.id)}">${esc(p.name)}: ${money(p.setup)} setup${p.interval !== "none" ? " + " + money(p.recur) + "/" + (p.interval === "year" ? "yr" : "mo") : ""}</option>`).join("");
+      if ([...el.planPick.options].some(o => o.value === keep)) el.planPick.value = keep;
+      el.planDel.style.display = (el.planPick.value && !el.planPick.value.startsWith("default-")) ? "inline-block" : "none";
+    }
+    el.brand.addEventListener("change", () => { el.planPick.value = ""; fillPlans(); updateSummary(); });
+    el.planPick.addEventListener("change", () => {
+      const p = allPlans().find(x => x.id === el.planPick.value);
+      el.planDel.style.display = (p && !p.builtIn) ? "inline-block" : "none";
+      if (!p) return;
+      el.planName.value = p.name; el.setup.value = p.setup || ""; el.recur.value = p.interval === "none" ? "" : (p.recur || "");
+      el.interval.value = p.interval || "month";
+      updateSummary();
+    });
+    el.planDel.addEventListener("click", async () => {
+      const p = plans.find(x => x.id === el.planPick.value); if (!p) return;
+      if (!confirm('Delete the saved plan "' + p.name + '"? Links already sent are not affected.')) return;
+      try { await window._fb.deletePlan(p.id); plans = plans.filter(x => x.id !== p.id); el.planPick.value = ""; fillPlans(); showToast("Plan deleted."); }
+      catch (e) { console.error(e); showToast("Could not delete the plan.", true); }
+    });
+
+    function readForm() {
+      const interval = el.interval.value;
+      return {
+        brand: el.brand.value,
+        clientName: el.name.value.trim(), company: el.company.value.trim(), email: el.email.value.trim(),
+        planName: el.planName.value.trim(),
+        setup: Math.round((parseFloat(el.setup.value) || 0) * 100) / 100,
+        recur: interval === "none" ? 0 : Math.round((parseFloat(el.recur.value) || 0) * 100) / 100,
+        interval, delayDays: interval === "none" ? 0 : parseInt(el.delay.value, 10) || 0
+      };
+    }
+    function updateSummary() {
+      const f = readForm();
+      if (!f.planName || (!f.setup && !f.recur)) { el.summary.textContent = ""; return; }
+      let s = `${f.clientName || f.company || "Your client"} pays ${money(f.setup)} today`;
+      if (f.recur) s += f.delayDays ? `, then ${money(f.recur)} every ${f.interval} starting in ${f.delayDays} days` : ` plus ${money(f.recur)} every ${f.interval} starting today`;
+      el.summary.textContent = s + ` (${f.brand}).`;
+    }
+    ["input", "change"].forEach(ev => [el.name, el.company, el.planName, el.setup, el.recur, el.interval, el.delay].forEach(x => x.addEventListener(ev, updateSummary)));
+    el.interval.addEventListener("change", () => { el.recur.disabled = el.delay.disabled = el.interval.value === "none"; });
+
+    /* create link */
+    el.create.addEventListener("click", async () => {
+      const f = readForm();
+      if (!f.clientName && !f.company) return showToast("Add the client's name or company.", true);
+      if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return showToast("That email doesn't look right.", true);
+      if (!f.planName) return showToast("Give the plan a name.", true);
+      if (f.setup <= 0 && f.recur <= 0) return showToast("Enter a setup fee or a recurring charge.", true);
+      if (f.interval !== "none" && f.setup <= 0 && f.recur <= 0) return showToast("Enter the recurring charge.", true);
+      if (!el.key.value) return showToast("Enter your billing security key.", true);
+      el.create.disabled = true; el.create.textContent = "Creating link…";
+      try {
+        const token = await window._fbAuth.token();
+        if (!token) throw new Error("Please sign in with Google first.");
+        const res = await fetch(BILLING_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "X-Billing-Key": el.key.value },
+          body: JSON.stringify(f)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error || "Stripe did not return a link.");
+        let url = data.url;
+        if (f.email) url += (url.includes("?") ? "&" : "?") + "prefilled_email=" + encodeURIComponent(f.email);
+        lastLink = { ...f, url };
+        el.url.value = url; el.result.style.display = "block";
+        const rec = { ...f, url, stripeLinkId: data.id || null, status: "Link sent" };
+        try { await window._fb.saveBilling(rec); } catch (e) { console.error(e); showToast("Link created, but saving the history failed.", true); }
+        if (el.savePlan.checked) {
+          try { const ref = await window._fb.savePlan({ brand: f.brand, name: f.planName, setup: f.setup, recur: f.recur, interval: f.interval }); plans.push({ id: ref.id, brand: f.brand, name: f.planName, setup: f.setup, recur: f.recur, interval: f.interval }); fillPlans(); }
+          catch (e) { console.error(e); }
+          el.savePlan.checked = false;
+        }
+        if (el.addRes.checked && !el.pick.value) {
+          try {
+            await window._fb.saveResidual({
+              clientName: f.clientName, companyName: f.company, projectName: f.planName, amount: f.recur, paymentDay: "",
+              notes: "Payment link sent " + new Date().toLocaleDateString() + ": " + url, phone: "", email: f.email,
+              brand: f.brand, plan: f.interval === "year" ? "Yearly" : "Monthly", setupFee: f.setup, setupDate: null, startDate: null,
+              status: "Link sent", studioRef: null, paymentDate: "2026-99"
+            });
+            if (typeof refreshResiduals === "function") refreshResiduals();
+          } catch (e) { console.error(e); }
+        }
+        el.key.value = "";
+        showToast("💳 Payment link created!");
+        await loadBilling();
+      } catch (err) {
+        console.error(err); showToast(err.message || "Could not create the link.", true);
+      } finally {
+        el.create.disabled = false; el.create.textContent = "💳 Create payment link";
+      }
+    });
+    function message(l) {
+      const who = l.clientName ? l.clientName.split(" ")[0] : "there";
+      let terms = money(l.setup) + (l.setup ? " today" : "");
+      if (l.recur) terms += (l.setup ? ", then " : "") + money(l.recur) + " per " + l.interval;
+      return `Hi ${who},\n\nHere is your secure payment link for ${l.planName} with ${l.brand} (${terms}):\n${l.url}\n\nThank you for choosing ${l.brand}! If you have any questions, just reply to this email.\n\nTania\n${l.brand}`;
+    }
+    el.copy.addEventListener("click", () => lastLink && copyText(lastLink.url, "Link copied!"));
+    el.copyMsg.addEventListener("click", () => lastLink && copyText(message(lastLink), "Message copied!"));
+
+    /* history */
+    function renderBilling() {
+      const f = el.filter.value;
+      const list = billing.filter(b => f === "all" || b.brand === f);
+      el.count.textContent = list.length;
+      if (!list.length) { el.list.innerHTML = '<p class="b-note">No links yet.</p>'; return; }
+      el.list.innerHTML = list.map(b => {
+        const when = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().toLocaleDateString() : "";
+        const terms = money(b.setup) + " setup" + (b.recur ? " + " + money(b.recur) + "/" + (b.interval === "year" ? "yr" : "mo") : "");
+        return `<div class="b-item"><div class="b-item-top"><span class="b-item-name">${esc(b.company || b.clientName)}${b.company && b.clientName ? " · " + esc(b.clientName) : ""}</span><span class="b-chip">${esc(b.brand)}</span></div>
+          <div class="b-item-meta">${esc(b.planName)}: ${terms}${when ? " · " + when : ""}${b.email ? " · " + esc(b.email) : ""}</div>
+          <div class="b-row-btns"><button type="button" class="btn-blue" data-copy="${esc(b.id)}">📋 Copy link</button><button type="button" class="btn-ghost" data-msg="${esc(b.id)}">✉️ Copy message</button></div></div>`;
+      }).join("");
+    }
+    el.list.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-copy]"), m = e.target.closest("[data-msg]");
+      const id = (c || m) && (c || m).dataset[c ? "copy" : "msg"]; const b = billing.find(x => x.id === id); if (!b) return;
+      copyText(c ? b.url : message(b), c ? "Link copied!" : "Message copied!");
+    });
+    el.filter.addEventListener("change", renderBilling);
+
+    async function loadBilling() {
+      try { billing = await window._fb.loadBilling(); renderBilling(); }
+      catch (e) { console.error(e); el.list.innerHTML = '<p class="b-note">Could not load your billing history. Check that you are signed in.</p>'; }
+    }
+    async function loadAll() {
+      if (loaded) return; loaded = true;
+      try { plans = await window._fb.loadPlans(); } catch (e) { console.error(e); plans = []; }
+      fillPlans(); loadBilling();
+    }
+    window.billingOpened = () => { fillPlans(); if (el.btnEx.getAttribute("aria-pressed") === "true") fillClients(); if (window._fbReady) loadAll(); };
+    window.addEventListener("fbReady", () => { window._fbReady = true; if (document.getElementById("view-billing").style.display === "block") loadAll(); });
+    fillPlans();
+  })();
 </script>
 </body>
 </html>
