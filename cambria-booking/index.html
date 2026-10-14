@@ -148,18 +148,13 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
         <p class="cd-hint" id="cdTimeHint">Select a day first.</p>
         <div class="cd-times" id="cdTimes" role="group" aria-label="Available times"></div>
 
-        <h2 class="cd-step"><b>3</b> Your details</h2>
+        <h2 class="cd-step"><b>3</b> Your visit</h2>
         <form id="cdForm" novalidate>
-          <div class="cd-row">
-            <div class="cd-field"><label for="cdName">Full name <span class="cd-req">*</span></label><input id="cdName" autocomplete="name" required></div>
-            <div class="cd-field"><label for="cdPhone">Phone <span class="cd-req">*</span></label><input id="cdPhone" type="tel" autocomplete="tel" required></div>
-          </div>
-          <div class="cd-field"><label for="cdEmail">Email <span class="cd-req">*</span></label><input id="cdEmail" type="email" autocomplete="email" required></div>
           <div class="cd-row">
             <div class="cd-field"><label for="cdPatient">I am a</label><select id="cdPatient"><option>New patient</option><option>Returning patient</option></select></div>
             <div class="cd-field"><label for="cdType">Visit type</label><select id="cdType"><option>Check-up &amp; cleaning</option><option>Emergency visit</option><option>Cosmetic consultation</option><option>Other</option></select></div>
           </div>
-          <p class="cd-note">🔒 Please don't share medical details here. After booking, you'll go to our secure patient portal to complete your forms.</p>
+          <p class="cd-note">🔒 No personal info needed here. After you confirm, you'll go to our secure patient portal to add your name, contact details and forms.</p>
           <button type="submit" class="cd-btn" id="cdReview" disabled>Review my appointment</button>
           <p class="cd-err" id="cdErr" role="alert"></p>
         </form>
@@ -261,7 +256,7 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
       b.disabled = off; if(!off) any=true;
       b.setAttribute('aria-label', fmtTime(m) + (off?' (taken)':''));
       b.setAttribute('aria-pressed', String(pickedTime===m));
-      (function(mm){ b.addEventListener('click', function(){ pickedTime=mm; renderTimes(); update(); say('Perfect! Just add your details below.'); happy(); }); })(m);
+      (function(mm){ b.addEventListener('click', function(){ pickedTime=mm; renderTimes(); update(); say('Perfect! Now review and confirm.'); happy(); }); })(m);
       box.appendChild(b);
     }
     $('cdTimeHint').textContent = any ? fmtDate(pickedDay) : 'No open times that day. Please pick another day.';
@@ -283,12 +278,9 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
 
   $('cdForm').addEventListener('submit', function(e){
     e.preventDefault(); var err=$('cdErr'); err.textContent='';
-    var name=$('cdName').value.trim(), phone=$('cdPhone').value.trim(), email=$('cdEmail').value.trim();
-    if (!name || !phone || !email){ err.textContent='Please enter your name, phone and email.'; (!name?$('cdName'):!phone?$('cdPhone'):$('cdEmail')).focus(); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent='Please check your email address.'; $('cdEmail').focus(); return; }
-    if ((phone.match(/\d/g)||[]).length < 10){ err.textContent='Please enter a 10-digit phone number.'; $('cdPhone').focus(); return; }
+    if (!pickedDay || !pickedTime){ err.textContent='Please choose a day and time.'; return; }
     var sum=$('cdSum'); sum.innerHTML='';
-    [['📅',fmtDate(pickedDay)],['🕒',fmtTime(pickedTime)],['🦷',$('cdType').value+' · '+$('cdPatient').value],['👤',name],['📞',phone],['✉️',email]].forEach(function(r){ var d=document.createElement('div'); d.textContent=r[0]+'  '+r[1]; sum.appendChild(d); });
+    [['📅',fmtDate(pickedDay)],['🕒',fmtTime(pickedTime)],['🦷',$('cdType').value+' · '+$('cdPatient').value]].forEach(function(r){ var d=document.createElement('div'); d.textContent=r[0]+'  '+r[1]; sum.appendChild(d); });
     openDlg('cdConfirm','cdYes');
   });
   $('cdBack').addEventListener('click', function(){ closeDlg('cdConfirm'); });
@@ -297,7 +289,7 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
   $('cdYes').addEventListener('click', function(){
     $('cdConfirm').hidden=true;
     // DEMO: here the real version saves the booking to Dr. Michael's calendar first.
-    $('cdDoneText').textContent = 'See you ' + fmtDate(pickedDay) + ' at ' + fmtTime(pickedTime) + '. A confirmation will be sent to ' + $('cdEmail').value.trim() + '.';
+    $('cdDoneText').textContent = 'See you ' + fmtDate(pickedDay) + ' at ' + fmtTime(pickedTime) + '. Next, finish your check-in on our secure patient portal.';
     var portal = PORTAL_URL || '#';
     $('cdPortal').href = portal;
     if (!PORTAL_URL){ $('cdPortal').textContent = 'Patient portal link goes here (demo)'; }
