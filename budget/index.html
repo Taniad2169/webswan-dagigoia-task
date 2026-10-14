@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan Budget</title>
+<link rel="icon" href="https://webswan-invoice.netlify.app/logos/logomenu512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, Timestamp }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM",
+    authDomain: "webswan-gigoia-task.firebaseapp.com",
+    projectId: "webswan-gigoia-task",
+    storageBucket: "webswan-gigoia-task.firebasestorage.app",
+    messagingSenderId: "970866236717",
+    appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4"
+  });
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+
+  window._fb = {
+    async residuals() { const s = await getDocs(collection(db, "residuals")); return s.docs.map(d => ({ id: d.id, ...d.data() })); },
+    async items() { const s = await getDocs(collection(db, "budget")); return s.docs.map(d => ({ id: d.id, ...d.data() })); },
+    async add(item) { const r = await addDoc(collection(db, "budget"), { ...item, createdAt: Timestamp.now() }); return r.id; },
+    async update(id, data) { await updateDoc(doc(db, "budget", id), data); },
+    async remove(id) { await deleteDoc(doc(db, "budget", id)); }
+  };
+  window._fbAuth = {
+    async signIn() { await signInWithPopup(auth, new GoogleAuthProvider()); },
+    async signOut() { await signOut(auth); }
+  };
+  onAuthStateChanged(auth, (user) => {
+    const ok = !!user && OWNERS.includes((user.email || "").toLowerCase());
+    window._fbUser = user; window._fbOk = ok;
+    window.dispatchEvent(new CustomEvent("fbAuth", { detail: { user, ok } }));
+  });
+</script>
+
+<style>
+:root{
+  --blue:#339cde; --blue-dk:#1f6fa3; --sky:#93e5fa; --navy:#0c2d48; --ink:#16233a; --muted:#5d6b80;
+  --bg:#f2f7fc; --card:#ffffff; --line:#dde7f1; --green:#11875d; --green-bg:#e3f6ee; --red:#c0392b; --red-bg:#fdecea;
+  --biz:#6d4ad6; --biz-bg:#efeafd; --per:#d9772b; --per-bg:#fdf0e5;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+button,input,select{font:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(120deg,var(--navy),#155b8c 60%,var(--blue));color:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 10px 30px rgba(12,45,72,.18)}
+header.top img{width:44px;height:44px;border-radius:12px;background:#fff;padding:4px}
+header.top h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:.2px}
+header.top p{margin:2px 0 0;font-size:.85rem;opacity:.85}
+.top-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;display:inline-flex;align-items:center;gap:6px;text-decoration:none;min-height:42px}
+.btn:hover{background:var(--blue-dk)}
+.btn.ghost{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4)}
+.btn.light{background:#fff;color:var(--blue-dk);border:1px solid var(--line)}
+.btn.light:hover{background:#eef6fc}
+.btn:focus-visible,.icon-btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.month-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0 4px}
+.month-bar h2{margin:0;min-width:220px;text-align:center;font-size:1.3rem}
+.icon-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--blue-dk);font-size:1.2rem;cursor:pointer}
+.icon-btn:hover{background:#eef6fc}
+.today-link{font-size:.85rem;color:var(--blue-dk);background:none;border:0;text-decoration:underline;cursor:pointer;padding:6px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.tile .lbl{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tile .val{font-size:1.55rem;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+.tile.inc .val{color:var(--green)} .tile.exp .val{color:var(--red)}
+.tile.left.pos{background:var(--green-bg);border-color:#bfe7d4} .tile.left.neg{background:var(--red-bg);border-color:#f5c6c0}
+.meter{height:10px;border-radius:99px;background:#e7eef6;overflow:hidden;margin-top:10px;display:flex}
+.meter i{display:block;height:100%}
+.cols{display:grid;grid-template-columns:1fr 1.25fr;gap:16px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(12,45,72,.05)}
+.card h3{margin:0 0 4px;font-size:1.08rem;display:flex;align-items:center;gap:8px}
+.card h3 .tot{margin-left:auto;font-variant-numeric:tabular-nums}
+.card .hint{margin:0 0 12px;font-size:.84rem;color:var(--muted)}
+.group-title{display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-weight:800;font-size:.9rem}
+.group-title .tot{margin-left:auto;font-variant-numeric:tabular-nums}
+.pill{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.per{background:var(--per-bg);color:#8a4410}.pill.biz{background:var(--biz-bg);color:#4a2fa6}
+.pill.auto{background:#e2f2fc;color:var(--blue-dk)}.pill.rec{background:#eef1f5;color:#44516a}.pill.late{background:var(--red-bg);color:var(--red)}
+ul.rows{list-style:none;margin:0;padding:0}
+ul.rows li{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid #edf2f7;flex-wrap:wrap}
+ul.rows li:last-child{border-bottom:0}
+.r-name{font-weight:600;flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.r-meta{font-size:.78rem;color:var(--muted);display:block;font-weight:400}
+.r-amt{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.r-amt.muted{color:var(--muted);font-weight:600;text-decoration:line-through}
+.row-btns{display:flex;gap:4px}
+.mini{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 8px;font-size:.78rem;font-weight:600;color:var(--blue-dk);cursor:pointer;min-height:32px}
+.mini:hover{background:#eef6fc}.mini.del{color:var(--red)}
+.empty{color:var(--muted);font-size:.88rem;padding:8px 4px}
+form.add{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;background:#f6fafd;border:1px dashed #c9dbea;border-radius:12px;padding:12px;margin-bottom:6px}
+form.add .f{display:flex;flex-direction:column;gap:3px;grid-column:span 2}
+form.add .f.w3{grid-column:span 3}form.add .f.w6{grid-column:span 6}
+form.add label{font-size:.76rem;font-weight:700;color:var(--muted)}
+form.add input,form.add select{border:1px solid #c9d7e5;border-radius:9px;padding:9px 10px;background:#fff;min-height:42px;width:100%}
+form.add .acts{grid-column:span 6;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid #c9d7e5;border-radius:9px;overflow:hidden;background:#fff}
+.seg label{flex:1;text-align:center;padding:9px 6px;cursor:pointer;font-size:.85rem;font-weight:700;color:var(--muted);margin:0;min-height:42px;display:flex;align-items:center;justify-content:center}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+span{color:#fff}
+.seg label:has(input:checked){background:var(--blue);color:#fff}
+.seg label:has(input:focus-visible){outline:3px solid var(--sky);outline-offset:-3px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:600;margin:4px 0 10px}
+.toggle input{width:18px;height:18px}
+.banner{border-radius:12px;padding:12px 14px;margin:12px 0;font-size:.9rem}
+.banner.warn{background:#fff6e0;border:1px solid #f1d58a;color:#6b4d00}
+.banner.info{background:#e8f4fc;border:1px solid #bfe0f5;color:#11486e}
+.banner code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:5px;font-size:.82rem;white-space:pre-wrap;display:block;margin-top:6px}
+.gate{max-width:460px;margin:60px auto;text-align:center}
+.gate .card{padding:28px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ytd{font-size:.85rem;color:var(--muted);text-align:center;margin:0 0 4px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}}
+@media (max-width:520px){.tile .val{font-size:1.25rem}.month-bar h2{min-width:0;font-size:1.1rem}form.add .f,form.add .f.w3{grid-column:span 6}header.top h1{font-size:1.15rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="https://webswan-invoice.netlify.app/logos/logomenu512.png" alt="">
+    <div>
+      <h1>WebSwan Budget</h1>
+      <p>Personal &amp; business money, month by month</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn ghost" href="https://taniad2169.github.io/Daily-task/">← WorkPilot</a>
+      <a class="btn ghost" href="https://taniad2169.github.io/webswan-dagigoia-task/" target="_blank" rel="noopener">Residual</a>
+      <button class="btn ghost" id="authBtn" type="button">Sign in</button>
+    </div>
+  </header>
+
+  <div id="gate" class="gate">
+    <div class="card">
+      <h2 style="margin-top:0">Private budget</h2>
+      <p id="gateMsg" style="color:var(--muted)">Sign in with your WebSwan Google account to see your budget. Your Residual payments fill in automatically.</p>
+      <button class="btn" id="gateBtn" type="button">Sign in with Google</button>
+    </div>
+  </div>
+
+  <main id="app" hidden>
+    <div id="storeBanner" class="banner warn" hidden></div>
+
+    <div class="month-bar">
+      <button class="icon-btn" id="prevM" type="button" aria-label="Previous month">‹</button>
+      <h2 id="monthLbl" aria-live="polite">Month</h2>
+      <button class="icon-btn" id="nextM" type="button" aria-label="Next month">›</button>
+    </div>
+    <p class="ytd"><span id="ytd"></span> <button class="today-link" id="thisM" type="button">Go to this month</button></p>
+
+    <section class="tiles" aria-label="Month summary">
+      <div class="tile inc"><div class="lbl">Income</div><div class="val" id="tInc">$0</div><div class="sub" id="tIncSub"></div></div>
+      <div class="tile exp"><div class="lbl">Expenses</div><div class="val" id="tExp">$0</div><div class="sub" id="tExpSub"></div></div>
+      <div class="tile"><div class="lbl">Personal · Business</div><div class="val" style="font-size:1.15rem" id="tSplit">$0 · $0</div>
+        <div class="meter" aria-hidden="true"><i id="mPer" style="background:var(--per)"></i><i id="mBiz" style="background:var(--biz)"></i></div></div>
+      <div class="tile left" id="tLeftBox"><div class="lbl">Left over</div><div class="val" id="tLeft">$0</div><div class="sub" id="tLeftSub"></div></div>
+    </section>
+
+    <div class="cols">
+      <!-- INCOME -->
+      <section class="card" aria-labelledby="incH">
+        <h3 id="incH">💵 Income <span class="tot" id="incTot">$0</span></h3>
+        <p class="hint">Residual payments and one-time setup fees fill in by themselves. Add anything else you got paid.</p>
+
+        <label class="toggle"><input type="checkbox" id="useRes" checked> Include payments from WebSwan Residual</label>
+
+        <div class="group-title">From Residual <span class="pill auto">auto</span><span class="tot" id="autoTot">$0</span></div>
+        <ul class="rows" id="autoList"></ul>
+
+        <div class="group-title">Added by you <span class="tot" id="manIncTot">$0</span></div>
+        <ul class="rows" id="incList"></ul>
+
+        <form class="add" id="incForm" autocomplete="off">
+          <div class="f w3"><label for="iName">What</label><input id="iName" placeholder="e.g. Client paid by Zelle" required></div>
+          <div class="f w3"><label for="iAmt">Amount ($)</label><input id="iAmt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required></div>
+          <div class="f w3"><label for="iWhen">How often</label>
+            <select id="iWhen"><option value="once">Just this month</option><option value="monthly">Every month</option></select></div>
+          <div class="f w3"><label for="iScope">For</label>
+            <select id="iScope"><option>Business</option><option>Personal</option></select></div>
+          <div class="acts"><button class="btn" type="submit" id="iSave">+ Add income</button><button class="mini" type="button" id="iCancel" hidden>Cancel edit</button></div>
+        </form>
+      </section>
+
+      <!-- EXPENSES -->
+      <section class="card" aria-labelledby="expH">
+        <h3 id="expH">🧾 Expenses <span class="tot" id="expTot">$0</span></h3>
+        <p class="hint">Monthly bills carry over to every month until you stop them. One-time expenses only count in their month.</p>
+
+        <form class="add" id="expForm" autocomplete="off">
+          <div class="f w6" role="group" aria-label="Personal or business">
+            <div class="seg">
+              <label><input type="radio" name="eScope" value="Personal" checked><span>🏠 Personal</span></label>
+              <label><input type="radio" name="eScope" value="Business"><span>💼 Business</span></label>
+            </div>
+          </div>
+          <div class="f w3"><label for="eName">What</label><input id="eName" placeholder="e.g. Rent, SiteSwan, Base44" required></div>
+          <div class="f w3"><label for="eAmt">Amount ($)</label><input id="eAmt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required></div>
+          <div class="f w3"><label for="eCat">Category</label><select id="eCat"></select></div>
+          <div class="f w3"><label for="eWhen">How often</label>
+            <select id="eWhen"><option value="monthly">Every month</option><option value="once">Just this month</option></select></div>
+          <div class="acts"><button class="btn" type="submit" id="eSave">+ Add expense</button><button class="mini" type="button" id="eCancel" hidden>Cancel edit</button></div>
+        </form>
+
+        <div class="group-title"><span class="pill per">Personal</span><span class="tot" id="perTot">$0</span></div>
+        <ul class="rows" id="perList"></ul>
+        <div class="group-title"><span class="pill biz">Business</span><span class="tot" id="bizTot">$0</span></div>
+        <ul class="rows" id="bizList"></ul>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var CATS = {
+    Personal: ["Housing","Utilities","Phone & internet","Food & groceries","Transportation","Insurance","Health","Family","Debt payments","Savings","Fun","Other"],
+    Business: ["Software & subscriptions","Website & hosting","Advertising","Phone lines & AI receptionist","Contractors & staff","Supplies","Fees & banking","Education","Taxes","Other"]
+  };
+  var LOCAL_KEY = "ws-budget-items";
+  var items = [], residuals = [], useLocal = false, editing = null;
+  var now = new Date(), cur = { y: now.getFullYear(), m: now.getMonth() + 1 };
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function ym(y,m){ return y + "-" + pad(m); }
+  function money(n){ return (n < 0 ? "-$" : "$") + Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function todayISO(){ var d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function monthName(y,m){ return new Date(y, m-1, 1).toLocaleDateString("en-US",{month:"long",year:"numeric"}); }
+  function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){ e.classList.remove("show"); }, 2400); }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  /* ---------- storage ---------- */
+  function loadLocal(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch(e){ return []; } }
+  function saveLocal(){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify(items)); } catch(e){} }
+  function rulesHelp(){
+    var b = $("storeBanner"); b.hidden = false;
+    b.innerHTML = "<strong>Saving on this device for now.</strong> Your Firebase rules don't allow the new <b>budget</b> list yet, so budget items are kept in this browser only. " +
+      "To sync to the cloud, in Firebase → Firestore → Rules, add this inside <i>match /databases/{database}/documents</i> (same owner emails as your Residual):" +
+      "<code>match /budget/{id} {\n  allow read, write: if request.auth != null &&\n    request.auth.token.email in ['thewebswann@gmail.com','taniadomingue373@gmail.com'];\n}</code>";
+  }
+  async function addItem(it){
+    if (!useLocal) { try { it.id = await window._fb.add(it); items.push(it); return; } catch(e){ console.error(e); useLocal = true; items = items.concat(loadLocal()); rulesHelp(); } }
+    it.id = "local-" + Date.now() + Math.random().toString(36).slice(2,6); items.push(it); saveLocal();
+  }
+  async function updItem(it, data){
+    Object.assign(it, data);
+    if (String(it.id).indexOf("local-") === 0) { saveLocal(); return; }
+    try { await window._fb.update(it.id, data); } catch(e){ console.error(e); toast("Couldn't save that change."); }
+  }
+  async function delItem(it){
+    items = items.filter(function(x){ return x !== it; });
+    if (String(it.id).indexOf("local-") === 0) { saveLocal(); return; }
+    try { await window._fb.remove(it.id); } catch(e){ console.error(e); toast("Couldn't delete that one."); items.push(it); }
+  }
+
+  /* ---------- which items count in a month ---------- */
+  function inMonth(it, key){
+    if (it.recurring) return it.startMonth <= key && (!it.endMonth || key <= it.endMonth);
+    return it.month === key;
+  }
+
+  /* ---------- Residual income for a month (paid only: due dates up to today) ---------- */
+  function residualDates(e, fromISO, toISO){
+    var amt = parseFloat(e.amount) || 0; if (!amt || !e.startDate) return [];
+    var yearly = e.plan === "Yearly", day = parseInt(e.paymentDay) || parseInt(e.startDate.slice(8,10));
+    var y = +e.startDate.slice(0,4), m = +e.startDate.slice(5,7), out = [];
+    function iso(yy, mm){ var last = new Date(yy, mm, 0).getDate(); return yy+"-"+pad(mm)+"-"+pad(Math.min(day,last)); }
+    var d = iso(y, m); if (d < e.startDate) { m++; if (m > 12) { m = 1; y++; } d = iso(y, m); }
+    for (var i = 0; i < 600 && d <= toISO; i++) {
+      if (d >= fromISO) out.push(d);
+      if (yearly) y++; else { m++; if (m > 12) { m = 1; y++; } }
+      d = iso(y, m);
+    }
+    return out;
+  }
+  function residualIncome(y, m){
+    var from = ym(y,m) + "-01", last = ym(y,m) + "-" + pad(new Date(y, m, 0).getDate()), t = todayISO();
+    var to = last < t ? last : t, rows = [];
+    residuals.forEach(function(e){
+      var st = e.status || "Active", who = e.company || e.name || "Client";
+      if (st === "Link sent") return;
+      var amt = parseFloat(e.amount) || 0, perLbl = e.plan === "Yearly" ? "yearly" : "monthly";
+      if (from <= to) {
+        var dates = [];
+        if (st === "Active") dates = residualDates(e, from, to);
+        else if (e.paidAsOf) dates = residualDates(e, from, (e.paidAsOf < to ? e.paidAsOf : to));
+        dates.forEach(function(d){ rows.push({ name: who, meta: "Residual " + perLbl + " · " + d.slice(5).replace("-","/"), amt: amt, brand: e.brand }); });
+        if (st === "Late") {
+          var due = residualDates(e, from, last);
+          if (due.length) rows.push({ name: who, meta: "Late, not counted until paid", amt: amt * due.length, late: true });
+        }
+      }
+      var fee = parseFloat(e.setupFee) || 0;
+      if (fee && e.setupDate && e.setupDate >= from && e.setupDate <= to) rows.push({ name: who, meta: "One-time setup · " + e.setupDate.slice(5).replace("-","/"), amt: fee, brand: e.brand });
+    });
+    return rows;
+  }
+
+  /* ---------- totals for a month ---------- */
+  function totals(y, m){
+    var key = ym(y,m), auto = $("useRes").checked ? residualIncome(y,m) : [];
+    var autoSum = auto.reduce(function(s,r){ return s + (r.late ? 0 : r.amt); }, 0);
+    var inc = items.filter(function(i){ return i.kind === "income" && inMonth(i, key); });
+    var exp = items.filter(function(i){ return i.kind === "expense" && inMonth(i, key); });
+    var manInc = inc.reduce(function(s,i){ return s + (+i.amount||0); }, 0);
+    var per = exp.filter(function(i){ return i.scope === "Personal"; }), biz = exp.filter(function(i){ return i.scope !== "Personal"; });
+    var perSum = per.reduce(function(s,i){ return s + (+i.amount||0); }, 0), bizSum = biz.reduce(function(s,i){ return s + (+i.amount||0); }, 0);
+    return { key: key, auto: auto, autoSum: autoSum, inc: inc, manInc: manInc, per: per, biz: biz, perSum: perSum, bizSum: bizSum,
+             income: autoSum + manInc, expense: perSum + bizSum };
+  }
+
+  /* ---------- render ---------- */
+  function rowHTML(i, key){
+    var tag = i.recurring ? '<span class="pill rec">every month</span>' : "";
+    var meta = [i.category, i.recurring ? ("since " + monthName(+i.startMonth.slice(0,4), +i.startMonth.slice(5,7))) : ""].filter(Boolean).join(" · ");
+    var btns = '<button class="mini" data-act="edit" data-id="'+esc(i.id)+'" type="button">Edit</button>' +
+      (i.recurring ? '<button class="mini" data-act="stop" data-id="'+esc(i.id)+'" type="button" title="Stop from this month on">Stop</button>' : "") +
+      '<button class="mini del" data-act="del" data-id="'+esc(i.id)+'" type="button">Delete</button>';
+    return '<li><span class="r-name">'+esc(i.name)+' '+tag+'<span class="r-meta">'+esc(meta)+'</span></span><span class="r-amt">'+money(+i.amount||0)+'</span><span class="row-btns">'+btns+'</span></li>';
+  }
+  function list(el, arr, key, emptyTxt){
+    arr = arr.slice().sort(function(a,b){ return (+b.amount||0) - (+a.amount||0); });
+    el.innerHTML = arr.length ? arr.map(function(i){ return rowHTML(i, key); }).join("") : '<li class="empty">'+emptyTxt+'</li>';
+  }
+  function render(){
+    var t = totals(cur.y, cur.m);
+    $("monthLbl").textContent = monthName(cur.y, cur.m);
+    $("tInc").textContent = money(t.income);
+    $("tIncSub").textContent = "Residual " + money(t.autoSum) + " · Other " + money(t.manInc);
+    $("tExp").textContent = money(t.expense);
+    $("tExpSub").textContent = (t.per.length + t.biz.length) + " items";
+    $("tSplit").textContent = money(t.perSum) + " · " + money(t.bizSum);
+    var tot = t.perSum + t.bizSum || 1;
+    $("mPer").style.width = (t.perSum / tot * 100) + "%"; $("mBiz").style.width = (t.bizSum / tot * 100) + "%";
+    var left = t.income - t.expense;
+    $("tLeft").textContent = money(left);
+    $("tLeftBox").className = "tile left " + (left >= 0 ? "pos" : "neg");
+    $("tLeftSub").textContent = t.income ? Math.round(t.expense / t.income * 100) + "% of income spent" : "No income yet this month";
+    $("incTot").textContent = money(t.income); $("autoTot").textContent = money(t.autoSum); $("manIncTot").textContent = money(t.manInc);
+    $("expTot").textContent = money(t.expense); $("perTot").textContent = money(t.perSum); $("bizTot").textContent = money(t.bizSum);
+
+    var auto = t.auto.slice().sort(function(a,b){ return b.amt - a.amt; });
+    $("autoList").innerHTML = !$("useRes").checked ? '<li class="empty">Turned off.</li>' :
+      auto.length ? auto.map(function(r){
+        return '<li><span class="r-name">'+esc(r.name)+(r.late ? ' <span class="pill late">late</span>' : '')+'<span class="r-meta">'+esc(r.meta)+(r.brand ? ' · '+esc(r.brand) : '')+'</span></span><span class="r-amt'+(r.late ? ' muted' : '')+'">'+money(r.amt)+'</span></li>';
+      }).join("") : '<li class="empty">No Residual payments in this month' + (ym(cur.y,cur.m) > todayISO().slice(0,7) ? " yet (only paid dates count)." : ".") + '</li>';
+    list($("incList"), t.inc, t.key, "Nothing added.");
+    list($("perList"), t.per, t.key, "No personal expenses this month.");
+    list($("bizList"), t.biz, t.key, "No business expenses this month.");
+
+    // year to date
+    var yi = 0, ye = 0;
+    for (var mm = 1; mm <= cur.m; mm++) { var x = totals(cur.y, mm); yi += x.income; ye += x.expense; }
+    $("ytd").textContent = cur.y + " so far: income " + money(yi) + " · expenses " + money(ye) + " · left " + money(yi - ye) + ".";
+  }
+
+  /* ---------- forms ---------- */
+  function fillCats(scope, keep){
+    var sel = $("eCat"), v = keep || sel.value;
+    sel.innerHTML = CATS[scope].map(function(c){ return "<option>"+c+"</option>"; }).join("");
+    if (CATS[scope].indexOf(v) > -1) sel.value = v;
+  }
+  function scopeVal(){ return document.querySelector('input[name=eScope]:checked').value; }
+  document.querySelectorAll('input[name=eScope]').forEach(function(r){ r.addEventListener("change", function(){ fillCats(scopeVal()); }); });
+  fillCats("Personal");
+
+  function resetForm(kind){
+    editing = null;
+    if (kind === "expense") { $("expForm").reset(); fillCats("Personal"); $("eSave").textContent = "+ Add expense"; $("eCancel").hidden = true; }
+    else { $("incForm").reset(); $("iSave").textContent = "+ Add income"; $("iCancel").hidden = true; }
+  }
+  $("eCancel").addEventListener("click", function(){ resetForm("expense"); });
+  $("iCancel").addEventListener("click", function(){ resetForm("income"); });
+
+  async function submit(kind, e){
+    e.preventDefault();
+    var isExp = kind === "expense";
+    var name = (isExp ? $("eName") : $("iName")).value.trim(), amt = parseFloat((isExp ? $("eAmt") : $("iAmt")).value);
+    if (!name || !(amt >= 0)) { toast("Please add a name and an amount."); return; }
+    var monthly = (isExp ? $("eWhen") : $("iWhen")).value === "monthly", key = ym(cur.y, cur.m);
+    var data = { kind: kind, name: name, amount: Math.round(amt * 100) / 100,
+      scope: isExp ? scopeVal() : $("iScope").value, category: isExp ? $("eCat").value : "",
+      recurring: monthly, month: monthly ? "" : key, startMonth: monthly ? key : "", endMonth: "" };
+    if (editing) {
+      var it = editing;
+      if (it.recurring && monthly && key > it.startMonth) {
+        // Changing a monthly item mid-way: keep past months as they were, new value from this month on.
+        var prevKey = cur.m === 1 ? ym(cur.y - 1, 12) : ym(cur.y, cur.m - 1), oldEnd = it.endMonth || "";
+        await updItem(it, { endMonth: prevKey });
+        data.endMonth = oldEnd; await addItem(data); toast("Updated from " + monthName(cur.y, cur.m) + " on.");
+      } else {
+        if (it.recurring && monthly) { data.startMonth = it.startMonth; data.endMonth = it.endMonth || ""; }
+        await updItem(it, data); toast("Updated.");
+      }
+    } else { await addItem(data); toast(isExp ? "Expense added." : "Income added."); }
+    resetForm(kind); render();
+  }
+  $("expForm").addEventListener("submit", function(e){ submit("expense", e); });
+  $("incForm").addEventListener("submit", function(e){ submit("income", e); });
+
+  document.addEventListener("click", async function(e){
+    var b = e.target.closest("button[data-act]"); if (!b) return;
+    var it = items.find(function(x){ return String(x.id) === b.dataset.id; }); if (!it) return;
+    var act = b.dataset.act, key = ym(cur.y, cur.m);
+    if (act === "del") {
+      var msg = it.recurring ? 'Delete "' + it.name + '" from ALL months? (Use Stop to end it from this month on and keep past months.)' : 'Delete "' + it.name + '"?';
+      if (!confirm(msg)) return;
+      await delItem(it); toast("Deleted."); render();
+    } else if (act === "stop") {
+      var prev = cur.m === 1 ? ym(cur.y - 1, 12) : ym(cur.y, cur.m - 1);
+      if (prev < it.startMonth) { await delItem(it); } else { await updItem(it, { endMonth: prev }); }
+      toast('"' + it.name + '" stopped from ' + monthName(cur.y, cur.m) + " on."); render();
+    } else if (act === "edit") {
+      editing = it;
+      if (it.kind === "expense") {
+        document.querySelector('input[name=eScope][value="' + (it.scope === "Personal" ? "Personal" : "Business") + '"]').checked = true;
+        fillCats(it.scope === "Personal" ? "Personal" : "Business", it.category);
+        $("eName").value = it.name; $("eAmt").value = it.amount; $("eWhen").value = it.recurring ? "monthly" : "once";
+        $("eSave").textContent = "Save changes"; $("eCancel").hidden = false; $("eName").focus();
+      } else {
+        $("iName").value = it.name; $("iAmt").value = it.amount; $("iWhen").value = it.recurring ? "monthly" : "once"; $("iScope").value = it.scope || "Business";
+        $("iSave").textContent = "Save changes"; $("iCancel").hidden = false; $("iName").focus();
+      }
+    }
+  });
+
+  function go(d){ cur.m += d; if (cur.m < 1) { cur.m = 12; cur.y--; } if (cur.m > 12) { cur.m = 1; cur.y++; } resetForm("expense"); resetForm("income"); render(); }
+  $("prevM").addEventListener("click", function(){ go(-1); });
+  $("nextM").addEventListener("click", function(){ go(1); });
+  $("thisM").addEventListener("click", function(){ cur = { y: now.getFullYear(), m: now.getMonth() + 1 }; render(); });
+  $("useRes").addEventListener("change", function(){ try { localStorage.setItem("ws-budget-useRes", this.checked ? "1" : "0"); } catch(e){} render(); });
+  try { if (localStorage.getItem("ws-budget-useRes") === "0") $("useRes").checked = false; } catch(e){}
+
+  /* ---------- sign in + load ---------- */
+  var loaded = false;
+  async function load(){
+    if (loaded) return; loaded = true;
+    try { residuals = await window._fb.residuals(); } catch(e){ console.error(e); toast("Couldn't read Residual payments."); }
+    try { items = await window._fb.items(); } catch(e){ console.error(e); useLocal = true; items = loadLocal(); rulesHelp(); }
+    if (!useLocal) { var loc = loadLocal(); if (loc.length) { /* move anything saved on this device earlier up to the cloud */
+      for (var i = 0; i < loc.length; i++) { var x = Object.assign({}, loc[i]); delete x.id; try { x.id = await window._fb.add(x); items.push(x); } catch(e){ break; } }
+      try { localStorage.removeItem(LOCAL_KEY); } catch(e){} } }
+    render();
+  }
+  function doSignIn(){ window._fbAuth.signIn().catch(function(e){ console.error(e); toast("Sign-in didn't finish."); }); }
+  $("gateBtn").addEventListener("click", doSignIn);
+  $("authBtn").addEventListener("click", function(){ if (window._fbUser) window._fbAuth.signOut(); else doSignIn(); });
+  window.addEventListener("fbAuth", function(ev){
+    var d = ev.detail;
+    $("authBtn").textContent = d.user ? "Sign out" : "Sign in";
+    if (d.ok) { $("gate").hidden = true; $("app").hidden = false; load(); }
+    else {
+      $("app").hidden = true; $("gate").hidden = false; loaded = false; items = []; residuals = [];
+      $("gateMsg").textContent = d.user ? "This Google account doesn't have access. Please sign in with your WebSwan account." : "Sign in with your WebSwan Google account to see your budget. Your Residual payments fill in automatically.";
+    }
+  });
+})();
+</script>
+</body>
+</html>
