@@ -271,7 +271,7 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
   function tell(msg){ if (EMBED) { try { window.parent.postMessage(msg, '*'); } catch(e){} } }
   if (EMBED) {
     document.documentElement.classList.add('cd-embed');
-    var sendH = function(){ var m=0; [].forEach.call(document.body.children, function(el){ if (el.tagName==='SCRIPT' || getComputedStyle(el).position==='fixed') return; var r=el.getBoundingClientRect(); if (r.height) m=Math.max(m, r.bottom + window.pageYOffset); }); tell({type:'cd-height', h: Math.ceil(m) + 24}); };
+    var sendH = function(){ var m=0; [].forEach.call(document.body.children, function(el){ if (el.tagName==='SCRIPT' || getComputedStyle(el).position==='fixed') return; var r=el.getBoundingClientRect(); if (r.height) m=Math.max(m, r.bottom + window.pageYOffset); }); tell({type:'cd-height', h: Math.ceil(m) + 64}); };
     if (window.ResizeObserver) new ResizeObserver(sendH).observe(document.body);
     window.addEventListener('load', sendH); sendH();
   }
