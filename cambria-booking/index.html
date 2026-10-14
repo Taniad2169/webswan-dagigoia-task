@@ -84,6 +84,7 @@ body{margin:0;font-family:"Open Sans",Arial,sans-serif;color:var(--cd-ink);backg
 /* modal */
 .cd-overlay{position:fixed;inset:0;background:rgba(24,49,59,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .cd-overlay[hidden]{display:none}
+.cd-embed body{background:transparent}
 .cd-modal{background:#fff;border-radius:16px;max-width:430px;width:100%;padding:22px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .cd-modal h2{margin:6px 0 6px;color:var(--cd-navy);font-family:"Roboto Condensed",Arial,sans-serif}
 .cd-sum{background:var(--cd-soft);border-radius:10px;padding:12px;margin:12px 0 16px;text-align:left;font-size:.95rem}
@@ -184,7 +185,7 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
     <h2 id="cdDoneTitle">You're booked! 🎉</h2>
     <p id="cdDoneText"></p>
     <p style="font-size:.9rem;color:var(--cd-muted)">Taking you to the patient portal to complete your forms in <strong id="cdCount">5</strong> seconds…</p>
-    <div class="cd-actions"><a class="cd-btn" id="cdPortal" href="#" style="text-decoration:none">Go to the patient portal now</a></div>
+    <div class="cd-actions"><a class="cd-btn" id="cdPortal" href="#" target="_top" style="text-decoration:none">Go to the patient portal now</a></div>
   </div>
 </div>
 
@@ -266,7 +267,15 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
   $('cdPrev').addEventListener('click', function(){ view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderMonth(); });
   $('cdNext').addEventListener('click', function(){ view = new Date(view.getFullYear(), view.getMonth()+1, 1); renderMonth(); });
 
-  function openDlg(id, focusId){ lastFocus=document.activeElement; $(id).hidden=false; $(focusId).focus(); }
+  var EMBED = window.self !== window.top;
+  function tell(msg){ if (EMBED) { try { window.parent.postMessage(msg, '*'); } catch(e){} } }
+  if (EMBED) {
+    document.documentElement.classList.add('cd-embed');
+    var sendH = function(){ var m=0; [].forEach.call(document.body.children, function(el){ if (el.tagName==='SCRIPT' || getComputedStyle(el).position==='fixed') return; var r=el.getBoundingClientRect(); if (r.height) m=Math.max(m, r.bottom + window.pageYOffset); }); tell({type:'cd-height', h: Math.ceil(m) + 24}); };
+    if (window.ResizeObserver) new ResizeObserver(sendH).observe(document.body);
+    window.addEventListener('load', sendH); sendH();
+  }
+  function openDlg(id, focusId){ lastFocus=document.activeElement; $(id).hidden=false; $(focusId).focus({preventScroll:true}); tell({type:'cd-show-center'}); }
   function closeDlg(id){ $(id).hidden=true; if(lastFocus) lastFocus.focus(); }
   document.addEventListener('keydown', function(e){
     var dlg = !$('cdConfirm').hidden ? 'cdConfirm' : (!$('cdDone').hidden ? 'cdDone' : null);
@@ -295,13 +304,17 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
     if (!PORTAL_URL){ $('cdPortal').textContent = 'Patient portal link goes here (demo)'; }
     openDlg('cdDone','cdPortal');
     var n=5; $('cdCount').textContent=n; clearInterval(timer);
-    timer=setInterval(function(){ n--; $('cdCount').textContent=n; if(n<=0){ clearInterval(timer); if(PORTAL_URL) window.location.href=PORTAL_URL; } }, 1000);
+    timer=setInterval(function(){ n--; $('cdCount').textContent=n; if(n<=0){ clearInterval(timer); if(PORTAL_URL){ if (EMBED) tell({type:'cd-go', url:PORTAL_URL}); else window.location.href=PORTAL_URL; } } }, 1000);
   });
 
   renderMonth();
+  $('cdPortal').addEventListener('click', function(e){ if (!PORTAL_URL) e.preventDefault(); });
 })();
 </script>
 <!-- WebSwan ADA accessibility button + cookie consent banner -->
-<script src="https://thewebswan-widget.netlify.app/ada-widget.js" data-privacy-url="https://drmichaelcambria.taniadomingue.multisiteadmin.com/#privacy-policy" defer></script>
+<script>
+/* WebSwan ADA + cookie widget: only on the standalone page. When embedded on his website, the site's own banner and ADA button are used. */
+if (window.self === window.top) { var w=document.createElement('script'); w.src='https://thewebswan-widget.netlify.app/ada-widget.js'; w.defer=true; w.setAttribute('data-privacy-url','https://drmichaelcambria.taniadomingue.multisiteadmin.com/#privacy-policy'); document.body.appendChild(w); }
+</script>
 </body>
 </html>
