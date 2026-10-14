@@ -129,10 +129,9 @@ th{font-size:.75rem;text-transform:uppercase;color:var(--muted);letter-spacing:.
     var ads=names(function(x){return x.ads;}), track=names(function(x){return x.track && !x.ads;}), phi=v.filter(function(x){return x.phi;});
     var fail=function(title){ return (r.checks||[]).some(function(c){ return c.title.indexOf(title)===0 && c.status!=="pass"; }); };
     if (fail("Accessibility tool")) t.push("Your website doesn't have an accessibility tool for visitors with disabilities.");
-    var adaFails=(r.checks||[]).filter(function(c){ return c.area==="ada" && c.status==="fail"; }).map(function(c){ return c.title.toLowerCase(); });
-    if (adaFails.length) t.push("Our scan found accessibility issues: " + adaFails.join("; ") + ".");
-    if (ads.length) t.push("Your site sends visitor data to " + ads.join(", ") + (r.consent && r.consent.optoutModel ? " as soon as someone lands on it, before they make any choice." : "."));
-    else if (track.length) t.push("Your site uses " + track.join(", ") + " to track visitors.");
+    (r.checks||[]).filter(function(c){ return c.area==="ada" && c.status==="fail"; }).forEach(function(c){ t.push("Accessibility: " + c.detail); });
+    var allTrack=ads.concat(track);
+    if (allTrack.length) t.push("Your site sends visitor data to " + allTrack.join(", ") + (r.consent && r.consent.optoutModel ? " as soon as someone lands on it, before they make any choice." : "."));
     if (fail("Cookie / tracking consent banner")) t.push("There's no cookie consent banner, even though tracking tools are running.");
     if (fail("Reject / opt-out")) t.push("The cookie banner doesn't give visitors a clear way to reject tracking.");
     if (fail("'Do Not Sell")) t.push("California requires a 'Do Not Sell or Share My Personal Information' link when ad tracking is used, and we couldn't find one.");
