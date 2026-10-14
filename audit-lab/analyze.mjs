@@ -132,12 +132,12 @@ export function analyze(html, headers, pageUrl, opts = {}) {
       vendorsFound.push({ ...v, match: undefined, ids });
     }
   });
-  const otherHosts = Object.keys(hosts).filter((hh) => !VENDORS.some((v) => v.match.some((re) => re.test(hh))));
+  const otherHosts = Object.keys(hosts).filter((hh) => !/googletagmanager\.com|google-analytics\.com|gmpg\.org|(^|\.)w\.org$|schema\.org/i.test(hh) && !VENDORS.some((v) => v.match.some((re) => re.test(hh))));
 
   // ---------- consent / cookies ----------
   const consentTools = CONSENT_TOOLS.filter((c) => c.match.some((re) => re.test(html))).map((c) => c.name);
   const bannerText = /(accept|allow) (all )?cookies|cookie (settings|preferences|policy)|we use cookies|manage consent|cookie consent|this (web)?site uses cookies/i.test(text);
-  const rejectText = /(reject|decline|deny)( all)?|necessary only|essential only|opt[- ]out/i.test(text);
+  const rejectText = /\b(reject|decline|deny)( all)?\b|necessary only|essential only/i.test(text);
   const complianzOptout = /complianz[\s\S]{0,4000}?["']?consenttype["']?\s*:\s*["']optout/i.test(html) || /banner-\d+-optout\.css/i.test(html);
   const complianzOptin = /["']?consenttype["']?\s*:\s*["']optin/i.test(html);
   const dnsLink = /do not sell( or share)?( my)?( personal)? information|your privacy choices|opt[- ]out preferences/i.test(text);
@@ -228,7 +228,8 @@ export function analyze(html, headers, pageUrl, opts = {}) {
     if (consentPresent) {
       const optoutModel = complianzOptout || (!complianzOptin && !rejectText && !consentModeDefaultDenied && !blockedTags);
       add("privacy", optoutModel ? "warn" : "pass", "Tracking waits for consent", optoutModel ? "Tracking appears to start as soon as the page loads (opt-out style). Allowed under California-style opt-out rules if the opt-out works, but not under opt-in rules." : "Tracking appears to be held until the visitor chooses" + (blockedTags ? " (" + blockedTags + " scripts blocked until consent)" : consentModeDefaultDenied ? " (Google consent mode default = denied)" : "") + ".", 2);
-      add("privacy", rejectText ? "pass" : "warn", "Reject / opt-out choice", rejectText ? "Reject, decline or opt-out wording found." : "No reject, decline or opt-out wording found in the page source. Check the banner by hand.", 2);
+      if (complianzOptout) add("privacy", "warn", "Reject / opt-out choice", "The banner is set up in opt-out mode: visitors see 'Accept' and a link to opt-out preferences, but no reject button. Check whether the opt-out page asks for name and email (California rules say opting out shouldn't require that).", 2);
+      else add("privacy", rejectText ? "pass" : "warn", "Reject / opt-out choice", rejectText ? "Reject or decline wording found." : "No reject or decline wording found in the page source. Check the banner by hand.", 2);
     }
   } else {
     add("privacy", "pass", "Cookie / tracking consent banner", consentPresent ? "Consent tool found and no common trackers detected." : "No common trackers detected, so a banner is less critical.", 1);

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan Technical Audit Lab</title>
+<link rel="icon" href="https://webswan-invoice.netlify.app/logos/logomenu512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
+  const auth = getAuth(app);
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  window._auth = {
+    signIn: () => signInWithPopup(auth, new GoogleAuthProvider()),
+    signOut: () => signOut(auth),
+    token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null
+  };
+  onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
+</script>
+<style>
+:root{--blue:#339cde;--blue-dk:#1f6fa3;--sky:#93e5fa;--navy:#0c2d48;--ink:#16233a;--muted:#5d6b80;--bg:#f2f7fc;--line:#dde7f1;
+  --pass:#11875d;--pass-bg:#e3f6ee;--warn:#9a6400;--warn-bg:#fff5df;--fail:#c0392b;--fail-bg:#fdecea}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+button,input,select{font:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(120deg,var(--navy),#155b8c 60%,var(--blue));color:#fff;border-radius:18px;padding:16px 18px}
+header.top img{width:44px;height:44px;border-radius:12px;background:#fff;padding:4px}
+header.top h1{margin:0;font-size:1.3rem;font-weight:800}
+header.top p{margin:2px 0 0;font-size:.85rem;opacity:.85}
+.top-actions{margin-left:auto;display:flex;gap:8px}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;min-height:44px;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn:hover{background:var(--blue-dk)}.btn.ghost{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.45)}
+.btn.light{background:#fff;color:var(--blue-dk);border:1px solid var(--line)}
+.btn:disabled{opacity:.6;cursor:wait}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:16px}
+.scan{display:grid;grid-template-columns:1fr 200px auto;gap:10px;align-items:end}
+.scan label{font-size:.8rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
+.scan input,.scan select{width:100%;border:1px solid #c9d7e5;border-radius:10px;padding:10px 12px;min-height:46px;background:#fff}
+.hint{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+.err{color:var(--fail);font-weight:600;margin-top:10px}
+.gate{max-width:440px;margin:50px auto;text-align:center}
+#report[hidden],#app[hidden],#gate[hidden]{display:none}
+.rhead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}
+.rhead h2{margin:0;font-size:1.25rem;word-break:break-all}
+.meta{font-size:.82rem;color:var(--muted)}
+.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.score{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.score .lbl{font-size:.75rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.score .val{font-size:2rem;font-weight:800;margin-top:2px}
+.score .val.small{font-size:1.1rem;margin-top:10px}
+.g-good{color:var(--pass)}.g-mid{color:var(--warn)}.g-bad{color:var(--fail)}
+.statebox{margin-top:14px;padding:12px 14px;border-radius:12px;background:#e8f4fc;border:1px solid #bfe0f5;font-size:.9rem;color:#11486e}
+h3{margin:22px 0 8px;font-size:1.05rem}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:10px 4px;border-bottom:1px solid #edf2f7}
+.chk:last-child{border-bottom:0}
+.pill{font-size:.7rem;font-weight:800;padding:3px 8px;border-radius:99px;text-transform:uppercase;white-space:nowrap;margin-top:2px}
+.pill.pass{background:var(--pass-bg);color:var(--pass)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.fail{background:var(--fail-bg);color:var(--fail)}
+.pill.high{background:var(--fail-bg);color:var(--fail)}.pill.medium{background:var(--warn-bg);color:var(--warn)}.pill.low{background:var(--pass-bg);color:var(--pass)}
+.chk b{display:block}.chk span.d{font-size:.88rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #edf2f7;vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}
+.talk{background:#f6fafd;border:1px dashed #b9d3e8;border-radius:12px;padding:12px 14px}
+.talk li{margin:6px 0}
+.limits{font-size:.8rem;color:var(--muted)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.spinner{display:inline-block;width:16px;height:16px;border:3px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.print-brand{display:none}
+@media (max-width:760px){.scan{grid-template-columns:1fr}.scores{grid-template-columns:repeat(2,1fr)}}
+@media print{
+  body{background:#fff}.wrap{max-width:none;padding:0}
+  header.top,.scan-card,.toolbar,.noprint{display:none!important}
+  .card{border:0;padding:0;margin-top:10px}
+  .print-brand{display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--blue);padding-bottom:8px;margin-bottom:8px}
+  .print-brand img{width:40px;height:40px}
+  .chk,.score,tr{break-inside:avoid}
+}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="https://webswan-invoice.netlify.app/logos/logomenu512.png" alt="">
+    <div><h1>WebSwan Technical Audit Lab</h1><p>WebSwan Digital Solutions · ADA, privacy &amp; HIPAA website screening</p></div>
+    <div class="top-actions"><button class="btn ghost" id="authBtn" type="button">Sign in</button></div>
+  </header>
+
+  <div id="gate" class="gate"><div class="card">
+    <h2 style="margin-top:0">Private tool</h2>
+    <p id="gateMsg" class="meta">Sign in with your WebSwan Google account to run audits.</p>
+    <button class="btn" id="gateBtn" type="button">Sign in with Google</button>
+  </div></div>
+
+  <main id="app" hidden>
+    <section class="card scan-card" aria-labelledby="scanH">
+      <h2 id="scanH" style="margin:0 0 10px;font-size:1.1rem">Scan a website</h2>
+      <form id="scanForm" class="scan" novalidate>
+        <div><label for="url">Website address</label><input id="url" type="url" inputmode="url" placeholder="www.practicename.com" required autocomplete="off"></div>
+        <div><label for="state">State</label><select id="state"><option value="">Detect from the site</option></select></div>
+        <button class="btn" id="runBtn" type="submit">Run audit</button>
+      </form>
+      <p class="hint">Reads the site's page code from our server, recognizes cookie banners that load with JavaScript (Complianz, CookieYes, OneTrust, Cookiebot and more), names every tracking and chat vendor, and picks the state from the practice's address.</p>
+      <p class="err" id="err" role="alert"></p>
+    </section>
+
+    <section class="card" id="report" hidden aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var FN = "https://webswan-billing.netlify.app/.netlify/functions/audit-site";
+  var STATES = {AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"};
+  Object.keys(STATES).forEach(function(k){ var o=document.createElement("option"); o.value=k; o.textContent=STATES[k]; $("state").appendChild(o); });
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function grade(n){ return n>=80?"g-good":n>=60?"g-mid":"g-bad"; }
+
+  function talkingPoints(r){
+    var t=[], v=r.vendors||[], names=function(f){ return v.filter(f).map(function(x){return x.name;}); };
+    var ads=names(function(x){return x.ads;}), track=names(function(x){return x.track && !x.ads;}), phi=v.filter(function(x){return x.phi;});
+    var fail=function(title){ return (r.checks||[]).some(function(c){ return c.title.indexOf(title)===0 && c.status!=="pass"; }); };
+    if (fail("Accessibility tool")) t.push("Your website doesn't have an accessibility tool for visitors with disabilities.");
+    var adaFails=(r.checks||[]).filter(function(c){ return c.area==="ada" && c.status==="fail"; }).map(function(c){ return c.title.toLowerCase(); });
+    if (adaFails.length) t.push("Our scan found accessibility issues: " + adaFails.join("; ") + ".");
+    if (ads.length) t.push("Your site sends visitor data to " + ads.join(", ") + (r.consent && r.consent.optoutModel ? " as soon as someone lands on it, before they make any choice." : "."));
+    else if (track.length) t.push("Your site uses " + track.join(", ") + " to track visitors.");
+    if (fail("Cookie / tracking consent banner")) t.push("There's no cookie consent banner, even though tracking tools are running.");
+    if (fail("Reject / opt-out")) t.push("The cookie banner doesn't give visitors a clear way to reject tracking.");
+    if (fail("'Do Not Sell")) t.push("California requires a 'Do Not Sell or Share My Personal Information' link when ad tracking is used, and we couldn't find one.");
+    if (r.isHealth && phi.length) t.push(phi.map(function(x){return x.name;}).join(" and ") + " collect what patients type. Do you have a signed HIPAA Business Associate Agreement with " + (phi.length>1?"them":"that company") + "?");
+    if (r.isLaw && (r.legal||[]).some(function(x){return x.level!=="pass";})) t.push("Some attorney-advertising disclaimers that state bars expect are missing.");
+    if (!t.length) t.push("The site looks well set up on the items we can check automatically. A manual keyboard and screen-reader review is the next step.");
+    return t;
+  }
+
+  function render(r){
+    var s=r.scores||{}, el=$("report");
+    var chk=function(area){ return (r.checks||[]).filter(function(c){return c.area===area;}).map(function(c){
+      return '<div class="chk"><span class="pill '+c.status+'">'+c.status+'</span><div><b>'+esc(c.title)+'</b><span class="d">'+esc(c.detail)+'</span></div></div>'; }).join(""); };
+    var vend=(r.vendors||[]).map(function(v){ return '<tr><td><b>'+esc(v.name)+'</b>'+(v.ids&&v.ids.length?'<br><span class="meta">'+esc(v.ids.join(", "))+'</span>':'')+'</td><td>'+esc(v.cat)+'</td><td>'+esc(v.collects)+'</td><td>'+esc(v.baa||"")+'</td></tr>'; }).join("");
+    var hip=(r.hipaa||[]).map(function(h){ return '<div class="chk"><span class="pill '+h.level+'">'+h.level+'</span><div><span class="d" style="color:var(--ink)">'+esc(h.text)+'</span></div></div>'; }).join("");
+    var leg=(r.legal||[]).map(function(h){ return '<div class="chk"><span class="pill '+h.level+'">'+h.level+'</span><div><span class="d" style="color:var(--ink)">'+esc(h.text)+'</span></div></div>'; }).join("");
+    var forms=(r.forms||[]).map(function(f,i){ return '<tr><td>Form '+(i+1)+'</td><td>'+esc(f.fields.map(function(x){return x.name+(x.labelled?"":" (no label)");}).join(", "))+'</td><td>'+(f.thirdParty?'<b>'+esc(f.actionHost)+'</b> (outside company)':'Their own website')+'</td></tr>'; }).join("");
+    var c=r.consent||{};
+    el.innerHTML =
+      '<div class="print-brand"><img src="https://webswan-invoice.netlify.app/logos/logomenu512.png" alt=""><div><b>WebSwan Digital Solutions</b><br><span class="meta">Preliminary Website Compliance Audit</span></div></div>'+
+      '<div class="rhead"><h2>'+esc(r.url)+'</h2><span class="meta">'+esc(r.title||"")+' · Tested '+new Date(r.testedAt).toLocaleString()+'</span></div>'+
+      '<div class="scores">'+
+        '<div class="score"><div class="lbl">Overall</div><div class="val '+grade(s.overall)+'">'+s.overall+'</div></div>'+
+        '<div class="score"><div class="lbl">ADA (automated)</div><div class="val '+grade(s.ada)+'">'+s.ada+'</div></div>'+
+        '<div class="score"><div class="lbl">Cookie / Privacy</div><div class="val '+grade(s.privacy)+'">'+s.privacy+'</div></div>'+
+        '<div class="score"><div class="lbl">HIPAA risk</div><div class="val small '+(/High/.test(s.hipaa)?"g-bad":/Medium/.test(s.hipaa)?"g-mid":"g-good")+'">'+esc(s.hipaa)+'</div></div>'+
+      '</div>'+
+      (r.state?'<div class="statebox"><b>'+esc(r.state.name)+'</b> (from '+esc(r.state.source)+'). '+esc(r.state.note)+'</div>':'<div class="statebox">State not found on the site. Pick it above and run again for state-specific notes.</div>')+
+      '<div class="toolbar noprint"><button class="btn" type="button" onclick="window.print()">Save as PDF / Print</button><button class="btn light" type="button" id="copyTalk">Copy talking points</button></div>'+
+      '<h3>What to tell the practice</h3><ul class="talk" id="talkList">'+talkingPoints(r).map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+'</ul>'+
+      '<h3>Cookie consent &amp; privacy</h3>'+
+      '<p class="meta">Consent tool: <b>'+esc((c.tools||[]).join(", ")||"none found")+'</b>'+(c.optoutModel?' · opt-out style (tracking starts on page load)':'')+(c.blockedTags?' · '+c.blockedTags+' scripts held until consent':'')+'</p>'+chk("privacy")+
+      '<h3>Accessibility (ADA / WCAG, automated)</h3>'+chk("ada")+
+      (r.isHealth?'<h3>HIPAA (healthcare site)</h3>'+hip:'')+
+      (r.isLaw?'<h3>Attorney advertising</h3>'+leg:'')+
+      '<h3>Outside companies on this site ('+(r.vendors||[]).length+')</h3>'+
+      ((r.vendors||[]).length?'<div style="overflow-x:auto"><table><thead><tr><th>Company</th><th>Type</th><th>What it can collect</th><th>HIPAA / BAA</th></tr></thead><tbody>'+vend+'</tbody></table></div>':'<p class="meta">None of the common tracking, chat or form vendors were found.</p>')+
+      ((r.otherHosts||[]).length?'<p class="meta">Other outside sites the page loads from: '+esc(r.otherHosts.join(", "))+'</p>':'')+
+      ((r.forms||[]).length?'<h3>Forms</h3><div style="overflow-x:auto"><table><thead><tr><th></th><th>Fields</th><th>Sends to</th></tr></thead><tbody>'+forms+'</tbody></table></div>':'')+
+      '<h3>Security</h3>'+chk("security")+
+      '<h3>About this audit</h3><p class="limits">This is a preliminary automated screening of the page code and response headers at the time shown. It recognizes consent tools and vendors by their code signatures, including banners that load with JavaScript. It does not submit forms, and automated checks cannot confirm full WCAG conformance, which needs keyboard and screen-reader testing. Findings are indicators for review, not legal conclusions. Prepared by WebSwan Digital Solutions.</p>';
+    el.hidden=false;
+    $("copyTalk").onclick=function(){ var txt=[].map.call(document.querySelectorAll("#talkList li"),function(li){return "• "+li.textContent;}).join("\n"); navigator.clipboard.writeText(txt).then(function(){ $("copyTalk").textContent="Copied!"; setTimeout(function(){ $("copyTalk").textContent="Copy talking points"; },1500); }); };
+    el.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  $("scanForm").addEventListener("submit", async function(e){
+    e.preventDefault(); $("err").textContent="";
+    var url=$("url").value.trim(); if(!url){ $("err").textContent="Type a website address."; $("url").focus(); return; }
+    var b=$("runBtn"); b.disabled=true; b.innerHTML='<span class="spinner" aria-hidden="true"></span> Scanning…';
+    try{
+      var tok=await window._auth.token(); if(!tok) throw new Error("Please sign in again.");
+      var res=await fetch(FN,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify({url:url,state:$("state").value})});
+      var data=await res.json().catch(function(){return {error:"The audit server didn't answer properly."};});
+      if(!res.ok) throw new Error(data.error||"Scan failed.");
+      render(data);
+      try{ var hist=JSON.parse(localStorage.getItem("wsal-last")||"[]"); hist.unshift(url); localStorage.setItem("wsal-last",JSON.stringify(hist.slice(0,10))); }catch(x){}
+    }catch(err){ $("err").textContent=err.message; }
+    finally{ b.disabled=false; b.textContent="Run audit"; }
+  });
+
+  function doSignIn(){ window._auth.signIn().catch(function(){ $("gateMsg").textContent="Sign-in didn't finish. Try again."; }); }
+  $("gateBtn").onclick=doSignIn;
+  var signedIn=false;
+  $("authBtn").onclick=function(){ if(signedIn) window._auth.signOut(); else doSignIn(); };
+  window.addEventListener("auth",function(ev){
+    signedIn=!!ev.detail.user; $("authBtn").textContent=signedIn?"Sign out":"Sign in";
+    $("app").hidden=!ev.detail.ok; $("gate").hidden=ev.detail.ok;
+    if(ev.detail.user && !ev.detail.ok) $("gateMsg").textContent="This Google account doesn't have access.";
+    var q=new URLSearchParams(location.search).get("url"); if(ev.detail.ok && q && !$("url").value){ $("url").value=q; }
+  });
+})();
+</script>
+</body>
+</html>
