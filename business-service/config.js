@@ -39,5 +39,35 @@ window.WSBS_CONFIG = {
       ein: "$0. The IRS issues EINs for free.",
       ongoing: "Annual franchise tax report and Public Information Report to the Texas Comptroller (no tax due for most small businesses under the threshold, but the report is still required)." }
   },
+  // Admin quick links to official filing sites (and Bizee, which Tania uses for LLC filings)
+  filingLinks: {
+    ALL: [
+      ["Bizee (LLC filing)", "https://bizee.com/"],
+      ["IRS: apply for an EIN online (free)", "https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online"]
+    ],
+    NY: [
+      ["NY Dept. of State: form an LLC", "https://dos.ny.gov/forming-limited-liability-company-new-york"],
+      ["NY Business Express (licenses & permits)", "https://www.businessexpress.ny.gov/"],
+      ["NY sales tax Certificate of Authority", "https://www.tax.ny.gov/bus/st/register.htm"]
+    ],
+    FL: [
+      ["Sunbiz: file a Florida LLC", "https://dos.fl.gov/sunbiz/start-business/efile/fl-llc/"],
+      ["Sunbiz: annual report", "https://dos.fl.gov/sunbiz/manage-business/efile/annual-report/"],
+      ["Sunbiz: fictitious name (DBA)", "https://dos.fl.gov/sunbiz/start-business/efile/fictitious-name-registration/"],
+      ["Florida DBPR (professional licenses)", "https://www2.myfloridalicense.com/"],
+      ["Florida sales tax registration", "https://floridarevenue.com/taxes/registration/Pages/default.aspx"]
+    ],
+    WA: [
+      ["WA Secretary of State CCFS (LLC + annual report)", "https://ccfs.sos.wa.gov/"],
+      ["WA Business License Application (DOR)", "https://dor.wa.gov/open-business/apply-business-license"]
+    ],
+    TX: [
+      ["Texas SOSDirect (file Form 205 LLC)", "https://www.sos.state.tx.us/corp/sosda/index.shtml"],
+      ["Texas SOS business forms", "https://www.sos.state.tx.us/corp/forms_boc.shtml"],
+      ["Texas sales tax permit (Comptroller)", "https://comptroller.texas.gov/taxes/permit/"],
+      ["Texas franchise tax / PIR", "https://comptroller.texas.gov/taxes/franchise/"],
+      ["Texas TDLR (industry licenses)", "https://www.tdlr.texas.gov/"]
+    ]
+  },
   apiBase: "https://webswan-billing.netlify.app/.netlify/functions"
 };

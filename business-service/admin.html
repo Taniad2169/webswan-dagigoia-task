@@ -61,6 +61,11 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
       <div id="list"><p class="muted">Loading…</p></div></section>
     <div>
       <section class="card" id="detail"><p class="muted">Pick a request on the left.</p></section>
+      <section class="card" id="linksCard" style="margin-top:16px">
+        <h2>Filing links <select id="linkState" style="float:right;width:auto;min-height:34px;padding:4px 8px"><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select></h2>
+        <p class="muted" style="margin-top:0">Opens the official site in a new tab. You sign in and file there yourself.</p>
+        <div id="linkList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </section>
       <section class="card" id="aiCard" style="margin-top:16px">
         <h2>AI assistant</h2>
         <div class="seg" role="group" aria-label="AI provider"><button type="button" data-p="claude" aria-pressed="true">Claude</button><button type="button" data-p="openai" aria-pressed="false">ChatGPT</button></div>
@@ -94,6 +99,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
   function kv(obj){ if(!obj) return ""; return Object.keys(obj).filter(function(k){return obj[k]!==""&&obj[k]!=null;}).map(function(k){ return "<dt>"+esc(k)+"</dt><dd>"+esc(obj[k])+"</dd>"; }).join(""); }
   function drawDetail(){
     var r=current, sig=r.consent.signature||{};
+    if($("linkState") && C.filingLinks[r.state]){ $("linkState").value=r.state; drawLinks(); }
     var mail="mailto:"+encodeURIComponent(r.client.email)+"?subject="+encodeURIComponent("Your WebSwan Business Service request "+r.code)+"&body="+encodeURIComponent("Hi "+r.client.fullName.split(" ")[0]+",\n\nThank you for choosing WebSwan Business Service for your "+r.serviceName.toLowerCase()+".\n\nYour tracking code is "+r.code+". You can check your status anytime at "+location.href.replace(/admin\.html.*$/,"")+"#status\n\nTania\nWebSwan Business Service\n"+C.phone);
     $("detail").innerHTML =
       '<h2>'+esc(r.business.name)+' <span class="pill">'+esc(r.status)+'</span></h2>'+
@@ -128,6 +134,11 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
     ["Completed letter","Write a letter to the client confirming their filing was submitted/completed, listing their next compliance steps and deadlines to confirm with the state."],
     ["Legal question","Answer my question below. If it needs an attorney or CPA, say so clearly.\n\nQuestion: "]];
   $("chips").innerHTML=CHIPS.map(function(c,i){return '<button type="button" class="chip" data-i="'+i+'">'+esc(c[0])+'</button>';}).join("");
+  function drawLinks(){
+    var st=$("linkState").value, L=(C.filingLinks.ALL||[]).concat(C.filingLinks[st]||[]);
+    $("linkList").innerHTML=L.map(function(l){ return '<a class="btn ghost" style="text-decoration:none;min-height:40px;padding:8px 12px;font-size:.9rem" href="'+esc(l[1])+'" target="_blank" rel="noopener noreferrer">'+esc(l[0])+' ↗</a>'; }).join("");
+  }
+  $("linkState").onchange=drawLinks; drawLinks();
   $("chips").addEventListener("click",function(e){ var b=e.target.closest(".chip"); if(!b) return; $("aiPrompt").value=CHIPS[+b.dataset.i][1]; if(current) $("useCtx").checked=true; $("aiPrompt").focus(); });
   document.querySelectorAll(".seg button").forEach(function(b){ b.onclick=function(){ provider=b.dataset.p; document.querySelectorAll(".seg button").forEach(function(x){x.setAttribute("aria-pressed",x===b);}); }; });
   $("aiBtn").onclick=async function(){
