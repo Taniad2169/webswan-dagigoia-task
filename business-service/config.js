@@ -6,7 +6,7 @@ window.WSBS_CONFIG = {
   email: "designs@thewebswan.com",
   disclosureVersion: "2026-10-14",
   services: [
-    { id: "ein", name: "EIN application assistance", fee: 9, feeText: "$9",
+    { id: "ein", name: "EIN application assistance", fee: 69, feeText: "$69",
       desc: "We help you prepare and submit your IRS Employer Identification Number (EIN) application. The IRS does not charge for an EIN." },
     { id: "license-existing", name: "Existing business license application", fee: 99, feeText: "$99",
       desc: "Help preparing a license or permit application for a business that already exists (renewals, new location, added activity)." },
