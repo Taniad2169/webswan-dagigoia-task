@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Business Service Admin | WebSwan</title>
+<link rel="icon" href="ws-logo.webp">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Dancing+Script:wght@600&family=Great+Vibes&family=Allura&family=Sacramento&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
+  const auth = getAuth(app);
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), signOut: () => signOut(auth), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
+  onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
+</script>
+<style>
+:root{--blue:#339cde;--blue-dk:#1d6fa5;--teal:#40d3d6;--navy:#0c2d48;--ink:#14243a;--muted:#55657a;--bg:#f1f8fc;--line:#d9e7f1}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+button,input,select,textarea{font:inherit}:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+header{background:linear-gradient(120deg,var(--navy),#13608f 55%,var(--blue));color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header img{width:54px;background:#fff;border-radius:10px;padding:3px}
+header h1{margin:0;font-size:1.2rem}header .r{margin-left:auto;display:flex;gap:8px}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;min-height:42px}
+.btn:hover{background:var(--blue-dk)}.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}.btn.wh{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45)}
+.wrap{max-width:1250px;margin:0 auto;padding:16px}
+.cols{display:grid;grid-template-columns:420px 1fr;gap:16px;align-items:start}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{margin:0 0 10px;font-size:1.05rem;color:var(--navy)}
+.row{padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff;width:100%;text-align:left}
+.row:hover,.row.on{border-color:var(--blue);background:#eef8fe}
+.row b{display:block}.row small{color:var(--muted)}
+.pill{display:inline-block;font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#e2f2fc;color:var(--blue-dk);margin-left:6px}
+.pill.Completed{background:#e4f6ee;color:#0b5e40}.pill.Needs{background:#fff3d6;color:#7a5200}.pill.Cancelled{background:#eee;color:#555}
+dl{display:grid;grid-template-columns:180px 1fr;gap:4px 12px;margin:0;font-size:.9rem}dt{color:var(--muted);font-weight:600}dd{margin:0;word-break:break-word}
+h3{margin:16px 0 6px;font-size:.95rem;color:var(--navy)}
+.f{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.f label{font-weight:700;font-size:.85rem}
+input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11px;min-height:42px;width:100%;background:#fff}textarea{min-height:80px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ai-out{white-space:pre-wrap;background:#f7fbfe;border:1px solid var(--line);border-radius:10px;padding:12px;min-height:60px;font-size:.92rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 10px;font-size:.8rem;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{border:0;background:#fff;padding:8px 14px;font-weight:700;cursor:pointer}.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.err{color:#b42318;font-weight:600}.muted{color:var(--muted);font-size:.85rem}
+.gate{max-width:420px;margin:60px auto;text-align:center}
+[hidden]{display:none!important}
+@media (max-width:900px){.cols{grid-template-columns:1fr}dl{grid-template-columns:1fr}}
+@media print{header,.noprint,#listCard,#aiCard{display:none!important}.cols{display:block}.card{border:0}}
+</style>
+</head>
+<body>
+<header><img src="ws-logo.webp" alt=""><h1>WebSwan Business Service · Admin</h1>
+  <div class="r"><a class="btn wh" href="./" target="_blank" rel="noopener" style="text-decoration:none">Client page</a><button class="btn wh" id="authBtn" type="button">Sign in</button></div></header>
+<div id="gate" class="gate card"><h2>Private admin</h2><p class="muted" id="gateMsg">Sign in with your WebSwan Google account.</p><button class="btn" id="gateBtn" type="button">Sign in with Google</button></div>
+<main class="wrap" id="app" hidden>
+  <div class="cols">
+    <section class="card" id="listCard"><h2>Requests <button class="btn ghost" id="refresh" type="button" style="float:right;min-height:34px;padding:4px 10px">Refresh</button></h2>
+      <div class="f"><label for="filter">Show</label><select id="filter"><option value="open">Open requests</option><option value="all">All</option></select></div>
+      <div id="list"><p class="muted">Loading…</p></div></section>
+    <div>
+      <section class="card" id="detail"><p class="muted">Pick a request on the left.</p></section>
+      <section class="card" id="aiCard" style="margin-top:16px">
+        <h2>AI assistant</h2>
+        <div class="seg" role="group" aria-label="AI provider"><button type="button" data-p="claude" aria-pressed="true">Claude</button><button type="button" data-p="openai" aria-pressed="false">ChatGPT</button></div>
+        <div class="chips" id="chips"></div>
+        <div class="f"><label for="aiPrompt">Ask a question or describe what to write</label><textarea id="aiPrompt" placeholder="e.g. Write an email to the client confirming her Florida LLC fees and next steps"></textarea></div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:.88rem;margin-bottom:8px"><input type="checkbox" id="useCtx" style="width:18px;min-height:0"> Include the selected client's request details</label>
+        <button class="btn" id="aiBtn" type="button">Ask</button> <button class="btn ghost" id="aiCopy" type="button">Copy answer</button>
+        <p class="err" id="aiErr" role="alert"></p>
+        <div class="ai-out" id="aiOut" aria-live="polite"></div>
+        <p class="muted">AI drafts are a starting point. Review everything before sending, and don't paste SSNs or tax IDs here.</p>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  var C=window.WSBS_CONFIG, $=function(id){return document.getElementById(id);}, API=C.apiBase;
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});};
+  var rows=[], statuses=[], current=null, provider="claude";
+  async function call(fn, body){ var tok=await window._auth.token(); var r=await fetch(API+"/"+fn,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(body)}); var j=await r.json().catch(function(){return {};}); if(!r.ok) throw new Error(j.error||"Request failed"); return j; }
+
+  async function load(){ try{ var j=await call("bs-admin",{action:"list"}); rows=j.rows; statuses=j.statuses; drawList(); }catch(e){ $("list").innerHTML='<p class="err">'+esc(e.message)+'</p>'; } }
+  function drawList(){
+    var f=$("filter").value, list=rows.filter(function(r){ return f==="all" || ["Completed","Cancelled"].indexOf(r.status)<0; });
+    $("list").innerHTML = list.length ? list.map(function(r){ return '<button type="button" class="row'+(current&&current.code===r.code?' on':'')+'" data-c="'+esc(r.code)+'"><b>'+esc(r.business)+' <span class="pill '+esc(r.status.split(" ")[0])+'">'+esc(r.status)+'</span></b><small>'+esc(r.serviceName)+' · '+esc(r.state)+' · '+esc(r.client)+'</small><br><small>'+esc(r.code)+' · '+new Date(r.createdAt).toLocaleString()+'</small></button>'; }).join("") : '<p class="muted">No requests yet.</p>';
+  }
+  $("list").addEventListener("click",async function(e){ var b=e.target.closest(".row"); if(!b) return; try{ var j=await call("bs-admin",{action:"get",code:b.dataset.c}); current=j.rec; statuses=j.statuses; drawDetail(); drawList(); }catch(err){ alertBox(err.message); } });
+  $("filter").onchange=drawList; $("refresh").onclick=load;
+  function alertBox(m){ $("detail").insertAdjacentHTML("afterbegin",'<p class="err">'+esc(m)+'</p>'); }
+
+  function kv(obj){ if(!obj) return ""; return Object.keys(obj).filter(function(k){return obj[k]!==""&&obj[k]!=null;}).map(function(k){ return "<dt>"+esc(k)+"</dt><dd>"+esc(obj[k])+"</dd>"; }).join(""); }
+  function drawDetail(){
+    var r=current, sig=r.consent.signature||{};
+    var mail="mailto:"+encodeURIComponent(r.client.email)+"?subject="+encodeURIComponent("Your WebSwan Business Service request "+r.code)+"&body="+encodeURIComponent("Hi "+r.client.fullName.split(" ")[0]+",\n\nThank you for choosing WebSwan Business Service for your "+r.serviceName.toLowerCase()+".\n\nYour tracking code is "+r.code+". You can check your status anytime at "+location.href.replace(/admin\.html.*$/,"")+"#status\n\nTania\nWebSwan Business Service\n"+C.phone);
+    $("detail").innerHTML =
+      '<h2>'+esc(r.business.name)+' <span class="pill">'+esc(r.status)+'</span></h2>'+
+      '<p class="muted">'+esc(r.code)+' · '+esc(r.serviceName)+' ('+esc(r.serviceFee)+') · '+esc(C.states[r.state].name)+' · received '+new Date(r.createdAt).toLocaleString()+'</p>'+
+      '<div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><a class="btn ghost" style="text-decoration:none" href="'+mail+'">Email client</a><a class="btn ghost" style="text-decoration:none" href="tel:'+esc(r.client.phone)+'">Call '+esc(r.client.phone)+'</a><button class="btn ghost" type="button" onclick="window.print()">Print / PDF</button></div>'+
+      '<h3>Client</h3><dl>'+kv(r.client)+'</dl><h3>Business</h3><dl>'+kv(r.business)+'</dl>'+
+      (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+
+      (r.notes?'<h3>Client notes</h3><p>'+esc(r.notes)+'</p>':'')+
+      '<h3>Signed authorization</h3><dl><dt>Signature</dt><dd><span style="font-family:\''+esc(sig.font)+'\',cursive;font-size:1.8rem">'+esc(sig.name)+'</span></dd><dt>Signed</dt><dd>'+esc(new Date(r.consent.signedAt).toLocaleString())+'</dd><dt>Disclosures version</dt><dd>'+esc(r.consent.disclosureVersion)+'</dd><dt>Fee acknowledged</dt><dd>'+(r.consent.feeAck?"Yes":"No")+'</dd><dt>Acknowledgments</dt><dd>'+esc((r.consent.acks||[]).length)+' of 5</dd><dt>IP / device</dt><dd>'+esc(r.consent.ip)+' · '+esc((r.consent.serverUserAgent||"").slice(0,90))+'</dd></dl>'+
+      '<div class="noprint"><h3>Update</h3><div class="grid2"><div class="f"><label for="uStatus">Status</label><select id="uStatus">'+statuses.map(function(s){return '<option'+(s===r.status?' selected':'')+'>'+esc(s)+'</option>';}).join("")+'</select></div>'+
+      '<div class="f"><label for="uFee">Final WebSwan fee</label><input id="uFee" value="'+esc(r.finalFee)+'" placeholder="e.g. $249"></div></div>'+
+      '<div class="f"><label for="uClient">Note the client sees on the status page</label><textarea id="uClient">'+esc(r.clientNote)+'</textarea></div>'+
+      '<div class="f"><label for="uInternal">Private note (only you see this)</label><textarea id="uInternal" placeholder="e.g. Filed with Sunbiz, confirmation #..."></textarea></div>'+
+      '<button class="btn" id="saveBtn" type="button">Save update</button> <span class="muted" id="saved"></span></div>'+
+      '<h3>History</h3><ul>'+r.history.map(function(h){return '<li>'+esc(h.status)+' · '+new Date(h.at).toLocaleString()+' · '+esc(h.by)+'</li>';}).join("")+'</ul>'+
+      (r.internalNotes.length?'<h3>Private notes</h3><ul>'+r.internalNotes.map(function(n){return '<li>'+new Date(n.at).toLocaleString()+': '+esc(n.text)+'</li>';}).join("")+'</ul>':'');
+    $("saveBtn").onclick=async function(){
+      try{ var j=await call("bs-admin",{action:"update",code:r.code,status:$("uStatus").value,clientNote:$("uClient").value,finalFee:$("uFee").value,internalNote:$("uInternal").value}); current=j.rec; drawDetail(); $("saved").textContent="Saved."; load(); }
+      catch(e){ $("saved").textContent=e.message; }
+    };
+  }
+
+  // AI
+  var CHIPS=[["Welcome email","Write a warm welcome email to this client confirming we received their request, their tracking code, that our service fee is separate from government fees, and what happens next."],
+    ["Fee confirmation email","Write an email confirming the client's final WebSwan service fee and the estimated government fees for their state as separate line items, with a note that government fees are set by the agency."],
+    ["Missing info email","Write a friendly email asking the client for the missing information we need to continue, without asking for SSNs or tax IDs by email."],
+    ["Filing checklist","Give me a step-by-step checklist to prepare and file this client's request in their state, with the official agency to use and what to confirm before filing."],
+    ["Completed letter","Write a letter to the client confirming their filing was submitted/completed, listing their next compliance steps and deadlines to confirm with the state."],
+    ["Legal question","Answer my question below. If it needs an attorney or CPA, say so clearly.\n\nQuestion: "]];
+  $("chips").innerHTML=CHIPS.map(function(c,i){return '<button type="button" class="chip" data-i="'+i+'">'+esc(c[0])+'</button>';}).join("");
+  $("chips").addEventListener("click",function(e){ var b=e.target.closest(".chip"); if(!b) return; $("aiPrompt").value=CHIPS[+b.dataset.i][1]; if(current) $("useCtx").checked=true; $("aiPrompt").focus(); });
+  document.querySelectorAll(".seg button").forEach(function(b){ b.onclick=function(){ provider=b.dataset.p; document.querySelectorAll(".seg button").forEach(function(x){x.setAttribute("aria-pressed",x===b);}); }; });
+  $("aiBtn").onclick=async function(){
+    $("aiErr").textContent=""; var p=$("aiPrompt").value.trim(); if(!p){ $("aiErr").textContent="Type a question first."; return; }
+    var ctx=""; if($("useCtx").checked && current){ var r=current; ctx=JSON.stringify({code:r.code,service:r.serviceName,serviceFee:r.finalFee||r.serviceFee,state:C.states[r.state].name,stateFees:C.states[r.state],status:r.status,client:{name:r.client.fullName,role:r.client.role},business:r.business,llc:r.llc,ein:r.ein?{responsibleParty:r.ein.responsibleParty,title:r.ein.title,employees:r.ein.employees}:null,notes:r.notes},null,1); }
+    $("aiBtn").disabled=true; $("aiOut").textContent="Thinking…";
+    try{ var j=await call("bs-ai",{provider:provider,prompt:p,context:ctx}); $("aiOut").textContent=j.text; }
+    catch(e){ $("aiOut").textContent=""; $("aiErr").textContent=e.message; }
+    finally{ $("aiBtn").disabled=false; }
+  };
+  $("aiCopy").onclick=function(){ navigator.clipboard.writeText($("aiOut").textContent); $("aiCopy").textContent="Copied!"; setTimeout(function(){$("aiCopy").textContent="Copy answer";},1400); };
+
+  function doSignIn(){ window._auth.signIn().catch(function(){ $("gateMsg").textContent="Sign-in didn't finish. Try again."; }); }
+  $("gateBtn").onclick=doSignIn; var signed=false; $("authBtn").onclick=function(){ if(signed) window._auth.signOut(); else doSignIn(); };
+  window.addEventListener("auth",function(ev){ signed=!!ev.detail.user; $("authBtn").textContent=signed?"Sign out":"Sign in"; $("app").hidden=!ev.detail.ok; $("gate").hidden=ev.detail.ok; if(ev.detail.user&&!ev.detail.ok) $("gateMsg").textContent="This account doesn't have access."; if(ev.detail.ok) load(); });
+})();
+</script>
+</body>
+</html>

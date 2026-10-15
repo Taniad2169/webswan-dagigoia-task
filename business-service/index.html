@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebSwan Business Service | LLC, EIN &amp; Business License Assistance</title>
+<meta name="description" content="WebSwan Business Service helps business owners in New York, Florida, Washington and Texas prepare LLC, EIN and business license applications. Not a law firm or government agency.">
+<link rel="icon" href="ws-logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Dancing+Script:wght@600&family=Great+Vibes&family=Allura&family=Sacramento&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+:root{--blue:#339cde;--blue-dk:#1d6fa5;--sky:#93e5fa;--teal:#40d3d6;--navy:#0c2d48;--ink:#14243a;--muted:#55657a;--bg:#f1f8fc;--line:#d9e7f1;--ok:#0f8a5f;--warn-bg:#fff6e0;--warn:#7a5200;--err:#b42318}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+button,input,select,textarea{font:inherit}
+a{color:var(--blue-dk)}
+:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:8px;background:#fff;padding:8px 12px;border-radius:8px;z-index:10}.skip:focus{left:8px}
+.notice-bar{background:var(--navy);color:#fff;text-align:center;font-size:.85rem;padding:8px 14px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+header.hero{background:linear-gradient(130deg,#0c2d48 0%,#13608f 45%,var(--blue) 75%,var(--teal) 100%);color:#fff;padding:34px 0 40px}
+.hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:28px;align-items:center}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.brand img{width:74px;height:auto;background:#fff;border-radius:14px;padding:4px 6px}
+.brand b{font-size:1.05rem;letter-spacing:.02em}
+.hero h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.15;margin:0 0 12px}
+.hero p{margin:0 0 18px;font-size:1.05rem;opacity:.95}
+.states{display:flex;flex-wrap:wrap;gap:8px}
+.states span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:5px 12px;font-weight:600;font-size:.88rem}
+.tania{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:18px;padding:16px;display:flex;gap:14px;align-items:center}
+.tania img{width:96px;height:96px;object-fit:cover;object-position:50% 28%;border-radius:50%;border:3px solid #fff}
+.tania p{margin:0;font-size:.92rem}
+.tabs{display:flex;gap:8px;margin:-22px auto 0;position:relative}
+.tab{flex:1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;font-weight:700;color:var(--navy);cursor:pointer;box-shadow:0 8px 20px rgba(12,45,72,.08)}
+.tab[aria-selected="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;margin:18px 0;box-shadow:0 6px 18px rgba(12,45,72,.05)}
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;padding:0;margin:0 0 18px}
+.steps li{flex:1;min-width:110px;font-size:.78rem;font-weight:700;color:var(--muted);border-top:4px solid var(--line);padding-top:6px}
+.steps li.on{color:var(--navy);border-color:var(--blue)}.steps li.done{color:var(--ok);border-color:var(--ok)}
+h2{margin:0 0 6px;font-size:1.35rem;color:var(--navy)}
+h3{margin:20px 0 8px;font-size:1.05rem;color:var(--navy)}
+.lead{color:var(--muted);margin:0 0 14px}
+.svc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.svc{position:relative;border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;background:#fff;display:block}
+.svc input{position:absolute;opacity:0;pointer-events:none}
+.svc:has(input:checked){border-color:var(--blue);background:#eef8fe}
+.svc:has(input:focus-visible){outline:3px solid var(--navy);outline-offset:2px}
+.svc b{display:block;color:var(--navy)}.svc .price{font-weight:800;color:var(--blue-dk);font-size:1.1rem}
+.svc small{display:block;color:var(--muted);margin-top:4px;font-size:.84rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.f label,.f .lbl{font-weight:700;font-size:.88rem}
+.f .opt{font-weight:400;color:var(--muted)}
+input[type=text],input[type=email],input[type=tel],select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:10px 12px;min-height:46px;background:#fff;width:100%}
+textarea{min-height:90px;resize:vertical}
+.help{font-size:.82rem;color:var(--muted)}
+.callout{border-radius:12px;padding:12px 14px;margin:12px 0;font-size:.92rem}
+.callout.warn{background:var(--warn-bg);border:1px solid #f0d58c;color:var(--warn)}
+.callout.info{background:#e8f5fd;border:1px solid #bfe0f5;color:#0f4c75}
+.callout.ok{background:#e4f6ee;border:1px solid #b5e3cd;color:#0b5e40}
+.fees{width:100%;border-collapse:collapse;margin:8px 0}
+.fees th,.fees td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;vertical-align:top}
+.fees th{width:40%;color:var(--navy)}
+.fees .big{font-size:1.2rem;font-weight:800;color:var(--blue-dk)}
+.disclosures{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfdff;font-size:.9rem}
+.disclosures h4{margin:12px 0 4px;color:var(--navy)}
+.disclosures p,.disclosures li{margin:4px 0}
+.check{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:.92rem}
+.check input{width:20px;height:20px;margin-top:2px;flex:none}
+.sig-fonts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
+.sig-opt{border:2px solid var(--line);border-radius:12px;padding:10px 14px;background:#fff;cursor:pointer;text-align:left;min-height:70px}
+.sig-opt[aria-pressed="true"]{border-color:var(--blue);background:#eef8fe}
+.sig-opt span{display:block;font-size:1.9rem;color:#0b1f3a;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sig-opt small{color:var(--muted)}
+.adopted{border:2px dashed var(--blue);border-radius:12px;padding:12px 16px;margin-top:10px;background:#fff}
+.adopted .sig{font-size:2.3rem;color:#0b1f3a;border-bottom:1px solid #9bb5c9;padding-bottom:2px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;padding:12px 20px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;min-height:48px}
+.btn:hover{background:var(--blue-dk)}.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.err{color:var(--err);font-weight:600}
+.code{font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:800;letter-spacing:.12em;background:#eef8fe;border:2px solid var(--blue);border-radius:12px;padding:8px 16px;display:inline-block}
+.timeline{list-style:none;padding:0;margin:10px 0}
+.timeline li{border-left:3px solid var(--line);padding:4px 0 10px 14px;position:relative}
+.timeline li::before{content:"";position:absolute;left:-8px;top:8px;width:13px;height:13px;border-radius:50%;background:var(--line)}
+.timeline li.done::before{background:var(--ok)}.timeline li.cur::before{background:var(--blue);box-shadow:0 0 0 4px #cfe9fb}
+.timeline li.cur{font-weight:700}
+.howgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;counter-reset:s}
+.howgrid div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:.88rem;counter-increment:s}
+.howgrid div::before{content:counter(s);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;margin-bottom:6px}
+footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
+.hp{position:absolute;left:-5000px}
+[hidden]{display:none!important}
+@media (max-width:760px){.hero-grid,.grid2{grid-template-columns:1fr}.tabs{margin-top:-18px}}
+@media print{.notice-bar,header.hero,.tabs,.nav,.no-print,footer{display:none!important}body{background:#fff}.card{border:0;box-shadow:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="notice-bar">WebSwan Business Service is a private document-preparation service. We are <b>not</b> a government agency, the IRS, or a law firm.</div>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="brand"><img src="ws-logo.webp" alt="WebSwan logo"><b>WebSwan Business Service</b></div>
+      <h1>LLC, EIN &amp; business license help, start to finish.</h1>
+      <p>Tell us about your business, review every fee up front, sign online, and track your filing. Government fees are always shown separately from our service fee.</p>
+      <div class="states" aria-label="States we serve"><span>New York</span><span>Florida</span><span>Washington</span><span>Texas</span></div>
+    </div>
+    <div class="tania">
+      <img src="tania.jpg" alt="Tania, founder of WebSwan">
+      <p><b>Hi, I'm Tania.</b><br>I'll personally review your information, prepare your applications, and keep you updated at every step.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-start" aria-selected="true" aria-controls="panel-start">Start a request</button>
+    <button class="tab" role="tab" id="tab-status" aria-selected="false" aria-controls="panel-status">Check my status</button>
+  </div>
+
+  <section id="panel-start" role="tabpanel" aria-labelledby="tab-start">
+    <div class="card no-print">
+      <h2>How it works</h2>
+      <div class="howgrid">
+        <div>Choose a service and complete the intake form.</div>
+        <div>See our service fee separately from estimated government fees.</div>
+        <div>Read the disclosures and e-sign the authorization.</div>
+        <div>Pay the WebSwan fee, and approve government fees separately.</div>
+        <div>Tania verifies your info, prepares the filing and records the status.</div>
+        <div>You receive the confirmation and next steps securely.</div>
+      </div>
+    </div>
+
+    <form id="intake" class="card" novalidate>
+      <ol class="steps" aria-label="Progress">
+        <li data-s="1">1. Service</li><li data-s="2">2. Your details</li><li data-s="3">3. Fees</li><li data-s="4">4. Disclosures &amp; sign</li><li data-s="5">5. Done</li>
+      </ol>
+      <input class="hp" type="text" name="company_website" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <!-- STEP 1 -->
+      <fieldset class="step" data-step="1" style="border:0;padding:0;margin:0">
+        <legend><h2>Which service do you need?</h2></legend>
+        <p class="lead">Pick one. You can add more later with Tania.</p>
+        <div class="svc-grid" id="svcGrid"></div>
+        <div class="f" style="margin-top:16px;max-width:320px">
+          <label for="state">State where the business is (or will be) registered</label>
+          <select id="state" required><option value="">Choose a state</option><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select>
+        </div>
+        <p class="err" id="err1" role="alert"></p>
+      </fieldset>
+
+      <!-- STEP 2 -->
+      <fieldset class="step" data-step="2" hidden style="border:0;padding:0;margin:0">
+        <legend><h2>Tell us about you and your business</h2></legend>
+        <div class="callout warn" role="note"><b>For your security, do not type your Social Security number, ITIN, tax ID, bank or card numbers, or ID photos anywhere on this form.</b> If your filing needs them, Tania will arrange a secure way, or you will enter them yourself directly on the official government website.</div>
+        <h3>You</h3>
+        <div class="grid2">
+          <div class="f"><label for="fullName">Full legal name</label><input id="fullName" type="text" autocomplete="name" required></div>
+          <div class="f"><label for="role">Your role in the business</label><select id="role"><option>Owner / member</option><option>Co-owner / member</option><option>Manager</option><option>Officer</option><option>Other</option></select></div>
+          <div class="f"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+          <div class="f"><label for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" required></div>
+        </div>
+        <h3>Business</h3>
+        <div class="grid2">
+          <div class="f"><label for="bizName">Business name <span class="opt">(for a new LLC, your first choice)</span></label><input id="bizName" type="text" required></div>
+          <div class="f"><label for="altNames">Backup name choices <span class="opt">(optional)</span></label><input id="altNames" type="text" placeholder="Second choice, third choice"></div>
+          <div class="f"><label for="activity">What does the business do?</label><input id="activity" type="text" placeholder="e.g. hair salon, cleaning services, online store" required></div>
+          <div class="f"><label for="cityCounty">City and county where you operate</label><input id="cityCounty" type="text" placeholder="e.g. Miami, Miami-Dade County" required></div>
+          <div class="f"><label for="bizAddress">Business street address <span class="opt">(no P.O. box for LLC filings)</span></label><input id="bizAddress" type="text" autocomplete="street-address"></div>
+          <div class="f"><label for="mailAddress">Mailing address <span class="opt">(if different)</span></label><input id="mailAddress" type="text"></div>
+        </div>
+        <div id="llcFields">
+          <h3>LLC details</h3>
+          <div class="grid2">
+            <div class="f"><label for="members">Number of owners (members)</label><select id="members"><option>1 (single-member)</option><option>2</option><option>3 or more</option></select></div>
+            <div class="f"><label for="managed">Who manages the LLC?</label><select id="managed"><option>The owners (member-managed)</option><option>A manager (manager-managed)</option><option>Not sure, I'd like help</option></select></div>
+            <div class="f"><label for="agent">Registered agent</label><select id="agent"><option>I will be my own registered agent</option><option>Someone I know will be the registered agent</option><option>I need a registered agent (paid separately)</option><option>Not sure</option></select></div>
+            <div class="f"><label for="ownerNames">Other owners' names <span class="opt">(optional)</span></label><input id="ownerNames" type="text"></div>
+          </div>
+        </div>
+        <div id="einFields">
+          <h3>EIN details</h3>
+          <div class="callout info">The IRS requires the <b>responsible party</b> to be the real person who owns or controls the business. WebSwan can never be listed as your responsible party.</div>
+          <div class="grid2">
+            <div class="f"><label for="rpName">Responsible party's full name</label><input id="rpName" type="text"></div>
+            <div class="f"><label for="rpTitle">Responsible party's title</label><input id="rpTitle" type="text" placeholder="e.g. Owner, Managing Member"></div>
+            <div class="f"><label for="employees">Do you expect to hire employees in the next 12 months?</label><select id="employees"><option>No</option><option>Yes</option><option>Not sure</option></select></div>
+            <div class="f"><label for="startDate">Business start date <span class="opt">(month/year)</span></label><input id="startDate" type="text" placeholder="e.g. 11/2026"></div>
+          </div>
+        </div>
+        <div class="f"><label for="notes">Anything else Tania should know? <span class="opt">(optional)</span></label><textarea id="notes" maxlength="1500"></textarea></div>
+        <div class="f"><label for="contactTime">Best time to reach you</label><select id="contactTime"><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
+        <p class="err" id="err2" role="alert"></p>
+      </fieldset>
+
+      <!-- STEP 3 -->
+      <fieldset class="step" data-step="3" hidden style="border:0;padding:0;margin:0">
+        <legend><h2>Review your fees</h2></legend>
+        <p class="lead">Our service fee and government fees are two separate charges.</p>
+        <table class="fees" id="feeTable"></table>
+        <div class="callout info"><b>Why two separate charges?</b> The WebSwan fee pays for our preparation, filing help and support. Government fees go to the state, county, city or other agency and are set by them. You can choose to pay government fees directly to the agency, or approve them separately before we pay them on your behalf. You can also file directly with the government yourself without using WebSwan.</div>
+        <label class="check"><input type="checkbox" id="feeAck"> <span>I understand that the WebSwan service fee is <b>separate from</b> and <b>in addition to</b> any state, county, city or IRS fees, and that government fee amounts are estimates that the agencies can change.</span></label>
+        <p class="err" id="err3" role="alert"></p>
+      </fieldset>
+
+      <!-- STEP 4 -->
+      <fieldset class="step" data-step="4" hidden style="border:0;padding:0;margin:0">
+        <legend><h2>Disclosures and authorization</h2></legend>
+        <p class="lead">Please read carefully. You'll confirm each key point and then sign.</p>
+        <div class="disclosures" id="disclosures" tabindex="0" aria-label="Disclosures">
+          <h4>1. Who we are</h4>
+          <p>WebSwan Business Service (operated by WebSwan Digital Solutions) is a private document-preparation and filing-assistance service. We are <b>not</b> affiliated with, endorsed by or acting for the IRS, any Secretary of State or Department of State, any Department of Revenue, or any city, county or other government agency.</p>
+          <h4>2. Not legal, tax or accounting advice</h4>
+          <p>We are not a law firm, attorneys, CPAs or tax advisors, and we do not give legal, tax or financial advice. We cannot tell you which business structure, tax election or licenses are right for you. Using our service does not create an attorney-client relationship. For advice, please consult a licensed attorney or tax professional. Information we share is general and educational.</p>
+          <h4>3. You can do this yourself</h4>
+          <p>You may file your LLC, apply for licenses and apply for an EIN directly with the government without using our service. <b>The IRS issues EINs for free</b> at irs.gov. You are paying WebSwan for preparation help, convenience and support, not for the government documents themselves.</p>
+          <h4>4. Our fee is separate from government fees</h4>
+          <p>The WebSwan service fee is separate from and in addition to all government filing, license, publication, registered agent and other third-party fees. Government fees shown are estimates based on published information at the time of review and may change. We will not pay any government fee on your behalf without your separate approval.</p>
+          <h4>5. No guarantees</h4>
+          <p>Signing this form does not create an LLC, issue an EIN or grant a business license. Only the government agency can approve, issue or reject a filing. We cannot guarantee name availability, approval, processing times or that every license or permit your business needs has been identified. License requirements depend on your city, county, state, industry and activities, and professional or occupational licenses are not included unless agreed in writing.</p>
+          <h4>6. Your responsibilities</h4>
+          <p>You are responsible for the accuracy and completeness of the information you provide and for reviewing documents before they are filed. You remain the owner and responsible party of your business. For EIN applications, the responsible party must be the actual individual who owns or controls the business. Ongoing requirements after filing (for example, annual or biennial reports, franchise tax reports, New York's LLC publication requirement, renewals and taxes) are your responsibility unless you purchase a separate service for them.</p>
+          <h4>7. Sensitive information</h4>
+          <p>Do not send Social Security numbers, tax ID numbers, bank or card numbers, or identity documents through this form or by regular email. When a filing requires them, we will use a secure method or you will enter them yourself directly with the agency. We keep only what is needed to provide the service.</p>
+          <h4>8. Authorization</h4>
+          <p>You authorize WebSwan to prepare the documents for the service you selected and, after your final review and approval, to submit them to the appropriate agency on your behalf, and, where the agency allows it, to act as your third-party designee or preparer for that filing only.</p>
+          <h4>9. Payment and refunds</h4>
+          <p>The WebSwan service fee is due before we submit any filing. If you cancel before we begin preparing your documents, your WebSwan fee will be refunded. Once preparation has started, the fee is refundable only for work not yet performed. Government fees that have already been paid to an agency cannot be refunded by WebSwan.</p>
+          <h4>10. Technology and AI tools</h4>
+          <p>We may use software, including AI writing tools, to help draft documents and messages. A person at WebSwan reviews the work, and you approve documents before they are filed.</p>
+          <h4>11. Electronic signature and records</h4>
+          <p>You agree to sign and receive these disclosures and records electronically, and that your typed and adopted signature has the same effect as a handwritten signature. You may request a paper copy at no cost, or withdraw your consent to electronic records, by contacting us. Please print or save a copy for your records.</p>
+        </div>
+        <label class="check"><input type="checkbox" class="ack" id="ack1"> <span>I understand WebSwan is a private service, not a government agency or a law firm, and does not give legal or tax advice.</span></label>
+        <label class="check"><input type="checkbox" class="ack" id="ack2"> <span>I understand signing this form does <b>not</b> create an LLC, issue an EIN or guarantee a business license. Only the government agency can approve my filing.</span></label>
+        <label class="check"><input type="checkbox" class="ack" id="ack3"> <span>I understand I am paying a WebSwan <b>service fee</b> that is separate from any LLC, business license or other government fees, and that the IRS EIN is free.</span></label>
+        <label class="check"><input type="checkbox" class="ack" id="ack4"> <span>I confirm my information is accurate, I am authorized to act for this business, and I remain the responsible party.</span></label>
+        <label class="check"><input type="checkbox" class="ack" id="ack5"> <span>I agree to use electronic records and signatures.</span></label>
+
+        <h3>Your signature</h3>
+        <div class="f" style="max-width:420px"><label for="sigName">Type your full legal name</label><input id="sigName" type="text" autocomplete="name"></div>
+        <div class="lbl" style="font-weight:700;font-size:.88rem">Choose a signature style</div>
+        <div class="sig-fonts" id="sigFonts" role="group" aria-label="Signature styles"></div>
+        <button type="button" class="btn ghost" id="adoptBtn">Adopt and sign</button>
+        <div class="adopted" id="adopted" hidden aria-live="polite">
+          <div class="help">Signed electronically</div>
+          <div class="sig" id="sigShow"></div>
+          <div class="help" id="sigMeta"></div>
+        </div>
+        <p class="err" id="err4" role="alert"></p>
+      </fieldset>
+
+      <!-- STEP 5 -->
+      <section class="step" data-step="5" hidden>
+        <h2>Thank you! Your request is in.</h2>
+        <p>Your tracking code:</p>
+        <p><span class="code" id="trackCode"></span></p>
+        <p class="lead">Save this code. Use it with your email in <b>Check my status</b> anytime.</p>
+        <div class="callout ok"><b>What happens next:</b> Tania will review your information and contact you within 1 business day to confirm the details, your exact WebSwan fee and the government fees. You will pay the WebSwan fee by a secure payment link, and approve any government fees separately. Nothing is filed until you approve it.</div>
+        <div id="payBox"></div>
+        <h3>Your signed authorization</h3>
+        <div id="receipt" class="disclosures" style="max-height:none"></div>
+        <div class="nav no-print"><button type="button" class="btn" onclick="window.print()">Print / Save as PDF</button></div>
+      </section>
+
+      <div class="nav no-print" id="navBar">
+        <button type="button" class="btn ghost" id="backBtn" hidden>Back</button>
+        <button type="button" class="btn" id="nextBtn">Continue</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="panel-status" role="tabpanel" aria-labelledby="tab-status" hidden>
+    <form id="statusForm" class="card" novalidate>
+      <h2>Check my status</h2>
+      <p class="lead">Enter the tracking code you received and the email you used.</p>
+      <div class="grid2">
+        <div class="f"><label for="sCode">Tracking code</label><input id="sCode" type="text" autocapitalize="characters" placeholder="e.g. WS-7K4M2Q" required></div>
+        <div class="f"><label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="email" required></div>
+      </div>
+      <button class="btn" type="submit" id="sBtn">Check status</button>
+      <p class="err" id="sErr" role="alert"></p>
+      <div id="sOut" aria-live="polite"></div>
+    </form>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p><b>WebSwan Business Service</b> · operated by WebSwan Digital Solutions · <span id="ftContact"></span></p>
+  <p>WebSwan is a private document-preparation service and is not affiliated with the IRS or any federal, state or local government agency. We are not a law firm and do not provide legal, tax or accounting advice. You can file directly with the government without using our service; the IRS issues EINs for free at irs.gov. Our service fee is separate from all government fees.</p>
+</footer>
+
+<script>
+(function(){
+  var C = window.WSBS_CONFIG, $ = function(id){ return document.getElementById(id); };
+  var STATUS_STEPS = ["Received","Reviewing","Awaiting payment","Preparing documents","Waiting for your approval","Submitted to agency","Completed"];
+  var esc = function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); };
+  $("ftContact").textContent = C.phone + " · " + C.email;
+
+  // tabs
+  function showTab(which){
+    ["start","status"].forEach(function(t){ var on=t===which; $("tab-"+t).setAttribute("aria-selected",on); $("panel-"+t).hidden=!on; });
+  }
+  $("tab-start").onclick=function(){ showTab("start"); }; $("tab-status").onclick=function(){ showTab("status"); };
+  if (location.hash === "#status") showTab("status");
+
+  // services
+  C.services.forEach(function(s,i){
+    var l=document.createElement("label"); l.className="svc";
+    l.innerHTML='<input type="radio" name="svc" value="'+s.id+'"'+(i===0?'':'')+'><b>'+esc(s.name)+'</b><span class="price">'+esc(s.feeText)+'</span><small>WebSwan service fee</small><small>'+esc(s.desc)+'</small>';
+    $("svcGrid").appendChild(l);
+  });
+  var svc=function(){ var r=document.querySelector('input[name=svc]:checked'); return r ? C.services.find(function(s){return s.id===r.value;}) : null; };
+
+  // steps
+  var step=1;
+  function go(n, quiet){
+    step=n;
+    document.querySelectorAll(".step").forEach(function(el){ el.hidden = +el.dataset.step!==n; });
+    document.querySelectorAll(".steps li").forEach(function(li){ var s=+li.dataset.s; li.className = s<n?"done":s===n?"on":""; if(s===n) li.setAttribute("aria-current","step"); else li.removeAttribute("aria-current"); });
+    $("backBtn").hidden = n===1 || n===5; $("navBar").hidden = n===5;
+    $("nextBtn").textContent = n===4 ? "Sign and submit" : "Continue";
+    if (n===2){ var id=svc().id; $("llcFields").hidden = !(id==="llc"||id==="package"); $("einFields").hidden = !(id==="ein"||id==="package"); }
+    if (n===3) buildFees();
+    if (quiet) return;
+    $("intake").scrollIntoView({behavior:"smooth",block:"start"});
+    var first=document.querySelector('.step[data-step="'+n+'"] h2'); if(first){ first.setAttribute("tabindex","-1"); first.focus({preventScroll:true}); }
+  }
+  function need(ids, errEl){
+    for (var i=0;i<ids.length;i++){ var el=$(ids[i]); if(!el.value.trim()){ $(errEl).textContent="Please fill in: "+(el.labels&&el.labels[0]?el.labels[0].childNodes[0].textContent.trim():ids[i])+"."; el.focus(); return false; } }
+    return true;
+  }
+  function buildFees(){
+    var s=svc(), st=C.states[$("state").value], rows=[];
+    rows.push(['WebSwan service fee', '<span class="big">'+esc(s.feeText)+'</span><br><span class="help">Paid to WebSwan for '+esc(s.name.toLowerCase())+'.</span>']);
+    if (s.id==="ein"||s.id==="package") rows.push(["IRS fee for the EIN", esc(st.ein)]);
+    if (s.id==="llc"||s.id==="package") rows.push(["Estimated "+st.name+" LLC filing fees (paid to the state)", esc(st.llc)]);
+    if (s.id.indexOf("license")===0||s.id==="package") rows.push(["Estimated "+st.name+" license fees (paid to the agency)", esc(st.license)]);
+    if (s.id==="llc"||s.id==="package") rows.push(["Ongoing state requirements after you form", esc(st.ongoing)]);
+    $("feeTable").innerHTML = rows.map(function(r){ return "<tr><th scope=\"row\">"+r[0]+"</th><td>"+r[1]+"</td></tr>"; }).join("");
+  }
+
+  // signature fonts
+  var FONTS=[["Dancing Script","'Dancing Script', cursive"],["Great Vibes","'Great Vibes', cursive"],["Allura","'Allura', cursive"],["Sacramento","'Sacramento', cursive"]];
+  var chosenFont=null, adopted=null;
+  function drawSigOpts(){
+    var name=$("sigName").value.trim()||"Your Name";
+    $("sigFonts").innerHTML=FONTS.map(function(f,i){ return '<button type="button" class="sig-opt" data-i="'+i+'" aria-pressed="'+(chosenFont===i)+'"><span style="font-family:'+f[1]+'">'+esc(name)+'</span><small>Style '+(i+1)+'</small></button>'; }).join("");
+  }
+  $("sigFonts").addEventListener("click",function(e){ var b=e.target.closest(".sig-opt"); if(!b) return; chosenFont=+b.dataset.i; adopted=null; $("adopted").hidden=true; drawSigOpts(); });
+  $("sigName").addEventListener("input",function(){ adopted=null; $("adopted").hidden=true; drawSigOpts(); });
+  drawSigOpts();
+  $("adoptBtn").onclick=function(){
+    var name=$("sigName").value.trim();
+    if(!name){ $("err4").textContent="Type your full legal name first."; $("sigName").focus(); return; }
+    if(chosenFont===null){ $("err4").textContent="Choose a signature style."; return; }
+    if(name.toLowerCase().replace(/\s+/g," ")!==$("fullName").value.trim().toLowerCase().replace(/\s+/g," ")){ $("err4").textContent="Your signature name must match the full legal name you entered in step 2 ("+$("fullName").value.trim()+")."; return; }
+    $("err4").textContent="";
+    adopted={ name:name, font:FONTS[chosenFont][0], at:new Date().toISOString() };
+    $("sigShow").style.fontFamily=FONTS[chosenFont][1]; $("sigShow").textContent=name;
+    $("sigMeta").textContent=name+" · "+new Date(adopted.at).toLocaleString();
+    $("adopted").hidden=false;
+  };
+
+  $("backBtn").onclick=function(){ go(step-1); };
+  $("nextBtn").onclick=async function(){
+    if(step===1){ if(!svc()){ $("err1").textContent="Choose a service."; return; } if(!$("state").value){ $("err1").textContent="Choose your state."; $("state").focus(); return; } $("err1").textContent=""; return go(2); }
+    if(step===2){
+      if(!need(["fullName","email","phone","bizName","activity","cityCounty"],"err2")) return;
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("email").value.trim())){ $("err2").textContent="Please check your email address."; $("email").focus(); return; }
+      var id=svc().id;
+      if((id==="ein"||id==="package") && !need(["rpName","rpTitle"],"err2")) return;
+      var all=[].map.call(document.querySelectorAll('#intake input[type=text], #intake textarea'),function(x){return x.value;}).join(" ");
+      if(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/.test(all)){ $("err2").textContent="It looks like you typed a Social Security or tax ID number. Please remove it. Tania will arrange a secure way if it's needed."; return; }
+      $("err2").textContent=""; if(!$("sigName").value) { $("sigName").value=$("fullName").value.trim(); drawSigOpts(); } return go(3);
+    }
+    if(step===3){ if(!$("feeAck").checked){ $("err3").textContent="Please confirm you understand the fees."; $("feeAck").focus(); return; } $("err3").textContent=""; return go(4); }
+    if(step===4){
+      var unchecked=[].filter.call(document.querySelectorAll(".ack"),function(c){return !c.checked;});
+      if(unchecked.length){ $("err4").textContent="Please check every box to confirm you understand."; unchecked[0].focus(); return; }
+      if(!adopted){ $("err4").textContent="Please adopt your signature (choose a style, then click Adopt and sign)."; return; }
+      return submit();
+    }
+  };
+
+  function collect(){
+    var s=svc(), st=$("state").value;
+    return {
+      service:s.id, serviceName:s.name, serviceFee:s.feeText, state:st,
+      client:{ fullName:$("fullName").value.trim(), role:$("role").value, email:$("email").value.trim(), phone:$("phone").value.trim(), contactTime:$("contactTime").value },
+      business:{ name:$("bizName").value.trim(), altNames:$("altNames").value.trim(), activity:$("activity").value.trim(), cityCounty:$("cityCounty").value.trim(), address:$("bizAddress").value.trim(), mailing:$("mailAddress").value.trim() },
+      llc: ($("llcFields").hidden?null:{ members:$("members").value, managed:$("managed").value, agent:$("agent").value, ownerNames:$("ownerNames").value.trim() }),
+      ein: ($("einFields").hidden?null:{ responsibleParty:$("rpName").value.trim(), title:$("rpTitle").value.trim(), employees:$("employees").value, startDate:$("startDate").value.trim() }),
+      notes:$("notes").value.trim(),
+      consent:{ feeAck:true, acks:[1,2,3,4,5], disclosureVersion:C.disclosureVersion, signature:adopted, userAgent:navigator.userAgent },
+      hp:$("hp").value
+    };
+  }
+  async function submit(){
+    var b=$("nextBtn"); b.disabled=true; b.textContent="Submitting…";
+    var data=collect();
+    try{
+      var res=await fetch(C.apiBase+"/bs-intake",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"create",data:data})});
+      var out=await res.json().catch(function(){return {};});
+      if(!res.ok) throw new Error(out.error||"We couldn't submit your request. Please try again or call "+C.phone+".");
+      $("trackCode").textContent=out.code;
+      var link=C.paymentLinks[data.service];
+      $("payBox").innerHTML = link ? '<div class="callout info">If Tania has already confirmed your fee with you, you can pay the WebSwan service fee here: <a href="'+esc(link)+'" target="_blank" rel="noopener">secure payment link</a>. Government fees are separate.</div>' : "";
+      $("receipt").innerHTML='<p><b>WebSwan Business Service: Client Authorization</b></p>'+
+        '<p>Tracking code: <b>'+esc(out.code)+'</b><br>Service: '+esc(data.serviceName)+' ('+esc(C.states[data.state].name)+')<br>WebSwan service fee: '+esc(data.serviceFee)+' (separate from government fees)<br>Business: '+esc(data.business.name)+'<br>Client: '+esc(data.client.fullName)+', '+esc(data.client.email)+'</p>'+
+        $("disclosures").innerHTML+
+        '<p><b>Confirmed:</b> all five acknowledgments above, and the fee acknowledgment.</p>'+
+        '<p>Signature: <span style="font-family:'+FONTS.find(function(f){return f[0]===adopted.font;})[1]+';font-size:2rem">'+esc(adopted.name)+'</span><br>Signed electronically on '+esc(new Date(adopted.at).toLocaleString())+' · Disclosure version '+esc(C.disclosureVersion)+'</p>';
+      go(5);
+    }catch(err){ $("err4").textContent=err.message; }
+    finally{ b.disabled=false; b.textContent="Sign and submit"; }
+  }
+
+  // status
+  $("statusForm").addEventListener("submit",async function(e){
+    e.preventDefault(); $("sErr").textContent=""; $("sOut").innerHTML="";
+    var code=$("sCode").value.trim().toUpperCase(), email=$("sEmail").value.trim();
+    if(!code||!email){ $("sErr").textContent="Enter your tracking code and email."; return; }
+    $("sBtn").disabled=true;
+    try{
+      var res=await fetch(C.apiBase+"/bs-intake",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"status",code:code,email:email})});
+      var out=await res.json().catch(function(){return {};});
+      if(!res.ok) throw new Error(out.error||"We couldn't find that request.");
+      var idx=STATUS_STEPS.indexOf(out.status);
+      var tl=STATUS_STEPS.map(function(s,i){ return '<li class="'+(i<idx?"done":i===idx?"cur":"")+'">'+esc(s)+'</li>'; }).join("");
+      $("sOut").innerHTML='<h3>'+esc(out.serviceName)+' · '+esc(out.business)+'</h3>'+
+        (out.status==="Needs information"?'<div class="callout warn"><b>We need a little more information.</b> Tania will contact you, or call '+esc(C.phone)+'.</div>':'')+
+        '<ul class="timeline">'+tl+'</ul>'+
+        (out.clientNote?'<div class="callout info"><b>Note from Tania:</b> '+esc(out.clientNote)+'</div>':'')+
+        '<p class="help">Last updated '+esc(new Date(out.updatedAt).toLocaleString())+'</p>';
+    }catch(err){ $("sErr").textContent=err.message; }
+    finally{ $("sBtn").disabled=false; }
+  });
+
+  go(1, true);
+})();
+</script>
+</body>
+</html>
