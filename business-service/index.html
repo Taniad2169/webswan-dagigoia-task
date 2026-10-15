@@ -96,6 +96,9 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
 @media (max-width:760px){.hero-grid,.grid2{grid-template-columns:1fr}.tabs{margin-top:-18px}}
 @media print{.notice-bar,header.hero,.tabs,.nav,.no-print,footer{display:none!important}body{background:#fff}.card{border:0;box-shadow:none}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+.paycard{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:2px solid var(--blue);border-radius:16px;padding:18px;margin:14px 0;background:#eef8fd}
+a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:1.05rem;padding:14px 24px}
+@media print{.paycard,.paybtn{display:none!important}}
 </style>
 </head>
 <body>
@@ -130,7 +133,7 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
         <div>Choose a service and complete the intake form.</div>
         <div>See our service fee separately from estimated government fees.</div>
         <div>Read the disclosures and e-sign the authorization.</div>
-        <div>Pay the WebSwan fee, and approve government fees separately.</div>
+        <div>Pay the WebSwan service fee securely by card (Stripe). Government fees are approved separately.</div>
         <div>Tania verifies your info, prepares the filing and records the status.</div>
         <div>You receive the confirmation and next steps securely.</div>
       </div>
@@ -230,7 +233,7 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
           <h4>8. Authorization</h4>
           <p>You authorize WebSwan to prepare the documents for the service you selected and, after your final review and approval, to submit them to the appropriate agency on your behalf, and, where the agency allows it, to act as your third-party designee or preparer for that filing only.</p>
           <h4>9. Payment and refunds</h4>
-          <p>The WebSwan service fee is due before we submit any filing. If you cancel before we begin preparing your documents, your WebSwan fee will be refunded. Once preparation has started, the fee is refundable only for work not yet performed. Government fees that have already been paid to an agency cannot be refunded by WebSwan.</p>
+          <p>The WebSwan service fee is paid by secure card checkout (Stripe) right after you sign. Paying the service fee does not pay any government fee. If you cancel before we begin preparing your documents, your WebSwan fee will be refunded. Once preparation has started, the fee is refundable only for work not yet performed. Government fees that have already been paid to an agency cannot be refunded by WebSwan.</p>
           <h4>10. Technology and AI tools</h4>
           <p>We may use software, including AI writing tools, to help draft documents and messages. A person at WebSwan reviews the work, and you approve documents before they are filed.</p>
           <h4>11. Electronic signature and records</h4>
@@ -261,8 +264,8 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
         <p>Your tracking code:</p>
         <p><span class="code" id="trackCode"></span></p>
         <p class="lead">Save this code. Use it with your email in <b>Check my status</b> anytime.</p>
-        <div class="callout ok"><b>What happens next:</b> Tania will review your information and contact you within 1 business day to confirm the details, your exact WebSwan fee and the government fees. You will pay the WebSwan fee by a secure payment link, and approve any government fees separately. Nothing is filed until you approve it.</div>
         <div id="payBox"></div>
+        <div class="callout ok"><b>What happens next:</b> After your service fee is paid, Tania reviews your information and contacts you within 1 business day to confirm the details and the government fees. You approve any government fees separately. Nothing is filed until you approve it.</div>
         <h3>Your signed authorization</h3>
         <div id="receipt" class="disclosures" style="max-height:none"></div>
         <div class="nav no-print"><button type="button" class="btn" onclick="window.print()">Print / Save as PDF</button></div>
@@ -401,6 +404,12 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
       hp:$("hp").value
     };
   }
+  function payHtml(url, amount, code){
+    if(!url) return '<div class="callout warn"><b>Almost done!</b> Our secure checkout is not available right now. Tania will email you a secure payment link for your WebSwan service fee. Questions? Call '+esc(C.phone)+'.</div>';
+    return '<div class="paycard"><div><b>Last step: pay your WebSwan service fee</b><br><span class="help">Secure card checkout by Stripe. This is <b>only</b> the WebSwan service fee; government fees are separate. A receipt is emailed to you.</span></div>'+
+      '<a class="btn primary paybtn" href="'+esc(url)+'">Pay $'+esc(Number(amount).toFixed(2).replace(/\.00$/,""))+' securely</a></div>'+
+      '<p class="help">Tip: print or save your signed authorization below first. Your tracking code is <b>'+esc(code)+'</b>.</p>';
+  }
   async function submit(){
     var b=$("nextBtn"); b.disabled=true; b.textContent="Submitting…";
     var data=collect();
@@ -409,8 +418,7 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
       var out=await res.json().catch(function(){return {};});
       if(!res.ok) throw new Error(out.error||"We couldn't submit your request. Please try again or call "+C.phone+".");
       $("trackCode").textContent=out.code;
-      var link=C.paymentLinks[data.service];
-      $("payBox").innerHTML = link ? '<div class="callout info">If Tania has already confirmed your fee with you, you can pay the WebSwan service fee here: <a href="'+esc(link)+'" target="_blank" rel="noopener">secure payment link</a>. Government fees are separate.</div>' : "";
+      $("payBox").innerHTML = payHtml(out.payUrl, out.payAmount, out.code);
       $("receipt").innerHTML='<p><b>WebSwan Business Service: Client Authorization</b></p>'+
         '<p>Tracking code: <b>'+esc(out.code)+'</b><br>Service: '+esc(data.serviceName)+' ('+esc(C.states[data.state].name)+')<br>WebSwan service fee: '+esc(data.serviceFee)+' (separate from government fees)<br>Business: '+esc(data.business.name)+'<br>Client: '+esc(data.client.fullName)+', '+esc(data.client.email)+'</p>'+
         $("disclosures").innerHTML+
@@ -436,6 +444,7 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
       $("sOut").innerHTML='<h3>'+esc(out.serviceName)+' · '+esc(out.business)+'</h3>'+
         (out.status==="Needs information"?'<div class="callout warn"><b>We need a little more information.</b> Tania will contact you, or call '+esc(C.phone)+'.</div>':'')+
         '<ul class="timeline">'+tl+'</ul>'+
+        (out.paid?'<div class="callout ok"><b>Service fee paid.</b> Thank you!</div>':(out.payUrl?payHtml(out.payUrl,out.payAmount,code):''))+
         (out.clientNote?'<div class="callout info"><b>Note from Tania:</b> '+esc(out.clientNote)+'</div>':'')+
         '<p class="help">Last updated '+esc(new Date(out.updatedAt).toLocaleString())+'</p>';
     }catch(err){ $("sErr").textContent=err.message; }
@@ -443,6 +452,12 @@ footer{padding:26px 0 40px;font-size:.82rem;color:var(--muted)}
   });
 
   go(1, true);
+  // back from Stripe checkout: thank the client and show their status
+  var paidCode=(new URLSearchParams(location.search).get("paid")||"").toUpperCase();
+  if(/^WS-[A-Z0-9]{6}$/.test(paidCode)){
+    showTab("status"); $("sCode").value=paidCode;
+    $("sOut").innerHTML='<div class="callout ok"><b>Thank you! Your WebSwan service fee payment went through.</b> Stripe emails your receipt. Tania will contact you within 1 business day. Enter your email above to see your status.</div>';
+  }
 })();
 </script>
 </body>

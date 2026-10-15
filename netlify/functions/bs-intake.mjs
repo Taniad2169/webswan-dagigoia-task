@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, ALLOWED_ORIGINS } from "../lib/auth.mjs";
+import { makePayLink, checkPaid, amountFor } from "../lib/bspay.mjs";
 
 const SERVICES = { ein: "EIN application assistance", "license-existing": "Existing business license application", "license-new": "New business license registration assistance", llc: "LLC formation assistance", package: "Business startup package" };
 const STATES = ["NY", "FL", "WA", "TX"];
@@ -34,7 +35,14 @@ export default async (req, context) => {
     await new Promise((r) => setTimeout(r, 400)); // slow down guessing
     const rec = /^WS-[A-Z0-9]{6}$/.test(code) ? await store.get("req/" + code, { type: "json" }) : null;
     if (!rec || rec.client.email.toLowerCase() !== email) return reply(404, { error: "We couldn't find a request with that code and email." }, origin);
-    return reply(200, { status: rec.status, serviceName: rec.serviceName, business: rec.business.name, clientNote: rec.clientNote || "", updatedAt: rec.updatedAt }, origin);
+    let paid = false;
+    try { const was = rec.pay && rec.pay.paid; paid = await checkPaid(rec); if (paid && !was) { rec.updatedAt = new Date().toISOString(); await store.setJSON("req/" + code, rec); } } catch (e) { paid = !!(rec.pay && rec.pay.paid); }
+    // if Tania changed the final fee after the link was made, make a fresh link for the new amount
+    if (!paid && rec.status !== "Cancelled") {
+      try { if (!rec.pay || rec.pay.amount !== amountFor(rec)) { rec.pay = await makePayLink(rec); await store.setJSON("req/" + code, rec); } } catch (e) {}
+    }
+    return reply(200, { status: rec.status, serviceName: rec.serviceName, business: rec.business.name, clientNote: rec.clientNote || "", updatedAt: rec.updatedAt,
+      paid, payUrl: !paid && rec.status !== "Cancelled" && rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null }, origin);
   }
 
   if (body.action !== "create") return reply(400, { error: "Bad request." }, origin);
@@ -64,6 +72,7 @@ export default async (req, context) => {
     consent: { ...data.consent, signedAt: sig.at || now, receivedAt: now, ip, serverUserAgent: clean(req.headers.get("user-agent"), 300) },
     clientNote: "", internalNotes: [], finalFee: ""
   };
+  try { rec.pay = await makePayLink(rec); } catch (e) { rec.pay = null; rec.payError = String(e.message).slice(0, 200); }
   await store.setJSON("req/" + code, rec);
 
   // notify Tania (no sensitive data in this email)
@@ -72,5 +81,5 @@ export default async (req, context) => {
       body: JSON.stringify({ _subject: "New WebSwan Business Service request " + code, code, service: rec.serviceName, state: rec.state, client: c.fullName, email: c.email, phone: c.phone, business: b.name, signedAs: sig.name }) });
   } catch (e) { /* notification is best-effort */ }
 
-  return reply(200, { code }, origin);
+  return reply(200, { code, payUrl: rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null }, origin);
 };

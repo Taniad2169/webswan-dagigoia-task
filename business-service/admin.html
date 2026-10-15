@@ -98,6 +98,10 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
     $("detail").innerHTML =
       '<h2>'+esc(r.business.name)+' <span class="pill">'+esc(r.status)+'</span></h2>'+
       '<p class="muted">'+esc(r.code)+' · '+esc(r.serviceName)+' ('+esc(r.serviceFee)+') · '+esc(C.states[r.state].name)+' · received '+new Date(r.createdAt).toLocaleString()+'</p>'+
+      '<div class="noprint" style="margin:8px 0;padding:10px 12px;border-radius:10px;background:'+(r.pay&&r.pay.paid?'#e8f8ee':'#fff7e6')+'"><b>Service fee:</b> '+
+        (r.pay&&r.pay.paid?'Paid $'+esc(r.pay.amountPaid)+' on '+new Date(r.pay.paidAt).toLocaleString():
+         r.pay?'Not paid yet ($'+esc(r.pay.amount)+'). <a href="'+esc(r.pay.url)+'" target="_blank" rel="noopener">Payment link</a> <button type="button" class="btn ghost" style="min-height:32px;padding:4px 10px" onclick="navigator.clipboard.writeText(\''+esc(r.pay.url)+'\')">Copy</button><br><small>Change "Final WebSwan fee" below and save to make a new link for a different amount.</small>':
+         'No payment link'+(r.payError?' (Stripe: '+esc(r.payError)+')':'')+'. Save an update to try again.')+'</div>'+
       '<div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><a class="btn ghost" style="text-decoration:none" href="'+mail+'">Email client</a><a class="btn ghost" style="text-decoration:none" href="tel:'+esc(r.client.phone)+'">Call '+esc(r.client.phone)+'</a><button class="btn ghost" type="button" onclick="window.print()">Print / PDF</button></div>'+
       '<h3>Client</h3><dl>'+kv(r.client)+'</dl><h3>Business</h3><dl>'+kv(r.business)+'</dl>'+
       (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+

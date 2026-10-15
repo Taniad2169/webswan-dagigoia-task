@@ -13,9 +13,9 @@ window.WSBS_CONFIG = {
     { id: "license-new", name: "New business license registration assistance", fee: 149, feeText: "$149",
       desc: "We help you identify the general state and local registrations most businesses need and prepare the applications." },
     { id: "llc", name: "LLC formation assistance", fee: 199, feeText: "$199 to $299",
-      desc: "We prepare and file your LLC formation documents with the state. Final WebSwan fee within the range is confirmed before you pay." },
+      desc: "We prepare and file your LLC formation documents with the state. You pay the $199 starting fee when you submit. If your filing needs more work (up to $299), Tania confirms it with you before any extra charge." },
     { id: "package", name: "Business startup package", fee: 299, feeText: "$299 to $399",
-      desc: "LLC formation + EIN + general business license assistance in one package. Final WebSwan fee within the range is confirmed before you pay." }
+      desc: "LLC formation + EIN + general business license assistance in one package. You pay the $299 starting fee when you submit. If your filing needs more work (up to $399), Tania confirms it with you before any extra charge." }
   ],
   states: {
     NY: { name: "New York",
@@ -39,7 +39,5 @@ window.WSBS_CONFIG = {
       ein: "$0. The IRS issues EINs for free.",
       ongoing: "Annual franchise tax report and Public Information Report to the Texas Comptroller (no tax due for most small businesses under the threshold, but the report is still required)." }
   },
-  // Optional: paste Stripe Payment Links here (one per service). Leave empty to send a link after review.
-  paymentLinks: { ein: "", "license-existing": "", "license-new": "", llc: "", package: "" },
   apiBase: "https://webswan-billing.netlify.app/.netlify/functions"
 };
