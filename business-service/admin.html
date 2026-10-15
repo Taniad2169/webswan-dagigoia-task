@@ -52,7 +52,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
 </head>
 <body>
 <header><img src="ws-logo.webp" alt=""><h1>WebSwan Business Service · Admin</h1>
-  <div class="r"><a class="btn wh" href="./" target="_blank" rel="noopener" style="text-decoration:none">Client page</a><button class="btn wh" id="authBtn" type="button">Sign in</button></div></header>
+  <div class="r"><a class="btn wh" href="gbp.html" target="_blank" rel="noopener" style="text-decoration:none">GBP Manager</a><a class="btn wh" href="./" target="_blank" rel="noopener" style="text-decoration:none">Client page</a><button class="btn wh" id="authBtn" type="button">Sign in</button></div></header>
 <div id="gate" class="gate card"><h2>Private admin</h2><p class="muted" id="gateMsg">Sign in with your WebSwan Google account.</p><button class="btn" id="gateBtn" type="button">Sign in with Google</button></div>
 <main class="wrap" id="app" hidden>
   <div class="cols">
@@ -66,7 +66,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
         <p class="muted" style="margin-top:0">Pick the service and state, then copy the link or a ready-to-send message. The form opens with the right questions for that service.</p>
         <div class="grid2">
           <div class="f"><label for="sendSvc">Service</label><select id="sendSvc"></select></div>
-          <div class="f"><label for="sendState">State</label><select id="sendState"><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select></div>
+          <div class="f"><label for="sendState">State</label><select id="sendState"><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option><option value="US">Other state (GBP only)</option></select></div>
         </div>
         <div class="f"><label for="sendLink">Form link</label><input id="sendLink" type="text" readonly></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="copyLink">Copy link</button><button class="btn ghost" type="button" id="copyMsg">Copy message (text / email)</button><a class="btn ghost" style="text-decoration:none" id="mailLink" href="#">Open in email</a></div>
@@ -121,7 +121,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
          'No payment link'+(r.payError?' (Stripe: '+esc(r.payError)+')':'')+'. Save an update to try again.')+'</div>'+
       '<div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><a class="btn ghost" style="text-decoration:none" href="'+mail+'">Email client</a><a class="btn ghost" style="text-decoration:none" href="tel:'+esc(r.client.phone)+'">Call '+esc(r.client.phone)+'</a><button class="btn ghost" type="button" onclick="window.print()">Print / PDF</button></div>'+
       '<h3>Client</h3><dl>'+kv(r.client)+'</dl><h3>Business</h3><dl>'+kv(r.business)+'</dl>'+
-      (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+(r.license?'<h3>Business license</h3><dl>'+kv(r.license)+'</dl>':'')+(r.consent.purposeText?'<h3>Purpose consent</h3><p>'+esc(r.consent.purposeText)+'</p>':'')+
+      (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+(r.license?'<h3>Business license</h3><dl>'+kv(r.license)+'</dl>':'')+(r.gbp?'<h3>Google Business Profile</h3><p class="noprint"><a class="btn" style="text-decoration:none" href="gbp.html?code='+esc(r.code)+'" target="_blank" rel="noopener">Open in GBP Manager</a></p><dl>'+kv(r.gbp)+'</dl>':'')+(r.consent.purposeText?'<h3>Purpose consent</h3><p>'+esc(r.consent.purposeText)+'</p>':'')+
       (r.notes?'<h3>Client notes</h3><p>'+esc(r.notes)+'</p>':'')+
       '<h3>Signed authorization</h3><dl><dt>Signature</dt><dd><span style="font-family:\''+esc(sig.font)+'\',cursive;font-size:1.8rem">'+esc(sig.name)+'</span></dd><dt>Signed</dt><dd>'+esc(new Date(r.consent.signedAt).toLocaleString())+'</dd><dt>Disclosures version</dt><dd>'+esc(r.consent.disclosureVersion)+'</dd><dt>Fee acknowledged</dt><dd>'+(r.consent.feeAck?"Yes":"No")+'</dd><dt>Acknowledgments</dt><dd>'+esc((r.consent.acks||[]).length)+' of 5</dd><dt>IP / device</dt><dd>'+esc(r.consent.ip)+' · '+esc((r.consent.serverUserAgent||"").slice(0,90))+'</dd></dl>'+
       '<div class="noprint"><h3>Update</h3><div class="grid2"><div class="f"><label for="uStatus">Status</label><select id="uStatus">'+statuses.map(function(s){return '<option'+(s===r.status?' selected':'')+'>'+esc(s)+'</option>';}).join("")+'</select></div>'+
@@ -153,7 +153,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
   var BASE=location.href.replace(/admin\.html.*$/,"");
   $("sendSvc").innerHTML=C.services.map(function(x){ return '<option value="'+esc(x.id)+'">'+esc(x.name)+' ('+esc(x.feeText)+')</option>'; }).join("");
   function sendMsg(){ var x=C.services.find(function(y){return y.id===$("sendSvc").value;}), st=C.states[$("sendState").value].name;
-    return "Hi! Thank you for choosing WebSwan Business Service. Here is your secure form for your "+x.name.toLowerCase()+" in "+st+":\n\n"+$("sendLink").value+"\n\nIt takes about 10 minutes. Please do not type your Social Security number or any tax ID on the form; if it's needed, I'll arrange a secure way. The WebSwan service fee ("+x.feeText+") is separate from any government fees, and the IRS EIN itself is free.\n\nQuestions? Call "+C.phone+".\n\nTania\nWebSwan Business Service"; }
+    return "Hi! Thank you for choosing WebSwan Business Service. Here is your secure form for your "+x.name.toLowerCase()+" in "+st+":\n\n"+$("sendLink").value+"\n\nIt takes about 10 minutes. Please do not type your Social Security number or any tax ID on the form; if it's needed, I'll arrange a secure way. "+(x.id==="gbp"?"The fee is "+x.feeText+". Google itself does not charge for a Business Profile.":"The WebSwan service fee ("+x.feeText+") is separate from any government fees, and the IRS EIN itself is free.")+"\n\nQuestions? Call "+C.phone+".\n\nTania\nWebSwan Business Service"; }
   function drawSend(){ $("sendLink").value=BASE+"?service="+encodeURIComponent($("sendSvc").value)+"&state="+$("sendState").value;
     $("mailLink").href="mailto:?subject="+encodeURIComponent("Your WebSwan Business Service form")+"&body="+encodeURIComponent(sendMsg()); }
   $("sendSvc").onchange=drawSend; $("sendState").onchange=drawSend; drawSend();

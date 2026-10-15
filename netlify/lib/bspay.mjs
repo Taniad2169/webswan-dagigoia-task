@@ -1,6 +1,7 @@
 // WebSwan Business Service - one-time Stripe payment for the WebSwan service fee (The WebSwan Stripe account).
 // Uses env STRIPE_SECRET_KEY (set by Tania in Netlify). Amounts come from this server table, never from the browser.
-export const FEES = { ein: 69, "license-existing": 99, "license-new": 149, llc: 199, package: 299 };
+export const FEES = { ein: 69, "license-existing": 99, "license-new": 149, llc: 199, package: 299, gbp: 350 };
+export const MONTHLY = { gbp: 180 };
 const PAGE = "https://taniad2169.github.io/webswan-dagigoia-task/business-service/";
 
 async function stripe(path, params, method = "POST") {
@@ -27,18 +28,30 @@ export async function makePayLink(rec) {
   const m = (prefix) => Object.fromEntries(Object.entries(meta).map(([k, v]) => [prefix + "[" + k + "]", v]));
   const price = await stripe("prices", { currency: "usd", unit_amount: String(Math.round(amount * 100)),
     "product_data[name]": "WebSwan service fee: " + rec.serviceName + " (" + rec.code + ")", ...m("metadata") });
-  const link = await stripe("payment_links", {
+  const monthly = MONTHLY[rec.service] || 0;
+  const params = {
     "line_items[0][price]": price.id, "line_items[0][quantity]": "1",
     "restrictions[completed_sessions][limit]": "1", ...m("metadata"),
-    "invoice_creation[enabled]": "true",
-    "invoice_creation[invoice_data][description]": ("WebSwan service fee for " + rec.serviceName + ". Government fees are separate and not included.").slice(0, 500),
-    "invoice_creation[invoice_data][footer]": "Thank you for choosing The WebSwan! Tracking code " + rec.code,
-    ...m("invoice_creation[invoice_data][metadata]"),
     "after_completion[type]": "redirect",
     "after_completion[redirect][url]": PAGE + "?paid=" + rec.code
-  });
+  };
+  if (monthly) {
+    // setup fee today + monthly plan (subscription); Stripe emails the receipts
+    const sub = await stripe("prices", { currency: "usd", unit_amount: String(monthly * 100), "recurring[interval]": "month",
+      "product_data[name]": "WebSwan monthly management: " + rec.serviceName + " (" + rec.code + ")", ...m("metadata") });
+    params["line_items[1][price]"] = sub.id; params["line_items[1][quantity]"] = "1";
+    Object.assign(params, m("subscription_data[metadata]"));
+  } else {
+    Object.assign(params, {
+      "invoice_creation[enabled]": "true",
+      "invoice_creation[invoice_data][description]": ("WebSwan service fee for " + rec.serviceName + ". Government fees are separate and not included.").slice(0, 500),
+      "invoice_creation[invoice_data][footer]": "Thank you for choosing The WebSwan! Tracking code " + rec.code,
+      ...m("invoice_creation[invoice_data][metadata]")
+    });
+  }
+  const link = await stripe("payment_links", params);
   const url = link.url + "?client_reference_id=" + encodeURIComponent(rec.code) + "&prefilled_email=" + encodeURIComponent(rec.client.email || "");
-  return { id: link.id, url, amount, createdAt: new Date().toISOString(), paid: false };
+  return { id: link.id, url, amount, monthly, createdAt: new Date().toISOString(), paid: false };
 }
 
 // returns true if this record's payment link has a completed, paid checkout

@@ -152,7 +152,7 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
         <div class="svc-grid" id="svcGrid"></div>
         <div class="f" style="margin-top:16px;max-width:320px">
           <label for="state">State where the business is (or will be) registered</label>
-          <select id="state" required><option value="">Choose a state</option><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select>
+          <select id="state" required><option value="">Choose a state</option><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option><option value="US">Another U.S. state (Google Business Profile only)</option></select>
         </div>
         <p class="err" id="err1" role="alert"></p>
       </fieldset>
@@ -200,6 +200,33 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
             <div class="f"><label for="startDate">Business start date <span class="opt">(month/year)</span></label><input id="startDate" type="text" placeholder="e.g. 11/2026"></div>
             <div class="f"><label for="einReason">Why do you need an EIN?</label><select id="einReason"><option>Started a new business</option><option>Opening a business bank account</option><option>Hiring employees</option><option>Changed business structure (e.g. now an LLC)</option><option>Other</option></select></div>
             <div class="f"><label for="empCount">How many employees in the next 12 months? <span class="opt">(0 if none)</span></label><input id="empCount" type="number" min="0" max="9999" value="0"></div>
+          </div>
+        </div>
+        <div id="gbpFields">
+          <h3>Google Business Profile details</h3>
+          <div class="callout info">Tip: answer exactly as you want customers to see it on Google. Use your <b>real business name</b> (the one on your sign, website and paperwork). Google suspends profiles that add extra keywords to the name.</div>
+          <div class="grid2">
+            <div class="f"><label for="gHave">Do you already have a Google Business Profile?</label><select id="gHave"><option>No, create a new one</option><option>Yes, and I can log in to it</option><option>Yes, but I can't log in / someone else controls it</option><option>Not sure</option></select></div>
+            <div class="f"><label for="gEmail">Google account email that will OWN the profile</label><input id="gEmail" type="email" placeholder="e.g. yourbusiness@gmail.com"></div>
+            <div class="f"><label for="gCategory">Main category <span class="opt">(what you are, e.g. "Hair salon", "Dentist")</span></label><input id="gCategory" type="text"></div>
+            <div class="f"><label for="gCats">Other categories <span class="opt">(optional)</span></label><input id="gCats" type="text" placeholder="e.g. Nail salon, Barber shop"></div>
+            <div class="f"><label for="gCustomers">Do customers visit your location?</label><select id="gCustomers"><option>Yes, customers come to my address (storefront/office)</option><option>No, I go to my customers (service-area business)</option><option>Both</option></select></div>
+            <div class="f"><label for="gAreas">Service areas <span class="opt">(cities or ZIP codes, if you travel to customers)</span></label><input id="gAreas" type="text"></div>
+            <div class="f"><label for="gPhone">Business phone for Google</label><input id="gPhone" type="tel"></div>
+            <div class="f"><label for="gWebsite">Website <span class="opt">(optional)</span></label><input id="gWebsite" type="url" placeholder="https://"></div>
+            <div class="f"><label for="gBooking">Booking / appointment link <span class="opt">(optional)</span></label><input id="gBooking" type="url" placeholder="https://"></div>
+            <div class="f"><label for="gOpened">Year the business opened</label><input id="gOpened" type="text" placeholder="e.g. 2019"></div>
+          </div>
+          <div class="f"><label for="gHours">Business hours <span class="opt">(each day, and any holiday hours)</span></label><textarea id="gHours" placeholder="Mon-Fri 9am-6pm, Sat 10am-4pm, Sun closed"></textarea></div>
+          <div class="f"><label for="gDesc">Describe your business in your own words <span class="opt">(we'll polish it; Google allows 750 characters)</span></label><textarea id="gDesc" maxlength="1500"></textarea></div>
+          <div class="f"><label for="gServices">Main services or products, with prices if you want them shown</label><textarea id="gServices" placeholder="e.g. Women's haircut from $45, Color from $90"></textarea></div>
+          <div class="grid2">
+            <div class="f"><label for="gAttr">Highlights to show <span class="opt">(optional)</span></label><input id="gAttr" type="text" placeholder="e.g. Women-owned, wheelchair accessible, Spanish spoken, free Wi-Fi"></div>
+            <div class="f"><label for="gSocial">Social media links <span class="opt">(optional)</span></label><input id="gSocial" type="text" placeholder="Instagram, Facebook, TikTok"></div>
+            <div class="f"><label for="gPhotos">Photos: share a Google Drive / Dropbox link <span class="opt">(logo, cover, inside, outside, team, work)</span></label><input id="gPhotos" type="url" placeholder="https://"></div>
+            <div class="f"><label for="gVerify">Who can do Google's verification (often a short live video)?</label><select id="gVerify"><option>Me, the owner</option><option>A manager or employee</option><option>Not sure, I'd like help</option></select></div>
+            <div class="f"><label for="gProof">What can you show Google to prove the business? <span class="opt">(for verification)</span></label><input id="gProof" type="text" placeholder="e.g. storefront sign, branded vehicle, tools, business license"></div>
+            <div class="f"><label for="gTopics">Monthly content: promotions, events or topics you want featured</label><input id="gTopics" type="text" placeholder="e.g. holiday specials, new services, tips"></div>
           </div>
         </div>
         <div id="licFields">
@@ -256,7 +283,9 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
           <p>The WebSwan service fee is paid by secure card checkout (Stripe) right after you sign. Paying the service fee does not pay any government fee. If you cancel before we begin preparing your documents, your WebSwan fee will be refunded. Once preparation has started, the fee is refundable only for work not yet performed. Government fees that have already been paid to an agency cannot be refunded by WebSwan.</p>
           <h4>10. Technology and AI tools</h4>
           <p>We may use software, including AI writing tools, to help draft documents and messages. A person at WebSwan reviews the work, and you approve documents before they are filed.</p>
-          <h4>11. Electronic signature and records</h4>
+          <h4>11. Google Business Profile service (if you chose it)</h4>
+          <p>WebSwan is not Google and is not affiliated with or endorsed by Google. Google decides whether a profile is verified, approved, shown or suspended, and how it ranks; we cannot guarantee verification, rankings, calls or reviews. You (the business) stay the owner of your profile, and you add WebSwan as a manager; you can remove our access at any time. We will never post fake reviews or offer rewards for reviews. The monthly plan renews every month on the same date until you cancel; cancel anytime by email or phone before your next renewal date, and you will not be charged again. The setup fee is refundable only if we have not started work. You confirm you have the right to use the photos, logos and information you send us.</p>
+          <h4>12. Electronic signature and records</h4>
           <p>You agree to sign and receive these disclosures and records electronically, and that your typed and adopted signature has the same effect as a handwritten signature. You may request a paper copy at no cost, or withdraw your consent to electronic records, by contacting us. Please print or save a copy for your records.</p>
         </div>
         <label class="check"><input type="checkbox" class="ack" id="ack1"> <span>I understand WebSwan is a private service, not a government agency or a law firm, and does not give legal or tax advice.</span></label>
@@ -348,8 +377,8 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
     document.querySelectorAll(".steps li").forEach(function(li){ var s=+li.dataset.s; li.className = s<n?"done":s===n?"on":""; if(s===n) li.setAttribute("aria-current","step"); else li.removeAttribute("aria-current"); });
     $("backBtn").hidden = n===1 || n===5; $("navBar").hidden = n===5;
     $("nextBtn").textContent = n===4 ? "Sign and submit" : "Continue";
-    if (n===2){ var id=svc().id; $("llcFields").hidden = !(id==="llc"||id==="package"); $("einFields").hidden = !(id==="ein"||id==="package"); $("licFields").hidden = !(id.indexOf("license")===0||id==="package");
-      $("purposeText").textContent = "I agree to submit this information to WebSwan Business Service for the purpose of helping me apply for my "+({ein:"EIN",llc:"LLC","license-existing":"business license","license-new":"business license",package:"LLC, EIN and business license"})[id]+" in "+C.states[$("state").value].name+". I confirm it is true and accurate to the best of my knowledge, that WebSwan will use it only to help with this request, and that I will provide any sensitive numbers only through a secure method or directly on the official government website."; }
+    if (n===2){ var id=svc().id; $("llcFields").hidden = !(id==="llc"||id==="package"); $("einFields").hidden = !(id==="ein"||id==="package"); $("licFields").hidden = !(id.indexOf("license")===0||id==="package"); $("gbpFields").hidden = id!=="gbp";
+      $("purposeText").textContent = "I agree to submit this information to WebSwan Business Service for the purpose of "+(id==="gbp"?"setting up and managing my Google Business Profile":"helping me apply for my "+({ein:"EIN",llc:"LLC","license-existing":"business license","license-new":"business license",package:"LLC, EIN and business license"})[id]+" in "+C.states[$("state").value].name)+". I confirm it is true and accurate to the best of my knowledge, that WebSwan will use it only to help with this request, and that I will provide any sensitive numbers only through a secure method or directly on the official government website."; }
     if (n===3) buildFees();
     if (quiet) return;
     $("intake").scrollIntoView({behavior:"smooth",block:"start"});
@@ -361,6 +390,12 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
   }
   function buildFees(){
     var s=svc(), st=C.states[$("state").value], rows=[];
+    if (s.id==="gbp"){
+      rows.push(['WebSwan setup fee (one time)', '<span class="big">$'+s.fee+'</span><br><span class="help">Create or claim your profile, verification help, full profile setup.</span>']);
+      rows.push(['WebSwan monthly management', '<span class="big">$'+s.monthly+'/month</span><br><span class="help">Fresh posts, photos and updates every month. Starts today with your setup payment and renews monthly until you cancel.</span>']);
+      rows.push(['Google fee', '$0. Google does not charge for a Business Profile. Google Ads are optional and separate.']);
+      $("feeTable").innerHTML = rows.map(function(r){ return "<tr><th scope=\"row\">"+r[0]+"</th><td>"+r[1]+"</td></tr>"; }).join(""); return;
+    }
     rows.push(['WebSwan service fee', '<span class="big">'+esc(s.feeText)+'</span><br><span class="help">Paid to WebSwan for '+esc(s.name.toLowerCase())+'.</span>']);
     if (s.id==="ein"||s.id==="package") rows.push(["IRS fee for the EIN", esc(st.ein)]);
     if (s.id==="llc"||s.id==="package") rows.push(["Estimated "+st.name+" LLC filing fees (paid to the state)", esc(st.llc)]);
@@ -393,12 +428,13 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
 
   $("backBtn").onclick=function(){ go(step-1); };
   $("nextBtn").onclick=async function(){
-    if(step===1){ if(!svc()){ $("err1").textContent="Choose a service."; return; } if(!$("state").value){ $("err1").textContent="Choose your state."; $("state").focus(); return; } $("err1").textContent=""; return go(2); }
+    if(step===1){ if(!svc()){ $("err1").textContent="Choose a service."; return; } if(!$("state").value){ $("err1").textContent="Choose your state."; $("state").focus(); return; } if($("state").value==="US" && svc().id!=="gbp"){ $("err1").textContent="LLC, EIN and business license help is available for New York, Florida, Washington and Texas only."; $("state").focus(); return; } $("err1").textContent=""; return go(2); }
     if(step===2){
       if(!need(["fullName","email","phone","bizName","activity","cityCounty"],"err2")) return;
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("email").value.trim())){ $("err2").textContent="Please check your email address."; $("email").focus(); return; }
       var id=svc().id;
       if((id==="ein"||id==="package") && !need(["rpName","rpTitle"],"err2")) return;
+      if(id==="gbp"){ if(!need(["gEmail","gCategory","gPhone","gHours"],"err2")) return; }
       if(!$("entityType").value){ $("err2").textContent="Please choose your business type."; $("entityType").focus(); return; }
       var all=[].map.call(document.querySelectorAll('#intake input[type=text], #intake textarea'),function(x){return x.value;}).join(" ");
       if(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/.test(all)){ $("err2").textContent="It looks like you typed a Social Security or tax ID number. Please remove it. Tania will arrange a secure way if it's needed."; return; }
@@ -422,16 +458,17 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
       business:{ name:$("bizName").value.trim(), altNames:$("altNames").value.trim(), activity:$("activity").value.trim(), cityCounty:$("cityCounty").value.trim(), address:$("bizAddress").value.trim(), mailing:$("mailAddress").value.trim(), entityType:$("entityType").value, location:$("ownership").value },
       llc: ($("llcFields").hidden?null:{ members:$("members").value, managed:$("managed").value, agent:$("agent").value, ownerNames:$("ownerNames").value.trim() }),
       ein: ($("einFields").hidden?null:{ responsibleParty:$("rpName").value.trim(), title:$("rpTitle").value.trim(), employees:$("employees").value, startDate:$("startDate").value.trim(), reason:$("einReason").value, employeesNext12Months:$("empCount").value }),
+      gbp: ($("gbpFields").hidden?null:{ existingProfile:$("gHave").value, ownerGoogleEmail:$("gEmail").value.trim(), mainCategory:$("gCategory").value.trim(), otherCategories:$("gCats").value.trim(), customersVisit:$("gCustomers").value, serviceAreas:$("gAreas").value.trim(), phone:$("gPhone").value.trim(), website:$("gWebsite").value.trim(), booking:$("gBooking").value.trim(), yearOpened:$("gOpened").value.trim(), hours:$("gHours").value.trim(), description:$("gDesc").value.trim(), services:$("gServices").value.trim(), highlights:$("gAttr").value.trim(), social:$("gSocial").value.trim(), photosLink:$("gPhotos").value.trim(), verification:$("gVerify").value, proof:$("gProof").value.trim(), monthlyTopics:$("gTopics").value.trim() }),
       license: ($("licFields").hidden?null:{ licenseNeeded:$("licKnown").value.trim(), purpose:$("licReason").value, sellsTaxable:$("licSales").value, food:$("licFood").value, professionalLicense:$("licPro").value, employees:$("licEmp").value, currentNumber:$("licCurrent").value.trim(), openOrRenew:$("licOpen").value.trim() }),
       notes:$("notes").value.trim(),
       consent:{ purposeAck:true, purposeText:$("purposeText").textContent, feeAck:true, acks:[1,2,3,4,5], disclosureVersion:C.disclosureVersion, signature:adopted, userAgent:navigator.userAgent },
       hp:$("hp").value
     };
   }
-  function payHtml(url, amount, code){
+  function payHtml(url, amount, code, monthly){
     if(!url) return '<div class="callout warn"><b>Almost done!</b> Our secure checkout is not available right now. Tania will email you a secure payment link for your WebSwan service fee. Questions? Call '+esc(C.phone)+'.</div>';
     return '<div class="paycard"><div><b>Last step: pay your WebSwan service fee</b><br><span class="help">Secure card checkout by Stripe. This is <b>only</b> the WebSwan service fee; government fees are separate. A receipt is emailed to you.</span></div>'+
-      '<a class="btn primary paybtn" href="'+esc(url)+'">Pay $'+esc(Number(amount).toFixed(2).replace(/\.00$/,""))+' securely</a></div>'+
+      '<a class="btn primary paybtn" href="'+esc(url)+'">Pay $'+esc(Number(amount).toFixed(2).replace(/\.00$/,""))+(monthly?' today + $'+esc(monthly)+'/mo':'')+' securely</a></div>'+
       '<p class="help">Tip: print or save your signed authorization below first. Your tracking code is <b>'+esc(code)+'</b>.</p>';
   }
   async function submit(){
@@ -442,7 +479,7 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
       var out=await res.json().catch(function(){return {};});
       if(!res.ok) throw new Error(out.error||"We couldn't submit your request. Please try again or call "+C.phone+".");
       $("trackCode").textContent=out.code;
-      $("payBox").innerHTML = payHtml(out.payUrl, out.payAmount, out.code);
+      $("payBox").innerHTML = payHtml(out.payUrl, out.payAmount, out.code, out.payMonthly);
       $("receipt").innerHTML='<p><b>WebSwan Business Service: Client Authorization</b></p>'+
         '<p>Tracking code: <b>'+esc(out.code)+'</b><br>Service: '+esc(data.serviceName)+' ('+esc(C.states[data.state].name)+')<br>WebSwan service fee: '+esc(data.serviceFee)+' (separate from government fees)<br>Business: '+esc(data.business.name)+'<br>Client: '+esc(data.client.fullName)+', '+esc(data.client.email)+'</p>'+
         $("disclosures").innerHTML+
@@ -468,7 +505,7 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
       $("sOut").innerHTML='<h3>'+esc(out.serviceName)+' · '+esc(out.business)+'</h3>'+
         (out.status==="Needs information"?'<div class="callout warn"><b>We need a little more information.</b> Tania will contact you, or call '+esc(C.phone)+'.</div>':'')+
         '<ul class="timeline">'+tl+'</ul>'+
-        (out.paid?'<div class="callout ok"><b>Service fee paid.</b> Thank you!</div>':(out.payUrl?payHtml(out.payUrl,out.payAmount,code):''))+
+        (out.paid?'<div class="callout ok"><b>Service fee paid.</b> Thank you!</div>':(out.payUrl?payHtml(out.payUrl,out.payAmount,code,out.payMonthly):''))+
         (out.clientNote?'<div class="callout info"><b>Note from Tania:</b> '+esc(out.clientNote)+'</div>':'')+
         '<p class="help">Last updated '+esc(new Date(out.updatedAt).toLocaleString())+'</p>';
     }catch(err){ $("sErr").textContent=err.message; }

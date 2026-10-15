@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>GBP Manager | WebSwan</title>
+<link rel="icon" href="ws-logo.webp">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
+  const auth = getAuth(app);
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), signOut: () => signOut(auth), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
+  onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
+</script>
+<style>
+:root{--blue:#339cde;--blue-dk:#1d6fa5;--sky:#93e5fa;--navy:#0c2d48;--ink:#14243a;--muted:#55657a;--bg:#f1f8fc;--line:#d9e7f1;--ok:#0b6b49}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+button,input,select,textarea{font:inherit}:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+header{background:linear-gradient(120deg,var(--navy),#13608f 55%,var(--blue));color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header img{width:54px;background:#fff;border-radius:10px;padding:3px}header h1{margin:0;font-size:1.2rem}header .r{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;min-height:42px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--blue-dk)}.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}.btn.wh{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45)}
+.btn.sm{min-height:30px;padding:3px 10px;font-size:.8rem}
+.wrap{max-width:1250px;margin:0 auto;padding:16px}
+.cols{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:1.05rem;color:var(--navy)}
+.row{padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff;width:100%;text-align:left}
+.row:hover,.row.on{border-color:var(--blue);background:#eef8fe}.row b{display:block}.row small{color:var(--muted)}
+.pill{display:inline-block;font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:#e2f2fc;color:var(--blue-dk);margin-left:6px}.pill.ok{background:#e4f6ee;color:var(--ok)}.pill.warn{background:#fff3d6;color:#7a5200}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+table.info{width:100%;border-collapse:collapse;font-size:.9rem}table.info th{width:190px;text-align:left;color:var(--muted);font-weight:600;vertical-align:top;padding:7px 8px 7px 0;border-bottom:1px solid var(--line)}
+table.info td{padding:7px 0;border-bottom:1px solid var(--line);white-space:pre-wrap;word-break:break-word}table.info td.c{width:70px;text-align:right}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}.checks label{display:flex;gap:8px;align-items:flex-start;font-size:.92rem}.checks input{width:18px;height:18px;margin-top:3px;flex:none}
+.f{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.f label{font-weight:700;font-size:.85rem}
+input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11px;min-height:42px;width:100%;background:#fff}textarea{min-height:80px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ai-out{white-space:pre-wrap;background:#f7fbfe;border:1px solid var(--line);border-radius:10px;padding:12px;min-height:60px;font-size:.92rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 10px;font-size:.8rem;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{border:0;background:#fff;padding:8px 14px;font-weight:700;cursor:pointer}.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.log{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;font-size:.9rem}
+.err{color:#b42318;font-weight:600}.muted{color:var(--muted);font-size:.85rem}.okmsg{color:var(--ok);font-weight:700}
+.gate{max-width:420px;margin:60px auto;text-align:center}
+.howto{font-size:.9rem}.howto li{margin:3px 0}
+[hidden]{display:none!important}
+@media (max-width:900px){.cols{grid-template-columns:1fr}.checks,.grid2{grid-template-columns:1fr}table.info th{width:120px}}
+</style>
+</head>
+<body>
+<header><img src="ws-logo.webp" alt=""><h1>Google Business Profile Manager</h1>
+  <div class="r"><a class="btn wh" href="admin.html" target="_blank" rel="noopener">Back office</a><button class="btn wh" id="authBtn" type="button">Sign in</button></div></header>
+<div id="gate" class="gate card"><h2>Private</h2><p class="muted" id="gateMsg">Sign in with your WebSwan Google account.</p><button class="btn" id="gateBtn" type="button">Sign in with Google</button></div>
+<main class="wrap" id="app" hidden>
+  <div class="cols">
+    <div>
+      <section class="card"><h2>GBP clients <button class="btn ghost sm" id="refresh" type="button" style="float:right">Refresh</button></h2>
+        <div id="list"><p class="muted">Loading…</p></div></section>
+      <section class="card"><h2>Google tools</h2>
+        <div class="quick" style="flex-direction:column">
+          <a class="btn" href="https://business.google.com/locations" target="_blank" rel="noopener noreferrer">Open my Business Profiles ↗</a>
+          <a class="btn ghost" href="https://business.google.com/create" target="_blank" rel="noopener noreferrer">Create a new profile ↗</a>
+          <a class="btn ghost" href="https://support.google.com/business/answer/2911778" target="_blank" rel="noopener noreferrer">Request access to a claimed profile ↗</a>
+          <a class="btn ghost" href="https://support.google.com/business/answer/3038177" target="_blank" rel="noopener noreferrer">Google's profile guidelines ↗</a>
+        </div>
+        <p class="muted">Sign in to Google with your WebSwan account. Each client adds that account as a <b>Manager</b> on their profile.</p>
+      </section>
+    </div>
+    <div>
+      <section class="card" id="detail"><p class="muted">Pick a client on the left. New GBP clients show up here as soon as they fill out the Google Business Profile form.</p></section>
+      <section class="card" id="aiCard">
+        <h2>Content assistant</h2>
+        <div class="seg" role="group" aria-label="AI provider"><button type="button" data-p="claude" aria-pressed="true">Claude</button><button type="button" data-p="openai" aria-pressed="false">ChatGPT</button></div>
+        <div class="chips" id="chips"></div>
+        <div class="f"><label for="aiPrompt">What should we write?</label><textarea id="aiPrompt" placeholder="e.g. Write 4 Google posts for this month"></textarea></div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:.88rem;margin-bottom:8px"><input type="checkbox" id="useCtx" checked style="width:18px;min-height:0"> Use the selected client's profile info</label>
+        <button class="btn" id="aiBtn" type="button">Write it</button> <button class="btn ghost" id="aiCopy" type="button">Copy</button>
+        <p class="err" id="aiErr" role="alert"></p>
+        <div class="ai-out" id="aiOut" aria-live="polite"></div>
+        <p class="muted">Review every draft before posting. Never post fake reviews.</p>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  var C=window.WSBS_CONFIG, $=function(id){return document.getElementById(id);}, API=C.apiBase;
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});};
+  var rows=[], current=null, provider="claude";
+  async function call(fn, body){ var tok=await window._auth.token(); var r=await fetch(API+"/"+fn,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(body)}); var j=await r.json().catch(function(){return {};}); if(!r.ok) throw new Error(j.error||"Request failed"); return j; }
+
+  var SETUP=[["access","Client added WebSwan as Manager (or gave access)"],["created","Profile created / claimed"],["verifyReq","Verification requested"],["verified","Profile verified"],["basics","Name, category, phone, website, hours entered"],["desc","Description added (750 characters max)"],["services","Services / products added"],["photos","Logo, cover and photos uploaded"],["attrs","Highlights / attributes set"],["review","Review link sent to client"]];
+  var MONTHLY=[["posts","4 posts published"],["photos","New photos added"],["reviews","All new reviews answered"],["qa","Questions & answers checked"],["hours","Hours / holiday hours checked"],["offers","Offers or events updated"],["info","Info checked (phone, website, services)"],["report","Monthly report sent to client"]];
+  var thisMonth=function(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+
+  async function load(){ try{ var j=await call("bs-admin",{action:"list"}); rows=j.rows.filter(function(r){return r.service==="gbp";}); drawList();
+      var want=new URLSearchParams(location.search).get("code"); if(want && !current) open(want); }
+    catch(e){ $("list").innerHTML='<p class="err">'+esc(e.message)+'</p>'; } }
+  function drawList(){
+    $("list").innerHTML = rows.length ? rows.map(function(r){ return '<button type="button" class="row'+(current&&current.code===r.code?' on':'')+'" data-c="'+esc(r.code)+'"><b>'+esc(r.business)+(r.paid?' <span class="pill ok">Paid</span>':' <span class="pill warn">Unpaid</span>')+'</b><small>'+esc(r.client)+' · '+esc(r.status)+'</small><br><small>'+esc(r.code)+'</small></button>'; }).join("") : '<p class="muted">No GBP clients yet. Send one the form from the back office ("Send a client the form" → Google Business Profile).</p>';
+  }
+  async function open(code){ try{ var j=await call("bs-admin",{action:"get",code:code}); current=j.rec; drawDetail(); drawList(); }catch(e){ $("detail").innerHTML='<p class="err">'+esc(e.message)+'</p>'; } }
+  $("list").addEventListener("click",function(e){ var b=e.target.closest(".row"); if(b) open(b.dataset.c); });
+  $("refresh").onclick=load;
+
+  function fields(r){ var g=r.gbp||{}, b=r.business||{};
+    return [["Business name",b.name],["Main category",g.mainCategory],["Other categories",g.otherCategories],["Customers visit?",g.customersVisit],["Address",b.address],["Service areas",g.serviceAreas],["Phone",g.phone||r.client.phone],["Website",g.website],["Booking link",g.booking],["Hours",g.hours],["Description (client's words)",g.description],["Services / products",g.services],["Highlights",g.highlights],["Year opened",g.yearOpened],["Social links",g.social],["Photos link",g.photosLink],["Owner Google email",g.ownerGoogleEmail],["Existing profile?",g.existingProfile],["Verification by",g.verification],["Proof for verification",g.proof],["Monthly topics",g.monthlyTopics],["What the business does",b.activity],["City / county",b.cityCounty]]
+      .filter(function(x){return x[1];}); }
+
+  function drawDetail(){
+    var r=current, m=r.gbpMgmt||{checklist:{},profileUrl:"",reviewUrl:"",log:[]}, F=fields(r);
+    var done=SETUP.filter(function(s){return m.checklist[s[0]];}).length;
+    $("detail").innerHTML=
+      '<h2>'+esc(r.business.name)+' '+(r.pay&&r.pay.paid?'<span class="pill ok">Paid · $'+esc(r.pay.amountPaid)+'</span>':'<span class="pill warn">Not paid yet</span>')+'</h2>'+
+      '<p class="muted">'+esc(r.client.fullName)+' · '+esc(r.client.email)+' · '+esc(r.client.phone)+' · '+esc(r.code)+'</p>'+
+      '<div class="quick">'+
+        (m.profileUrl?'<a class="btn" href="'+esc(m.profileUrl)+'" target="_blank" rel="noopener noreferrer">Open this client\'s profile ↗</a>':'<a class="btn" href="https://business.google.com/locations" target="_blank" rel="noopener noreferrer">Open Business Profiles ↗</a>')+
+        '<a class="btn ghost" href="https://business.google.com/create" target="_blank" rel="noopener noreferrer">Create profile ↗</a>'+
+        '<a class="btn ghost" href="https://www.google.com/search?q='+encodeURIComponent(r.business.name+" "+(r.business.cityCounty||""))+'" target="_blank" rel="noopener noreferrer">Search on Google ↗</a>'+
+        '<a class="btn ghost" href="mailto:'+esc(r.client.email)+'">Email client</a>'+
+        (r.pay&&!r.pay.paid?'<button class="btn ghost" type="button" id="copyPay">Copy payment link</button>':'')+
+      '</div>'+
+      '<h3>Profile info <button class="btn ghost sm" type="button" id="copyAll">Copy all</button></h3>'+
+      '<p class="muted">Tap Copy next to a line, then paste it into Google.</p>'+
+      '<table class="info">'+F.map(function(x,i){return '<tr><th>'+esc(x[0])+'</th><td>'+esc(x[1])+'</td><td class="c"><button class="btn ghost sm" type="button" data-copy="'+i+'">Copy</button></td></tr>';}).join("")+'</table>'+
+      '<h3 style="margin-top:18px">Setup checklist ('+done+' of '+SETUP.length+')</h3>'+
+      '<div class="checks">'+SETUP.map(function(s){return '<label><input type="checkbox" data-k="'+s[0]+'"'+(m.checklist[s[0]]?' checked':'')+'> '+esc(s[1])+'</label>';}).join("")+'</div>'+
+      '<div class="grid2" style="margin-top:10px"><div class="f"><label for="pUrl">Profile link (from Google)</label><input id="pUrl" type="url" value="'+esc(m.profileUrl)+'" placeholder="https://"></div>'+
+      '<div class="f"><label for="rUrl">Review link for the client</label><input id="rUrl" type="url" value="'+esc(m.reviewUrl)+'" placeholder="https://g.page/r/..."></div></div>'+
+      '<button class="btn" type="button" id="saveSetup">Save setup</button> <span id="setupMsg" class="muted"></span>'+
+      '<h3 style="margin-top:22px">Monthly content</h3>'+
+      '<div class="grid2"><div class="f"><label for="mMonth">Month</label><input id="mMonth" type="month" value="'+thisMonth()+'"></div><div></div></div>'+
+      '<div class="checks" id="mChecks"></div>'+
+      '<div class="f" style="margin-top:8px"><label for="mNotes">Notes (what you posted, results, ideas for next month)</label><textarea id="mNotes"></textarea></div>'+
+      '<button class="btn" type="button" id="saveMonth">Save month</button> <span id="monthMsg" class="muted"></span>'+
+      '<div id="logList"></div>';
+    function drawMonth(){ var e=(m.log||[]).find(function(x){return x.month===$("mMonth").value;})||{items:{},notes:""};
+      $("mChecks").innerHTML=MONTHLY.map(function(s){return '<label><input type="checkbox" data-m="'+s[0]+'"'+(e.items[s[0]]?' checked':'')+'> '+esc(s[1])+'</label>';}).join("");
+      $("mNotes").value=e.notes||""; }
+    drawMonth(); $("mMonth").onchange=drawMonth;
+    $("logList").innerHTML=(m.log||[]).length?'<h3>History</h3>'+m.log.map(function(e){ var n=MONTHLY.filter(function(s){return e.items[s[0]];}).length; return '<div class="log"><b>'+esc(e.month)+'</b> · '+n+' of '+MONTHLY.length+' done'+(e.notes?'<br>'+esc(e.notes):'')+'</div>'; }).join(""):"";
+    $("detail").querySelectorAll("[data-copy]").forEach(function(b){ b.onclick=function(){ copy(String(F[+b.dataset.copy][1]),b); }; });
+    $("copyAll").onclick=function(){ copy(F.map(function(x){return x[0]+": "+x[1];}).join("\n"),$("copyAll")); };
+    if($("copyPay")) $("copyPay").onclick=function(){ copy(r.pay.url,$("copyPay")); };
+    $("saveSetup").onclick=async function(){ var ck={}; $("detail").querySelectorAll("[data-k]").forEach(function(c){ck[c.dataset.k]=c.checked;});
+      try{ var j=await call("bs-admin",{action:"gbp",code:r.code,checklist:ck,profileUrl:$("pUrl").value.trim(),reviewUrl:$("rUrl").value.trim()}); current=j.rec; drawDetail(); $("setupMsg").textContent="Saved."; $("setupMsg").className="okmsg"; }
+      catch(e){ $("setupMsg").textContent=e.message; $("setupMsg").className="err"; } };
+    $("saveMonth").onclick=async function(){ var it={}; $("mChecks").querySelectorAll("[data-m]").forEach(function(c){it[c.dataset.m]=c.checked;});
+      if(!$("mMonth").value){ $("monthMsg").textContent="Pick a month."; return; }
+      try{ var j=await call("bs-admin",{action:"gbp",code:r.code,log:{month:$("mMonth").value,items:it,notes:$("mNotes").value}}); var mo=$("mMonth").value; current=j.rec; drawDetail(); $("mMonth").value=mo; $("mMonth").onchange(); $("monthMsg").textContent="Saved."; $("monthMsg").className="okmsg"; }
+      catch(e){ $("monthMsg").textContent=e.message; $("monthMsg").className="err"; } };
+  }
+  function copy(t,btn){ navigator.clipboard.writeText(t).then(function(){ var o=btn.textContent; btn.textContent="Copied!"; setTimeout(function(){btn.textContent=o;},1200); }); }
+
+  var CHIPS=[["4 posts this month","Write 4 Google Business Profile posts for this month for this business. Mix: 1 offer or seasonal post, 1 service spotlight, 1 helpful tip, 1 behind-the-scenes or team post. For each give the post text, a suggested call-to-action button, and a photo idea."],
+    ["Business description","Write the Google Business Profile description for this business (max 750 characters, no URLs, no phone numbers, no keyword stuffing), based on the client's own words."],
+    ["Review reply","Write a warm, professional reply to this Google review (paste it below). Thank them by first name, mention the service if they did, no private details.\n\nReview: "],
+    ["Negative review reply","Write a calm, professional reply to this negative Google review (paste it below). Apologize for the experience, don't argue, don't share private details, invite them to contact the business directly.\n\nReview: "],
+    ["Monthly report email","Write a short, friendly monthly report email from Tania (WebSwan) to this client about their Google Business Profile: what we posted and updated this month, a reminder to ask happy customers for reviews with their review link, and what's planned next month. Leave [brackets] for numbers I'll fill in from Google's performance page."],
+    ["Review request text","Write a short text message the business owner can send happy customers asking for a Google review, with a spot for their review link. No incentives."],
+    ["Setup checklist","Give me a step-by-step checklist to create, verify and fully complete this client's Google Business Profile, including what to prepare for video verification."],
+    ["Services list","Turn the client's services into a clean list for the Google Business Profile Services section, with short descriptions (under 300 characters each)."]];
+  $("chips").innerHTML=CHIPS.map(function(c,i){return '<button type="button" class="chip" data-i="'+i+'">'+esc(c[0])+'</button>';}).join("");
+  $("chips").addEventListener("click",function(e){ var b=e.target.closest(".chip"); if(!b) return; $("aiPrompt").value=CHIPS[+b.dataset.i][1]; $("aiPrompt").focus(); });
+  document.querySelectorAll(".seg button").forEach(function(b){ b.onclick=function(){ provider=b.dataset.p; document.querySelectorAll(".seg button").forEach(function(x){x.setAttribute("aria-pressed",x===b);}); }; });
+  $("aiBtn").onclick=async function(){
+    $("aiErr").textContent=""; var p=$("aiPrompt").value.trim(); if(!p){ $("aiErr").textContent="Pick a button or type what to write."; return; }
+    var ctx=""; if($("useCtx").checked && current){ ctx=fields(current).filter(function(x){return x[0]!=="Owner Google email";}).map(function(x){return x[0]+": "+x[1];}).join("\n")+(current.gbpMgmt&&current.gbpMgmt.reviewUrl?"\nReview link: "+current.gbpMgmt.reviewUrl:""); }
+    $("aiBtn").disabled=true; $("aiOut").textContent="Writing…";
+    try{ var j=await call("bs-ai",{provider:provider,mode:"gbp",prompt:p,context:ctx}); $("aiOut").textContent=j.text; }
+    catch(e){ $("aiOut").textContent=""; $("aiErr").textContent=e.message; }
+    finally{ $("aiBtn").disabled=false; }
+  };
+  $("aiCopy").onclick=function(){ copy($("aiOut").textContent,$("aiCopy")); };
+
+  function doSignIn(){ window._auth.signIn().catch(function(){ $("gateMsg").textContent="Sign-in didn't finish. Try again."; }); }
+  $("gateBtn").onclick=doSignIn; var signed=false; $("authBtn").onclick=function(){ if(signed) window._auth.signOut(); else doSignIn(); };
+  window.addEventListener("auth",function(ev){ signed=!!ev.detail.user; $("authBtn").textContent=signed?"Sign out":"Sign in"; $("app").hidden=!ev.detail.ok; $("gate").hidden=ev.detail.ok; if(ev.detail.user&&!ev.detail.ok) $("gateMsg").textContent="This account doesn't have access."; if(ev.detail.ok) load(); });
+})();
+</script>
+</body>
+</html>

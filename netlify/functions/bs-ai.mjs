@@ -13,6 +13,10 @@ Rules:
 - Fees and rules change: when you state a government fee or deadline, say it should be confirmed on the official agency website.
 - Be clear, warm and concise. For emails and letters, give a ready-to-send draft with a subject line.`;
 
+const GBP_SYSTEM = `You are the Google Business Profile assistant for WebSwan (run by Tania), who sets up and manages Google Business Profiles for local businesses every month.
+You help Tania write: Google Business Profile posts (updates, offers, events), business descriptions (max 750 characters, no URLs, no promotional ALL CAPS), review replies, Q&A, photo ideas, monthly report emails to clients, and setup or verification checklists.
+Rules: follow Google Business Profile guidelines. Use the real business name only (no keyword stuffing). Never write fake reviews or ask for reviews in exchange for anything. Do not put phone numbers in post text; use the call-to-action button instead. Keep posts 100 to 300 words or shorter, friendly, local, and specific to the business, with a suggested call-to-action button (Book, Order, Learn more, Call). Never promise rankings. Be warm and concise.`;
+
 const clean = (v, n) => String(v == null ? "" : v).slice(0, n);
 
 export default async (req) => {
@@ -23,6 +27,7 @@ export default async (req) => {
   try { await verifyOwner(req); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
   let body; try { body = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
   const provider = body.provider === "openai" ? "openai" : "claude";
+  const sys = body.mode === "gbp" ? GBP_SYSTEM : SYSTEM;
   const prompt = clean(body.prompt, 8000).trim();
   const context = clean(body.context, 6000).trim();
   if (!prompt) return reply(400, { error: "Type a question or request." }, origin);
@@ -34,7 +39,7 @@ export default async (req) => {
       if (!key) return reply(500, { error: "Claude isn't connected yet. Add ANTHROPIC_API_KEY in Netlify." }, origin);
       const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5", max_tokens: 1500, system: SYSTEM, messages: [{ role: "user", content: user }] }) });
+        body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5", max_tokens: 1500, system: sys, messages: [{ role: "user", content: user }] }) });
       const j = await r.json();
       if (!r.ok) throw new Error((j.error && j.error.message) || "Claude error");
       return reply(200, { text: (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n"), provider: "Claude" }, origin);
@@ -43,7 +48,7 @@ export default async (req) => {
       if (!key) return reply(500, { error: "ChatGPT isn't connected yet. Add OPENAI_API_KEY in Netlify." }, origin);
       const r = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST",
         headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-4.1", messages: [{ role: "system", content: SYSTEM }, { role: "user", content: user }] }) });
+        body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-4.1", messages: [{ role: "system", content: sys }, { role: "user", content: user }] }) });
       const j = await r.json();
       if (!r.ok) throw new Error((j.error && j.error.message) || "OpenAI error");
       return reply(200, { text: j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "", provider: "ChatGPT" }, origin);

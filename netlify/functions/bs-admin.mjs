@@ -18,7 +18,7 @@ export default async (req) => {
   if (body.action === "list") {
     const { blobs } = await store.list({ prefix: "req/" });
     const recs = await Promise.all(blobs.map((b) => store.get(b.key, { type: "json" })));
-    const rows = recs.filter(Boolean).map((r) => ({ code: r.code, createdAt: r.createdAt, updatedAt: r.updatedAt, status: r.status, serviceName: r.serviceName, state: r.state, client: r.client.fullName, email: r.client.email, phone: r.client.phone, business: r.business.name, paid: !!(r.pay && r.pay.paid) }))
+    const rows = recs.filter(Boolean).map((r) => ({ code: r.code, createdAt: r.createdAt, updatedAt: r.updatedAt, status: r.status, service: r.service, serviceName: r.serviceName, state: r.state, client: r.client.fullName, email: r.client.email, phone: r.client.phone, business: r.business.name, paid: !!(r.pay && r.pay.paid) }))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
     return reply(200, { rows, statuses: STATUSES }, origin);
   }
@@ -40,6 +40,24 @@ export default async (req) => {
     rec.updatedAt = now;
     // new final fee and not paid yet: replace the payment link with one for the new amount
     if (!(rec.pay && rec.pay.paid) && (!rec.pay || rec.pay.amount !== amountFor(rec))) { try { rec.pay = await makePayLink(rec); delete rec.payError; } catch (e) { rec.payError = String(e.message).slice(0, 200); } }
+    await store.setJSON("req/" + code, rec);
+    return reply(200, { rec, statuses: STATUSES }, origin);
+  }
+  if (body.action === "gbp") {
+    // Google Business Profile management: setup checklist, profile links, monthly content log
+    const g = rec.gbpMgmt || { checklist: {}, profileUrl: "", reviewUrl: "", log: [] };
+    if (body.checklist && typeof body.checklist === "object") Object.keys(body.checklist).slice(0, 20).forEach((k) => { g.checklist[clean(k, 40)] = !!body.checklist[k]; });
+    if (typeof body.profileUrl === "string") g.profileUrl = clean(body.profileUrl, 400);
+    if (typeof body.reviewUrl === "string") g.reviewUrl = clean(body.reviewUrl, 400);
+    if (body.log && body.log.month) {
+      const month = clean(body.log.month, 7), items = {};
+      Object.keys(body.log.items || {}).slice(0, 20).forEach((k) => { items[clean(k, 40)] = !!body.log.items[k]; });
+      const entry = { month, items, notes: clean(body.log.notes, 3000), at: new Date().toISOString(), by: who };
+      const i = g.log.findIndex((x) => x.month === month);
+      if (i >= 0) g.log[i] = entry; else g.log.push(entry);
+      g.log.sort((a, b) => (a.month < b.month ? 1 : -1));
+    }
+    rec.gbpMgmt = g; rec.updatedAt = new Date().toISOString();
     await store.setJSON("req/" + code, rec);
     return reply(200, { rec, statuses: STATUSES }, origin);
   }

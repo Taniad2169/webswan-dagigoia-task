@@ -15,9 +15,12 @@ window.WSBS_CONFIG = {
     { id: "llc", name: "LLC formation assistance", fee: 199, feeText: "$199 to $299",
       desc: "We prepare and file your LLC formation documents with the state. You pay the $199 starting fee when you submit. If your filing needs more work (up to $299), Tania confirms it with you before any extra charge." },
     { id: "package", name: "Business startup package", fee: 299, feeText: "$299 to $399",
-      desc: "LLC formation + EIN + general business license assistance in one package. You pay the $299 starting fee when you submit. If your filing needs more work (up to $399), Tania confirms it with you before any extra charge." }
+      desc: "LLC formation + EIN + general business license assistance in one package. You pay the $299 starting fee when you submit. If your filing needs more work (up to $399), Tania confirms it with you before any extra charge." },
+    { id: "gbp", name: "Google Business Profile setup & monthly management", fee: 350, monthly: 180, feeText: "$350 setup + $180/month",
+      desc: "We create or claim your Google Business Profile, help you through Google's verification, then keep it fresh every month with posts, photos and updates. Google does not charge for a Business Profile. Cancel the monthly plan anytime." }
   ],
   states: {
+    US: { name: "your state", llc: "", license: "", ein: "", ongoing: "" },
     NY: { name: "New York",
       llc: "$200 filing fee (NY Department of State). New York also requires LLCs to publish a notice in two newspapers within 120 days, then file a Certificate of Publication ($50). Newspaper costs vary by county and can be several hundred dollars or more.",
       license: "New York State has no single general business license. Licenses and permits depend on your city, county and type of business (for example, a sales tax Certificate of Authority, which is free).",

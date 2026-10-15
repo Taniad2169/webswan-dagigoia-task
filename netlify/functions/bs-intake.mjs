@@ -5,7 +5,7 @@ import { getStore } from "@netlify/blobs";
 import { reply, cors, ALLOWED_ORIGINS } from "../lib/auth.mjs";
 import { makePayLink, checkPaid, amountFor } from "../lib/bspay.mjs";
 
-const SERVICES = { ein: "EIN application assistance", "license-existing": "Existing business license application", "license-new": "New business license registration assistance", llc: "LLC formation assistance", package: "Business startup package" };
+const SERVICES = { ein: "EIN application assistance", "license-existing": "Existing business license application", "license-new": "New business license registration assistance", llc: "LLC formation assistance", package: "Business startup package", gbp: "Google Business Profile setup & monthly management" };
 const STATES = ["NY", "FL", "WA", "TX"];
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, n);
 const SSN_RE = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/;
@@ -42,7 +42,7 @@ export default async (req, context) => {
       try { if (!rec.pay || rec.pay.amount !== amountFor(rec)) { rec.pay = await makePayLink(rec); await store.setJSON("req/" + code, rec); } } catch (e) {}
     }
     return reply(200, { status: rec.status, serviceName: rec.serviceName, business: rec.business.name, clientNote: rec.clientNote || "", updatedAt: rec.updatedAt,
-      paid, payUrl: !paid && rec.status !== "Cancelled" && rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null }, origin);
+      paid, payUrl: !paid && rec.status !== "Cancelled" && rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null, payMonthly: rec.pay ? rec.pay.monthly || 0 : 0 }, origin);
   }
 
   if (body.action !== "create") return reply(400, { error: "Bad request." }, origin);
@@ -57,7 +57,7 @@ export default async (req, context) => {
   let data;
   try { data = scrub(d); } catch (e) { return reply(400, { error: "Please remove any Social Security or tax ID numbers. We will collect those securely only if needed." }, origin); }
   const c = data.client || {}, b = data.business || {}, sig = (data.consent || {}).signature || {};
-  if (!SERVICES[data.service] || !STATES.includes(data.state)) return reply(400, { error: "Choose a service and state." }, origin);
+  if (!SERVICES[data.service] || !(STATES.includes(data.state) || (data.service === "gbp" && data.state === "US"))) return reply(400, { error: "Choose a service and state." }, origin);
   if (!c.fullName || !c.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email) || !c.phone || !b.name) return reply(400, { error: "Please fill in your name, email, phone and business name." }, origin);
   if (!sig.name || !sig.font || !(data.consent && data.consent.feeAck && data.consent.purposeAck) || ((data.consent.acks || []).length < 5)) return reply(400, { error: "Please review the disclosures and sign." }, origin);
   if (sig.name.toLowerCase().replace(/\s+/g, " ") !== c.fullName.toLowerCase().replace(/\s+/g, " ")) return reply(400, { error: "Your signature must match your full legal name." }, origin);
@@ -68,7 +68,7 @@ export default async (req, context) => {
     code, createdAt: now, updatedAt: now, status: "Received",
     history: [{ status: "Received", at: now, by: "client" }],
     service: data.service, serviceName: SERVICES[data.service], serviceFee: data.serviceFee, state: data.state,
-    client: c, business: b, llc: data.llc || null, ein: data.ein || null, license: data.license || null, notes: data.notes || "",
+    client: c, business: b, llc: data.llc || null, ein: data.ein || null, license: data.license || null, gbp: data.gbp || null, notes: data.notes || "",
     consent: { ...data.consent, signedAt: sig.at || now, receivedAt: now, ip, serverUserAgent: clean(req.headers.get("user-agent"), 300) },
     clientNote: "", internalNotes: [], finalFee: ""
   };
@@ -81,5 +81,5 @@ export default async (req, context) => {
       body: JSON.stringify({ _subject: "New WebSwan Business Service request " + code, code, service: rec.serviceName, state: rec.state, client: c.fullName, email: c.email, phone: c.phone, business: b.name, signedAs: sig.name }) });
   } catch (e) { /* notification is best-effort */ }
 
-  return reply(200, { code, payUrl: rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null }, origin);
+  return reply(200, { code, payUrl: rec.pay ? rec.pay.url : "", payAmount: rec.pay ? rec.pay.amount : null, payMonthly: rec.pay ? rec.pay.monthly || 0 : 0 }, origin);
 };
