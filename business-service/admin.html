@@ -61,6 +61,17 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
       <div id="list"><p class="muted">Loading…</p></div></section>
     <div>
       <section class="card" id="detail"><p class="muted">Pick a request on the left.</p></section>
+      <section class="card" id="sendCard" style="margin-top:16px">
+        <h2>Send a client the form</h2>
+        <p class="muted" style="margin-top:0">Pick the service and state, then copy the link or a ready-to-send message. The form opens with the right questions for that service.</p>
+        <div class="grid2">
+          <div class="f"><label for="sendSvc">Service</label><select id="sendSvc"></select></div>
+          <div class="f"><label for="sendState">State</label><select id="sendState"><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select></div>
+        </div>
+        <div class="f"><label for="sendLink">Form link</label><input id="sendLink" type="text" readonly></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="copyLink">Copy link</button><button class="btn ghost" type="button" id="copyMsg">Copy message (text / email)</button><a class="btn ghost" style="text-decoration:none" id="mailLink" href="#">Open in email</a></div>
+        <p class="muted" id="copyNote" aria-live="polite" style="min-height:1.2em"></p>
+      </section>
       <section class="card" id="linksCard" style="margin-top:16px">
         <h2>Filing links <select id="linkState" style="float:right;width:auto;min-height:34px;padding:4px 8px"><option value="NY">New York</option><option value="FL">Florida</option><option value="WA">Washington</option><option value="TX">Texas</option></select></h2>
         <p class="muted" style="margin-top:0">Opens the official site in a new tab. You sign in and file there yourself.</p>
@@ -110,7 +121,7 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
          'No payment link'+(r.payError?' (Stripe: '+esc(r.payError)+')':'')+'. Save an update to try again.')+'</div>'+
       '<div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><a class="btn ghost" style="text-decoration:none" href="'+mail+'">Email client</a><a class="btn ghost" style="text-decoration:none" href="tel:'+esc(r.client.phone)+'">Call '+esc(r.client.phone)+'</a><button class="btn ghost" type="button" onclick="window.print()">Print / PDF</button></div>'+
       '<h3>Client</h3><dl>'+kv(r.client)+'</dl><h3>Business</h3><dl>'+kv(r.business)+'</dl>'+
-      (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+
+      (r.llc?'<h3>LLC</h3><dl>'+kv(r.llc)+'</dl>':'')+(r.ein?'<h3>EIN</h3><dl>'+kv(r.ein)+'</dl>':'')+(r.license?'<h3>Business license</h3><dl>'+kv(r.license)+'</dl>':'')+(r.consent.purposeText?'<h3>Purpose consent</h3><p>'+esc(r.consent.purposeText)+'</p>':'')+
       (r.notes?'<h3>Client notes</h3><p>'+esc(r.notes)+'</p>':'')+
       '<h3>Signed authorization</h3><dl><dt>Signature</dt><dd><span style="font-family:\''+esc(sig.font)+'\',cursive;font-size:1.8rem">'+esc(sig.name)+'</span></dd><dt>Signed</dt><dd>'+esc(new Date(r.consent.signedAt).toLocaleString())+'</dd><dt>Disclosures version</dt><dd>'+esc(r.consent.disclosureVersion)+'</dd><dt>Fee acknowledged</dt><dd>'+(r.consent.feeAck?"Yes":"No")+'</dd><dt>Acknowledgments</dt><dd>'+esc((r.consent.acks||[]).length)+' of 5</dd><dt>IP / device</dt><dd>'+esc(r.consent.ip)+' · '+esc((r.consent.serverUserAgent||"").slice(0,90))+'</dd></dl>'+
       '<div class="noprint"><h3>Update</h3><div class="grid2"><div class="f"><label for="uStatus">Status</label><select id="uStatus">'+statuses.map(function(s){return '<option'+(s===r.status?' selected':'')+'>'+esc(s)+'</option>';}).join("")+'</select></div>'+
@@ -139,6 +150,16 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
     $("linkList").innerHTML=L.map(function(l){ return '<a class="btn ghost" style="text-decoration:none;min-height:40px;padding:8px 12px;font-size:.9rem" href="'+esc(l[1])+'" target="_blank" rel="noopener noreferrer">'+esc(l[0])+' ↗</a>'; }).join("");
   }
   $("linkState").onchange=drawLinks; drawLinks();
+  var BASE=location.href.replace(/admin\.html.*$/,"");
+  $("sendSvc").innerHTML=C.services.map(function(x){ return '<option value="'+esc(x.id)+'">'+esc(x.name)+' ('+esc(x.feeText)+')</option>'; }).join("");
+  function sendMsg(){ var x=C.services.find(function(y){return y.id===$("sendSvc").value;}), st=C.states[$("sendState").value].name;
+    return "Hi! Thank you for choosing WebSwan Business Service. Here is your secure form for your "+x.name.toLowerCase()+" in "+st+":\n\n"+$("sendLink").value+"\n\nIt takes about 10 minutes. Please do not type your Social Security number or any tax ID on the form; if it's needed, I'll arrange a secure way. The WebSwan service fee ("+x.feeText+") is separate from any government fees, and the IRS EIN itself is free.\n\nQuestions? Call "+C.phone+".\n\nTania\nWebSwan Business Service"; }
+  function drawSend(){ $("sendLink").value=BASE+"?service="+encodeURIComponent($("sendSvc").value)+"&state="+$("sendState").value;
+    $("mailLink").href="mailto:?subject="+encodeURIComponent("Your WebSwan Business Service form")+"&body="+encodeURIComponent(sendMsg()); }
+  $("sendSvc").onchange=drawSend; $("sendState").onchange=drawSend; drawSend();
+  function copyText(t,msg){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ $("copyNote").textContent=msg; },function(){ $("sendLink").select(); document.execCommand("copy"); $("copyNote").textContent=msg; }); setTimeout(function(){ $("copyNote").textContent=""; },3000); }
+  $("copyLink").onclick=function(){ copyText($("sendLink").value,"Link copied. Paste it in a text or email."); };
+  $("copyMsg").onclick=function(){ copyText(sendMsg(),"Message copied. Paste it in a text or email."); };
   $("chips").addEventListener("click",function(e){ var b=e.target.closest(".chip"); if(!b) return; $("aiPrompt").value=CHIPS[+b.dataset.i][1]; if(current) $("useCtx").checked=true; $("aiPrompt").focus(); });
   document.querySelectorAll(".seg button").forEach(function(b){ b.onclick=function(){ provider=b.dataset.p; document.querySelectorAll(".seg button").forEach(function(x){x.setAttribute("aria-pressed",x===b);}); }; });
   $("aiBtn").onclick=async function(){

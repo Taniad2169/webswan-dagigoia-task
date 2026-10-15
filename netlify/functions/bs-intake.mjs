@@ -59,7 +59,7 @@ export default async (req, context) => {
   const c = data.client || {}, b = data.business || {}, sig = (data.consent || {}).signature || {};
   if (!SERVICES[data.service] || !STATES.includes(data.state)) return reply(400, { error: "Choose a service and state." }, origin);
   if (!c.fullName || !c.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email) || !c.phone || !b.name) return reply(400, { error: "Please fill in your name, email, phone and business name." }, origin);
-  if (!sig.name || !sig.font || !(data.consent && data.consent.feeAck) || ((data.consent.acks || []).length < 5)) return reply(400, { error: "Please review the disclosures and sign." }, origin);
+  if (!sig.name || !sig.font || !(data.consent && data.consent.feeAck && data.consent.purposeAck) || ((data.consent.acks || []).length < 5)) return reply(400, { error: "Please review the disclosures and sign." }, origin);
   if (sig.name.toLowerCase().replace(/\s+/g, " ") !== c.fullName.toLowerCase().replace(/\s+/g, " ")) return reply(400, { error: "Your signature must match your full legal name." }, origin);
 
   let code; for (let i = 0; i < 5; i++) { code = newCode(); if (!(await store.get("req/" + code))) break; }
@@ -68,7 +68,7 @@ export default async (req, context) => {
     code, createdAt: now, updatedAt: now, status: "Received",
     history: [{ status: "Received", at: now, by: "client" }],
     service: data.service, serviceName: SERVICES[data.service], serviceFee: data.serviceFee, state: data.state,
-    client: c, business: b, llc: data.llc || null, ein: data.ein || null, notes: data.notes || "",
+    client: c, business: b, llc: data.llc || null, ein: data.ein || null, license: data.license || null, notes: data.notes || "",
     consent: { ...data.consent, signedAt: sig.at || now, receivedAt: now, ip, serverUserAgent: clean(req.headers.get("user-agent"), 300) },
     clientNote: "", internalNotes: [], finalFee: ""
   };

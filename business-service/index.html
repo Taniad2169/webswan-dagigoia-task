@@ -177,6 +177,10 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
           <div class="f"><label for="bizAddress">Business street address <span class="opt">(no P.O. box for LLC filings)</span></label><input id="bizAddress" type="text" autocomplete="street-address"></div>
           <div class="f"><label for="mailAddress">Mailing address <span class="opt">(if different)</span></label><input id="mailAddress" type="text"></div>
         </div>
+        <div class="grid2" id="entityRow">
+          <div class="f"><label for="entityType">Business type</label><select id="entityType"><option value="">Choose one</option><option>LLC (single owner)</option><option>LLC (2 or more owners)</option><option>Sole proprietor</option><option>Corporation</option><option>Partnership</option><option>Not formed yet / not sure</option></select></div>
+          <div class="f"><label for="ownership">Do you own or rent the business location?</label><select id="ownership"><option>Home-based</option><option>Rent / lease</option><option>Own</option><option>Online only</option><option>Not sure yet</option></select></div>
+        </div>
         <div id="llcFields">
           <h3>LLC details</h3>
           <div class="grid2">
@@ -194,10 +198,26 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
             <div class="f"><label for="rpTitle">Responsible party's title</label><input id="rpTitle" type="text" placeholder="e.g. Owner, Managing Member"></div>
             <div class="f"><label for="employees">Do you expect to hire employees in the next 12 months?</label><select id="employees"><option>No</option><option>Yes</option><option>Not sure</option></select></div>
             <div class="f"><label for="startDate">Business start date <span class="opt">(month/year)</span></label><input id="startDate" type="text" placeholder="e.g. 11/2026"></div>
+            <div class="f"><label for="einReason">Why do you need an EIN?</label><select id="einReason"><option>Started a new business</option><option>Opening a business bank account</option><option>Hiring employees</option><option>Changed business structure (e.g. now an LLC)</option><option>Other</option></select></div>
+            <div class="f"><label for="empCount">How many employees in the next 12 months? <span class="opt">(0 if none)</span></label><input id="empCount" type="number" min="0" max="9999" value="0"></div>
+          </div>
+        </div>
+        <div id="licFields">
+          <h3>Business license details</h3>
+          <div class="grid2">
+            <div class="f"><label for="licKnown">Which license or permit do you need? <span class="opt">(if you know)</span></label><input id="licKnown" type="text" placeholder="e.g. Business Tax Receipt, food permit, contractor license"></div>
+            <div class="f"><label for="licReason">What is this for?</label><select id="licReason"><option>Opening a new business</option><option>Renewing a current license</option><option>New location</option><option>Adding a new activity or service</option><option>Not sure</option></select></div>
+            <div class="f"><label for="licSales">Will you sell products or taxable services?</label><select id="licSales"><option>Yes</option><option>No</option><option>Not sure</option></select></div>
+            <div class="f"><label for="licFood">Will you prepare or sell food or drinks?</label><select id="licFood"><option>No</option><option>Yes</option></select></div>
+            <div class="f"><label for="licPro">Does your work need a professional or trade license? <span class="opt">(cosmetology, contractor, medical, real estate…)</span></label><select id="licPro"><option>No</option><option>Yes</option><option>Not sure</option></select></div>
+            <div class="f"><label for="licEmp">Will you have employees?</label><select id="licEmp"><option>No</option><option>Yes</option><option>Not sure</option></select></div>
+            <div class="f"><label for="licCurrent">Current license or permit number <span class="opt">(renewals only, optional)</span></label><input id="licCurrent" type="text"></div>
+            <div class="f"><label for="licOpen">When do you plan to open or renew?</label><input id="licOpen" type="text" placeholder="e.g. December 2026"></div>
           </div>
         </div>
         <div class="f"><label for="notes">Anything else Tania should know? <span class="opt">(optional)</span></label><textarea id="notes" maxlength="1500"></textarea></div>
         <div class="f"><label for="contactTime">Best time to reach you</label><select id="contactTime"><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="purposeAck"> <span id="purposeText">I agree to submit this information to WebSwan Business Service for the purpose of helping me with my application.</span></label>
         <p class="err" id="err2" role="alert"></p>
       </fieldset>
 
@@ -328,7 +348,8 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
     document.querySelectorAll(".steps li").forEach(function(li){ var s=+li.dataset.s; li.className = s<n?"done":s===n?"on":""; if(s===n) li.setAttribute("aria-current","step"); else li.removeAttribute("aria-current"); });
     $("backBtn").hidden = n===1 || n===5; $("navBar").hidden = n===5;
     $("nextBtn").textContent = n===4 ? "Sign and submit" : "Continue";
-    if (n===2){ var id=svc().id; $("llcFields").hidden = !(id==="llc"||id==="package"); $("einFields").hidden = !(id==="ein"||id==="package"); }
+    if (n===2){ var id=svc().id; $("llcFields").hidden = !(id==="llc"||id==="package"); $("einFields").hidden = !(id==="ein"||id==="package"); $("licFields").hidden = !(id.indexOf("license")===0||id==="package");
+      $("purposeText").textContent = "I agree to submit this information to WebSwan Business Service for the purpose of helping me apply for my "+({ein:"EIN",llc:"LLC","license-existing":"business license","license-new":"business license",package:"LLC, EIN and business license"})[id]+" in "+C.states[$("state").value].name+". I confirm it is true and accurate to the best of my knowledge, that WebSwan will use it only to help with this request, and that I will provide any sensitive numbers only through a secure method or directly on the official government website."; }
     if (n===3) buildFees();
     if (quiet) return;
     $("intake").scrollIntoView({behavior:"smooth",block:"start"});
@@ -378,8 +399,10 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("email").value.trim())){ $("err2").textContent="Please check your email address."; $("email").focus(); return; }
       var id=svc().id;
       if((id==="ein"||id==="package") && !need(["rpName","rpTitle"],"err2")) return;
+      if(!$("entityType").value){ $("err2").textContent="Please choose your business type."; $("entityType").focus(); return; }
       var all=[].map.call(document.querySelectorAll('#intake input[type=text], #intake textarea'),function(x){return x.value;}).join(" ");
       if(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/.test(all)){ $("err2").textContent="It looks like you typed a Social Security or tax ID number. Please remove it. Tania will arrange a secure way if it's needed."; return; }
+      if(!$("purposeAck").checked){ $("err2").textContent="Please check the box to agree to submit your information for this purpose."; $("purposeAck").focus(); return; }
       $("err2").textContent=""; if(!$("sigName").value) { $("sigName").value=$("fullName").value.trim(); drawSigOpts(); } return go(3);
     }
     if(step===3){ if(!$("feeAck").checked){ $("err3").textContent="Please confirm you understand the fees."; $("feeAck").focus(); return; } $("err3").textContent=""; return go(4); }
@@ -396,11 +419,12 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
     return {
       service:s.id, serviceName:s.name, serviceFee:s.feeText, state:st,
       client:{ fullName:$("fullName").value.trim(), role:$("role").value, email:$("email").value.trim(), phone:$("phone").value.trim(), contactTime:$("contactTime").value },
-      business:{ name:$("bizName").value.trim(), altNames:$("altNames").value.trim(), activity:$("activity").value.trim(), cityCounty:$("cityCounty").value.trim(), address:$("bizAddress").value.trim(), mailing:$("mailAddress").value.trim() },
+      business:{ name:$("bizName").value.trim(), altNames:$("altNames").value.trim(), activity:$("activity").value.trim(), cityCounty:$("cityCounty").value.trim(), address:$("bizAddress").value.trim(), mailing:$("mailAddress").value.trim(), entityType:$("entityType").value, location:$("ownership").value },
       llc: ($("llcFields").hidden?null:{ members:$("members").value, managed:$("managed").value, agent:$("agent").value, ownerNames:$("ownerNames").value.trim() }),
-      ein: ($("einFields").hidden?null:{ responsibleParty:$("rpName").value.trim(), title:$("rpTitle").value.trim(), employees:$("employees").value, startDate:$("startDate").value.trim() }),
+      ein: ($("einFields").hidden?null:{ responsibleParty:$("rpName").value.trim(), title:$("rpTitle").value.trim(), employees:$("employees").value, startDate:$("startDate").value.trim(), reason:$("einReason").value, employeesNext12Months:$("empCount").value }),
+      license: ($("licFields").hidden?null:{ licenseNeeded:$("licKnown").value.trim(), purpose:$("licReason").value, sellsTaxable:$("licSales").value, food:$("licFood").value, professionalLicense:$("licPro").value, employees:$("licEmp").value, currentNumber:$("licCurrent").value.trim(), openOrRenew:$("licOpen").value.trim() }),
       notes:$("notes").value.trim(),
-      consent:{ feeAck:true, acks:[1,2,3,4,5], disclosureVersion:C.disclosureVersion, signature:adopted, userAgent:navigator.userAgent },
+      consent:{ purposeAck:true, purposeText:$("purposeText").textContent, feeAck:true, acks:[1,2,3,4,5], disclosureVersion:C.disclosureVersion, signature:adopted, userAgent:navigator.userAgent },
       hp:$("hp").value
     };
   }
@@ -452,6 +476,10 @@ a.paybtn{display:inline-flex;align-items:center;justify-content:center;text-deco
   });
 
   go(1, true);
+  // link from Tania: ?service=llc&state=FL preselects the service and state
+  (function(){ var q=new URLSearchParams(location.search), sv=q.get("service"), st=(q.get("state")||"").toUpperCase();
+    var r=sv && document.querySelector('input[name=svc][value="'+sv.replace(/[^a-z-]/g,"")+'"]'); if(r) r.checked=true;
+    if(C.states[st]) $("state").value=st; })();
   // back from Stripe checkout: thank the client and show their status
   var paidCode=(new URLSearchParams(location.search).get("paid")||"").toUpperCase();
   if(/^WS-[A-Z0-9]{6}$/.test(paidCode)){
