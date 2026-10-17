@@ -13,7 +13,7 @@
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
   const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
   const auth = getAuth(app);
-  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  const OWNERS = ["multimediasite23@gmail.com", "taniadomingue373@gmail.com"];
   window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), signOut: () => signOut(auth), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
   onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
 </script>
