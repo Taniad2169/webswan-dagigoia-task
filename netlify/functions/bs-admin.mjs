@@ -1,6 +1,6 @@
 // WebSwan Business Service - owner-only admin API (list, get, update requests).
 import { getStore } from "@netlify/blobs";
-import { reply, cors, verifyOwner, ALLOWED_ORIGINS } from "../lib/auth.mjs";
+import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS, GBP_MANAGERS } from "../lib/auth.mjs";
 import { makePayLink, checkPaid, amountFor } from "../lib/bspay.mjs";
 
 const STATUSES = ["Received", "Reviewing", "Needs information", "Awaiting payment", "Preparing documents", "Waiting for your approval", "Submitted to agency", "Completed", "Cancelled"];
@@ -11,20 +11,24 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" }, origin);
   if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
-  let who; try { who = await verifyOwner(req); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
+  let who; try { who = await verifyOwner(req, GBP_MANAGERS); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
   let body; try { body = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
   const store = getStore("business-service");
+  // The GBP manager account only sees Google Business Profile clients.
+  const gbpOnly = !OWNERS.includes(who);
+  if (gbpOnly && !["list", "get", "gbp"].includes(body.action)) return reply(403, { error: "This account can only use the GBP Manager." }, origin);
 
   if (body.action === "list") {
     const { blobs } = await store.list({ prefix: "req/" });
     const recs = await Promise.all(blobs.map((b) => store.get(b.key, { type: "json" })));
-    const rows = recs.filter(Boolean).map((r) => ({ code: r.code, createdAt: r.createdAt, updatedAt: r.updatedAt, status: r.status, service: r.service, serviceName: r.serviceName, state: r.state, client: r.client.fullName, email: r.client.email, phone: r.client.phone, business: r.business.name, paid: !!(r.pay && r.pay.paid) }))
+    const rows = recs.filter(Boolean).filter((r) => !gbpOnly || r.service === "gbp").map((r) => ({ code: r.code, createdAt: r.createdAt, updatedAt: r.updatedAt, status: r.status, service: r.service, serviceName: r.serviceName, state: r.state, client: r.client.fullName, email: r.client.email, phone: r.client.phone, business: r.business.name, paid: !!(r.pay && r.pay.paid) }))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
     return reply(200, { rows, statuses: STATUSES }, origin);
   }
   const code = clean(body.code, 12).toUpperCase();
   const rec = /^WS-[A-Z0-9]{6}$/.test(code) ? await store.get("req/" + code, { type: "json" }) : null;
   if (!rec) return reply(404, { error: "Request not found." }, origin);
+  if (gbpOnly && rec.service !== "gbp") return reply(404, { error: "Request not found." }, origin);
 
   if (body.action === "get") {
     try { const was = rec.pay && rec.pay.paid; if (await checkPaid(rec) && !was) await store.setJSON("req/" + code, rec); } catch (e) {}

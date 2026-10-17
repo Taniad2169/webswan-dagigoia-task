@@ -1,7 +1,7 @@
 // WebSwan Business Service - owner-only AI assistant (Claude or ChatGPT).
 // Env vars Tania sets in Netlify (never in code): ANTHROPIC_API_KEY, OPENAI_API_KEY,
 // optional ANTHROPIC_MODEL and OPENAI_MODEL to choose models.
-import { reply, cors, verifyOwner, ALLOWED_ORIGINS } from "../lib/auth.mjs";
+import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS, GBP_MANAGERS } from "../lib/auth.mjs";
 
 const SYSTEM = `You are the internal assistant for WebSwan Business Service, a private document-preparation service run by Tania that helps clients in New York, Florida, Washington and Texas with LLC formation, IRS EIN applications and business license applications.
 You help Tania (not the client directly) with: answering her questions about filing steps and state requirements, preparing application content, and writing emails and letters to clients and agencies.
@@ -24,8 +24,9 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" }, origin);
   if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
-  try { await verifyOwner(req); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
+  let who; try { who = await verifyOwner(req, GBP_MANAGERS); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
   let body; try { body = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
+  if (!OWNERS.includes(who) && body.mode !== "gbp") return reply(403, { error: "This account can only use the GBP assistant." }, origin);
   const provider = body.provider === "openai" ? "openai" : "claude";
   const sys = body.mode === "gbp" ? GBP_SYSTEM : SYSTEM;
   const prompt = clean(body.prompt, 8000).trim();
