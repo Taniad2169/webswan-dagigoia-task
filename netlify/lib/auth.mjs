@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 
 export const PROJECT_ID = "webswan-gigoia-task";
 export const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+// Google Business Profile manager account: can use the GBP Manager tools only (GBP clients, GBP updates, GBP AI assistant).
+export const GBP_MANAGERS = ["multimediasite23@gmail.com"];
 export const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
 const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 let jwksCache = { keys: null, at: 0 };
@@ -16,7 +18,7 @@ export const cors = (origin) => ({
 export const reply = (status, body, origin) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors(origin) } });
 const b64urlJson = (s) => JSON.parse(Buffer.from(s, "base64url").toString("utf8"));
 
-export async function verifyOwner(req) {
+export async function verifyOwner(req, extra = []) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("bad token");
@@ -35,6 +37,6 @@ export async function verifyOwner(req) {
   if (payload.aud !== PROJECT_ID || payload.iss !== "https://securetoken.google.com/" + PROJECT_ID) throw new Error("wrong project");
   if (!(payload.exp > now) || !payload.email_verified) throw new Error("expired");
   const email = String(payload.email || "").toLowerCase();
-  if (!OWNERS.includes(email)) throw new Error("not owner");
+  if (!OWNERS.includes(email) && !extra.includes(email)) throw new Error("not owner");
   return email;
 }
