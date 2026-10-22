@@ -1044,8 +1044,25 @@
           <div id="b-list" class="residual-list"><p class="b-note">No links yet.</p></div>
         </div>
         <div class="card" style="margin-top:1rem;">
-          <div class="card-title"><span class="dot"></span> My saved Stripe links</div>
-          <p class="b-note">Ready-made links from Stripe. The client types the amount on these.</p>
+          <div class="card-title"><span class="dot"></span> 💵 One-time payment link</div>
+          <p class="b-note">Type the amount, create the link, and send it. Your client pays exactly that amount. Each link is saved in "Links I've sent" with its invoice.</p>
+          <div class="field-row">
+            <div class="field"><label>Client name</label><input type="text" id="q-name" placeholder="Dr. Michael Cambria" autocomplete="off"></div>
+            <div class="field"><label>Company</label><input type="text" id="q-company" placeholder="Cambria Dental" autocomplete="off"></div>
+          </div>
+          <div class="field"><label>What it's for (the client sees this)</label><input type="text" id="q-for" placeholder="Website project: initial 50% payment" autocomplete="off"></div>
+          <div class="field-row">
+            <div class="field"><label>💵 Amount ($)</label><input type="number" id="q-amount" placeholder="1397.50" min="0.5" step="0.01"></div>
+            <div class="field"><label>✉️ Client email (optional)</label><input type="email" id="q-email" placeholder="client@example.com" autocomplete="off"></div>
+          </div>
+          <div class="field"><label>🔑 Billing security key</label><input type="password" id="q-key" placeholder="Your billing key" autocomplete="off" maxlength="64"></div>
+          <button type="button" class="btn-blue" id="q-create" style="width:100%;padding:.8rem;">💳 Create &amp; save payment link</button>
+          <div id="q-result" style="display:none;margin-top:.7rem;">
+            <div class="field" style="margin:0;"><input type="text" id="q-url" readonly aria-label="Payment link"></div>
+            <div class="b-row-btns"><button type="button" class="btn-blue" id="q-copy">📋 Copy link</button><button type="button" class="btn-ghost" id="q-copy-msg">✉️ Copy message + link</button></div>
+          </div>
+          <div class="divider-gold"></div>
+          <div class="card-title" style="font-size:.95rem;"><span class="dot"></span> My saved Stripe links</div>
           <div id="b-quick"></div>
         </div>
 
@@ -1868,8 +1885,6 @@
     const BILLING_ENDPOINT = "https://webswan-billing.netlify.app/.netlify/functions/create-payment-link";
     const CHECK_ENDPOINT   = "https://webswan-billing.netlify.app/.netlify/functions/check-payment";
     const QUICK_LINKS = [
-      { name: "The WebSwan (client types the amount)", url: "https://buy.stripe.com/eVq00l4MT7SMeVM5xK3Nm00" },
-      { name: "Setup Fee (client types the amount)",    url: "https://buy.stripe.com/28EcN7cfldd67tk6BO3Nm01" },
       { name: "Mache Haitien Global Monthly Plan ($1,019/mo, 15-day trial)", url: "https://buy.stripe.com/aFa4gBa7d2ys00Sd0c3Nm02" },
       { name: "WebSwan Media Network (link on ads site)", url: "https://buy.stripe.com/5kQ28rgWs0m9fIO3hY5ZC04" },
       { name: "Cambria Dental: initial 50% ($1,397.50)", url: "https://buy.stripe.com/fZu4gBdjpfledRI7FS3Nm05" }
@@ -2305,6 +2320,40 @@ ${b.brand}`;
   $('sow-copy-msg').addEventListener('click',function(){ var f=read(); copy('Hi '+(f.client||'there')+',\n\nHere is your Scope of Work for '+(f.project||((f.practice||'your')+' website project'))+'. Please review it and sign online here:\n'+$('sow-url').value+'\n\nJust click the signature box, choose your signature style, check the box and press Submit. You can download a signed copy right after.\n\nThank you!\nTania\nThe WebSwan','✉️ Message + link copied!'); });
   $('sow-del').addEventListener('click',function(){ var i=+this.dataset.i, list=load(); if(isNaN(i)||!list[i]) return; list.splice(i,1); save(list); fillPick(); $('sow-result').style.display='none'; toast('🗑 Removed.'); });
   fillPick();
+})();
+</script>
+<script>
+/* ── Quick one-time payment link: I type the amount ── */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var btn=$('q-create'); if(!btn) return;
+  function toast(m,e){ if(typeof showToast==='function') showToast(m,e); }
+  function setVal(id,v){ var x=$(id); if(x){ x.value=v; x.dispatchEvent(new Event('input',{bubbles:true})); x.dispatchEvent(new Event('change',{bubbles:true})); } }
+  btn.addEventListener('click',function(){
+    var name=$('q-name').value.trim(), co=$('q-company').value.trim(), what=$('q-for').value.trim(), amt=parseFloat($('q-amount').value), email=$('q-email').value.trim(), key=$('q-key').value;
+    if(!name&&!co){ toast("Add the client's name or company.",true); $('q-name').focus(); return; }
+    if(!what){ toast('Say what the payment is for.',true); $('q-for').focus(); return; }
+    if(!(amt>=0.5)){ toast('Enter the amount.',true); $('q-amount').focus(); return; }
+    if(!key){ toast('Enter your billing security key.',true); $('q-key').focus(); return; }
+    if($('b-once')) $('b-once').click();
+    if($('b-new')) $('b-new').click();
+    setVal('b-name',name); setVal('b-company',co); setVal('b-email',email); setVal('b-plan-name',what);
+    setVal('b-setup',amt.toFixed(2)); setVal('b-interval','none');
+    var sp=$('b-save-plan'); if(sp) sp.checked=false;
+    $('b-key').value=key;
+    var before=$('b-url').value;
+    btn.disabled=true; btn.textContent='Creating link…';
+    $('b-create').click();
+    var tries=0, t=setInterval(function(){
+      tries++;
+      var create=$('b-create'), url=$('b-url').value;
+      if(url && url!==before){ clearInterval(t); $('q-url').value=url; $('q-result').style.display='block'; $('q-key').value=''; btn.disabled=false; btn.textContent='💳 Create & save payment link'; return; }
+      if((!create.disabled && tries>4) || tries>120){ clearInterval(t); btn.disabled=false; btn.textContent='💳 Create & save payment link'; }
+    },500);
+  });
+  function copy(t,m){ (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast(m);}).catch(function(){ var x=document.createElement('textarea'); x.value=t; document.body.appendChild(x); x.select(); try{document.execCommand('copy'); toast(m);}catch(e){} x.remove(); }); }
+  $('q-copy').addEventListener('click',function(){ copy($('q-url').value,'📋 Payment link copied!'); });
+  $('q-copy-msg').addEventListener('click',function(){ var n=($('q-name').value.trim()||'there').replace(/^Dr\.?\s+/i,'Dr. '); copy('Hi '+n+',\n\nHere is your secure payment link for '+$('q-for').value.trim()+' ($'+Number($('q-amount').value||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'):\n'+$('q-url').value+'\n\nThank you for choosing The WebSwan!\n\nTania\nThe WebSwan','✉️ Message + link copied!'); });
 })();
 </script>
 </body>
