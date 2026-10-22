@@ -970,6 +970,12 @@
 
         <div class="divider-gold"></div>
 
+        <label style="font-size:.8rem;font-weight:700;color:var(--text-light);display:block;margin-bottom:.4rem;">💵 Payment type</label>
+        <div class="b-seg" role="group" aria-label="Payment type">
+          <button type="button" id="b-once" aria-pressed="true">One-time payment (I type the amount)</button>
+          <button type="button" id="b-recurring" aria-pressed="false">Setup + recurring plan</button>
+        </div>
+
         <div class="field">
           <label>📦 Plan</label>
           <div class="b-plan-pick">
@@ -1040,6 +1046,47 @@
           <div class="card-title"><span class="dot"></span> My saved Stripe links</div>
           <p class="b-note">Ready-made links from Stripe. The client types the amount on these.</p>
           <div id="b-quick"></div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;" id="sow-card">
+          <div class="card-title"><span class="dot"></span> ✍️ Scope of Work · e-sign link</div>
+          <p class="b-note">Fill in the client and the project, then create the link. The client opens it, adopts a signature, and signs. The signed details are emailed to thewebswann@gmail.com.</p>
+          <div class="field"><label>📁 Load a saved one</label><select id="sow-pick"><option value="">New scope of work…</option></select></div>
+          <div class="field-row">
+            <div class="field"><label>Client name</label><input type="text" id="sow-client" placeholder="Dr. Michael Cambria" autocomplete="off"></div>
+            <div class="field"><label>Signature name</label><input type="text" id="sow-signame" placeholder="Michael Cambria" autocomplete="off"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Business / practice</label><input type="text" id="sow-practice" placeholder="Cambria Dental" autocomplete="off"></div>
+            <div class="field"><label>Phone</label><input type="tel" id="sow-phone" placeholder="(718) 356-0397" autocomplete="off"></div>
+          </div>
+          <div class="field"><label>Address</label><input type="text" id="sow-address" placeholder="422 Retford Ave, Staten Island, NY 10312, USA" autocomplete="off"></div>
+          <div class="field-row">
+            <div class="field"><label>Project title</label><input type="text" id="sow-project" placeholder="Cambria Dental — Website Project" autocomplete="off"></div>
+            <div class="field"><label>Package name</label><input type="text" id="sow-pkg" value="Premium Package" autocomplete="off"></div>
+          </div>
+          <div class="field"><label>What's included (one per line: Title | Description)</label><textarea id="sow-items" rows="7" style="width:100%;resize:vertical;"></textarea></div>
+          <div class="field-row">
+            <div class="field"><label>💲 Project price</label><input type="number" id="sow-price" value="2795" min="0" step="0.01"></div>
+            <div class="field"><label>Regular price (optional)</label><input type="number" id="sow-regular" value="3798" min="0" step="0.01"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>🔁 Monthly fee (0 = none)</label><input type="number" id="sow-monthly" value="148" min="0" step="0.01"></div>
+            <div class="field"><label>Initial payment %</label><input type="number" id="sow-pct" value="50" min="1" max="100" step="1"></div>
+          </div>
+          <div class="field"><label>Monthly fee includes (short)</label><input type="text" id="sow-mincl" value="includes compliance banners" autocomplete="off"></div>
+          <div class="field"><label>What the monthly plan covers (note)</label><textarea id="sow-mnote" rows="2" style="width:100%;resize:vertical;">website hosting, security, ongoing maintenance and the site's compliance banners. It keeps the site live, protected, and up to date after launch — the project price covers the build itself.</textarea></div>
+          <div class="field"><label>Legal review note (leave empty to hide)</label><textarea id="sow-legal" rows="2" style="width:100%;resize:vertical;">the compliance elements and the state regulated disclaimer included in this package are drafted and revised by our legal associate, Linda, and are provided as part of the build — your practice does not source or draft them separately.</textarea></div>
+          <button type="button" class="btn-blue" id="sow-create" style="width:100%;padding:.85rem;font-size:1rem;">✍️ Create signing link</button>
+          <div id="sow-result" style="display:none;margin-top:.8rem;">
+            <div class="field" style="margin:0;"><input type="text" id="sow-url" readonly aria-label="Signing link"></div>
+            <div class="b-row-btns">
+              <button type="button" class="btn-blue" id="sow-copy">📋 Copy link</button>
+              <button type="button" class="btn-ghost" id="sow-copy-msg">✉️ Copy message + link</button>
+              <a class="btn-ghost" id="sow-open" href="#" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">👀 Preview</a>
+              <button type="button" class="btn-ghost" id="sow-del" style="display:none;">🗑 Delete saved</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1823,7 +1870,8 @@
       { name: "The WebSwan (client types the amount)", url: "https://buy.stripe.com/eVq00l4MT7SMeVM5xK3Nm00" },
       { name: "Setup Fee (client types the amount)",    url: "https://buy.stripe.com/28EcN7cfldd67tk6BO3Nm01" },
       { name: "Mache Haitien Global Monthly Plan ($1,019/mo, 15-day trial)", url: "https://buy.stripe.com/aFa4gBa7d2ys00Sd0c3Nm02" },
-      { name: "WebSwan Media Network (link on ads site)", url: "https://buy.stripe.com/5kQ28rgWs0m9fIO3hY5ZC04" }
+      { name: "WebSwan Media Network (link on ads site)", url: "https://buy.stripe.com/5kQ28rgWs0m9fIO3hY5ZC04" },
+      { name: "Cambria Dental: initial 50% ($1,397.50)", url: "https://buy.stripe.com/fZu4gBdjpfledRI7FS3Nm05" }
     ];
     const DEFAULT_PLANS = [
       { brand: "WebSwan Media Network",     name: "Media Network Listing - Yearly",           setup: 400, recur: 289, interval: "year" },
@@ -2182,6 +2230,81 @@ ${b.brand}`;
     window.addEventListener("fbReady", () => { window._fbReady = true; if (document.getElementById("view-billing").style.display === "block") loadAll(); });
     fillPlans();
   })();
+</script>
+<script>
+/* ── One-time payment mode (Billing tab) ── */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var once=$('b-once'), rec=$('b-recurring'), iv=$('b-interval'), setup=$('b-setup'), recur=$('b-recur'), delay=$('b-delay'), pick=$('b-plan-pick'), name=$('b-plan-name');
+  if(!once||!iv) return;
+  var setupLbl=setup.previousElementSibling, recRow=recur.closest('.field-row'), ivRow=iv.closest('.field-row');
+  function mode(one){
+    once.setAttribute('aria-pressed',String(one)); rec.setAttribute('aria-pressed',String(!one));
+    if(one){ iv.value='none'; recur.value=''; }
+    else if(iv.value==='none'){ iv.value='month'; }
+    recRow.querySelector('.field:nth-child(2)').style.display=one?'none':'';
+    ivRow.style.display=one?'none':'';
+    setupLbl.textContent=one?'💵 Amount to charge ($)':'🧾 Setup fee, one time ($)';
+    name.placeholder=one?'Cambria Dental: initial 50% payment':'Website + SBPA package';
+    iv.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  once.addEventListener('click',function(){ mode(true); setup.focus(); });
+  rec.addEventListener('click',function(){ mode(false); });
+  pick.addEventListener('change',function(){ setTimeout(function(){ if(pick.value) mode(iv.value==='none'); },0); });
+  mode(true);
+})();
+</script>
+<script>
+/* ── Scope of Work e-sign links (Billing tab) ── */
+(function(){
+  var PAGE='https://taniad2169.github.io/Daily-task/scope-of-work.html';
+  var KEY='ws-sow-saved';
+  var DEFAULT_ITEMS=[
+    'AI-Powered Web Design — Structure & Layout | A fully structured, professional website designed to convert visitors into patients: clean architecture, responsive layout, and page hierarchy planned around your services and your patients\' most common paths.',
+    'Real Google & Yelp Review Links + "Add Review" Buttons | Direct links to your genuine Google and Yelp profiles, with clearly placed "Add a Review" buttons so happy patients can leave a review in seconds — the honest, effective way to grow your rating.',
+    'Website Language Translator | Every page of the site translates automatically into the patient\'s preferred language, so your whole community can read your practice in the language they are most comfortable with.',
+    'SEO · GEO · AEO + Schema Markup | Full search optimization for Google, local map results (GEO), and AI-driven answers (AEO), with medical-practice schema markup so search engines and AI assistants understand exactly who you are and where you serve.',
+    'Safe PHI Booking Calendar | An online appointment calendar built with patient-privacy in mind, handling protected health information safely so patients can request visits without the practice taking on unnecessary exposure.',
+    'Full Compliance Package — State Regulated Disclaimer | A full compliance layer built into the site: ADA and WCAG 2.1 accessibility, privacy and cookie banners, and the state regulated disclaimer, revised and approved by our legal associate before it goes live.'
+  ].join('\n');
+  var $=function(id){return document.getElementById(id);};
+  if(!$('sow-card')) return;
+  var F=['client','signame','practice','phone','address','project','pkg','items','price','regular','monthly','pct','mincl','mnote','legal'];
+  $('sow-items').value=DEFAULT_ITEMS;
+  function toast(m,e){ if(typeof showToast==='function') showToast(m,e); }
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ return []; } }
+  function save(list){ try{ localStorage.setItem(KEY,JSON.stringify(list.slice(0,50))); }catch(e){} }
+  function fillPick(){ var list=load(); $('sow-pick').innerHTML='<option value="">New scope of work…</option>'+list.map(function(s,i){ return '<option value="'+i+'">'+String(s.form.practice||s.form.client||'Untitled').replace(/</g,'&lt;')+' · '+new Date(s.at).toLocaleDateString()+'</option>'; }).join(''); }
+  function read(){ var o={}; F.forEach(function(k){ o[k]=$('sow-'+k).value.trim(); }); return o; }
+  function write(o){ F.forEach(function(k){ if(o[k]!=null) $('sow-'+k).value=o[k]; }); }
+  function b64url(str){ var b=btoa(unescape(encodeURIComponent(str))); return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function build(f){
+    var items=f.items.split('\n').map(function(l){ l=l.trim(); if(!l) return null; var i=l.indexOf('|'); return i<0?[l,'']:[l.slice(0,i).trim(),l.slice(i+1).trim()]; }).filter(Boolean);
+    var d={client:f.client,sigName:f.signame||f.client.replace(/^Dr\.?\s+/i,''),practice:f.practice,phone:f.phone,address:f.address,project:f.project||((f.practice||f.client)+' — Website Project'),pkg:f.pkg||'Website Package',items:items,price:Number(f.price)||0,regular:Number(f.regular)||0,monthly:Number(f.monthly)||0,monthlyIncl:f.mincl,monthlyNote:f.mnote,legalNote:f.legal,pct:Math.min(100,Math.max(1,Number(f.pct)||50)),date:new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})};
+    return PAGE+'#d='+b64url(JSON.stringify(d));
+  }
+  function show(url,idx){ $('sow-url').value=url; $('sow-open').href=url; $('sow-result').style.display='block'; $('sow-del').style.display=idx==null?'none':'inline-block'; $('sow-del').dataset.i=idx==null?'':idx; }
+  $('sow-create').addEventListener('click',function(){
+    var f=read();
+    if(!f.client){ toast('Add the client name first.',true); $('sow-client').focus(); return; }
+    if(!(Number(f.price)>0)){ toast('Add the project price.',true); $('sow-price').focus(); return; }
+    var url=build(f), list=load();
+    var i=list.findIndex(function(s){ return (s.form.practice||'')===(f.practice||'') && (s.form.client||'')===(f.client||''); });
+    var rec={form:f,url:url,at:Date.now()};
+    if(i>-1) list[i]=rec; else { list.unshift(rec); i=0; }
+    save(list); fillPick(); $('sow-pick').value=String(i); show(url,i);
+    toast('✍️ Signing link ready for '+(f.practice||f.client)+'!');
+  });
+  $('sow-pick').addEventListener('change',function(){
+    var v=this.value; if(v===''){ F.forEach(function(k){ if(['pkg','price','regular','monthly','pct','mincl','mnote','legal','items'].indexOf(k)<0) $('sow-'+k).value=''; }); $('sow-result').style.display='none'; return; }
+    var s=load()[+v]; if(!s) return; write(s.form); show(s.url,+v);
+  });
+  function copy(t,m){ (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast(m);}).catch(function(){ var x=document.createElement('textarea'); x.value=t; document.body.appendChild(x); x.select(); try{document.execCommand('copy'); toast(m);}catch(e){} x.remove(); }); }
+  $('sow-copy').addEventListener('click',function(){ copy($('sow-url').value,'📋 Signing link copied!'); });
+  $('sow-copy-msg').addEventListener('click',function(){ var f=read(); copy('Hi '+(f.client||'there')+',\n\nHere is your Scope of Work for '+(f.project||((f.practice||'your')+' website project'))+'. Please review it and sign online here:\n'+$('sow-url').value+'\n\nJust click the signature box, choose your signature style, check the box and press Submit. You can download a signed copy right after.\n\nThank you!\nTania\nThe WebSwan','✉️ Message + link copied!'); });
+  $('sow-del').addEventListener('click',function(){ var i=+this.dataset.i, list=load(); if(isNaN(i)||!list[i]) return; list.splice(i,1); save(list); fillPick(); $('sow-result').style.display='none'; toast('🗑 Removed.'); });
+  fillPick();
+})();
 </script>
 </body>
 </html>
