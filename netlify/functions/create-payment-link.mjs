@@ -103,6 +103,11 @@ export default async (req) => {
   const interval = ["month", "year", "none"].includes(b.interval) ? b.interval : null;
   const setup = Number(b.setup) || 0, recur = interval === "none" ? 0 : Number(b.recur) || 0;
   const delayDays = Math.max(0, Math.min(365, parseInt(b.delayDays, 10) || 0));
+  // extra one-time items charged today with the first payment (e.g. WSMN "Annual Membership (First Year)")
+  const extras = (Array.isArray(b.extras) ? b.extras : []).slice(0, 4)
+    .map((x) => ({ name: clean(x && x.name, 120), amount: Math.round((Number(x && x.amount) || 0) * 100) / 100 }))
+    .filter((x) => x.name && x.amount > 0);
+  if (extras.some((x) => x.amount < 0.5 || x.amount > 20000)) return reply(400, { error: "Extra item amounts look wrong." }, origin);
   if (!brand || !planName || !interval) return reply(400, { error: "Missing brand, plan name or interval." }, origin);
   if (setup < 0 || recur < 0 || setup > 50000 || recur > 20000) return reply(400, { error: "Amounts look wrong." }, origin);
   if (setup <= 0 && recur <= 0) return reply(400, { error: "Enter a setup fee or a recurring charge." }, origin);
@@ -129,6 +134,13 @@ export default async (req) => {
       const p = await stripe(secret, "prices", {
         currency: "usd", unit_amount: String(cents(setup)),
         "product_data[name]": `${planName} - setup fee (${brand})`, ...Object.fromEntries(Object.entries(meta).map(([k, v]) => ["metadata[" + k + "]", v]))
+      });
+      items.push(p.id);
+    }
+    for (const x of extras) {
+      const p = await stripe(secret, "prices", {
+        currency: "usd", unit_amount: String(cents(x.amount)),
+        "product_data[name]": `${x.name} (${brand})`, ...Object.fromEntries(Object.entries(meta).map(([k, v]) => ["metadata[" + k + "]", v]))
       });
       items.push(p.id);
     }

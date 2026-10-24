@@ -1035,7 +1035,38 @@
 
       <!-- RIGHT: history + quick links -->
       <div>
-        <div class="card">
+        <div class="card" id="wsmn-card" style="border:1.5px solid #339cde;">
+          <div class="card-title"><span class="dot"></span> 🦢 WebSwan Media Network · Provider package</div>
+          <p class="b-note"><b>$689 today</b> ($400 setup + $289 annual membership, first year), then <b>$29/month</b> starting in 30 days. One checkout, the client enters their card once. Saved under WebSwan Media Network in your Residual list.</p>
+          <div class="field-row">
+            <div class="field"><label>Doctor / attorney name</label><input type="text" id="w-name" placeholder="Dr. Jane Smith" autocomplete="off"></div>
+            <div class="field"><label>Practice</label><input type="text" id="w-company" placeholder="Smith Family Dental" autocomplete="off"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>✉️ Email (optional)</label><input type="email" id="w-email" placeholder="doctor@example.com" autocomplete="off"></div>
+            <div class="field"><label>📱 Phone (optional)</label><input type="tel" id="w-phone" placeholder="(555) 123-4567" autocomplete="off"></div>
+          </div>
+          <div class="field"><label>🔑 Billing security key</label><input type="password" id="w-key" placeholder="Your billing key" autocomplete="off" maxlength="64"></div>
+          <button type="button" class="btn-blue" id="w-create" style="width:100%;padding:.85rem;font-size:1rem;">💳 Create provider payment link</button>
+          <div id="w-result" style="display:none;margin-top:.7rem;">
+            <div style="font-weight:700;color:#93e5fa;margin-bottom:.4rem;">✅ Link ready</div>
+            <div class="field" style="margin:0;"><input type="text" id="w-url" readonly aria-label="Provider payment link"></div>
+            <div class="b-row-btns">
+              <button type="button" class="btn-blue" id="w-pay">💳 Pay now with client</button>
+              <button type="button" class="btn-ghost" id="w-copy">📋 Copy link</button>
+              <button type="button" class="btn-ghost" id="w-text">💬 Text it</button>
+              <button type="button" class="btn-ghost" id="w-mail">📧 Email it</button>
+            </div>
+            <p class="b-note" style="margin:.5rem 0 0;">On the phone or in person? Tap <b>Pay now with client</b> and type their card while they read it to you.</p>
+          </div>
+          <div class="divider-gold"></div>
+          <div class="card-title" style="font-size:.95rem;"><span class="dot"></span> Self-serve sign-ups from ads.webswanmedianetwork.com</div>
+          <p class="b-note">Providers who paid on their own. Sync adds anyone new to your Residual list under WebSwan Media Network.</p>
+          <button type="button" class="btn-ghost" id="w-sync" style="width:100%;">🔄 Sync ads-site sign-ups</button>
+          <div id="w-sync-msg" class="b-note" style="margin-top:.4rem;"></div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;">
           <div class="card-title" style="justify-content:space-between;">
             <span style="display:flex;align-items:center;gap:.5rem;"><span class="dot"></span> Links I've sent</span>
             <span class="residual-count" id="b-count">0</span>
@@ -1589,6 +1620,7 @@
   fillPlans();
   /* Prefill from a WebSwan Studio link: ?add=1&name=..&company=..&brand=..&plan=..&setup=..&amount=..&day=..&start=..&phone=..&email=..&notes=.. */
   const QP = new URLSearchParams(location.search);
+  if (QP.get("tab") === "billing") setTimeout(() => { switchTab("billing"); const c = document.getElementById("wsmn-card"); if (c && QP.get("wsmn")) c.scrollIntoView({ behavior: "smooth" }); }, 0);
   function applyPrefill() {
     if (QP.get("bulk")) { prefilled = true; switchTab("residual"); showToast("Registering clients from WebSwan Studio…"); autoRegister(); return; }
     if (!QP.get("add")) return;
@@ -1739,6 +1771,7 @@
   }
 
   let allResiduals = [];
+  function addDaysISOr(iso, days) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
   function renderResiduals(entries) {
     allResiduals = entries;
     const f = rFilterMo.value;
@@ -1746,7 +1779,7 @@
       : (f === "Late" || f === "Cancelled" || f === "Link sent") ? entries.filter(e => (e.status || "Active") === f)
       : entries.filter(e => (e.brand || "The WebSwan") === f);
     const live = shown.filter(e => !["Cancelled","Paused","Link sent"].includes(e.status || "Active"));
-    const perMonth = live.reduce((s, e) => s + ((e.plan === "Yearly") ? (parseFloat(e.amount)||0) / 12 : (parseFloat(e.amount)||0)), 0);
+    const perMonth = live.reduce((s, e) => s + ((e.plan === "Yearly") ? (parseFloat(e.amount)||0) / 12 : (parseFloat(e.amount)||0)) + (parseFloat(e.annualFee)||0) / 12, 0);
     resCount.textContent = shown.length;
     resTotal.textContent = money(perMonth);
     document.getElementById("t-year").textContent = money(perMonth * 12);
@@ -1777,6 +1810,11 @@
           ${(() => { const x = earned(e); return x.res + x.one > 0 ? `<span>💰 Earned so far ${money(x.res + x.one)}</span>` : ""; })()}
           ${parseFloat(e.setupFee) > 0 ? `<span>🧾 Project ${money(e.setupFee)}${e.setupDate ? ` · ${formatDate(e.setupDate)}` : ""}</span>` : ""}
           ${e.startDate ? `<span>📆 Residual from ${formatDate(e.startDate)}</span>` : ""}
+          ${parseFloat(e.annualFee) > 0 ? (() => {
+            const due = e.annualRenewal, soon = due && st !== "Cancelled" && due <= addDaysISOr(todayISO(), 30);
+            return `<span${soon ? ' style="color:#f59e0b;font-weight:700;"' : ""}>🔁 ${money(e.annualFee)}/year${due ? (soon ? " · renewal due " : " · renews ") + formatDate(due) : " · renews 1 year after payment"}</span>`
+              + (soon ? `<button type="button" class="btn-blue" style="padding:.25rem .6rem;font-size:.72rem;" onclick="wsmnRenewal('${escH(e.id)}')">Create renewal link</button>` : "");
+          })() : ""}
           ${e.phone ? `<a href="tel:${escH(String(e.phone).replace(/[^0-9+]/g,""))}">📞 ${escH(e.phone)}</a>` : ""}
           ${e.email ? `<a href="mailto:${escH(e.email)}">✉️ ${escH(e.email)}</a>` : ""}
         </div>
@@ -1892,6 +1930,7 @@
     const DEFAULT_PLANS = [
       { brand: "WebSwan Media Network",     name: "Media Network Listing - Yearly",           setup: 400, recur: 289, interval: "year" },
       { brand: "WebSwan Media Network",     name: "Media Network Maintenance - Monthly",      setup: 0,   recur: 29,  interval: "month" },
+      { brand: "WebSwan Media Network",     name: "Media Network Annual Membership Renewal",  setup: 289, recur: 0,   interval: "none" },
       { brand: "WebSwan Digital Solutions", name: "ADA Button + Cookie Banner",               setup: 499, recur: 59,  interval: "month" },
       { brand: "WebSwan Digital Solutions", name: "ADA Button + Cookie Banner (WebSwan site)", setup: 299, recur: 49,  interval: "month" },
       { brand: "WebSwan Digital Solutions", name: "ADA Accessibility Button",                 setup: 399, recur: 49,  interval: "month" },
@@ -1909,6 +1948,7 @@
     };
     let plans = [], billing = [], loaded = false, lastLink = null;
     const money = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const extrasTotal = (b) => (b.extras || []).reduce((t, x) => t + (Number(x.amount) || 0), 0);
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 
     async function copyText(text, msg) {
@@ -2052,7 +2092,7 @@
     });
     function message(l) {
       const who = l.clientName ? l.clientName.split(" ")[0] : "there";
-      let terms = money(l.setup) + (l.setup ? " today" : "");
+      let terms = money((l.setup || 0) + extrasTotal(l)) + ((l.setup || extrasTotal(l)) ? " today" : "");
       if (l.recur) terms += (l.setup ? ", then " : "") + money(l.recur) + " per " + l.interval;
       return `Hi ${who},\n\nHere is your secure payment link for ${l.planName} with ${l.brand} (${terms}):\n${l.url}\n\nThank you for choosing ${l.brand}! If you have any questions, just reply to this email.\n\nTania\n${l.brand}`;
     }
@@ -2086,8 +2126,9 @@
       const paidMs = b.paidAt || Date.now(), dateMs = isR ? paidMs : createdMs(b);
       const rows = [];
       if (b.setup) rows.push([b.planName + " (one-time setup)", money(b.setup)]);
+      (b.extras || []).forEach(x => rows.push([x.name, money(x.amount)]));
       if (b.recur) rows.push([b.planName + " (" + money(b.recur) + " every " + per(b.interval) + ", " + firstChargeText(b, isR ? paidMs : dateMs) + ")", b.delayDays ? "$0.00 today" : money(b.recur)]);
-      const dueToday = (b.setup || 0) + (b.recur && !b.delayDays ? b.recur : 0);
+      const dueToday = (b.setup || 0) + extrasTotal(b) + (b.recur && !b.delayDays ? b.recur : 0);
       const amount = isR ? (b.paidAmount || dueToday) : dueToday;
       const accent = isR ? "#0d9488" : "#1e3a8a";
       const info = [["Bill to", (b.clientName || "") + (b.company ? (b.clientName ? ", " : "") + b.company : "")], ["Email", b.email], ["Phone", b.phone]].filter(r => r[1]);
@@ -2124,8 +2165,9 @@ ${b.notes ? `<div class="notes"><strong>Notes:</strong><br>${esc(b.notes)}</div>
       const isR = kind === "receipt", title = BRAND_TITLE[b.brand] || b.brand, who = b.clientName ? b.clientName.split(" ")[0] : "there";
       const lines = [];
       if (b.setup) lines.push("- " + b.planName + " (one-time setup): " + money(b.setup));
+      (b.extras || []).forEach(x => lines.push("- " + x.name + ": " + money(x.amount)));
       if (b.recur) lines.push("- " + b.planName + ": " + money(b.recur) + " every " + per(b.interval) + (b.delayDays ? " (" + firstChargeText(b, isR ? b.paidAt : createdMs(b)) + ")" : ""));
-      const dueToday = (b.setup || 0) + (b.recur && !b.delayDays ? b.recur : 0);
+      const dueToday = (b.setup || 0) + extrasTotal(b) + (b.recur && !b.delayDays ? b.recur : 0);
       const subject = isR ? `Receipt ${rcptNo(b)} from ${title}` : `Invoice ${invNo(b)} from ${title}`;
       const body = isR
         ? `Hi ${who},
@@ -2168,7 +2210,7 @@ ${b.brand}`;
       if (!list.length) { el.list.innerHTML = '<p class="b-note">No links yet.</p>'; return; }
       el.list.innerHTML = list.map(b => {
         const when = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().toLocaleDateString() : "";
-        const terms = money(b.setup) + " setup" + (b.recur ? " + " + money(b.recur) + "/" + (b.interval === "year" ? "yr" : "mo") : "");
+        const terms = money(b.setup) + " setup" + (b.extras || []).map(x => " + " + money(x.amount) + " " + x.name).join("") + (b.recur ? " + " + money(b.recur) + "/" + (b.interval === "year" ? "yr" : "mo") : "");
         const paid = b.status === "Paid";
         const pay = paid
           ? `<span class="b-pay paid">✅ Paid${b.paidAt ? " on " + new Date(b.paidAt).toLocaleDateString() : ""}${b.paidAmount ? " · " + money(b.paidAmount) : ""}</span>`
@@ -2204,6 +2246,7 @@ ${b.brand}`;
         try {
           await window._fb.updateResidual(resId, {
             status: "Active", setupDate: addDaysISO(r.paidAt, 0), startDate: b.recur ? first : null,
+            ...(b.annualFee ? { annualFee: b.annualFee, annualRenewal: addDaysISO(r.paidAt, 365) } : {}),
             paymentDay: b.recur ? String(new Date(first + "T12:00:00").getDate()) : "",
             paymentDate: "2026-" + (b.recur ? String(new Date(first + "T12:00:00").getDate()).padStart(2, "0") : "99")
           });
@@ -2232,6 +2275,87 @@ ${b.brand}`;
         else if (loud) showToast("Not paid yet.");
       } catch (e) { console.error(e); if (loud) showToast(e.message, true); renderBilling(); }
     }
+
+    /* ── WebSwan Media Network provider package ($400 setup + $289 first year today, then $29/mo after 30 days) ── */
+    const WSMN = { brand: "WebSwan Media Network", planName: "WebSwan Media Network Membership", setup: 400, annual: 289, recur: 29, delayDays: 30 };
+    const SIGNUPS_ENDPOINT = "https://webswan-billing.netlify.app/.netlify/functions/wsmn-signups";
+    const w = { name: $("w-name"), company: $("w-company"), email: $("w-email"), phone: $("w-phone"), key: $("w-key"), create: $("w-create"),
+      result: $("w-result"), url: $("w-url"), pay: $("w-pay"), copy: $("w-copy"), text: $("w-text"), mail: $("w-mail"), sync: $("w-sync"), syncMsg: $("w-sync-msg") };
+    let wLast = null;
+    const wsmnResidual = (o) => ({
+      clientName: o.clientName || "", companyName: o.company || "", projectName: "WSMN Provider Package", amount: WSMN.recur, plan: "Monthly",
+      setupFee: WSMN.setup + WSMN.annual, annualFee: WSMN.annual, phone: o.phone || "", email: o.email || "", brand: WSMN.brand, studioRef: null
+    });
+    w.create.addEventListener("click", async () => {
+      const f = { clientName: w.name.value.trim(), company: w.company.value.trim(), email: w.email.value.trim(), phone: w.phone.value.trim() };
+      if (!f.clientName && !f.company) return showToast("Add the doctor/attorney name or practice.", true);
+      if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return showToast("That email doesn't look right.", true);
+      if (!w.key.value) return showToast("Enter your billing security key.", true);
+      w.create.disabled = true; w.create.textContent = "Creating link…";
+      try {
+        const token = await window._fbAuth.token(); if (!token) throw new Error("Please sign in with Google first.");
+        const body = { brand: WSMN.brand, clientName: f.clientName, company: f.company, email: f.email, phone: f.phone, planName: WSMN.planName,
+          setup: WSMN.setup, recur: WSMN.recur, interval: "month", delayDays: WSMN.delayDays,
+          extras: [{ name: "WebSwan Media Network Annual Membership (First Year)", amount: WSMN.annual }] };
+        const res = await fetch(BILLING_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "X-Billing-Key": w.key.value }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error || "Stripe did not return a link.");
+        let url = data.url; if (f.email) url += (url.includes("?") ? "&" : "?") + "prefilled_email=" + encodeURIComponent(f.email);
+        const rec = { ...body, notes: "", url, stripeLinkId: data.id || null, status: "Link sent", annualFee: WSMN.annual, residualId: null, invoiceNo: newInvoiceNo(data.id), invoiceAt: Date.now() };
+        try {
+          const ref = await window._fb.saveResidual({ ...wsmnResidual(f), paymentDay: "", status: "Link sent", setupDate: null, startDate: null, paymentDate: "2026-99",
+            notes: "WSMN payment link sent " + new Date().toLocaleDateString() + ": " + url });
+          rec.residualId = ref.id; if (typeof refreshResiduals === "function") refreshResiduals();
+        } catch (e) { console.error(e); }
+        try { await window._fb.saveBilling(rec); } catch (e) { console.error(e); showToast("Link created, but saving the history failed.", true); }
+        wLast = rec; w.url.value = url; w.result.style.display = "block"; w.key.value = "";
+        showToast("🦢 Provider link ready! Saved under WebSwan Media Network.");
+        await loadBilling();
+      } catch (err) { console.error(err); showToast(err.message || "Could not create the link.", true); }
+      finally { w.create.disabled = false; w.create.textContent = "💳 Create provider payment link"; }
+    });
+    const wMsg = () => message(wLast) + "\n\nToday: $400 setup + $289 annual membership (first year) = $689. Then $29/month for maintenance, starting in 30 days.";
+    w.pay.addEventListener("click", () => wLast && window.open(wLast.url, "_blank", "noopener"));
+    w.copy.addEventListener("click", () => wLast && copyText(wLast.url, "Link copied!"));
+    w.text.addEventListener("click", () => {
+      if (!wLast) return;
+      const first = (wLast.clientName || "").split(" ").filter(x => !/^dr\.?$/i.test(x))[0] || "there";
+      const txt = `Hi ${first}, it's Tania from WebSwan Media Network. Here is your secure link to join: ${wLast.url} ($689 today, then $29/mo starting in 30 days). Questions? Call (347) 646-7086.`;
+      location.href = "sms:" + String(wLast.phone || "").replace(/[^0-9+]/g, "") + "?&body=" + encodeURIComponent(txt);
+    });
+    w.mail.addEventListener("click", () => {
+      if (!wLast) return;
+      location.href = "mailto:" + encodeURIComponent(wLast.email || "") + "?subject=" + encodeURIComponent("Your WebSwan Media Network membership link") + "&body=" + encodeURIComponent(wMsg());
+    });
+    w.sync.addEventListener("click", async () => {
+      w.sync.disabled = true; w.sync.textContent = "Checking Stripe…"; w.syncMsg.textContent = "";
+      try {
+        const token = await window._fbAuth.token(); if (!token) throw new Error("Please sign in with Google first.");
+        const res = await fetch(SIGNUPS_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }, body: "{}" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not check sign-ups.");
+        const have = new Set((allResiduals || []).map(r => r.stripeSessionId).filter(Boolean));
+        const fresh = (data.signups || []).filter(x => !have.has(x.sessionId));
+        for (const x of fresh) {
+          const first = addDaysISO(x.paidAt, WSMN.delayDays), day = String(new Date(first + "T12:00:00").getDate());
+          await window._fb.saveResidual({ ...wsmnResidual({ clientName: x.name, company: x.business, email: x.email, phone: x.phone }),
+            status: "Active", setupDate: addDaysISO(x.paidAt, 0), startDate: first, paymentDay: day, paymentDate: "2026-" + day.padStart(2, "0"),
+            annualRenewal: addDaysISO(x.paidAt, 365), stripeSessionId: x.sessionId, paidOneTimeAmount: x.amount,
+            notes: "Self-serve sign-up on ads.webswanmedianetwork.com, paid " + new Date(x.paidAt).toLocaleDateString() + " (" + money(x.amount) + ")" });
+        }
+        if (fresh.length && typeof refreshResiduals === "function") await refreshResiduals();
+        w.syncMsg.textContent = fresh.length ? `✅ Added ${fresh.length} new provider${fresh.length > 1 ? "s" : ""} to your Residual list.` : `No new sign-ups. (${(data.signups || []).length} already in your list.)`;
+        if (fresh.length) showToast("💰 " + fresh.length + " new Media Network member" + (fresh.length > 1 ? "s" : "") + " added!");
+      } catch (e) { console.error(e); w.syncMsg.textContent = "⚠️ " + e.message; }
+      finally { w.sync.disabled = false; w.sync.textContent = "🔄 Sync ads-site sign-ups"; }
+    });
+    window.wsmnRenewal = (id) => {
+      const r = (allResiduals || []).find(x => x.id === id); if (!r) return;
+      switchTab("billing"); setMode(true); el.brand.value = WSMN.brand; fillPlans(); fillClients(); el.pick.value = id; el.pick.dispatchEvent(new Event("change"));
+      const p = allPlans().find(x => x.name === "Media Network Annual Membership Renewal");
+      if (p) { el.planPick.value = p.id; el.planPick.dispatchEvent(new Event("change")); }
+      el.addRes.checked = false; el.key.focus(); showToast("Renewal link ready to create: enter your billing key.");
+    };
 
     async function loadBilling() {
       try { billing = await window._fb.loadBilling(); renderBilling(); checkPayments(billing, false); }
