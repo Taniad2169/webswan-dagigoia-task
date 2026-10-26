@@ -146,7 +146,7 @@ footer.cd-foot a{color:#0b4f6c}
         </div>
         <div class="cd-grid" id="cdDow" aria-hidden="true"></div>
         <div class="cd-grid" id="cdDays" role="group" aria-label="Available days"></div>
-        <p class="cd-legend">Open Monday to Thursday, 3:00 to 6:00 PM (Salt Lake City time). Crossed-out days are not available.</p>
+        <p class="cd-legend">Hours: Mon, Wed &amp; Thu 9:00 AM–1:00 PM and 3:00–6:00 PM · Tue 3:00–6:00 PM · Fri–Sun closed (Salt Lake City time). Crossed-out days are not available.</p>
       </div>
 
       <!-- Step 2 + 3: time and details -->
@@ -201,8 +201,8 @@ footer.cd-foot a{color:#0b4f6c}
   /* ===== SETTINGS (change these when connecting the real accounts) ===== */
   var PORTAL_URL = '';          // Dr. Conger's patient portal link goes here
   var SLOT_MINUTES = 30;
-  var HOURS = {                 // 0=Sun ... 6=Sat, [open, close] in 24h
-    0:null, 1:[15,18], 2:[15,18], 3:[15,18], 4:[15,18], 5:null, 6:null
+  var HOURS = {                 // 0=Sun ... 6=Sat, list of [open, close] in 24h
+    0:null, 1:[[9,13],[15,18]], 2:[[15,18]], 3:[[9,13],[15,18]], 4:[[9,13],[15,18]], 5:null, 6:null
   };
   var DAYS_AHEAD = 60;
   /* ==================================================================== */
@@ -256,8 +256,9 @@ footer.cd-foot a{color:#0b4f6c}
   function renderTimes(){
     var box=$('cdTimes'); box.innerHTML='';
     if (!pickedDay){ $('cdTimeHint').textContent='Select a day first.'; return; }
-    var h = HOURS[pickedDay.getDay()], now = new Date(), any=false;
-    for (var m=h[0]*60; m+SLOT_MINUTES<=h[1]*60; m+=SLOT_MINUTES){
+    var ranges = HOURS[pickedDay.getDay()], now = new Date(), any=false, mins=[];
+    ranges.forEach(function(h){ for (var x=h[0]*60; x+SLOT_MINUTES<=h[1]*60; x+=SLOT_MINUTES) mins.push(x); });
+    mins.forEach(function(m){
       var slot = new Date(pickedDay); slot.setMinutes(m);
       var b=document.createElement('button'); b.type='button'; b.className='cd-time'; b.textContent=fmtTime(m);
       var off = taken(pickedDay,m) || slot <= now;
@@ -266,7 +267,7 @@ footer.cd-foot a{color:#0b4f6c}
       b.setAttribute('aria-pressed', String(pickedTime===m));
       (function(mm){ b.addEventListener('click', function(){ pickedTime=mm; renderTimes(); update(); say('Perfect! Now review and confirm.'); happy(); }); })(m);
       box.appendChild(b);
-    }
+    });
     $('cdTimeHint').textContent = any ? fmtDate(pickedDay) : 'No open times that day. Please pick another day.';
   }
   function update(){ $('cdReview').disabled = !(pickedDay && pickedTime!==null); }
