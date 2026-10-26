@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book Your Visit | Conger Chiropractic</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Roboto+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Conger Chiropractic booking widget (demo) — designed by Tania Domingue ===== */
+:root{
+  --cd-blue:#298ab3; --cd-blue-dk:#17627f; --cd-navy:#18313b; --cd-ink:#333; --cd-muted:#5f6b70;
+  --cd-line:#d9e6ec; --cd-soft:#eef6fa; --cd-bg:#f7f7f7; --cd-white:#fff; --cd-ok:#1f8a5b; --cd-off:#c9d3d8;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Open Sans",Arial,sans-serif;color:var(--cd-ink);background:var(--cd-bg);line-height:1.5}
+.cd-demo-bar{background:var(--cd-navy);color:#fff;text-align:center;font-size:.85rem;padding:8px 16px}
+.cd-wrap{max-width:980px;margin:24px auto 40px;padding:0 16px}
+.cd-card{background:var(--cd-white);border-radius:16px;box-shadow:0 10px 30px rgba(24,49,59,.12);overflow:hidden}
+.cd-head{background:linear-gradient(120deg,var(--cd-navy),var(--cd-blue-dk) 55%,var(--cd-blue));color:#fff;padding:22px 24px;display:flex;align-items:center;gap:18px}
+.cd-head img{height:54px;background:#fff;border-radius:10px;padding:6px 10px}
+.cd-head h1{margin:0;font-family:"Roboto Condensed",Arial,sans-serif;font-size:clamp(1.4rem,3.4vw,2rem);letter-spacing:.3px}
+.cd-head p{margin:2px 0 0;opacity:.92;font-size:.95rem}
+.cd-body{display:grid;grid-template-columns:1.05fr 1fr;gap:0}
+.cd-col{padding:22px 24px}
+.cd-col+.cd-col{border-left:1px solid var(--cd-line)}
+.cd-step{font-family:"Roboto Condensed",Arial,sans-serif;color:var(--cd-blue-dk);font-size:1.05rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.cd-step b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--cd-blue);color:#fff;font-size:.85rem}
+
+/* tooth */
+.cd-tooth-wrap{display:flex;align-items:center;gap:12px;background:var(--cd-soft);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.cd-tooth{width:64px;height:64px;flex:0 0 64px}
+.cd-tooth-say{font-size:.92rem;color:var(--cd-navy);font-weight:600}
+@media (prefers-reduced-motion:no-preference){
+  .cd-tooth .t-body{animation:cdBob 2.4s ease-in-out infinite;transform-origin:50% 90%}
+  .cd-tooth .t-eye{animation:cdBlink 4s infinite;transform-origin:center;transform-box:fill-box}
+  .cd-tooth.happy .t-body{animation:cdJump .6s ease-in-out 3}
+  .cd-tooth .t-shine{animation:cdShine 2.4s ease-in-out infinite}
+}
+@keyframes cdBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-3deg)}}
+@keyframes cdBlink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes cdJump{0%,100%{transform:translateY(0) rotate(0)}40%{transform:translateY(-14px) rotate(8deg)}70%{transform:translateY(-6px) rotate(-6deg)}}
+@keyframes cdShine{0%,100%{opacity:.9}50%{opacity:.3}}
+
+/* calendar */
+.cd-cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cd-cal-top h2{margin:0;font-size:1.05rem;color:var(--cd-navy)}
+.cd-nav{background:var(--cd-white);border:1.5px solid var(--cd-line);border-radius:8px;width:38px;height:38px;cursor:pointer;font-size:1.1rem;color:var(--cd-blue-dk)}
+.cd-nav:disabled{opacity:.35;cursor:not-allowed}
+.cd-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cd-dow{font-size:.75rem;font-weight:700;color:var(--cd-muted);text-align:center;padding:4px 0}
+.cd-day{aspect-ratio:1;border:1.5px solid var(--cd-line);border-radius:10px;background:var(--cd-white);font:inherit;font-weight:600;color:var(--cd-navy);cursor:pointer;display:grid;place-items:center;font-size:.95rem}
+.cd-day:hover:not(:disabled){border-color:var(--cd-blue);background:var(--cd-soft)}
+.cd-day:disabled{color:var(--cd-off);background:#fafafa;cursor:not-allowed;text-decoration:line-through}
+.cd-day.empty{visibility:hidden}
+.cd-day[aria-pressed="true"]{background:var(--cd-blue);border-color:var(--cd-blue);color:#fff}
+.cd-day.today{box-shadow:inset 0 0 0 2px var(--cd-navy)}
+.cd-legend{font-size:.78rem;color:var(--cd-muted);margin-top:8px}
+
+/* times */
+.cd-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-bottom:16px}
+.cd-time{border:1.5px solid var(--cd-blue);background:var(--cd-white);color:var(--cd-blue-dk);border-radius:999px;padding:8px 6px;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer}
+.cd-time:hover:not(:disabled){background:var(--cd-soft)}
+.cd-time[aria-pressed="true"]{background:var(--cd-blue);color:#fff}
+.cd-time:disabled{border-color:var(--cd-line);color:var(--cd-off);cursor:not-allowed;text-decoration:line-through}
+.cd-hint{color:var(--cd-muted);font-size:.9rem;margin:0 0 14px}
+
+/* form */
+.cd-field{margin-bottom:12px}
+.cd-field label{display:block;font-weight:600;font-size:.88rem;margin-bottom:4px;color:var(--cd-navy)}
+.cd-field input,.cd-field select{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--cd-line);border-radius:8px;background:#fff;color:var(--cd-ink)}
+.cd-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cd-req{color:#b42318}
+.cd-note{font-size:.8rem;color:var(--cd-muted);background:var(--cd-soft);border-radius:8px;padding:8px 10px;margin:4px 0 14px}
+.cd-btn{display:block;width:100%;border:0;border-radius:10px;padding:14px;font:inherit;font-weight:700;font-size:1.02rem;cursor:pointer;background:var(--cd-blue);color:#fff}
+.cd-btn:hover{background:var(--cd-blue-dk)}
+.cd-btn:disabled{background:var(--cd-off);cursor:not-allowed}
+.cd-btn.ghost{background:#fff;color:var(--cd-blue-dk);border:1.5px solid var(--cd-blue)}
+.cd-err{color:#b42318;font-size:.88rem;min-height:1.2em;margin:6px 0 0}
+:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+
+/* modal */
+.cd-overlay{position:fixed;inset:0;background:rgba(24,49,59,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.cd-overlay[hidden]{display:none}
+.cd-embed body{background:transparent}
+.cd-modal{background:#fff;border-radius:16px;max-width:430px;width:100%;padding:22px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.cd-modal h2{margin:6px 0 6px;color:var(--cd-navy);font-family:"Roboto Condensed",Arial,sans-serif}
+.cd-sum{background:var(--cd-soft);border-radius:10px;padding:12px;margin:12px 0 16px;text-align:left;font-size:.95rem}
+.cd-sum div{padding:2px 0}
+.cd-modal .cd-actions{display:grid;gap:8px}
+.cd-modal .cd-tooth{width:90px;height:90px;margin:0 auto}
+
+footer.cd-foot{text-align:center;font-size:.82rem;color:var(--cd-muted);margin-top:14px}
+footer.cd-foot a{color:var(--cd-blue-dk)}
+@media (max-width:760px){
+  .cd-body{grid-template-columns:1fr}
+  .cd-col+.cd-col{border-left:0;border-top:1px solid var(--cd-line)}
+  .cd-head{flex-direction:column;text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="cd-demo-bar" role="note">Demo preview for Dr. Ted Conger: bookings are not saved yet. Real calendar and patient portal get connected after approval.</div>
+
+<main class="cd-wrap">
+  <section class="cd-card" aria-labelledby="cd-title">
+    <header class="cd-head">
+      <img src="https://d14tal8bchn59o.cloudfront.net/bEi37iJvXVqm2avQ3fWinn80svnso8PH3ZpaLrvXL7Y/w:1920/fn:logo-120180417-5479-hlpta7/plain/s3://multisiteadmin-production/of6hjlz766kb8guy7l3o7gmu2qfs" alt="Conger Chiropractic logo">
+      <div>
+        <h1 id="cd-title">Book Your Visit Online</h1>
+        <p>Conger Chiropractic · Move Better. Feel Better. Live Better. · Salt Lake City, UT</p>
+      </div>
+    </header>
+
+    <div class="cd-body">
+      <!-- Step 1: date -->
+      <div class="cd-col">
+        <div class="cd-tooth-wrap">
+          <svg class="cd-tooth" id="cdTooth" viewBox="0 0 100 100" aria-hidden="true">
+            <g class="t-body">
+              <rect x="34" y="6" width="32" height="13" rx="6" fill="#ffffff" stroke="#298ab3" stroke-width="3"/>
+              <rect x="31" y="22" width="38" height="14" rx="7" fill="#ffffff" stroke="#298ab3" stroke-width="3"/>
+              <rect x="28" y="39" width="44" height="26" rx="12" fill="#ffffff" stroke="#298ab3" stroke-width="3.5"/>
+              <rect x="31" y="68" width="38" height="13" rx="6.5" fill="#ffffff" stroke="#298ab3" stroke-width="3"/>
+              <path d="M40 84h20l-4 10h-12z" fill="#ffffff" stroke="#298ab3" stroke-width="3" stroke-linejoin="round"/>
+              <path class="t-shine" d="M36 26c0 3 1 5 2 6" stroke="#bfe3f2" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <ellipse class="t-eye" cx="42" cy="49" rx="3.4" ry="4.4" fill="#18313b"/>
+              <ellipse class="t-eye" cx="58" cy="49" rx="3.4" ry="4.4" fill="#18313b"/>
+              <circle cx="35" cy="56" r="3" fill="#f6b4c0" opacity=".7"/>
+              <circle cx="65" cy="56" r="3" fill="#f6b4c0" opacity=".7"/>
+              <path d="M44 57q6 6 12 0" stroke="#18313b" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+            </g>
+          </svg>
+          <div class="cd-tooth-say" id="cdSay" aria-live="polite">Hi! Pick a day that works for you.</div>
+        </div>
+
+        <h2 class="cd-step"><b>1</b> Choose a day</h2>
+        <div class="cd-cal-top">
+          <button type="button" class="cd-nav" id="cdPrev" aria-label="Previous month">‹</button>
+          <h2 id="cdMonth" aria-live="polite"></h2>
+          <button type="button" class="cd-nav" id="cdNext" aria-label="Next month">›</button>
+        </div>
+        <div class="cd-grid" id="cdDow" aria-hidden="true"></div>
+        <div class="cd-grid" id="cdDays" role="group" aria-label="Available days"></div>
+        <p class="cd-legend">Open Monday to Thursday, 3:00 to 6:00 PM (Salt Lake City time). Crossed-out days are not available.</p>
+      </div>
+
+      <!-- Step 2 + 3: time and details -->
+      <div class="cd-col">
+        <h2 class="cd-step"><b>2</b> Choose a time</h2>
+        <p class="cd-hint" id="cdTimeHint">Select a day first.</p>
+        <p class="cd-legend" style="margin:-8px 0 10px">Times shown in Salt Lake City time (Mountain).</p>
+        <div class="cd-times" id="cdTimes" role="group" aria-label="Available times"></div>
+
+        <h2 class="cd-step"><b>3</b> Your visit</h2>
+        <form id="cdForm" novalidate>
+          <div class="cd-row">
+            <div class="cd-field"><label for="cdPatient">I am a</label><select id="cdPatient"><option>New patient</option><option>Returning patient</option></select></div>
+            <div class="cd-field"><label for="cdType">Visit type</label><select id="cdType"><option>New patient exam</option><option>Spinal adjustment</option><option>Back or neck pain</option><option>Sports injury</option><option>Massage therapy</option><option>Rehabilitation exercises</option><option>Other</option></select></div>
+          </div>
+          <p class="cd-note">🔒 No personal info needed here. After you confirm, you'll go to our secure patient portal to add your name, contact details and forms.</p>
+          <button type="submit" class="cd-btn" id="cdReview" disabled>Review my appointment</button>
+          <p class="cd-err" id="cdErr" role="alert"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+  <footer class="cd-foot">Conger Chiropractic · 747 East South Temple Street #200, Salt Lake City, UT 84102 · <a href="tel:+18015304802">(801) 530-4802</a></footer>
+</main>
+
+<!-- Confirm dialog -->
+<div class="cd-overlay" id="cdConfirm" hidden role="dialog" aria-modal="true" aria-labelledby="cdConfirmTitle">
+  <div class="cd-modal">
+    <svg class="cd-tooth" id="cdTooth2" viewBox="0 0 100 100" aria-hidden="true"><use href="#cdTooth"/></svg>
+    <h2 id="cdConfirmTitle">Confirm your appointment</h2>
+    <div class="cd-sum" id="cdSum"></div>
+    <div class="cd-actions">
+      <button type="button" class="cd-btn" id="cdYes">Yes, book my appointment</button>
+      <button type="button" class="cd-btn ghost" id="cdBack">Go back and change</button>
+    </div>
+  </div>
+</div>
+
+<!-- Booked dialog -->
+<div class="cd-overlay" id="cdDone" hidden role="dialog" aria-modal="true" aria-labelledby="cdDoneTitle">
+  <div class="cd-modal">
+    <div id="cdDoneTooth"></div>
+    <h2 id="cdDoneTitle">You're booked! 🎉</h2>
+    <p id="cdDoneText"></p>
+    <p style="font-size:.9rem;color:var(--cd-muted)">Taking you to the patient portal to complete your forms in <strong id="cdCount">5</strong> seconds…</p>
+    <div class="cd-actions"><a class="cd-btn" id="cdPortal" href="#" target="_top" style="text-decoration:none">Go to the patient portal now</a></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ===== SETTINGS (change these when connecting the real accounts) ===== */
+  var PORTAL_URL = '';          // Dr. Conger's patient portal link goes here
+  var SLOT_MINUTES = 30;
+  var HOURS = {                 // 0=Sun ... 6=Sat, [open, close] in 24h
+    0:null, 1:[15,18], 2:[15,18], 3:[15,18], 4:[15,18], 5:null, 6:null
+  };
+  var DAYS_AHEAD = 60;
+  /* ==================================================================== */
+
+  var $ = function(id){ return document.getElementById(id); };
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var lastDay = new Date(today); lastDay.setDate(lastDay.getDate() + DAYS_AHEAD);
+  var view = new Date(today.getFullYear(), today.getMonth(), 1);
+  var pickedDay = null, pickedTime = null, lastFocus = null;
+
+  // copy the tooth into the dialogs
+  var toothSVG = $('cdTooth').outerHTML;
+  $('cdTooth2').outerHTML = toothSVG.replace('id="cdTooth"','id="cdToothB"');
+  $('cdDoneTooth').innerHTML = toothSVG.replace('id="cdTooth"','id="cdToothC"').replace('class="cd-tooth"','class="cd-tooth happy" style="width:90px;height:90px;margin:0 auto"');
+
+  function say(t){ $('cdSay').textContent = t; }
+  function happy(){ var t=$('cdTooth'); t.classList.remove('happy'); void t.getBoundingClientRect(); t.classList.add('happy'); }
+
+  DOW.forEach(function(d){ var el=document.createElement('div'); el.className='cd-dow'; el.textContent=d; $('cdDow').appendChild(el); });
+
+  // demo: some slots look taken (stable per date)
+  function taken(date, minutes){ var s = date.getFullYear()*372 + date.getMonth()*31 + date.getDate() + minutes; return (s*9301+49297)%233280 % 5 === 0; }
+  function open(date){ return date >= today && date <= lastDay && !!HOURS[date.getDay()]; }
+  function fmtTime(m){ var h=Math.floor(m/60), mm=m%60, ap=h>=12?'PM':'AM'; var hh=h%12||12; return hh+':'+(mm<10?'0':'')+mm+' '+ap; }
+  function fmtDate(d){ return d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}); }
+
+  function renderMonth(){
+    $('cdMonth').textContent = MONTHS[view.getMonth()] + ' ' + view.getFullYear();
+    $('cdPrev').disabled = view <= new Date(today.getFullYear(), today.getMonth(), 1);
+    $('cdNext').disabled = new Date(view.getFullYear(), view.getMonth()+1, 1) > lastDay;
+    var box = $('cdDays'); box.innerHTML='';
+    var first = view.getDay(), n = new Date(view.getFullYear(), view.getMonth()+1, 0).getDate();
+    for (var i=0;i<first;i++){ var e=document.createElement('button'); e.className='cd-day empty'; e.tabIndex=-1; e.setAttribute('aria-hidden','true'); box.appendChild(e); }
+    for (var d=1; d<=n; d++){
+      var date = new Date(view.getFullYear(), view.getMonth(), d);
+      var b = document.createElement('button'); b.type='button'; b.className='cd-day'; b.textContent=d;
+      b.setAttribute('aria-label', fmtDate(date) + (open(date)?'':' (not available)'));
+      if (date.getTime()===today.getTime()) b.classList.add('today');
+      if (!open(date)) b.disabled = true;
+      b.setAttribute('aria-pressed', String(!!pickedDay && date.getTime()===pickedDay.getTime()));
+      (function(dt){ b.addEventListener('click', function(){ pickDay(dt); }); })(date);
+      box.appendChild(b);
+    }
+  }
+  function pickDay(date){
+    pickedDay = date; pickedTime = null; renderMonth(); renderTimes(); update();
+    say('Great choice! Now pick a time on ' + date.toLocaleDateString('en-US',{weekday:'long'}) + '.'); happy();
+  }
+  function renderTimes(){
+    var box=$('cdTimes'); box.innerHTML='';
+    if (!pickedDay){ $('cdTimeHint').textContent='Select a day first.'; return; }
+    var h = HOURS[pickedDay.getDay()], now = new Date(), any=false;
+    for (var m=h[0]*60; m+SLOT_MINUTES<=h[1]*60; m+=SLOT_MINUTES){
+      var slot = new Date(pickedDay); slot.setMinutes(m);
+      var b=document.createElement('button'); b.type='button'; b.className='cd-time'; b.textContent=fmtTime(m);
+      var off = taken(pickedDay,m) || slot <= now;
+      b.disabled = off; if(!off) any=true;
+      b.setAttribute('aria-label', fmtTime(m) + (off?' (taken)':''));
+      b.setAttribute('aria-pressed', String(pickedTime===m));
+      (function(mm){ b.addEventListener('click', function(){ pickedTime=mm; renderTimes(); update(); say('Perfect! Now review and confirm.'); happy(); }); })(m);
+      box.appendChild(b);
+    }
+    $('cdTimeHint').textContent = any ? fmtDate(pickedDay) : 'No open times that day. Please pick another day.';
+  }
+  function update(){ $('cdReview').disabled = !(pickedDay && pickedTime!==null); }
+
+  $('cdPrev').addEventListener('click', function(){ view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderMonth(); });
+  $('cdNext').addEventListener('click', function(){ view = new Date(view.getFullYear(), view.getMonth()+1, 1); renderMonth(); });
+
+  var EMBED = window.self !== window.top;
+  function tell(msg){ if (EMBED) { try { window.parent.postMessage(msg, '*'); } catch(e){} } }
+  if (EMBED) {
+    document.documentElement.classList.add('cd-embed');
+    var sendH = function(){ var m=0; [].forEach.call(document.body.children, function(el){ if (el.tagName==='SCRIPT' || getComputedStyle(el).position==='fixed') return; var r=el.getBoundingClientRect(); if (r.height) m=Math.max(m, r.bottom + window.pageYOffset); }); tell({type:'cd-height', h: Math.ceil(m) + 64}); };
+    if (window.ResizeObserver) new ResizeObserver(sendH).observe(document.body);
+    window.addEventListener('load', sendH); sendH();
+  }
+  function openDlg(id, focusId){ lastFocus=document.activeElement; $(id).hidden=false; $(focusId).focus({preventScroll:true}); tell({type:'cd-show-center'}); }
+  function closeDlg(id){ $(id).hidden=true; if(lastFocus) lastFocus.focus(); }
+  document.addEventListener('keydown', function(e){
+    var dlg = !$('cdConfirm').hidden ? 'cdConfirm' : (!$('cdDone').hidden ? 'cdDone' : null);
+    if (!dlg) return;
+    if (e.key==='Escape' && dlg==='cdConfirm') closeDlg('cdConfirm');
+    if (e.key==='Tab'){ var f=$(dlg).querySelectorAll('button,a[href]'); var a=f[0], z=f[f.length-1];
+      if(e.shiftKey && document.activeElement===a){e.preventDefault(); z.focus();} else if(!e.shiftKey && document.activeElement===z){e.preventDefault(); a.focus();} }
+  });
+
+  $('cdForm').addEventListener('submit', function(e){
+    e.preventDefault(); var err=$('cdErr'); err.textContent='';
+    if (!pickedDay || !pickedTime){ err.textContent='Please choose a day and time.'; return; }
+    var sum=$('cdSum'); sum.innerHTML='';
+    [['📅',fmtDate(pickedDay)],['🕒',fmtTime(pickedTime)],['🩺',$('cdType').value+' · '+$('cdPatient').value]].forEach(function(r){ var d=document.createElement('div'); d.textContent=r[0]+'  '+r[1]; sum.appendChild(d); });
+    openDlg('cdConfirm','cdYes');
+  });
+  $('cdBack').addEventListener('click', function(){ closeDlg('cdConfirm'); });
+
+  var timer=null;
+  $('cdYes').addEventListener('click', function(){
+    $('cdConfirm').hidden=true;
+    // DEMO: here the real version saves the booking to Dr. Conger's calendar first.
+    $('cdDoneText').textContent = 'See you ' + fmtDate(pickedDay) + ' at ' + fmtTime(pickedTime) + '. Next, finish your check-in on our secure patient portal.';
+    var portal = PORTAL_URL || '#';
+    $('cdPortal').href = portal;
+    if (!PORTAL_URL){ $('cdPortal').textContent = 'Patient portal link goes here (demo)'; }
+    openDlg('cdDone','cdPortal');
+    var n=5; $('cdCount').textContent=n; clearInterval(timer);
+    timer=setInterval(function(){ n--; $('cdCount').textContent=n; if(n<=0){ clearInterval(timer); if(PORTAL_URL){ if (EMBED) tell({type:'cd-go', url:PORTAL_URL}); else window.location.href=PORTAL_URL; } } }, 1000);
+  });
+
+  renderMonth();
+  $('cdPortal').addEventListener('click', function(e){ if (!PORTAL_URL) e.preventDefault(); });
+})();
+</script>
+<!-- WebSwan ADA accessibility button + cookie consent banner -->
+<script>
+/* WebSwan ADA + cookie widget: only on the standalone page. When embedded on his website, the site's own banner and ADA button are used. */
+if (window.self === window.top) { var w=document.createElement('script'); w.src='https://thewebswan-widget.netlify.app/ada-widget.js'; w.defer=true; w.setAttribute('data-privacy-url','https://congerchiropractic.taniadomingue.multisiteadmin.com/#privacy-policy'); document.body.appendChild(w); }
+</script>
+</body>
+</html>
