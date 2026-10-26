@@ -15,7 +15,8 @@
   --cd-line:#d9e6ec; --cd-soft:#eef6fa; --cd-bg:#f7f7f7; --cd-white:#fff; --cd-ok:#1f8a5b; --cd-off:#c9d3d8;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:"Open Sans",Arial,sans-serif;color:var(--cd-ink);background:var(--cd-bg);line-height:1.5}
+body{margin:0;font-family:"Open Sans",Arial,sans-serif;color:var(--cd-ink);background:#8DBDEE;line-height:1.5}
+html.cd-embed body{background:#8DBDEE}
 .cd-demo-bar{background:var(--cd-navy);color:#fff;text-align:center;font-size:.85rem;padding:8px 16px}
 .cd-wrap{max-width:980px;margin:24px auto 40px;padding:0 16px}
 .cd-card{background:var(--cd-white);border-radius:16px;box-shadow:0 10px 30px rgba(24,49,59,.12);overflow:hidden}
@@ -92,8 +93,8 @@ body{margin:0;font-family:"Open Sans",Arial,sans-serif;color:var(--cd-ink);backg
 .cd-modal .cd-actions{display:grid;gap:8px}
 .cd-modal .cd-tooth{width:90px;height:90px;margin:0 auto}
 
-footer.cd-foot{text-align:center;font-size:.82rem;color:var(--cd-muted);margin-top:14px}
-footer.cd-foot a{color:var(--cd-blue-dk)}
+footer.cd-foot{text-align:center;font-size:.85rem;color:#18313b;margin-top:14px;font-weight:600}
+footer.cd-foot a{color:#0b4f6c}
 @media (max-width:760px){
   .cd-body{grid-template-columns:1fr}
   .cd-col+.cd-col{border-left:0;border-top:1px solid var(--cd-line)}
@@ -110,7 +111,7 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
       <img src="conger-logo.png" alt="Conger Chiropractic logo">
       <div>
         <h1 id="cd-title">Book Your Visit Online</h1>
-        <p>Conger Chiropractic · Move Better. Feel Better. Live Better. · Salt Lake City, UT</p>
+        <p>Conger Chiropractic · We&rsquo;ve got your back · Salt Lake City, UT</p>
       </div>
     </header>
 
@@ -300,6 +301,15 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
   $('cdBack').addEventListener('click', function(){ closeDlg('cdConfirm'); });
 
   var timer=null;
+  function resetAll(){
+    clearInterval(timer); timer=null;
+    pickedDay=null; pickedTime=null;
+    $('cdConfirm').hidden=true; $('cdDone').hidden=true;
+    $('cdPatient').selectedIndex=0; $('cdType').selectedIndex=0; $('cdErr').textContent='';
+    view = new Date(today.getFullYear(), today.getMonth(), 1);
+    renderMonth(); renderTimes(); update(); say('Hi! Pick a day that works for you.');
+  }
+  window.addEventListener('pageshow', function(e){ if (e.persisted) resetAll(); });
   $('cdYes').addEventListener('click', function(){
     $('cdConfirm').hidden=true;
     // DEMO: here the real version saves the booking to Dr. Conger's calendar first.
@@ -309,11 +319,11 @@ footer.cd-foot a{color:var(--cd-blue-dk)}
     if (!PORTAL_URL){ $('cdPortal').textContent = 'Patient portal link goes here (demo)'; }
     openDlg('cdDone','cdPortal');
     var n=5; $('cdCount').textContent=n; clearInterval(timer);
-    timer=setInterval(function(){ n--; $('cdCount').textContent=n; if(n<=0){ clearInterval(timer); if(PORTAL_URL){ if (EMBED) tell({type:'cd-go', url:PORTAL_URL}); else window.location.href=PORTAL_URL; } } }, 1000);
+    timer=setInterval(function(){ n--; $('cdCount').textContent=n; if(n<=0){ clearInterval(timer); if(PORTAL_URL){ if (EMBED) tell({type:'cd-go', url:PORTAL_URL}); else window.location.href=PORTAL_URL; } setTimeout(resetAll, 1500); } }, 1000);
   });
 
   renderMonth();
-  $('cdPortal').addEventListener('click', function(e){ if (!PORTAL_URL) e.preventDefault(); });
+  $('cdPortal').addEventListener('click', function(e){ if (!PORTAL_URL) { e.preventDefault(); resetAll(); return; } setTimeout(resetAll, 1500); });
 })();
 </script>
 <!-- WebSwan ADA accessibility button + cookie consent banner -->
