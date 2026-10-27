@@ -228,7 +228,11 @@
         var jobs = Object.keys(want).map(function (k) {
           var sec = secs.find(function (x) { return x.line === k && x.toclevel <= 2; });
           if (!sec) return Promise.resolve([k, []]);
-          return getJSON(WV + enc(title) + '&prop=text&section=' + sec.index).then(function (r) { return [k, listings(r.parse.text['*'], want[k])]; }).catch(function () { return [k, []]; });
+          return getJSON(WV + enc(title) + '&prop=text&section=' + sec.index).then(function (r) {
+            var h = r.parse.text['*'], d = new DOMParser().parseFromString(h, 'text/html');
+            var p = Array.from(d.querySelectorAll('p')).map(function (x) { return x.textContent.replace(/\s+/g, ' ').trim(); }).filter(function (t) { return t.length > 60; })[0] || '';
+            var items = listings(h, want[k]); items.para = p; return [k, items];
+          }).catch(function () { return [k, []]; });
         });
         return Promise.all(jobs).then(function (res) { var o = { title: title, intro: para }; res.forEach(function (r) { o[r[0]] = r[1]; }); return o; });
       });
@@ -241,8 +245,11 @@
       if (w && w.daily) {
         o += '<h3>🌤️ Weather, next 5 days</h3><div class="tp-weather">' + w.daily.time.map(function (t, i) { var c = WX[w.daily.weathercode[i]] || ['🌡️', '']; return '<div class="tp-day"><b>' + new Date(t + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) + '</b><span aria-hidden="true">' + c[0] + '</span><div>' + Math.round(w.daily.temperature_2m_max[i]) + '° / ' + Math.round(w.daily.temperature_2m_min[i]) + '°F</div><small>' + c[1] + '</small></div>'; }).join('') + '</div>';
       }
-      function block(title, icon, items, links) {
+      var seen = {};
+      function block(title, icon, items, links, para) {
         var s = '<h3>' + icon + ' ' + title + '</h3>';
+        items = (items || []).filter(function (x) { if (seen[x.name]) return false; seen[x.name] = 1; return true; });
+        if (!items.length && para) s += '<div class="tp-intro">' + esc(para.slice(0, 420)) + (para.length > 420 ? '…' : '') + '</div>';
         if (items && items.length) s += '<ul class="tp-list">' + items.map(function (x) { return '<li><b>' + esc(x.name) + '</b>' + (x.desc ? ' — ' + esc(x.desc) : '') + '<a href="https://www.google.com/maps/search/' + enc(x.name + ' ' + city) + '" target="_blank" rel="noopener">Map ↗</a></li>'; }).join('') + '</ul>';
         s += '<div class="tp-cards" style="margin-top:10px">' + links.join('') + '</div>';
         return s;
@@ -257,13 +264,13 @@
         card('🔴', 'Yelp', 'Reviews & photos', 'https://www.yelp.com/search?find_desc=Restaurants&find_loc=' + q + '&sortby=rating'),
         card('🍷', 'OpenTable', 'Book a table', 'https://www.opentable.com/s?term=' + q),
         card('🦉', 'Tripadvisor restaurants', 'Traveler favorites', 'https://www.tripadvisor.com/Search?q=' + enc(city + ' restaurants'))
-      ]);
+      ], g && ((g.Eat && g.Eat.para) || (g.Drink && g.Drink.para)));
       o += block('Things to do', '🎡', (g && g.See || []).concat((g && g.Do) || []).slice(0, 12), [
         card('📍', 'Google Maps: things to do', 'Attractions on the map', 'https://www.google.com/maps/search/' + enc('things to do in ' + city), true),
         card('🦉', 'Tripadvisor', 'Top attractions', 'https://www.tripadvisor.com/Search?q=' + enc(city + ' things to do')),
         card('🎒', 'Viator tours', 'Tours & experiences', 'https://www.viator.com/searchResults/all?text=' + q),
         card('🧭', 'GetYourGuide', 'Tickets & activities', 'https://www.getyourguide.com/s/?q=' + q)
-      ]);
+      ], g && ((g.See && g.See.para) || (g.Do && g.Do.para)));
       o += '<p class="tp-note" style="margin-top:12px">' + (g ? 'Guide highlights from <a href="https://en.wikivoyage.org/wiki/' + enc(g.title) + '" target="_blank" rel="noopener">Wikivoyage</a> (free travel guide, CC BY-SA). ' : 'No free guide found for this city yet, so here are the best places to look. ') + 'Weather by Open-Meteo.</p>';
       box.innerHTML = o;
     });
