@@ -199,7 +199,7 @@ function renderOverview(c) {
   </div>
   <div class="two section"><div class="card"><div class="row"><h2>Get started</h2><span class="chip">Your workspace</span></div>
     <div class="listitem row"><div><strong>1. Bring in your leads</strong><small>Add them, or import a CSV from Google Sheets. Set each lead’s state and line type.</small></div><button class="btn secondary small" onclick="nav('Leads')">Leads</button></div>
-    <div class="listitem row"><div><strong>2. Create your agents</strong><small>Rebecca, George, Alek and Tatiana: scripts, opening line and a voice to preview.</small></div><button class="btn secondary small" onclick="nav('Agents')">Agents</button></div>
+    <div class="listitem row"><div><strong>2. Create your agents</strong><small>Rebecca (Media Network), Monica (doctors) and George (attorneys): scripts, opening line and a voice to preview.</small></div><button class="btn secondary small" onclick="nav('Agents')">Agents</button></div>
     <div class="listitem row"><div><strong>3. Prepare a campaign</strong><small>Pick an agent and the leads to call. Ineligible leads are skipped automatically.</small></div><button class="btn secondary small" onclick="nav('Campaigns')">Campaigns</button></div>
     <div class="listitem row"><div><strong>4. Practice the call</strong><small>Hear your agent read the script to a lead, then log the result.</small></div><button class="btn secondary small" onclick="nav('Practice call')">Practice</button></div>
   </div>
@@ -267,17 +267,31 @@ function delItem(list, id) {
 
 /* ---------- agents ---------- */
 const STARTERS = [
-  { name: 'Tatiana', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
-  { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
-  { name: 'Rebecca', role: 'WebSwan Digital Solutions: compliance audits', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Do you have a moment?', script: 'We offer a complimentary website compliance audit for practices and small businesses: accessibility, cookie consent and privacy.\n\nMany owners have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
-  { name: 'George', role: 'The WebSwan: websites & WSBPA phone apps', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for The WebSwan. Is now a good time for a quick question?', script: 'We design custom websites and WSBPA small business phone apps that help local businesses stand out online.\n\nIs {business} happy with how its website brings in new customers today?\n\nWe start with a complimentary demo, at no cost and no obligation. Would you like Tania to put one together for you?\n\nThank you, {name}. Have a great day!' }
+  { name: 'Rebecca', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
+  { name: 'Monica', role: 'WebSwan Digital Solutions: doctors & medical practices', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Do you have a moment?', script: 'We offer medical practices a complimentary website compliance audit: accessibility, cookie consent and privacy.\n\nMany practices have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
+  { name: 'George', role: 'WebSwan Digital Solutions: attorneys & law firms', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Is now a good time for a quick question?', script: 'We help law firms protect their websites from accessibility and privacy complaints, and we start with a complimentary compliance audit.\n\nDo you know if {business}’s website meets current accessibility standards?\n\nWe can check it at no cost and no obligation, and Tania, our founder, can walk you through the results in 10 minutes. Would that be helpful?\n\nThank you, {name}. Have a great day!' }
 ];
+// Tatiana is retired: remove her starter profile and move her campaigns to Rebecca.
+(function migrateTeam() {
+  const old = state.agents.find(a => /^tatiana$/i.test(a.name || ''));
+  if (old) {
+    let reb = state.agents.find(a => /^rebecca$/i.test(a.name || ''));
+    if (reb && /Digital Solutions: compliance audits/.test(reb.role || '')) { Object.assign(reb, { role: STARTERS[0].role, voice: STARTERS[0].voice, opening: STARTERS[0].opening, script: STARTERS[0].script }); }
+    if (!reb) { reb = { id: uid(), rate: 1, pitch: 1, previewVoice: old.previewVoice || '', provider: '', ...STARTERS[0] }; state.agents.push(reb); }
+    state.campaigns.forEach(c => { if (c.agentId === old.id) c.agentId = reb.id; });
+    state.agents = state.agents.filter(a => a !== old);
+  }
+  const geo = state.agents.find(a => /^george$/i.test(a.name || ''));
+  if (geo && /The WebSwan: websites & WSBPA/.test(geo.role || '')) Object.assign(geo, { role: STARTERS[2].role, opening: STARTERS[2].opening, script: STARTERS[2].script });
+  if (old && !state.agents.some(a => /^monica$/i.test(a.name || ''))) state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...STARTERS[1] });
+  save();
+})();
 function addStarters() {
   let n = 0; STARTERS.forEach(s => { if (!state.agents.some(a => (a.name || '').toLowerCase() === s.name.toLowerCase())) { state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...s }); n++; } });
   save(); render(); toast(n ? `${n} starter agent${n > 1 ? 's' : ''} added. Edit their scripts any time.` : 'Your starter agents are already here.');
 }
 function renderAgents(c) {
-  c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, George, Alek &amp; Tatiana</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
+  c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, Monica &amp; George</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
   <div class="grid">${state.agents.map(a => `<div class="card agentcard"><span class="chip">DRAFT</span><h2>${esc(a.name)}</h2><p style="margin:0 0 6px">${esc(a.role || 'Voice agent')}</p><small class="muted">Voice: ${esc(a.voice || 'Not described')}${a.provider ? '<br>Planned: ' + esc(a.provider) : ''}</small>
     <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button><button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
   <p class="note section">Agent profiles hold your scripts and voice choices. “Hear opening” uses a free voice built into this browser so you can rehearse; your real agents will use the AI voice service you connect later.</p>`;
@@ -448,10 +462,10 @@ state.sdr = state.sdr || {}; if (!state.sdr.tab) state.sdr.tab = 'Today';
 const YNU = ['Unknown', 'Yes', 'No'];
 const INDUSTRIES = ['Doctor / medical', 'Attorney / legal', 'Other business'];
 const OFFERS = {
-  site: { name: 'Custom website or redesign', short: 'a new website', agent: 'George', brand: 'The WebSwan', pitch: 'a complimentary demo of a new custom website for {b}, at no cost and no obligation' },
-  audit: { name: 'Complimentary compliance audit', short: 'a complimentary compliance audit', agent: 'Rebecca', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary accessibility, cookie consent and privacy audit of {b}’s website' },
-  wsmn: { name: 'WSMN profile ($289/yr + $29/month)', short: 'a WebSwan Media Network profile', agent: 'Tatiana', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
-  recep: { name: 'AI receptionist (Rachel)', short: 'an AI receptionist', agent: 'George', brand: 'The WebSwan', pitch: 'an AI receptionist that answers {b}’s calls 24/7, so no new {who1} goes to voicemail' }
+  site: { name: 'Custom website or redesign', short: 'a new website', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary demo of a new custom website for {b}, at no cost and no obligation' },
+  audit: { name: 'Complimentary compliance audit', short: 'a complimentary compliance audit', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary accessibility, cookie consent and privacy audit of {b}’s website' },
+  wsmn: { name: 'WSMN profile ($289/yr + $29/month)', short: 'a WebSwan Media Network profile', agent: 'Rebecca', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
+  recep: { name: 'AI receptionist (Rachel)', short: 'an AI receptionist', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'an AI receptionist that answers {b}’s calls 24/7, so no new {who1} goes to voicemail' }
 };
 const SEQ = [
   { day: 0, kind: 'call', label: 'Call 1: introduce yourself and ask one question' },
@@ -547,7 +561,8 @@ function sdrOffers(l) {
 function who(l) { const i = guessIndustry(l); return i === 'Doctor / medical' ? ['patients', 'patient'] : i === 'Attorney / legal' ? ['clients', 'client'] : ['customers', 'customer']; }
 function pitchFor(l, key) { const w = who(l); return OFFERS[key].pitch.replace(/\{b\}/g, l.business || 'your practice').replace(/\{who\}/g, w[0]).replace(/\{who1\}/g, w[1]); }
 const FOLLOW = { 'Wants information by email first': 'I’m following up on the information you asked us to send.', 'Was busy: call back at a better time': 'You were busy when we last called, so I’ll be quick.', 'Wants more new patients or clients': 'Last time, you mentioned you’d like more new {who}.', 'Concerned about ADA / compliance': 'Last time, you mentioned website compliance was on your mind.', 'Misses calls or after-hours calls': 'Last time, you mentioned calls sometimes go to voicemail.', 'Unhappy with current website': 'Last time, you mentioned your website could use some love.', 'Showed interest': 'Thank you again for your interest last time.' };
-function agentFor(key) { return state.agents.find(a => (a.name || '').toLowerCase() === OFFERS[key].agent.toLowerCase()) || state.agents[0]; }
+function agentName(key, l) { if (key === 'wsmn') return 'Rebecca'; return l && guessIndustry(l) === 'Attorney / legal' ? 'George' : 'Monica'; }
+function agentFor(key, l) { const n = agentName(key, l); return state.agents.find(a => (a.name || '').toLowerCase() === n.toLowerCase()) || state.agents[0]; }
 function sdrFinding(l) {
   const r = R(l), b = l.business || 'your practice';
   if (r.hasSite === 'No') return `I searched for ${b} online and couldn’t find a website.`;
@@ -559,7 +574,7 @@ function sdrFinding(l) {
   return '';
 }
 function sdrOpener(l, key) {
-  const o = OFFERS[key], a = agentFor(key), n = greetName(l), b = l.business || 'your practice';
+  const o = OFFERS[key], a = agentFor(key, l), n = greetName(l), b = l.business || 'your practice';
   const fol = M(l).slice().reverse().find(m => FOLLOW[m.text]);
   const back = state.calls.some(x => x.leadId === l.id);
   let s = `Hi ${n}, this is ${a ? a.name : o.agent}, an AI assistant calling on behalf of ${o.brand}.`;
@@ -596,7 +611,7 @@ function sdrStart(id) { const l = byId('leads', id); l.seq = { start: todayISO()
 function sdrStartTop() { const n = sdrQueue().filter(x => x.kind === 'start').slice(0, 10); n.forEach(x => { x.l.seq = { start: todayISO(), done: {} }; }); save(); render(); toast(n.length ? `Started the plan for ${n.length} lead${n.length > 1 ? 's' : ''}.` : 'No new leads waiting.'); }
 function sdrStepDone(id, step, fu) { const l = byId('leads', id); if (fu) { l.fuDone = l.fuDone || []; l.fuDone.push(fu); } else if (l.seq) l.seq.done[step] = Date.now(); if (!fu && (!l.status || l.status === 'New')) l.status = 'Contacted'; save(); }
 function sdrCallDone(id, step, fu) { sdrStepDone(id, step, fu); logCall(id); }
-function sdrPractice(id) { const l = byId('leads', id), a = agentFor(sdrOffers(l)[0]); practice = { agentId: a ? a.id : '', leadId: id, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
+function sdrPractice(id) { const l = byId('leads', id), a = agentFor(sdrOffers(l)[0], l); practice = { agentId: a ? a.id : '', leadId: id, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
 function sdrEmailModal(id, tpl, step) {
   const l = byId('leads', id), e = sdrEmail(l, tpl || 'intro');
   openForm('Email draft for ' + (l.name || 'lead'), `${field('To', 'to', l.email || '', 'email', false, l.email ? '' : 'Add their email to the lead to open it in your mail app.')}${field('Subject', 'subject', e.subject)}${area('Message', 'body', e.body, 'Your designs@ signature adds your name and contact details. Edit anything before sending.')}
@@ -698,15 +713,15 @@ function sdrGuard(el) {
 }
 function sdrSet(id, grp, k, v) { const l = byId('leads', id); (grp === 'r' ? R(l) : Q(l))[k] = v; save(); renderBriefStats(l); }
 function renderBriefStats(l) { const sc = sdrScore(l), el = $('briefScore'); if (el) el.innerHTML = tierChip(sc) + `<div class="muted" style="font-size:13px;margin-top:6px">${esc(sc.why.join(' · ') || 'Fill in the research to sharpen the score.')}</div>`; }
-function sdrHear(id, key) { const l = byId('leads', id); speak(sdrOpener(l, key), agentFor(key)); }
+function sdrHear(id, key) { const l = byId('leads', id); speak(sdrOpener(l, key), agentFor(key, l)); }
 function renderBrief(c, l) {
   const r = R(l), q = Q(l), offs = sdrOffers(l), k = offs[0], sel = (g, key, label, opts, val) => `<label for="b_${key}">${label}</label><select id="b_${key}" onchange="sdrSet('${l.id}','${g}','${key}',this.value)">${opts.map(o => `<option ${String(val) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
   const inp = (key, label, type, val, ph) => `<label for="b_${key}">${label}</label><input id="b_${key}" type="${type}" value="${esc(val || '')}" placeholder="${esc(ph || '')}" onchange="sdrSet('${l.id}','r','${key}',this.value)">`;
   const objs = M(l).filter(m => TIPS[m.text]);
   const done = l.seq ? SEQ.filter((s, i) => l.seq.done[i]).length : 0;
-  c.innerHTML = `<div class="row section"><button class="btn outline" onclick="state.sdr.lead='';render()">← Back to SDR AI</button><div class="toolbar">${l.phone ? `<a class="btn small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn secondary small" onclick="sdrPractice('${l.id}')">🎙 Practice with ${esc(OFFERS[k].agent)}</button><button class="btn outline small" onclick="sdrEmailModal('${l.id}','intro','')">✉ Email draft</button><button class="btn outline small" onclick="leadForm('${l.id}')">Edit lead</button></div></div>
+  c.innerHTML = `<div class="row section"><button class="btn outline" onclick="state.sdr.lead='';render()">← Back to SDR AI</button><div class="toolbar">${l.phone ? `<a class="btn small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn secondary small" onclick="sdrPractice('${l.id}')">🎙 Practice with ${esc(agentName(k, l))}</button><button class="btn outline small" onclick="sdrEmailModal('${l.id}','intro','')">✉ Email draft</button><button class="btn outline small" onclick="leadForm('${l.id}')">Edit lead</button></div></div>
   <div class="card section"><div class="row"><div><h2 style="margin:0">${esc(l.name || 'Lead')}</h2><p style="margin:4px 0 0">${esc(l.business || '')}${l.state ? ' · ' + esc(l.state) : ''} · ${esc(l.status || 'New')}${r.website ? ` · <a href="${esc(/^https?:/.test(r.website) ? r.website : 'https://' + r.website)}" target="_blank" rel="noopener">website ↗</a>` : ''}</p></div><div id="briefScore" style="max-width:420px;text-align:right"></div></div></div>
-  <div class="two section"><div class="card"><h2>🎯 Best offer & opener</h2><p style="margin-top:0"><span class="chip ok">${esc(OFFERS[k].name)}</span> with <b>${esc(OFFERS[k].agent)}</b>${offs[1] ? ` · Next best: ${esc(OFFERS[offs[1]].name)}` : ''}</p>
+  <div class="two section"><div class="card"><h2>🎯 Best offer & opener</h2><p style="margin-top:0"><span class="chip ok">${esc(OFFERS[k].name)}</span> with <b>${esc(agentName(k, l))}</b>${offs[1] ? ` · Next best: ${esc(OFFERS[offs[1]].name)}` : ''}</p>
     <div class="script" style="max-height:none">${esc(sdrOpener(l, k))}</div><div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="sdrHear('${l.id}','${k}')">▶ Hear it</button><button class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
     ${objs.length ? `<h2 class="section">🧭 How to handle what they said</h2>${objs.map(m => `<div class="listitem"><strong>${esc(m.text)}</strong><small>${esc(TIPS[m.text])}</small></div>`).join('')}` : ''}
     <h2 class="section">📅 Follow-up plan</h2>${l.seq ? `<p style="margin-top:0">${done} of ${SEQ.length} steps done · started ${niceD(l.seq.start)}</p>${SEQ.map((s, i) => `<div class="listitem row"><small>${l.seq.done[i] ? '✅' : addD(l.seq.start, s.day) <= todayISO() ? '🔔' : '⏳'} ${niceD(addD(l.seq.start, s.day))} · ${esc(s.label)}</small></div>`).join('')}` : `<p>Not started.</p><button class="btn small" ${state.sdr.paused ? 'disabled' : ''} onclick="sdrStart('${l.id}');state.sdr.lead='${l.id}';render()">▶ Start plan</button>`}</div>
