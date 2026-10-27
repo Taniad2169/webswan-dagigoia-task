@@ -199,7 +199,7 @@ function renderOverview(c) {
   </div>
   <div class="two section"><div class="card"><div class="row"><h2>Get started</h2><span class="chip">Your workspace</span></div>
     <div class="listitem row"><div><strong>1. Bring in your leads</strong><small>Add them, or import a CSV from Google Sheets. Set each lead’s state and line type.</small></div><button class="btn secondary small" onclick="nav('Leads')">Leads</button></div>
-    <div class="listitem row"><div><strong>2. Create your agents</strong><small>Rebecca (Media Network), Monica (doctors) and George (attorneys): scripts, opening line and a voice to preview.</small></div><button class="btn secondary small" onclick="nav('Agents')">Agents</button></div>
+    <div class="listitem row"><div><strong>2. Create your agents</strong><small>Rebecca and Alek (Media Network), Monica (doctors) and George (attorneys): scripts, opening line and a voice to preview.</small></div><button class="btn secondary small" onclick="nav('Agents')">Agents</button></div>
     <div class="listitem row"><div><strong>3. Prepare a campaign</strong><small>Pick an agent and the leads to call. Ineligible leads are skipped automatically.</small></div><button class="btn secondary small" onclick="nav('Campaigns')">Campaigns</button></div>
     <div class="listitem row"><div><strong>4. Practice the call</strong><small>Hear your agent read the script to a lead, then log the result.</small></div><button class="btn secondary small" onclick="nav('Practice call')">Practice</button></div>
   </div>
@@ -269,6 +269,7 @@ function delItem(list, id) {
 const STARTERS = [
   { name: 'Rebecca', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
   { name: 'Monica', role: 'WebSwan Digital Solutions: doctors & medical practices', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Do you have a moment?', script: 'We offer medical practices a complimentary website compliance audit: accessibility, cookie consent and privacy.\n\nMany practices have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
+  { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys (backup)', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
   { name: 'George', role: 'WebSwan Digital Solutions: attorneys & law firms', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Is now a good time for a quick question?', script: 'We help law firms protect their websites from accessibility and privacy complaints, and we start with a complimentary compliance audit.\n\nDo you know if {business}’s website meets current accessibility standards?\n\nWe can check it at no cost and no obligation, and Tania, our founder, can walk you through the results in 10 minutes. Would that be helpful?\n\nThank you, {name}. Have a great day!' }
 ];
 // Tatiana is retired: remove her starter profile and move her campaigns to Rebecca.
@@ -282,7 +283,7 @@ const STARTERS = [
     state.agents = state.agents.filter(a => a !== old);
   }
   const geo = state.agents.find(a => /^george$/i.test(a.name || ''));
-  if (geo && /The WebSwan: websites & WSBPA/.test(geo.role || '')) Object.assign(geo, { role: STARTERS[2].role, opening: STARTERS[2].opening, script: STARTERS[2].script });
+  if (geo && /The WebSwan: websites & WSBPA/.test(geo.role || '')) Object.assign(geo, { role: STARTERS[3].role, opening: STARTERS[3].opening, script: STARTERS[3].script });
   if (old && !state.agents.some(a => /^monica$/i.test(a.name || ''))) state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...STARTERS[1] });
   save();
 })();
@@ -291,7 +292,7 @@ function addStarters() {
   save(); render(); toast(n ? `${n} starter agent${n > 1 ? 's' : ''} added. Edit their scripts any time.` : 'Your starter agents are already here.');
 }
 function renderAgents(c) {
-  c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, Monica &amp; George</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
+  c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, Monica, George &amp; Alek</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
   <div class="grid">${state.agents.map(a => `<div class="card agentcard"><span class="chip">DRAFT</span><h2>${esc(a.name)}</h2><p style="margin:0 0 6px">${esc(a.role || 'Voice agent')}</p><small class="muted">Voice: ${esc(a.voice || 'Not described')}${a.provider ? '<br>Planned: ' + esc(a.provider) : ''}</small>
     <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button><button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
   <p class="note section">Agent profiles hold your scripts and voice choices. “Hear opening” uses a free voice built into this browser so you can rehearse; your real agents will use the AI voice service you connect later.</p>`;
