@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>WebSwan Voice Studio</title>
+<link rel="icon" href="../rachel-bot/ws-logo.png">
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#17324c;background:#f3f8fc;--blue:#168fc4;--line:#e1ebf2}
+*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid #ffbf47;outline-offset:2px}
+.skip{position:absolute;left:-999px;top:8px;background:#fff;padding:8px 12px;border-radius:8px;z-index:9}.skip:focus{left:8px}
+aside{position:fixed;width:240px;background:#fff;height:100vh;padding:28px 18px;border-right:1px solid var(--line);overflow:auto}
+.brand{font-weight:800;font-size:21px;letter-spacing:-.5px;color:#17648b}.brand small{display:block;font-size:10px;letter-spacing:2px;color:#63a3bd;margin:4px 0 38px}
+.nav{display:block;width:100%;border:0;background:transparent;text-align:left;padding:13px;border-radius:10px;color:#587187;margin:3px 0}
+.nav.active{background:#e4f5fd;color:#087eae;font-weight:700}.nav:hover{background:#f1f8fc}
+.asidefoot{margin-top:40px;color:#7490a0;font-size:12px}
+main{margin-left:240px;padding:36px 5%;max-width:1600px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:30px;letter-spacing:-1px}h2{font-size:19px;margin:0 0 14px}h3{margin:0 0 6px;font-size:16px}
+p,.muted{color:#5f7a8c;line-height:1.55}
+.pill{font-size:12px;padding:7px 12px;border-radius:50px;background:#fff2dc;color:#8a5a14;white-space:nowrap}
+.pill.ok{background:#e3f7ec;color:#0b6b3a}.pill.bad{background:#fde8e8;color:#9b2323}.pill.info{background:#eaf5fa;color:#137a9f}
+.banner{margin:28px 0;background:linear-gradient(110deg,#075478,#168cb8);color:#fff;border-radius:18px;padding:28px;display:flex;justify-content:space-between;align-items:center;gap:25px}
+.banner p{color:#d7f2fb;max-width:640px;margin-bottom:0}.banner h2{font-size:24px;margin:0}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:22px;box-shadow:0 4px 16px #0d42620a}
+.stat strong{display:block;font-size:28px;margin:12px 0 4px;color:#124260}.stat span{color:#6a8494;font-size:13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.section{margin-top:24px}.two{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.btn{border:0;border-radius:9px;background:var(--blue);color:#fff;padding:10px 16px;font-weight:650;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{filter:brightness(1.06)}.btn.small{padding:6px 10px;font-size:13px}
+.secondary{background:#eaf5fa;color:#126f92}.outline{background:#fff;color:#2f6a86;border:1px solid #cfe0ea}.danger{background:#fff;color:#a12c2c;border:1px solid #f0c9c9}.green{background:#12a05c}
+.btn[disabled]{opacity:.5;cursor:default}
+.empty{text-align:center;padding:34px 12px;color:#6f8797}
+.chip{display:inline-block;background:#eaf6fb;color:#1f6f90;border-radius:20px;padding:4px 9px;font-size:12px;font-weight:600}
+.chip.warn{background:#fff2dc;color:#8a5a14}.chip.bad{background:#fde8e8;color:#9b2323}.chip.ok{background:#e3f7ec;color:#0b6b3a}
+.listitem{padding:14px 0;border-bottom:1px solid #edf2f5}.listitem:last-child{border:0}.listitem strong{display:block}.listitem small{color:#6f8797}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf2f5;vertical-align:top}th{color:#6f8797;font-size:12px;letter-spacing:.04em}
+td .btn{margin:0 4px 4px 0}
+input,select,textarea{width:100%;border:1px solid #cfe0ea;padding:10px 11px;border-radius:8px;color:#17324c;background:#fff}
+textarea{min-height:110px;resize:vertical}
+label{display:block;font-weight:600;font-size:13px;margin:14px 0 6px}
+.hint{font-size:12px;color:#6f8797;margin-top:4px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 15px}
+dialog{border:0;border-radius:16px;padding:26px;width:min(640px,94vw);max-height:92vh;box-shadow:0 15px 80px #1239}
+dialog::backdrop{background:#12334d88}
+.note{font-size:13px;background:#eff8fc;border-radius:10px;padding:14px;color:#456a7d;line-height:1.5}
+.note.warn{background:#fff7e8;color:#7a5313}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;flex-wrap:wrap}
+.tablewrap{overflow:auto;position:relative}
+a{color:#137fae}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#12334d;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px #0004;z-index:50;display:none;max-width:90vw}
+.agentcard h2{margin:12px 0 4px}
+.script{white-space:pre-wrap;background:#f7fbfd;border:1px solid #e1eef4;border-radius:10px;padding:12px;font-size:14px;max-height:160px;overflow:auto}
+/* practice call */
+.callbox{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.line{padding:10px 12px;border-radius:12px;margin:6px 0;font-size:14px;line-height:1.5}
+.line.agent{background:#eaf5fa;border:1px solid #d3e8f2}.line.prospect{background:#fff;border:1px solid #e1ebf2;margin-left:40px}
+.line.now{outline:3px solid #48d6fa}
+.callog{max-height:46vh;overflow:auto;padding-right:4px}
+.mic{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#3898f5,#48d6fa);color:#fff;font-size:28px;margin:0 auto 10px}
+.speaking .mic{animation:pulse 1s infinite}@keyframes pulse{50%{box-shadow:0 0 0 14px #48d6fa33}}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.callbox{grid-template-columns:1fr}.filters{grid-template-columns:1fr}}
+@media(max-width:800px){aside{position:static;width:auto;height:auto;padding:16px}.brand small{margin-bottom:10px}.nav{display:inline-block;width:auto;padding:9px}.asidefoot{display:none}main{margin:0;padding:24px 16px}.two{grid-template-columns:1fr}.banner{display:block}.banner .btn{margin-top:14px}.formgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><nav id="nav" aria-label="Sections"></nav><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
+<main>
+  <header><div><div class="muted" style="font-size:13px">WEBSWAN VOICE STUDIO / <span id="crumb">OVERVIEW</span></div><h1 id="title">Overview</h1></div><span class="pill">● Calling service not connected · practice mode</span></header>
+  <div id="content" tabindex="-1"></div>
+</main>
+<dialog id="modal" aria-labelledby="modalTitle"><div class="row"><h2 id="modalTitle"></h2><button class="nav" style="width:auto" type="button" onclick="closeModal()" aria-label="Close">✕</button></div><form id="form"></form></dialog>
+<input type="file" id="csv" accept=".csv,text/csv" hidden>
+<input type="file" id="backupFile" accept=".json,application/json" hidden>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   WebSwan Voice Studio — leads, AI agents, campaigns, practice calls.
+   Everything is saved in this browser (localStorage). No calls are placed
+   until a phone + AI voice provider is connected.
+   ========================================================= */
+const KEY = 'webswan_voice_v1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+let state;
+try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+state = state || {};
+state.leads = state.leads || []; state.agents = state.agents || []; state.campaigns = state.campaigns || []; state.calls = state.calls || [];
+// give older records ids
+['leads', 'agents', 'campaigns', 'calls'].forEach(k => state[k].forEach(x => { if (!x.id) x.id = uid(); }));
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast('Could not save: browser storage is full or blocked.'); } }
+save();
+
+let page = 'Overview';
+const pages = ['Overview', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Usage & setup'];
+const icons = ['◫', '♙', '◉', '◷', '🎙', '☎', '⚙'];
+const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
+const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
+const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
+const OUTCOMES = ['No answer', 'Left voicemail', 'Spoke: interested', 'Spoke: not interested', 'Appointment requested', 'Call back later', 'Wrong number', 'Asked not to be called'];
+
+/* ---------- helpers ---------- */
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => { t.style.display = 'none'; }, 3200); }
+function closeModal() { stopSpeech(); $('modal').close(); }
+function byId(list, id) { return state[list].find(x => x.id === id); }
+function fmtDate(ts) { try { return new Date(ts).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return ts; } }
+function digits(p) { return String(p || '').replace(/[^\d+]/g, ''); }
+function greetName(lead) {
+  const parts = String((lead && lead.name) || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'there';
+  if (/^(dr\.?|doctor)$/i.test(parts[0])) return parts.length > 1 ? 'Dr. ' + parts[parts.length - 1] : 'Doctor';
+  if (/^(mr|mrs|ms|miss|atty|attorney)\.?$/i.test(parts[0]) && parts.length > 1) return parts[0].replace(/\.?$/, '.').replace(/^atty\.|^attorney\./i, 'Attorney') + ' ' + parts[parts.length - 1];
+  return parts[0];
+}
+function fill(text, lead, agent) {
+  return String(text || '')
+    .replace(/\{name\}/gi, greetName(lead))
+    .replace(/\{fullname\}/gi, (lead && lead.name) || '')
+    .replace(/\{business\}/gi, (lead && lead.business) || 'your business')
+    .replace(/\{agent\}/gi, (agent && agent.name) || 'your WebSwan assistant');
+}
+
+/* ---------- calling hours (8 AM to 9 PM in the lead's time zone) ---------- */
+const TZ = { AL: 'America/Chicago', AK: 'America/Anchorage', AZ: 'America/Phoenix', AR: 'America/Chicago', CA: 'America/Los_Angeles', CO: 'America/Denver', CT: 'America/New_York', DE: 'America/New_York', DC: 'America/New_York', FL: 'America/New_York', GA: 'America/New_York', HI: 'Pacific/Honolulu', ID: 'America/Boise', IL: 'America/Chicago', IN: 'America/Indiana/Indianapolis', IA: 'America/Chicago', KS: 'America/Chicago', KY: 'America/New_York', LA: 'America/Chicago', ME: 'America/New_York', MD: 'America/New_York', MA: 'America/New_York', MI: 'America/Detroit', MN: 'America/Chicago', MS: 'America/Chicago', MO: 'America/Chicago', MT: 'America/Denver', NE: 'America/Chicago', NV: 'America/Los_Angeles', NH: 'America/New_York', NJ: 'America/New_York', NM: 'America/Denver', NY: 'America/New_York', NC: 'America/New_York', ND: 'America/Chicago', OH: 'America/New_York', OK: 'America/Chicago', OR: 'America/Los_Angeles', PA: 'America/New_York', RI: 'America/New_York', SC: 'America/New_York', SD: 'America/Chicago', TN: 'America/Chicago', TX: 'America/Chicago', UT: 'America/Denver', VT: 'America/New_York', VA: 'America/New_York', WA: 'America/Los_Angeles', WV: 'America/New_York', WI: 'America/Chicago', WY: 'America/Denver', PR: 'America/Puerto_Rico' };
+// stricter state windows: [startHour, endHour)
+const STATE_HOURS = { CT: [9, 20], FL: [8, 20], OK: [8, 20], MD: [8, 20], WA: [8, 20], TX: [9, 21] };
+function stateCode(s) { s = String(s || '').trim().toUpperCase(); return s.length === 2 ? s : ''; }
+function localInfo(lead) {
+  const st = stateCode(lead.state); const tz = TZ[st];
+  if (!tz) return { known: false, label: 'Add state', ok: null };
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', weekday: 'short', hour12: true }).formatToParts(new Date());
+  const get = t => (parts.find(p => p.type === t) || {}).value;
+  const h24 = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+  const win = STATE_HOURS[st] || [8, 21];
+  const ok = h24 >= win[0] && h24 < win[1];
+  return { known: true, ok, label: `${get('weekday')} ${get('hour')}:${get('minute')} ${get('dayPeriod')} (${st})`, window: win };
+}
+/* ---------- AI calling eligibility (not legal advice) ---------- */
+function eligibility(lead) {
+  if (lead.status === 'Do not call') return { ok: false, why: 'Do not call' };
+  if (!digits(lead.phone)) return { ok: false, why: 'No phone' };
+  if (lead.lineType === 'Business landline') return { ok: true, why: 'Business landline' };
+  if (lead.consent === 'Prior express written consent') return { ok: true, why: 'Written consent' };
+  if (lead.lineType === 'Mobile') return { ok: false, why: 'Mobile: needs written consent' };
+  return { ok: false, why: 'Confirm line type' };
+}
+
+/* ---------- browser voices (free preview only) ---------- */
+const synth = window.speechSynthesis; const canSpeak = !!(synth && window.SpeechSynthesisUtterance);
+function voices() { return canSpeak ? synth.getVoices().filter(v => /^en/i.test(v.lang)) : []; }
+if (canSpeak && synth.addEventListener) synth.addEventListener('voiceschanged', () => { if ($('f_previewVoice')) fillVoiceSelect($('f_previewVoice').dataset.cur); });
+function fillVoiceSelect(cur) {
+  const sel = $('f_previewVoice'); if (!sel) return;
+  const vs = voices();
+  sel.innerHTML = '<option value="">Default browser voice</option>' + vs.map(v => `<option ${v.name === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+}
+function speak(text, agent, onend) {
+  if (!canSpeak) { toast('This browser cannot play voices.'); if (onend) onend(); return; }
+  stopSpeech();
+  const u = new SpeechSynthesisUtterance(String(text).replace(/\bAI\b/g, 'A I').replace(/\bWSMN\b/g, 'W S M N').replace(/\bWSBPA\b/g, 'W S B P A').replace(/\bADA\b/g, 'A D A'));
+  const v = voices().find(x => x.name === (agent && agent.previewVoice));
+  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+  u.rate = Number(agent && agent.rate) || 1; u.pitch = Number(agent && agent.pitch) || 1;
+  document.body.classList.add('speaking');
+  u.onend = u.onerror = () => { document.body.classList.remove('speaking'); if (onend) onend(); };
+  synth.speak(u);
+}
+function stopSpeech() { if (canSpeak) synth.cancel(); document.body.classList.remove('speaking'); }
+
+/* ---------- render ---------- */
+function nav(p) { stopSpeech(); page = p; render(); $('content').focus({ preventScroll: true }); window.scrollTo(0, 0); }
+function render() {
+  $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}</button>`).join('');
+  $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
+  const c = $('content');
+  ({ 'Overview': renderOverview, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Usage & setup': renderSetup }[page])(c);
+}
+
+function renderOverview(c) {
+  const eligible = state.leads.filter(l => eligibility(l).ok).length;
+  const callableNow = state.leads.filter(l => eligibility(l).ok && localInfo(l).ok).length;
+  const appts = state.calls.filter(x => x.outcome === 'Appointment requested').length;
+  c.innerHTML = `<div class="banner"><div><h2>Welcome to your voice studio, Tania.</h2><p>Bring your leads, agents and campaigns together, then rehearse every call with your AI team before the phone service goes live.</p></div><button class="btn" onclick="nav('Practice call')">Start a practice call →</button></div>
+  <div class="grid">
+    <div class="card stat"><span>YOUR LEADS</span><strong>${state.leads.length}</strong><span>${eligible} eligible for AI calls</span></div>
+    <div class="card stat"><span>YOUR AGENTS</span><strong>${state.agents.length}</strong><span>Agent profiles</span></div>
+    <div class="card stat"><span>CAMPAIGNS</span><strong>${state.campaigns.length}</strong><span>Draft campaigns</span></div>
+    <div class="card stat"><span>CALLS LOGGED</span><strong>${state.calls.length}</strong><span>${appts} appointment request${appts === 1 ? '' : 's'}</span></div>
+  </div>
+  <div class="two section"><div class="card"><div class="row"><h2>Get started</h2><span class="chip">Your workspace</span></div>
+    <div class="listitem row"><div><strong>1. Bring in your leads</strong><small>Add them, or import a CSV from Google Sheets. Set each lead’s state and line type.</small></div><button class="btn secondary small" onclick="nav('Leads')">Leads</button></div>
+    <div class="listitem row"><div><strong>2. Create your agents</strong><small>Rebecca, George, Alek and Tatiana: scripts, opening line and a voice to preview.</small></div><button class="btn secondary small" onclick="nav('Agents')">Agents</button></div>
+    <div class="listitem row"><div><strong>3. Prepare a campaign</strong><small>Pick an agent and the leads to call. Ineligible leads are skipped automatically.</small></div><button class="btn secondary small" onclick="nav('Campaigns')">Campaigns</button></div>
+    <div class="listitem row"><div><strong>4. Practice the call</strong><small>Hear your agent read the script to a lead, then log the result.</small></div><button class="btn secondary small" onclick="nav('Practice call')">Practice</button></div>
+  </div>
+  <div class="card"><h2>Right now</h2><p><b>${callableNow}</b> eligible lead${callableNow === 1 ? ' is' : 's are'} inside calling hours in their own time zone.</p><p>Live AI calls, recordings and transcripts start once a phone and AI voice service are connected.</p><button class="btn secondary" onclick="nav('Usage & setup')">See setup status</button></div></div>`;
+}
+
+/* ---------- leads ---------- */
+function renderLeads(c) {
+  c.innerHTML = `<div class="row section"><p>Manage your prospects in one place.</p><div class="toolbar"><button class="btn outline" onclick="$('csv').click()">Import CSV</button><button class="btn secondary" onclick="exportLeads()">Export CSV</button><button class="btn" onclick="leadForm()">+ Add lead</button></div></div>
+  <div class="note">From Google Sheets: <b>File → Download → Comma-separated values (.csv)</b>, then import it here. Columns recognized: name, business, phone, email, state, line type, consent, status, notes. Data is saved in this browser only, so export a backup now and then.</div>
+  <div class="card section"><div class="filters"><div><label for="search" style="margin-top:0">Search</label><input id="search" placeholder="Search name, business, phone or email" oninput="leadsTable()"></div>
+  <div><label for="fStatus" style="margin-top:0">Status</label><select id="fStatus" onchange="leadsTable()"><option value="">All statuses</option>${STATUSES.map(s => `<option>${s}</option>`).join('')}</select></div>
+  <div><label for="fElig" style="margin-top:0">AI calling</label><select id="fElig" onchange="leadsTable()"><option value="">All leads</option><option value="yes">Eligible only</option><option value="no">Not eligible</option></select></div></div>
+  <div id="leadTable"></div></div>`;
+  leadsTable();
+}
+function leadsTable() {
+  const q = ($('search').value || '').toLowerCase(), fs = $('fStatus').value, fe = $('fElig').value;
+  const rows = state.leads.filter(x => [x.name, x.business, x.phone, x.email, x.state, x.notes].join(' ').toLowerCase().includes(q))
+    .filter(x => !fs || (x.status || 'New') === fs)
+    .filter(x => !fe || (eligibility(x).ok === (fe === 'yes')));
+  $('leadTable').innerHTML = rows.length ? `<div class="row" style="margin-top:14px"><span class="muted">${rows.length} of ${state.leads.length} leads</span></div><div class="tablewrap"><table><thead><tr><th>NAME</th><th>BUSINESS</th><th>PHONE</th><th>LOCAL TIME</th><th>AI CALLING</th><th>STATUS</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows.map(x => {
+    const e = eligibility(x), t = localInfo(x);
+    return `<tr><td><b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small></td><td>${esc(x.business)}</td><td>${x.phone ? `<a href="tel:${esc(digits(x.phone))}">${esc(x.phone)}</a>` : '—'}<br><small class="muted">${esc(x.lineType || 'Unknown')}</small></td>
+    <td>${t.known ? `<span class="chip ${t.ok ? 'ok' : 'warn'}">${t.ok ? 'OK now' : 'Outside hours'}</span><br><small class="muted">${esc(t.label)}</small>` : '<span class="chip warn">Add state</span>'}</td>
+    <td><span class="chip ${e.ok ? 'ok' : 'bad'}">${e.ok ? 'Eligible' : 'Not eligible'}</span><br><small class="muted">${esc(e.why)}</small></td>
+    <td>${esc(x.status || 'New')}</td>
+    <td style="white-space:nowrap"><button class="btn secondary small" onclick="practiceWith('${x.id}')" title="Practice a call with this lead">🎙 Practice</button><button class="btn outline small" onclick="logCall('${x.id}')" title="Log a call you made">☎ Log</button><button class="btn outline small" onclick="leadForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('leads','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></td></tr>`;
+  }).join('')}</tbody></table></div>` : '<div class="empty">No leads to display. Add one or import a CSV file.</div>';
+}
+
+/* ---------- forms ---------- */
+function openForm(title, body, fn, after) {
+  $('modalTitle').textContent = title;
+  $('form').innerHTML = body + '<div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Cancel</button><button class="btn" type="submit">Save</button></div>';
+  $('form').onsubmit = e => { e.preventDefault(); const v = Object.fromEntries(new FormData(e.target)); if (fn(v) === false) return; save(); closeModal(); render(); };
+  $('modal').showModal(); if (after) after();
+  const first = $('form').querySelector('input,select,textarea'); if (first) first.focus();
+}
+function field(label, name, val = '', type = 'text', req = false, hint = '') { return `<label for="f_${name}">${label}${req ? ' *' : ''}</label><input id="f_${name}" name="${name}" type="${type}" value="${esc(val)}" ${req ? 'required' : ''}>${hint ? `<div class="hint">${hint}</div>` : ''}`; }
+function select(label, name, opts, val, hint = '') { return `<label for="f_${name}">${label}</label><select id="f_${name}" name="${name}">${opts.map(o => { const v = typeof o === 'string' ? o : o.v, l = typeof o === 'string' ? o : o.l; return `<option value="${esc(v)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>${hint ? `<div class="hint">${hint}</div>` : ''}`; }
+function area(label, name, val = '', hint = '') { return `<label for="f_${name}">${label}</label><textarea id="f_${name}" name="${name}">${esc(val)}</textarea>${hint ? `<div class="hint">${hint}</div>` : ''}`; }
+
+function leadForm(id) {
+  const x = id ? byId('leads', id) : {};
+  openForm(id ? 'Edit lead' : 'Add a lead', `<div class="formgrid"><div>${field('Contact name', 'name', x.name || '', 'text', true)}</div><div>${field('Business', 'business', x.business || '')}</div>
+  <div>${field('Phone', 'phone', x.phone || '', 'tel')}</div><div>${field('Email', 'email', x.email || '', 'email')}</div>
+  <div>${field('State (2 letters)', 'state', x.state || '', 'text', false, 'Used for calling hours in their time zone.')}</div><div>${select('Status', 'status', STATUSES, x.status || 'New')}</div>
+  <div>${select('Line type', 'lineType', LINE_TYPES, x.lineType || 'Unknown', 'AI-voice calls: business landlines only, unless you have written consent.')}</div><div>${select('Consent', 'consent', CONSENTS, x.consent || 'None')}</div></div>
+  ${area('Notes', 'notes', x.notes || '')}`, v => {
+    v.state = stateCode(v.state) || v.state.trim();
+    if (v.state && !TZ[stateCode(v.state)]) { toast('Use a 2-letter state code, like CA or NY.'); return false; }
+    if (id) Object.assign(x, v); else state.leads.push({ id: uid(), created: Date.now(), ...v });
+    toast(id ? 'Lead updated.' : 'Lead added.');
+  });
+}
+function delItem(list, id) {
+  const item = byId(list, id); if (!item) return;
+  const name = item.name || item.leadName || 'this item';
+  if (!confirm(`Delete ${name}? This can’t be undone.`)) return;
+  state[list] = state[list].filter(x => x.id !== id);
+  if (list === 'agents') state.campaigns.forEach(c => { if (c.agentId === id) c.agentId = ''; });
+  save(); render(); toast('Deleted.');
+}
+
+/* ---------- agents ---------- */
+const STARTERS = [
+  { name: 'Tatiana', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
+  { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
+  { name: 'Rebecca', role: 'WebSwan Digital Solutions: compliance audits', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Do you have a moment?', script: 'We offer a complimentary website compliance audit for practices and small businesses: accessibility, cookie consent and privacy.\n\nMany owners have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
+  { name: 'George', role: 'The WebSwan: websites & WSBPA phone apps', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for The WebSwan. Is now a good time for a quick question?', script: 'We design custom websites and WSBPA small business phone apps that help local businesses stand out online.\n\nIs {business} happy with how its website brings in new customers today?\n\nWe start with a complimentary demo, at no cost and no obligation. Would you like Tania to put one together for you?\n\nThank you, {name}. Have a great day!' }
+];
+function addStarters() {
+  let n = 0; STARTERS.forEach(s => { if (!state.agents.some(a => (a.name || '').toLowerCase() === s.name.toLowerCase())) { state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...s }); n++; } });
+  save(); render(); toast(n ? `${n} starter agent${n > 1 ? 's' : ''} added. Edit their scripts any time.` : 'Your starter agents are already here.');
+}
+function renderAgents(c) {
+  c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, George, Alek &amp; Tatiana</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
+  <div class="grid">${state.agents.map(a => `<div class="card agentcard"><span class="chip">DRAFT</span><h2>${esc(a.name)}</h2><p style="margin:0 0 6px">${esc(a.role || 'Voice agent')}</p><small class="muted">Voice: ${esc(a.voice || 'Not described')}${a.provider ? '<br>Planned: ' + esc(a.provider) : ''}</small>
+    <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button><button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
+  <p class="note section">Agent profiles hold your scripts and voice choices. “Hear opening” uses a free voice built into this browser so you can rehearse; your real agents will use the AI voice service you connect later.</p>`;
+}
+function previewAgent(id) { const a = byId('agents', id); speak(fill(a.opening || a.script || 'Hello!', { name: 'Doctor Smith', business: 'Smith Family Practice' }, a), a); }
+function agentForm(id) {
+  const x = id ? byId('agents', id) : { rate: 1, pitch: 1 };
+  openForm(id ? 'Edit agent' : 'Add an agent', `<div class="formgrid"><div>${field('Agent name', 'name', x.name || '', 'text', true)}</div><div>${field('Role or campaign', 'role', x.role || '')}</div></div>
+  ${field('Voice description', 'voice', x.voice || '', 'text', false, 'Example: warm, confident female, American accent')}
+  ${field('Planned AI voice (for later)', 'provider', x.provider || '', 'text', false, 'Example: ElevenLabs “Sarah” or Cartesia “Brooke”')}
+  ${area('Opening line (with AI disclosure)', 'opening', x.opening || 'Hi {name}, this is {agent}, an AI assistant calling on behalf of The WebSwan. Do you have a quick minute?', 'Say it’s an AI assistant and who you’re calling for in the first sentence. Use {name}, {business} and {agent}.')}
+  ${area('Script and instructions', 'script', x.script || '', 'Each paragraph becomes one turn in a practice call.')}
+  <div class="formgrid"><div><label for="f_previewVoice">Preview voice (this browser)</label><select id="f_previewVoice" name="previewVoice" data-cur="${esc(x.previewVoice || '')}"></select></div>
+  <div class="formgrid" style="gap:0 10px"><div>${field('Speed', 'rate', x.rate || 1, 'number')}</div><div>${field('Pitch', 'pitch', x.pitch || 1, 'number')}</div></div></div>
+  <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary" onclick="testVoiceFromForm()">▶ Test this voice</button><button type="button" class="btn outline" onclick="stopSpeech()">⏹ Stop</button></div>`,
+  v => { v.rate = Math.min(2, Math.max(.5, Number(v.rate) || 1)); v.pitch = Math.min(2, Math.max(0, Number(v.pitch) || 1)); if (id) Object.assign(x, v); else state.agents.push({ id: uid(), ...v }); toast(id ? 'Agent updated.' : 'Agent added.'); },
+  () => { fillVoiceSelect(x.previewVoice || ''); ['rate', 'pitch'].forEach(k => { const i = $('f_' + k); i.step = '0.1'; i.min = k === 'rate' ? '0.5' : '0'; i.max = '2'; }); });
+}
+function testVoiceFromForm() {
+  const f = Object.fromEntries(new FormData($('form')));
+  speak(fill(f.opening || 'Hi, this is a voice test.', { name: 'Doctor Smith', business: 'Smith Family Practice' }, { name: f.name || 'your agent' }), { previewVoice: f.previewVoice, rate: f.rate, pitch: f.pitch });
+}
+
+/* ---------- campaigns ---------- */
+function campaignLeads(cp) {
+  const pool = state.leads.filter(l => !cp.statusFilter || (l.status || 'New') === cp.statusFilter);
+  return { pool, ok: pool.filter(l => eligibility(l).ok), skipped: pool.filter(l => !eligibility(l).ok) };
+}
+function renderCampaigns(c) {
+  c.innerHTML = `<div class="row section"><p>Organize outreach and prepare your calling schedule.</p><button class="btn" onclick="campaignForm()">+ Create campaign</button></div>
+  <div class="card">${state.campaigns.map(x => { const a = byId('agents', x.agentId); const L = campaignLeads(x);
+    return `<div class="listitem row"><div><strong>${esc(x.name)}</strong><small>Agent: ${esc(a ? a.name : (x.agent || 'Not assigned'))} · ${esc(x.schedule || 'Schedule not set')} · Leads: ${esc(x.statusFilter || 'all statuses')}</small><br><small><span class="chip ok">${L.ok.length} ready</span> <span class="chip ${L.skipped.length ? 'warn' : ''}">${L.skipped.length} skipped</span>${x.goal ? ' · Goal: ' + esc(x.goal) : ''}</small></div>
+    <div class="toolbar"><span class="chip">Draft</span><button class="btn secondary small" onclick="practiceCampaign('${x.id}')" ${L.ok.length && a ? '' : 'disabled'}>🎙 Practice next lead</button><button class="btn outline small" onclick="campaignForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('campaigns','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></div></div>`; }).join('') || '<div class="empty">No campaigns yet. Create a draft when you are ready.</div>'}</div>
+  <p class="note section">Campaigns are drafts. Leads marked Do not call, leads without a phone and mobile numbers without written consent are skipped automatically. Live scheduling and outbound calling turn on once a calling service is connected.</p>`;
+}
+function campaignForm(id) {
+  const x = id ? byId('campaigns', id) : {};
+  if (!state.agents.length) { toast('Create an agent first.'); nav('Agents'); return; }
+  openForm(id ? 'Edit campaign' : 'Create campaign', `${field('Campaign name', 'name', x.name || '', 'text', true)}
+  ${select('Agent', 'agentId', [{ v: '', l: 'Not assigned' }, ...state.agents.map(a => ({ v: a.id, l: a.name }))], x.agentId || '')}
+  ${select('Which leads', 'statusFilter', [{ v: '', l: 'All statuses' }, ...STATUSES.filter(s => s !== 'Do not call')], x.statusFilter || '')}
+  ${field('Preferred calling schedule', 'schedule', x.schedule || '', 'text', false, 'Example: Tue–Thu, 10 AM–12 PM in the lead’s time zone')}
+  ${field('Goal', 'goal', x.goal || '', 'text', false, 'Example: book a 10-minute call with Tania')}
+  <p class="note">This saves a draft only. No calls will be scheduled or placed.</p>`, v => { if (id) Object.assign(x, v); else state.campaigns.push({ id: uid(), created: Date.now(), ...v }); toast(id ? 'Campaign updated.' : 'Campaign saved as a draft.'); });
+}
+function practiceCampaign(id) {
+  const cp = byId('campaigns', id); const L = campaignLeads(cp).ok;
+  const called = new Set(state.calls.filter(c => c.campaignId === id).map(c => c.leadId));
+  const next = L.find(l => !called.has(l.id)) || L[0];
+  practice = { agentId: cp.agentId, leadId: next.id, campaignId: id, turn: -1, lines: [] }; nav('Practice call');
+}
+
+/* ---------- practice call ---------- */
+let practice = { agentId: '', leadId: '', campaignId: '', turn: -1, lines: [] };
+function practiceWith(leadId) { practice = { agentId: practice.agentId || (state.agents[0] && state.agents[0].id) || '', leadId, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
+function turns(agent, lead) { const parts = [agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
+function renderPractice(c) {
+  if (!state.agents.length) { c.innerHTML = `<div class="card section empty">Add an agent first to practice a call.<br><br><button class="btn" onclick="nav('Agents')">Go to Agents</button></div>`; return; }
+  if (!practice.agentId || !byId('agents', practice.agentId)) practice.agentId = state.agents[0].id;
+  const a = byId('agents', practice.agentId), lead = byId('leads', practice.leadId) || { name: 'Doctor Smith', business: 'Smith Family Practice' };
+  const T = turns(a, lead), e = lead.id ? eligibility(lead) : null, t = lead.id ? localInfo(lead) : null;
+  c.innerHTML = `<div class="callbox section"><div class="card">
+    <div class="formgrid"><div>${select('Agent', 'pAgent', state.agents.map(x => ({ v: x.id, l: x.name })), practice.agentId)}</div>
+    <div>${select('Lead', 'pLead', [{ v: '', l: 'Sample lead (Doctor Smith)' }, ...state.leads.map(x => ({ v: x.id, l: (x.name || '?') + (x.business ? ' · ' + x.business : '') }))], practice.leadId || '')}</div></div>
+    ${lead.id ? `<p style="margin:12px 0 0"><span class="chip ${e.ok ? 'ok' : 'bad'}">${e.ok ? 'Eligible for AI calls' : 'Not eligible: ' + esc(e.why)}</span> ${t.known ? `<span class="chip ${t.ok ? 'ok' : 'warn'}">${t.ok ? 'Inside calling hours' : 'Outside calling hours'} · ${esc(t.label)}</span>` : '<span class="chip warn">Add the lead’s state to check calling hours</span>'}</p>` : ''}
+    <div class="section" style="text-align:center"><div class="mic" aria-hidden="true">🎙</div><b>${esc(a.name)}</b><div class="muted" style="font-size:13px">${esc(a.voice || 'Browser preview voice')}</div></div>
+    <div class="actions" style="justify-content:center"><button class="btn green" onclick="pNext()" id="pNextBtn">${practice.turn < 0 ? '▶ Start call' : practice.turn >= T.length - 1 ? '↻ Restart' : '▶ Next line'}</button><button class="btn outline" onclick="pRepeat()" ${practice.turn < 0 ? 'disabled' : ''}>↺ Repeat</button><button class="btn danger" onclick="stopSpeech()">⏹ Stop voice</button></div>
+    <label for="pReply">Prospect says (type what they answer, then press Enter)</label><input id="pReply" placeholder="Example: Sure, what is this about?" ${practice.turn < 0 ? 'disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();pReply()}">
+    <div class="actions"><button class="btn" onclick="pFinish()">✔ End & log this call</button></div>
+    <p class="note">Practice mode: the voice plays only on your computer. Nothing is dialed.</p></div>
+    <div class="card"><div class="row"><h2>Call script</h2><span class="chip">${T.length} turns</span></div><div class="callog" id="pLog">${practice.lines.length ? practice.lines.map(l => `<div class="line ${l.who}">${l.who === 'agent' ? '<b>' + esc(a.name) + ':</b> ' : '<b>Prospect:</b> '}${esc(l.text)}</div>`).join('') : T.map((s, i) => `<div class="line agent"><b>${i + 1}.</b> ${esc(s)}</div>`).join('')}</div></div></div>`;
+  $('f_pAgent').onchange = ev => { practice.agentId = ev.target.value; practice.turn = -1; practice.lines = []; stopSpeech(); render(); };
+  $('f_pLead').onchange = ev => { practice.leadId = ev.target.value; practice.turn = -1; practice.lines = []; stopSpeech(); render(); };
+  const lg = $('pLog'); lg.scrollTop = lg.scrollHeight;
+}
+function pCtx() { const a = byId('agents', practice.agentId), lead = byId('leads', practice.leadId) || { name: 'Doctor Smith', business: 'Smith Family Practice' }; return { a, lead, T: turns(a, lead) }; }
+function pNext() {
+  const { a, T } = pCtx();
+  if (practice.turn >= T.length - 1) { practice.turn = -1; practice.lines = []; }
+  practice.turn++; const line = T[practice.turn]; practice.lines.push({ who: 'agent', text: line });
+  render(); speak(line, a); setTimeout(() => { const r = $('pReply'); if (r) r.focus(); }, 50);
+}
+function pRepeat() { const { a, T } = pCtx(); if (practice.turn >= 0) speak(T[practice.turn], a); }
+function pReply() { const r = $('pReply'); const v = r.value.trim(); if (!v) return; stopSpeech(); practice.lines.push({ who: 'prospect', text: v }); r.value = ''; if (/\b(do not call|don'?t call|stop calling|remove me|take me off)\b/i.test(v)) { toast('Opt-out heard: end the call and mark Do not call.'); } render(); setTimeout(() => $('pReply') && $('pReply').focus(), 30); }
+function pFinish() { stopSpeech(); logCall(practice.leadId, true); }
+
+/* ---------- call log ---------- */
+function logCall(leadId, fromPractice) {
+  const lead = byId('leads', leadId);
+  const transcript = fromPractice ? practice.lines.map(l => (l.who === 'agent' ? (byId('agents', practice.agentId) || {}).name || 'Agent' : 'Prospect') + ': ' + l.text).join('\n') : '';
+  openForm(fromPractice ? 'Log this practice call' : 'Log a call', `${lead ? `<p class="muted" style="margin:0">${esc(lead.name)}${lead.business ? ' · ' + esc(lead.business) : ''}${lead.phone ? ' · <a href="tel:' + esc(digits(lead.phone)) + '">' + esc(lead.phone) + '</a>' : ''}</p>` : '<p class="muted" style="margin:0">Sample lead (not saved to a lead)</p>'}
+  ${select('Type', 'type', ['Practice (AI voice preview)', 'Manual call (I dialed)', 'Live AI call'], fromPractice ? 'Practice (AI voice preview)' : 'Manual call (I dialed)')}
+  ${select('Outcome', 'outcome', OUTCOMES, 'Spoke: interested')}
+  ${select('Update lead status to', 'newStatus', [{ v: '', l: 'Keep current status' }, ...STATUSES], '')}
+  ${field('Follow-up date', 'followUp', '', 'date')}
+  ${area('Notes', 'notes', '')}${transcript ? `<input type="hidden" name="transcript" value="${esc(transcript)}">` : ''}`, v => {
+    if (v.outcome === 'Asked not to be called') v.newStatus = 'Do not call';
+    if (!v.newStatus && v.outcome === 'Appointment requested') v.newStatus = 'Appointment requested';
+    state.calls.unshift({ id: uid(), at: Date.now(), leadId: lead ? lead.id : '', leadName: lead ? lead.name : 'Sample lead', business: lead ? lead.business : '', agentName: fromPractice ? ((byId('agents', practice.agentId) || {}).name || '') : '', campaignId: fromPractice ? practice.campaignId : '', ...v });
+    if (lead && v.newStatus) lead.status = v.newStatus;
+    if (lead && v.followUp && !v.newStatus) lead.status = 'Follow up';
+    if (fromPractice) { practice.turn = -1; practice.lines = []; }
+    toast('Call logged.' + (v.newStatus === 'Do not call' ? ' Lead marked Do not call.' : ''));
+  });
+}
+function renderCalls(c) {
+  c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
+  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome) ? 'ok' : /not|Wrong|Asked/.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span></td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td><button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
+    : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live recordings and transcripts arrive when a calling service is connected.</div>'}</div>`;
+}
+
+/* ---------- setup ---------- */
+function renderSetup(c) {
+  c.innerHTML = `<div class="two section"><div class="card"><h2>Connections</h2>
+    <div class="listitem row"><strong>Phone service</strong><span class="pill">Not connected</span></div>
+    <div class="listitem row"><strong>AI voice service</strong><span class="pill">Not connected</span></div>
+    <div class="listitem row"><strong>Google Sheets sync</strong><span class="pill">Not connected · use CSV import</span></div>
+    <div class="listitem row"><strong>Voice preview</strong><span class="pill ${canSpeak ? 'ok' : 'bad'}">${canSpeak ? 'Working in this browser' : 'Not supported here'}</span></div>
+    <h2 class="section">Your data</h2><p>Leads, agents, campaigns and call logs are saved in this browser only, not across devices. Download a backup to keep them safe or move them to another computer.</p>
+    <div class="toolbar"><button class="btn" onclick="backup()">⬇ Download backup</button><button class="btn outline" onclick="$('backupFile').click()">⬆ Restore backup</button></div></div>
+    <div class="card"><h2>Before live calls</h2>
+    <div class="listitem"><strong>Business landlines first</strong><small>FCC: AI-generated voices count as “artificial” voices under the TCPA. Calling mobile numbers with an AI voice for marketing needs prior written consent.</small></div>
+    <div class="listitem"><strong>Calling hours</strong><small>8 AM–9 PM in the lead’s time zone (stricter in some states, like CT, FL, OK, MD, WA and TX). The Leads page checks this for you.</small></div>
+    <div class="listitem"><strong>Do Not Call</strong><small>Scrub against the National DNC Registry and honor every opt-out right away. “Asked not to be called” marks the lead Do not call.</small></div>
+    <div class="listitem"><strong>Say it’s AI, up front</strong><small>Every opening line should give the agent’s name, say it’s an AI assistant, and say who it’s calling for. Several states require it.</small></div>
+    <div class="listitem"><strong>Recording</strong><small>California and other two-party-consent states need every caller’s permission before recording.</small></div>
+    <p class="note warn" style="margin-top:12px">General guidance, not legal advice. Have Linda or an attorney review your scripts before going live.</p></div></div>`;
+}
+
+/* ---------- import / export ---------- */
+function parseCSV(t) { let rows = [], row = [], f = '', q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (c === '"') { if (q && t[i + 1] === '"') { f += '"'; i++; } else q = !q; } else if (c === ',' && !q) { row.push(f); f = ''; } else if ((c === '\n' || c === '\r') && !q) { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); if (row.some(x => x.trim())) rows.push(row); row = []; f = ''; } else f += c; } row.push(f); if (row.some(x => x.trim())) rows.push(row); return rows; }
+$('csv').onchange = async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const rows = parseCSV((await file.text()).replace(/^﻿/, ''));
+  e.target.value = '';
+  if (rows.length < 2) { toast('The CSV needs a header row and at least one lead.'); return; }
+  const h = rows.shift().map(x => x.toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+  const col = (r, names) => { const i = h.findIndex(x => names.includes(x)); return i < 0 ? '' : (r[i] || '').trim(); };
+  const pick = (v, list, def) => list.find(o => o.toLowerCase() === String(v).toLowerCase()) || (v && /land|office|business/i.test(v) && list === LINE_TYPES ? 'Business landline' : v && /mobile|cell|wireless/i.test(v) && list === LINE_TYPES ? 'Mobile' : def);
+  const seen = new Set(state.leads.map(l => digits(l.phone)).filter(Boolean));
+  let added = 0, dupes = 0;
+  for (const r of rows) {
+    const x = { id: uid(), created: Date.now(), name: col(r, ['name', 'contact', 'contactname', 'fullname', 'decisionmaker', 'firstname']), business: col(r, ['business', 'company', 'businessname', 'companyname', 'practice', 'firm']), phone: col(r, ['phone', 'phonenumber', 'telephone', 'mobile', 'cell']), email: col(r, ['email', 'emailaddress']), state: stateCode(col(r, ['state', 'st', 'province'])), lineType: pick(col(r, ['linetype', 'phonetype', 'type']), LINE_TYPES, 'Unknown'), consent: pick(col(r, ['consent']), CONSENTS, 'None'), status: pick(col(r, ['status']), STATUSES, 'New'), notes: col(r, ['notes', 'note', 'comments']) };
+    if (!(x.name || x.business || x.phone)) continue;
+    const d = digits(x.phone); if (d && seen.has(d)) { dupes++; continue; } if (d) seen.add(d);
+    state.leads.push(x); added++;
+  }
+  save(); render(); toast(`${added} lead${added === 1 ? '' : 's'} imported${dupes ? `, ${dupes} duplicate phone number${dupes === 1 ? '' : 's'} skipped` : ''}. Please review line types and states.`);
+};
+function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+function toCSV(cols, rows) { return [cols, ...rows.map(x => cols.map(k => x[k] ?? ''))].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n'); }
+function exportLeads() { if (!state.leads.length) { toast('No leads to export yet.'); return; } download('webswan-leads.csv', toCSV(['name', 'business', 'phone', 'email', 'state', 'lineType', 'consent', 'status', 'notes'], state.leads), 'text/csv'); }
+function exportCalls() { download('webswan-call-records.csv', toCSV(['at', 'leadName', 'business', 'agentName', 'type', 'outcome', 'followUp', 'notes', 'transcript'], state.calls.map(c => ({ ...c, at: new Date(c.at).toISOString() }))), 'text/csv'); }
+function backup() { download('webswan-voice-studio-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(state, null, 2), 'application/json'); toast('Backup downloaded.'); }
+$('backupFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const s = JSON.parse(await f.text()); if (!s || !Array.isArray(s.leads)) throw 0; if (!confirm('Replace everything in this workspace with the backup?')) return; state = { leads: s.leads || [], agents: s.agents || [], campaigns: s.campaigns || [], calls: s.calls || [] }; save(); render(); toast('Backup restored.'); }
+  catch (err) { toast('That file isn’t a Voice Studio backup.'); }
+};
+$('modal').addEventListener('close', stopSpeech);
+window.addEventListener('pagehide', stopSpeech);
+render();
+</script>
+<style>.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
+</body>
+</html>
