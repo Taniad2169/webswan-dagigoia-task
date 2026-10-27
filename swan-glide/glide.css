@@ -1,7 +1,8 @@
 /* The WebSwan · Midnight Glide: pure CSS.
-   --show = length of the whole show in seconds (set it to the song length Jimmy delivers). */
+   Timed to Jimmy's jingle "The WebSwan Takeoff" (66s): calm intro, build at 24s, peak 40-55s, ends at 64s.
+   The big swan takes off on the 40s peak; --show brings the replay card in as the music ends. */
 :root{
-  --show:56s;
+  --show:63.5s;
   --navy:#0b1d59; --ink:#04112d; --cream:#f3f7ff;
   --b1:#3898f5; --b2:#6aa8e6; --b3:#48d6fa;
   --brand:linear-gradient(90deg,var(--b1),var(--b2),var(--b3));
@@ -114,10 +115,11 @@ body{font-family:'Space Mono',ui-monospace,monospace}
 /* finale: a big swan skims off the lake and flies over the city */
 .finale{inset:0;pointer-events:none}
 .flyer{position:absolute;left:-30%;top:74%;width:24%;aspect-ratio:2.4/1;translate:0 -100%;
-  animation:takeoff 14s cubic-bezier(.4,.05,.45,1) 40s 1 both}
+  animation:takeoff 18s cubic-bezier(.4,.05,.45,1) 36s 1 both}
 @keyframes takeoff{
   0%{left:-30%;top:74%;transform:rotate(0) scale(1)}
-  28%{left:16%;top:70%;transform:rotate(-4deg) scale(1)}
+  22%{left:16%;top:72%;transform:rotate(-2deg) scale(1)}
+  30%{left:26%;top:64%;transform:rotate(-8deg) scale(.95)}
   100%{left:118%;top:12%;transform:rotate(-12deg) scale(.55)}}
 .fbody{position:absolute;left:8%;top:52%;width:58%;height:24%;border-radius:55% 45% 50% 50%/60% 60% 40% 40%;
   background:linear-gradient(#fff,#dbe6fa);box-shadow:0 0 2.2cqw rgba(140,200,255,.55)}
@@ -136,7 +138,7 @@ body{font-family:'Space Mono',ui-monospace,monospace}
 @keyframes flap{from{transform:scaleY(1)}to{transform:scaleY(-.75)}}
 .sparkles{inset:0;pointer-events:none}
 .sparkles i{position:absolute;left:var(--x);top:20%;width:.6%;aspect-ratio:1;border-radius:50%;background:#fff;opacity:0;
-  box-shadow:0 0 1cqw .3cqw var(--b3);animation:spark 2.4s ease-out calc(47s + var(--d)) 2 both}
+  box-shadow:0 0 1cqw .3cqw var(--b3);animation:spark 2.4s ease-out calc(45s + var(--d)) 2 both}
 @keyframes spark{0%{opacity:0;transform:scale(.2)}30%{opacity:1;transform:scale(1.6)}100%{opacity:0;transform:translateY(-4cqw) scale(.4)}}
 
 /* ===== TITLE CARD ===== */
@@ -181,7 +183,7 @@ h1 span{display:block;font-style:italic;font-weight:500;font-size:.5em;letter-sp
   font:400 clamp(12px,1.55vw,20px)/1.4 'Space Mono',monospace;color:#eaf6ff;opacity:0;
   animation:cap 5.6s ease var(--t) 1 both}
 .cap b{color:var(--b3)}
-.cap-big{font:italic 500 clamp(18px,2.8vw,36px)/1.25 'Playfair Display',serif;animation-duration:11s;
+.cap-big{font:italic 500 clamp(18px,2.8vw,36px)/1.25 'Playfair Display',serif;animation-duration:15s;
   background:rgba(2,8,28,.55);box-shadow:0 0 30px rgba(72,214,250,.25)}
 @keyframes cap{0%{opacity:0;translate:-50% 8px}8%,86%{opacity:1;translate:-50% 0}100%{opacity:0;translate:-50% -6px}}
 @container (max-aspect-ratio:5/4){ .captions{bottom:auto;top:calc(50cqh - 56cqw - 4.5em)} }
