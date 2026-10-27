@@ -294,7 +294,7 @@ function addStarters() {
 function renderAgents(c) {
   c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, Monica, George &amp; Alek</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
   <div class="grid">${state.agents.map(a => `<div class="card agentcard"><span class="chip">DRAFT</span><h2>${esc(a.name)}</h2><p style="margin:0 0 6px">${esc(a.role || 'Voice agent')}</p><small class="muted">Voice: ${esc(a.voice || 'Not described')}${a.provider ? '<br>Planned: ' + esc(a.provider) : ''}</small>
-    <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button><button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn small" onclick="aiCoachAgent('${a.id}')" title="SDR AI studies this agent’s calls and suggests a better script">✦ Script coach</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button>${a.prev && a.prev.length ? `<button class="btn outline small" onclick="undoScript('${a.id}')">↩ Undo script</button>` : ''}<button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
   <p class="note section">Agent profiles hold your scripts and voice choices. “Hear opening” uses a free voice built into this browser so you can rehearse; your real agents will use the AI voice service you connect later.</p>`;
 }
 function previewAgent(id) { const a = byId('agents', id); speak(fill(a.opening || a.script || 'Hello!', { name: 'Doctor Smith', business: 'Smith Family Practice' }, a), a); }
@@ -348,7 +348,7 @@ function practiceCampaign(id) {
 /* ---------- practice call ---------- */
 let practice = { agentId: '', leadId: '', campaignId: '', turn: -1, lines: [] };
 function practiceWith(leadId) { practice = { agentId: practice.agentId || (state.agents[0] && state.agents[0].id) || '', leadId, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
-function turns(agent, lead) { const parts = [agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
+function turns(agent, lead) { const parts = [(lead && lead.nextScript && lead.nextScript.text) || agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
 function renderPractice(c) {
   if (!state.agents.length) { c.innerHTML = `<div class="card section empty">Add an agent first to practice a call.<br><br><button class="btn" onclick="nav('Agents')">Go to Agents</button></div>`; return; }
   if (!practice.agentId || !byId('agents', practice.agentId)) practice.agentId = state.agents[0].id;
@@ -391,7 +391,8 @@ function logCall(leadId, fromPractice) {
   ${area('Notes', 'notes', '')}${transcript ? `<input type="hidden" name="transcript" value="${esc(transcript)}">` : ''}`, v => {
     if (v.outcome === 'Asked not to be called') v.newStatus = 'Do not call';
     if (!v.newStatus && v.outcome === 'Appointment requested') v.newStatus = 'Appointment requested';
-    state.calls.unshift({ id: uid(), at: Date.now(), leadId: lead ? lead.id : '', leadName: lead ? lead.name : 'Sample lead', business: lead ? lead.business : '', agentName: fromPractice ? ((byId('agents', practice.agentId) || {}).name || '') : '', campaignId: fromPractice ? practice.campaignId : '', ...v });
+    const cid = uid(); if ((v.notes || transcript) && brainOn()) setTimeout(() => aiReviewCall(cid, true), 400);
+    state.calls.unshift({ id: cid, at: Date.now(), leadId: lead ? lead.id : '', leadName: lead ? lead.name : 'Sample lead', business: lead ? lead.business : '', agentName: fromPractice ? ((byId('agents', practice.agentId) || {}).name || '') : '', campaignId: fromPractice ? practice.campaignId : '', ...v });
     if (lead) { const said = [v.notes, transcript.split('\n').filter(s => /^Prospect:/.test(s)).map(s => s.slice(9)).join('. ')].join('. '); const n = sdrLearn(lead, said, fromPractice ? 'Practice call' : (v.type ? v.type.split(' (')[0] : 'Call note')); if (n) setTimeout(() => toast('SDR AI learned ' + n + ' new thing' + (n > 1 ? 's' : '') + ' about ' + (lead.name || 'this lead') + '.'), 1600); }
     if (lead && v.newStatus) lead.status = v.newStatus;
     if (lead && v.followUp && !v.newStatus) lead.status = 'Follow up';
@@ -401,7 +402,7 @@ function logCall(leadId, fromPractice) {
 }
 function renderCalls(c) {
   c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
-  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome) ? 'ok' : /not|Wrong|Asked/.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span></td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td><button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
+  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome) ? 'ok' : /not|Wrong|Asked/.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span></td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
     : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live recordings and transcripts arrive when a calling service is connected.</div>'}</div>`;
 }
 
@@ -411,6 +412,7 @@ function renderSetup(c) {
     <div class="listitem row"><strong>Phone service</strong><span class="pill">Not connected</span></div>
     <div class="listitem row"><strong>AI voice service</strong><span class="pill">Not connected</span></div>
     <div class="listitem row"><strong>Cloud sync (your private Firebase)</strong><span class="pill" id="cloudRow">${window.cloudUser ? 'On · ' + esc(window.cloudUser) : 'Off · sign in at the top'}</span></div>
+    <div class="listitem row"><strong>SDR AI brain (Gemini)</strong><span class="pill ${brainOn() ? 'ok' : ''}">${brainOn() ? 'Online' : 'Loading…'}</span></div>
     <div class="listitem row"><strong>Google Sheets sync</strong><span class="pill">Not connected · use CSV import</span></div>
     <div class="listitem row"><strong>Voice preview</strong><span class="pill ${canSpeak ? 'ok' : 'bad'}">${canSpeak ? 'Working in this browser' : 'Not supported here'}</span></div>
     <h2 class="section">Your data</h2><p>Leads, agents, campaigns and call logs are saved in this browser, and in your private WebSwan cloud when you sign in, so they follow you to every device. Download a backup to keep them safe or move them to another computer.</p>
@@ -709,7 +711,7 @@ function sdrGuard(el) {
   });
   el.innerHTML = `<div class="two"><div class="card"><h2>🛑 Kill switch</h2><p>Pause every outreach action at once (queue, emails, calls) while you fix a script or a problem. Practice calls still work.</p><button class="btn ${state.sdr.paused ? 'green' : 'danger'}" onclick="sdrPause(${!state.sdr.paused})">${state.sdr.paused ? '▶ Resume outreach' : '⏸ Pause all outreach'}</button>
   <h2 class="section">🙋 Needs a human</h2>${ex.map(l => `<div class="listitem row"><div><strong>${esc(l.name)}</strong><small>${esc(M(l).filter(m => /real person|decision/i.test(m.text)).map(m => m.text).join(' · ') || '3+ calls with no answer: try email or a different time')}</small></div><button class="btn outline small" onclick="sdrOpen('${l.id}')">✦ Brief</button></div>`).join('') || '<p class="muted">Nobody needs you right now.</p>'}</div>
-  <div class="card"><h2>📝 Script check</h2>${state.agents.map(a => { const r = scriptCheck(a), bad = r.filter(x => !x[0]).length; return `<div class="listitem"><div class="row"><strong>${esc(a.name)}</strong><span class="chip ${bad ? 'bad' : 'ok'}">${bad ? bad + ' to fix' : 'All good'}</span></div><small>${r.map(x => (x[0] ? '✅ ' : '⚠️ ') + esc(x[1])).join('<br>')}</small>${bad ? `<div style="margin-top:6px"><button class="btn outline small" onclick="agentForm('${a.id}')">Edit script</button></div>` : ''}</div>`; }).join('') || '<p class="muted">Add agents to check their scripts.</p>'}</div></div>
+  <div class="card"><h2>📝 Script check</h2>${state.agents.map(a => { const r = scriptCheck(a), bad = r.filter(x => !x[0]).length; return `<div class="listitem"><div class="row"><strong>${esc(a.name)}</strong><span class="chip ${bad ? 'bad' : 'ok'}">${bad ? bad + ' to fix' : 'All good'}</span></div><small>${r.map(x => (x[0] ? '✅ ' : '⚠️ ') + esc(x[1])).join('<br>')}</small><div style="margin-top:6px"><button class="btn small" onclick="aiCoachAgent('${a.id}')">✦ Script coach</button>${bad ? ` <button class="btn outline small" onclick="agentForm('${a.id}')">Edit script</button>` : ''}</div></div>`; }).join('') || '<p class="muted">Add agents to check their scripts.</p>'}</div></div>
   <div class="card section"><h2>🎧 Call review (last 10 with transcripts)</h2>${graded.join('') || '<p class="muted">Practice calls you log with a transcript are graded here: AI disclosure, opt-outs honored and the outcome.</p>'}</div>
   <p class="note warn section">General guidance, not legal advice. Always honor opt-outs right away, call business landlines (or leads with written consent) only, and stay inside calling hours.</p>`;
 }
@@ -724,6 +726,7 @@ function renderBrief(c, l) {
   c.innerHTML = `<div class="row section"><button class="btn outline" onclick="state.sdr.lead='';render()">← Back to SDR AI</button><div class="toolbar">${l.phone ? `<a class="btn small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn secondary small" onclick="sdrPractice('${l.id}')">🎙 Practice with ${esc(agentName(k, l))}</button><button class="btn outline small" onclick="sdrEmailModal('${l.id}','intro','')">✉ Email draft</button><button class="btn outline small" onclick="leadForm('${l.id}')">Edit lead</button></div></div>
   <div class="card section"><div class="row"><div><h2 style="margin:0">${esc(l.name || 'Lead')}</h2><p style="margin:4px 0 0">${esc(l.business || '')}${l.state ? ' · ' + esc(l.state) : ''} · ${esc(l.status || 'New')}${r.website ? ` · <a href="${esc(/^https?:/.test(r.website) ? r.website : 'https://' + r.website)}" target="_blank" rel="noopener">website ↗</a>` : ''}</p></div><div id="briefScore" style="max-width:420px;text-align:right"></div></div></div>
   <div class="two section"><div class="card"><h2>🎯 Best offer & opener</h2><p style="margin-top:0"><span class="chip ok">${esc(OFFERS[k].name)}</span> with <b>${esc(agentName(k, l))}</b>${offs[1] ? ` · Next best: ${esc(OFFERS[offs[1]].name)}` : ''}</p>
+    ${l.nextScript ? `<div class="note" style="margin-bottom:10px"><b>📞 Call-back script from SDR AI</b> <small class="muted">· ${esc(fmtDate(l.nextScript.at))}</small><div style="margin-top:6px">${esc(l.nextScript.text)}</div><div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn secondary small" onclick="speak(byId('leads','${l.id}').nextScript.text, agentFor('${k}', byId('leads','${l.id}')))">▶ Hear it</button>${l.nextScript.from ? `<button class="btn outline small" onclick="aiShowReview('${l.nextScript.from}')">See call review</button>` : ''}</div></div>` : ''}
     <div class="script" style="max-height:none">${esc(sdrOpener(l, k))}</div><div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="sdrHear('${l.id}','${k}')">▶ Hear it</button><button class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
     ${objs.length ? `<h2 class="section">🧭 How to handle what they said</h2>${objs.map(m => `<div class="listitem"><strong>${esc(m.text)}</strong><small>${esc(TIPS[m.text])}</small></div>`).join('')}` : ''}
     <h2 class="section">📅 Follow-up plan</h2>${l.seq ? `<p style="margin-top:0">${done} of ${SEQ.length} steps done · started ${niceD(l.seq.start)}</p>${SEQ.map((s, i) => `<div class="listitem row"><small>${l.seq.done[i] ? '✅' : addD(l.seq.start, s.day) <= todayISO() ? '🔔' : '⏳'} ${niceD(addD(l.seq.start, s.day))} · ${esc(s.label)}</small></div>`).join('')}` : `<p>Not started.</p><button class="btn small" ${state.sdr.paused ? 'disabled' : ''} onclick="sdrStart('${l.id}');state.sdr.lead='${l.id}';render()">▶ Start plan</button>`}</div>
@@ -740,6 +743,75 @@ function renderBrief(c, l) {
   renderBriefStats(l);
 }
 
+
+/* ---------- SDR AI brain (Gemini via Firebase AI Logic) ---------- */
+function brainOn() { return !!(window.aiBrain && window.aiBrain.ready); }
+function leadForAI(l) { return l && l.id ? { name: l.name, business: l.business, industry: guessIndustry(l), state: l.state, status: l.status, research: R(l), memories: M(l).map(m => m.cat + ': ' + m.text) } : { name: 'Sample lead', business: '' }; }
+function agentForAI(a, fallbackName) { a = a || {}; return { name: a.name || fallbackName || 'Agent', role: a.role || '', opening: a.opening || '', script: a.script || '' }; }
+async function aiReviewCall(callId, silent) {
+  const c = byId('calls', callId); if (!c) return;
+  if (!brainOn()) { if (!silent) toast('The AI brain is still loading. Try again in a moment.'); return; }
+  if (!(c.transcript || c.notes)) { if (!silent) toast('Add notes or a transcript to this call so SDR AI has something to review.'); return; }
+  const l = byId('leads', c.leadId), a = state.agents.find(x => x.name === c.agentName);
+  if (!silent) toast('✦ SDR AI is reviewing the call…');
+  try {
+    const r = await window.aiBrain.analyzeCall({ lead: leadForAI(l), agent: agentForAI(a, c.agentName), call: { type: c.type, outcome: c.outcome, notes: c.notes || '', transcript: c.transcript || '' } });
+    c.ai = Object.assign({}, r, { at: Date.now() });
+    if (l) {
+      (r.memories || []).forEach(m => { if (m && m.text && !M(l).some(x => x.text.toLowerCase() === String(m.text).toLowerCase())) M(l).push({ id: uid(), cat: m.cat || 'Fact', text: String(m.text).slice(0, 160), src: 'SDR AI · ' + (c.agentName || 'call'), at: Date.now() }); });
+      if (r.callbackScript && l.status !== 'Do not call' && c.outcome !== 'Asked not to be called') l.nextScript = { text: r.callbackScript, at: Date.now(), from: callId, agent: c.agentName || '' };
+    }
+    save();
+    if (silent) { if (page === 'Call records' || page === 'SDR AI') render(); toast('✦ SDR AI reviewed the call' + (l ? ' with ' + (l.name || 'this lead') : '') + '. See Call records.'); }
+    else { render(); aiShowReview(callId); }
+  } catch (e) { console.error(e); toast('AI review didn’t work: ' + String(e.message || e).slice(0, 140)); }
+}
+function aiList(arr, f) { return (arr || []).length ? '<ul style="margin:6px 0 0;padding-left:18px">' + arr.map(x => '<li style="margin:4px 0">' + f(x) + '</li>').join('') + '</ul>' : '<p class="muted" style="margin:4px 0">—</p>'; }
+function aiShowReview(callId) {
+  const c = byId('calls', callId), r = c && c.ai; if (!r) return;
+  const l = byId('leads', c.leadId), ns = r.nextStep || {}, sent = r.sentiment || 'neutral';
+  $('modalTitle').textContent = '✦ SDR AI call review';
+  $('form').onsubmit = e => e.preventDefault();
+  $('form').innerHTML = `<p class="muted" style="margin:0">${esc(c.leadName)}${c.business ? ' · ' + esc(c.business) : ''} · ${esc(c.agentName || '')} · ${esc(fmtDate(c.at))}</p>
+  <p><span class="chip ${sent === 'positive' ? 'ok' : sent === 'negative' ? 'bad' : ''}">${esc(sent)}</span> ${r.score !== undefined ? `<span class="chip">Call score ${esc(r.score)}/10</span>` : ''}</p>
+  <div class="note">${esc(r.summary || '')}</div>
+  <label>🎯 Next step</label><div class="script" style="max-height:none">${esc((ns.action || '').toUpperCase())}${ns.inDays !== undefined ? ' in ' + esc(ns.inDays) + ' day(s)' : ''}${ns.reason ? ' · ' + esc(ns.reason) : ''}</div>
+  ${r.callbackScript ? `<label>📞 Call-back script</label><div class="script" style="max-height:none">${esc(r.callbackScript)}</div><div class="actions" style="justify-content:flex-start;margin-top:8px"><button type="button" class="btn secondary small" onclick="speak(byId('calls','${c.id}').ai.callbackScript, state.agents.find(a=>a.name===byId('calls','${c.id}').agentName))">▶ Hear it</button><button type="button" class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>` : ''}
+  <label>✅ What worked</label>${aiList(r.coaching && r.coaching.worked, x => esc(x))}
+  <label>⚠️ What hurt the call, and a better line</label>${aiList(r.coaching && r.coaching.hurt, x => `<b>“${esc(x.line)}”</b><br><small class="muted">${esc(x.why)}</small><br>Better: <i>“${esc(x.better)}”</i>`)}
+  ${(r.memories || []).length ? `<label>🧠 Saved to memory</label>${aiList(r.memories, x => esc(x.cat + ': ' + x.text))}` : ''}
+  ${r.compliance ? `<p class="note ${/ok|fine|none/i.test(r.compliance) ? '' : 'warn'}" style="margin-top:12px">Compliance: ${esc(r.compliance)}</p>` : ''}
+  <div class="actions">${l && ns.action && ns.action !== 'stop' ? `<button type="button" class="btn secondary" onclick="aiApplyNext('${c.id}')">📅 Put next step in my queue</button>` : ''}${l ? `<button type="button" class="btn outline" onclick="closeModal();sdrOpen('${l.id}')">✦ Open brief</button>` : ''}<button type="button" class="btn" onclick="closeModal()">Close</button></div>`;
+  if (!$('modal').open) $('modal').showModal();
+}
+function aiApplyNext(callId) {
+  const c = byId('calls', callId), l = byId('leads', c.leadId), ns = (c.ai || {}).nextStep || {}; if (!l) return;
+  if (ns.action === 'handoff') { l.status = 'Interested'; toast('Moved to Ready for Tania. 💙'); }
+  else { c.followUp = addD(todayISO(), Math.max(0, Math.min(60, Number(ns.inDays) || 1))); l.status = l.status === 'New' || !l.status ? 'Follow up' : l.status; toast('Follow-up set for ' + niceD(c.followUp) + '.'); }
+  save(); closeModal(); render();
+}
+async function aiCoachAgent(agentId) {
+  const a = byId('agents', agentId); if (!a) return;
+  if (!brainOn()) { toast('The AI brain is still loading. Try again in a moment.'); return; }
+  const calls = state.calls.filter(c => c.agentName === a.name && (c.transcript || c.notes)).slice(0, 15).map(c => ({ outcome: c.outcome, notes: c.notes || '', transcript: c.transcript || '', hurt: c.ai && c.ai.coaching ? c.ai.coaching.hurt : [] }));
+  toast(`✦ SDR AI is studying ${calls.length || 'no'} call${calls.length === 1 ? '' : 's'} by ${a.name}…`);
+  try {
+    const r = await window.aiBrain.improveScript({ agent: agentForAI(a), calls, offers: Object.values(OFFERS).map(o => o.name + ' (' + o.brand + ')') });
+    a.coach = Object.assign({}, r, { at: Date.now() }); save();
+    $('modalTitle').textContent = '✦ Script coach: ' + a.name;
+    $('form').innerHTML = `<div class="note">${esc(r.diagnosis || '')}${calls.length ? '' : '<br><b>No logged calls yet</b>, so this review is based on sales best practices. It gets sharper with every call you log.'}</div>
+    <label>⚠️ Lines to change</label>${aiList(r.weakLines, x => `<b>“${esc(x.line)}”</b><br><small class="muted">${esc(x.why)}</small><br>Better: <i>“${esc(x.better)}”</i>`)}
+    <label for="f_cOpen">New opening line</label><textarea id="f_cOpen" name="opening" style="min-height:90px">${esc(r.opening || a.opening || '')}</textarea>
+    <label for="f_cScript">New script (each paragraph is one turn)</label><textarea id="f_cScript" name="script" style="min-height:220px">${esc(r.script || a.script || '')}</textarea>
+    ${r.whyBetter ? `<p class="hint">${esc(r.whyBetter)}</p>` : ''}
+    <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary small" onclick="speak(fill($('f_cOpen').value,{name:'Doctor Smith',business:'Smith Family Practice'},byId('agents','${a.id}')),byId('agents','${a.id}'))">▶ Hear new opening</button><button type="button" class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
+    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use this script</button></div>`;
+    $('form').onsubmit = e => { e.preventDefault(); a.prev = a.prev || []; a.prev.unshift({ opening: a.opening, script: a.script, at: Date.now() }); a.prev = a.prev.slice(0, 5); a.opening = $('f_cOpen').value; a.script = $('f_cScript').value; save(); closeModal(); render(); toast(a.name + '’s script updated. You can undo it on the Agents page.'); };
+    if (!$('modal').open) $('modal').showModal();
+  } catch (e) { console.error(e); toast('Script coach didn’t work: ' + String(e.message || e).slice(0, 140)); }
+}
+function undoScript(agentId) { const a = byId('agents', agentId); const p = a && a.prev && a.prev.shift(); if (!p) return; a.opening = p.opening; a.script = p.script; save(); render(); toast(a.name + '’s previous script is back.'); }
+
 $('modal').addEventListener('close', stopSpeech);
 window.addEventListener('pagehide', stopSpeech);
 render();
@@ -751,9 +823,49 @@ render();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
 import { getFirestore, collection, getDocs, doc, writeBatch } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
+import { getAI, getGenerativeModel, GoogleAIBackend } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-ai.js';
 const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
 window.fbApp = app;
 const auth = getAuth(app), db = getFirestore(app);
+
+/* ---------- SDR AI brain: Gemini through Firebase AI Logic ---------- */
+const ai = getAI(app, { backend: new GoogleAIBackend() });
+const MODELS = ['gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+const RULES = `You coach AI cold-calling agents for Tania Domingue's three companies:
+- The WebSwan: custom websites and WSBPA small business phone apps.
+- WebSwan Digital Solutions: website compliance (ADA/WCAG accessibility, cookie consent, privacy). The entry offer is a complimentary compliance audit. Monica calls doctors, George calls attorneys.
+- WebSwan Media Network (WSMN): directory profiles and advertising for doctors and attorneys at ads.webswanmedianetwork.com, $400 setup + $289/year + $29/month, no contract. Rebecca and Alek call for WSMN.
+The goal of every call is a 10-minute call with Tania, the founder.
+House rules: the agent must say it is an AI assistant and who it calls for in the first sentence; say "complimentary", never "free"; never guarantee rankings or results; no pressure tactics; honor every opt-out immediately; keep lines short, warm and human; one question at a time.
+Never include phone numbers, emails or personal data in your output. Always answer with valid JSON only.`;
+async function ask(task, data) {
+  let err;
+  for (const m of MODELS) {
+    try {
+      const model = getGenerativeModel(ai, { model: m, systemInstruction: RULES, generationConfig: { responseMimeType: 'application/json', temperature: 0.4 } });
+      const r = await model.generateContent(task + '\n\nDATA:\n' + JSON.stringify(data));
+      return JSON.parse(r.response.text().replace(/^\s*```(json)?/i, '').replace(/```\s*$/, ''));
+    } catch (e) { err = e; }
+  }
+  throw err;
+}
+window.aiBrain = {
+  ready: true,
+  analyzeCall: d => ask(`Review this sales call (it may be a practice call or only the agent's notes).
+Return JSON: {"summary": 2-3 sentences, "sentiment": "positive"|"neutral"|"negative", "score": 1-10 for how well the agent handled it,
+"memories": [{"cat": "Need"|"Objection"|"Timing"|"Preference"|"Decision"|"Fact", "text": short fact the prospect revealed}],
+"nextStep": {"action": "call"|"email"|"handoff"|"stop", "inDays": number, "reason": short},
+"callbackScript": the exact opening for the NEXT call to this prospect in the agent's voice (max 80 words; first sentence states the agent's name, that it is an AI assistant, and who it calls for; reference what the prospect said; end with one question). Empty string if the prospect opted out or should not be called,
+"coaching": {"worked": [short points], "hurt": [{"line": the agent's exact line that hurt, "why": short, "better": improved line}]},
+"compliance": "OK" or a short warning (missing AI disclosure, ignored opt-out, used "free", made a guarantee, pressure)}.
+Use "handoff" when the prospect is interested or asks for a person. Use "stop" if they opted out.`, d),
+  improveScript: d => ask(`Improve this cold-call agent's script using the logged calls (outcomes, notes, transcripts and lines that hurt). If there are no calls, use proven SDR best practice.
+Return JSON: {"diagnosis": 2-3 sentences on what is and isn't working, "weakLines": [{"line": exact current line, "why": short, "better": improved line}],
+"opening": new opening line using {name}, {business} and {agent} placeholders (must say it's an AI assistant and who it calls for),
+"script": new script as 3-5 short paragraphs separated by a blank line, using {name} and {business}, each paragraph one turn, ending with booking a 10-minute call with Tania and a warm thank-you,
+"whyBetter": one sentence}.`, d)
+};
+document.dispatchEvent(new Event('brain-ready'));
 const LISTS = ['leads', 'agents', 'campaigns', 'calls'];
 let user = null, last = {}, timer = null, busy = false, lastPull = 0;
 const btn = document.getElementById('cloudBtn');
