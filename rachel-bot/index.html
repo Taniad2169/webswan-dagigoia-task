@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask Rachel Bennet | The WebSwan Family</title>
+<meta name="description" content="Meet Rachel Bennet, the talking AI assistant for The WebSwan family: The WebSwan (custom UX/UI websites, PWAs, landing pages, e-business cards), WebSwan Digital Solutions (website compliance) and WebSwan Media Network (online advertising for doctors and attorneys).">
+<meta property="og:title" content="Ask Rachel Bennet | The WebSwan Family">
+<meta property="og:description" content="Websites, website compliance and online advertising. Ask Rachel anything, she talks back.">
+<meta property="og:image" content="https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/rachel-thewebswan.jpg">
+<link rel="icon" href="ws-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"The WebSwan","url":"https://www.thewebswan.com/","telephone":"+1-415-877-0687","email":"designs@thewebswan.com","founder":{"@type":"Person","name":"Tania Domingue","jobTitle":"Certified Web Developer & UX/UI Designer"},"address":{"@type":"PostalAddress","addressLocality":"Oakland","addressRegion":"CA","postalCode":"94609","addressCountry":"US"},"award":["RankWatch Best Web Design Agency 2024","DesignRush Top 20 Web Design Agencies, California"],"subOrganization":[{"@type":"Organization","name":"WebSwan Digital Solutions","url":"https://webswandigitalsolutions.com/"},{"@type":"Organization","name":"WebSwan Media Network","url":"https://ads.webswanmedianetwork.com/"}]}
+</script>
+<style>
+:root{--b1:#3898f5;--b2:#6aa8e6;--b3:#48d6fa;--navy:#062743;--ink:#14324a;--muted:#4f6b7c;--line:#d6e6ef;--bg:#f3f9fd;--card:#fff;--gold:#ffbf47}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:16px/1.55 Inter,Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}
+a{color:#1563b8}
+button{font:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:8px;background:#fff;padding:8px 12px;border-radius:8px;z-index:9}.skip:focus{left:8px}
+
+/* header */
+.top{background:linear-gradient(115deg,var(--navy) 0%,#0d4f8f 45%,var(--b1) 80%,var(--b3) 100%);color:#fff}
+.top .wrap{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top img{height:46px;width:auto}
+.top .t{font:800 18px/1.2 Poppins,Arial,sans-serif}
+.top .t small{display:block;font:500 12.5px Inter,Arial,sans-serif;color:#cdeefc;letter-spacing:.02em}
+.top .ph{margin-left:auto;color:#fff;font-weight:700;text-decoration:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);padding:8px 14px;border-radius:999px;white-space:nowrap}
+
+/* layout */
+main{max-width:1180px;margin:0 auto;padding:22px 20px 40px;display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:24px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr;padding:16px 14px 32px}}
+
+/* Rachel stage */
+.stagecard{position:sticky;top:16px;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:16px;box-shadow:0 18px 40px rgba(6,39,67,.12)}
+@media(max-width:900px){.stagecard{position:static}}
+.rpic{position:relative;overflow:hidden;display:block;width:100%;aspect-ratio:1/1;border-radius:20px;background:#2f9fd0}
+.rstage{position:absolute;inset:0}
+.rstage img{position:absolute;display:block;max-width:none;margin:0;border:0}
+.rstage .rb{left:0;top:0;width:100%;height:100%;transition:opacity .35s}
+.rstage .rg{left:43%;top:41.111%;width:24.556%;height:5.556%}
+.rstage .rj{left:37.889%;top:41.444%;width:35.667%;height:26.667%;will-change:transform}
+html.talking .rstage .rj{animation:talk .95s ease-in-out infinite}
+@keyframes talk{0%,100%{transform:translateY(0)}12%{transform:translateY(5.5%)}26%{transform:translateY(1.5%)}40%{transform:translateY(8%)}55%{transform:translateY(2.5%)}70%{transform:translateY(6.5%)}85%{transform:translateY(1%)}}
+@media (prefers-reduced-motion:reduce){html.talking .rstage .rj{animation-duration:1.6s}}
+.name{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 2px 4px}
+.name h1{margin:0;font:800 24px/1.15 Poppins,Arial,sans-serif;color:var(--navy)}
+.name h1 span{display:block;font:600 13px Inter,Arial,sans-serif;color:var(--muted)}
+.live{display:none;align-items:center;gap:6px;font:700 12px Inter,sans-serif;color:#0b7a43;background:#e5f8ee;border-radius:999px;padding:5px 10px}
+html.talking .live{display:inline-flex}
+.live i{width:8px;height:8px;border-radius:50%;background:#12a05c;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.ctrls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:12px 14px;font:700 15px Inter,Arial,sans-serif;cursor:pointer;text-decoration:none}
+.btn.play{background:linear-gradient(120deg,#0d4f8f,var(--b1));color:#fff;box-shadow:0 8px 18px rgba(56,152,245,.35)}
+.btn.stop{background:#fff;color:#a12c2c;border:1.5px solid #f0c9c9}
+.btn.stop[disabled]{opacity:.45;cursor:default}
+.creds{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.creds li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink);background:var(--bg);border-radius:12px;padding:9px 11px}
+.creds b{color:var(--navy)}
+.creds .ic{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--b1),var(--b3));color:#fff;font-size:14px}
+
+/* right column */
+.intro h2{margin:2px 0 4px;font:800 clamp(22px,3vw,30px)/1.2 Poppins,Arial,sans-serif;color:var(--navy)}
+.intro p{margin:0 0 14px;color:var(--muted)}
+.brands{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:700px){.brands{grid-template-columns:1fr}}
+.brand{position:relative;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:20px;padding:14px 14px 12px;cursor:pointer;color:var(--ink);transition:border-color .2s,box-shadow .2s,transform .2s}
+.brand:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(6,39,67,.10)}
+.brand[aria-pressed="true"]{border-color:var(--b1);box-shadow:0 0 0 4px rgba(56,152,245,.18)}
+.brand.speaking{border-color:var(--b3);box-shadow:0 0 0 4px rgba(72,214,250,.28)}
+.brand .tag{display:inline-block;font:800 11px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;border-radius:999px;padding:3px 9px;margin-bottom:8px}
+.brand h3{margin:0 0 4px;font:800 17px/1.25 Poppins,Arial,sans-serif;color:var(--navy)}
+.brand p{margin:0;font-size:13.5px;color:var(--muted)}
+.brand .go{display:block;margin-top:10px;font:700 13px Inter,sans-serif;color:#1563b8}
+.t-ws{background:#1563b8}.t-ds{background:#0b7a6e}.t-mn{background:#7a3db8}
+
+/* chat */
+.chat{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 40px rgba(6,39,67,.10);display:flex;flex-direction:column;overflow:hidden;min-height:460px}
+.chat-h{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(120deg,var(--navy),#1563b8);color:#fff}
+.chat-h b{font:700 15px Inter,sans-serif}.chat-h small{display:block;color:#cdeefc;font-size:12px}
+.chat-h .vt{margin-left:auto;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:6px 12px;font:700 12px Inter,sans-serif;cursor:pointer}
+#log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#f7fbfd;max-height:56vh;min-height:260px}
+.msg{max-width:88%;padding:11px 14px;border-radius:16px;font-size:14.5px;line-height:1.55;background:#fff;border:1px solid #e1eef4;align-self:flex-start;border-bottom-left-radius:5px}
+.msg.me{align-self:flex-end;background:#1563b8;color:#fff;border-color:#1563b8;border-bottom-left-radius:16px;border-bottom-right-radius:5px}
+.msg ul{margin:6px 0 0;padding-left:18px}.msg a{font-weight:700}
+.msg .who{display:block;font:700 11px Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#1563b8;margin-bottom:3px}
+.msg .lis{margin-top:7px;border:1px solid #b9d6e3;background:#fff;color:#1563b8;border-radius:999px;padding:3px 10px;font:700 11.5px Inter,sans-serif;cursor:pointer}
+#chips{display:flex;flex-wrap:wrap;gap:7px;padding:10px 14px;border-top:1px solid #e1eef4;background:#fff}
+#chips button{border:1px solid #b9d6e3;background:#fff;color:var(--navy);border-radius:999px;padding:7px 12px;font:600 13px Inter,sans-serif;cursor:pointer}
+#chips button:hover{border-color:var(--b1)}
+@media(max-width:600px){#chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}#chips button{flex:none;white-space:nowrap}#log{max-height:60vh}}
+form{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px 14px;border-top:1px solid #e1eef4;background:#fff}
+form input{border:1.5px solid #b9d6e3;border-radius:14px;padding:12px 14px;font:15px Inter,sans-serif;min-width:0}
+form button{border:0;background:#1563b8;color:#fff;border-radius:14px;padding:0 20px;font:800 15px Inter,sans-serif;cursor:pointer}
+.note{padding:0 14px 12px;font-size:11.5px;color:var(--muted);background:#fff}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:10px 20px 28px}
+footer a{color:#1563b8;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+<a class="skip" href="#q">Skip to the question box</a>
+<header class="top"><div class="wrap">
+  <img src="ws-logo.png" alt="The WebSwan logo">
+  <div class="t">The WebSwan Family<small>The WebSwan · WebSwan Digital Solutions · WebSwan Media Network</small></div>
+  <a class="ph" href="tel:+14158770687">📞 (415) 877-0687</a>
+</div></header>
+
+<main>
+  <section class="stagecard" aria-label="Rachel Bennet">
+    <div class="rpic" aria-hidden="true"><span class="rstage"><img class="rb" id="rb" src="rachel-thewebswan.jpg" alt=""><img class="rg" src="rachel-gap.png" alt=""><img class="rj" src="rachel-jaw.png" alt=""></span></div>
+    <div class="name"><h1>Rachel Bennet<span>AI assistant for The WebSwan family</span></h1><span class="live" aria-hidden="true"><i></i>Talking</span></div>
+    <div class="ctrls">
+      <button class="btn play" id="play" type="button">▶ Meet Rachel</button>
+      <button class="btn stop" id="stop" type="button" disabled>⏹ Stop talking</button>
+    </div>
+    <ul class="creds" aria-label="Why businesses trust The WebSwan">
+      <li><span class="ic" aria-hidden="true">🎓</span><span><b>Certified web developer &amp; UX/UI designer</b>, founder Tania Domingue</span></li>
+      <li><span class="ic" aria-hidden="true">🏆</span><span><b>#2 of the Top 20</b> web design agencies in California on DesignRush</span></li>
+      <li><span class="ic" aria-hidden="true">🥇</span><span><b>2024 Best Web Design Agency</b> award from RankWatch</span></li>
+      <li><span class="ic" aria-hidden="true">⭐</span><span><b>5-star</b> on Google, Yelp &amp; Yahoo · <b>A rating</b> with the BBB California</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="pick-h">
+    <div class="intro">
+      <h2 id="pick-h">What can Rachel help you with?</h2>
+      <p>Pick a company to open Rachel’s knowledge for it, then tap a question or type your own. Rachel answers out loud, and you can stop her any time.</p>
+    </div>
+    <div class="brands" role="group" aria-label="Choose a company">
+      <button class="brand" type="button" data-brand="ds" aria-pressed="false"><span class="tag t-ds">Compliance</span><h3>WebSwan Digital Solutions</h3><p>ADA &amp; WCAG accessibility, cookie banners, HIPAA-safe forms, attorney website rules and complimentary compliance audits.</p><span class="go">Ask about compliance →</span></button>
+      <button class="brand" type="button" data-brand="ws" aria-pressed="false"><span class="tag t-ws">Websites</span><h3>The WebSwan</h3><p>Custom UX/UI websites, PWAs, landing pages, phone apps, e-business cards, SEO and AI search.</p><span class="go">Ask about websites →</span></button>
+      <button class="brand" type="button" data-brand="mn" aria-pressed="false"><span class="tag t-mn">Advertising</span><h3>WebSwan Media Network</h3><p>Online advertising and a professional directory for doctors and attorneys, plus a 24/7 AI receptionist.</p><span class="go">Ask about advertising →</span></button>
+    </div>
+
+    <div class="chat">
+      <div class="chat-h"><div><b id="ch-t">Chat with Rachel Bennet</b><small id="ch-s">Choose a company above, or just ask</small></div><button class="vt" id="vt" type="button" aria-pressed="true">🔊 Voice on</button></div>
+      <div id="log" role="log" aria-live="polite"></div>
+      <div id="chips" aria-label="Suggested questions"></div>
+      <form id="f" autocomplete="off"><label class="sr" for="q">Type your question for Rachel</label><input id="q" maxlength="300" placeholder="Type your question… (Rachel stops talking when you type)"><button type="submit">Ask</button></form>
+      <div class="note">General information only, not legal or medical advice. Please don’t share sensitive personal details. Rachel runs in your browser; what you type isn’t sent anywhere.</div>
+    </div>
+  </section>
+</main>
+<footer>Powered by <a href="https://www.thewebswan.com/">The WebSwan</a> · Oakland, CA · By appointment · Mon–Fri 10 AM–8 PM · <a href="mailto:designs@thewebswan.com">designs@thewebswan.com</a></footer>
+
+<script>
+(function () {
+  'use strict';
+  var BASE = 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/';
+  var BR = {
+    ws: { file: 'thewebswan-config.js', img: 'rachel-thewebswan.jpg', site: 'https://www.thewebswan.com', label: 'The WebSwan' },
+    ds: { file: 'digital-solutions-config.js', img: 'rachel-digital-solutions.jpg', site: 'https://webswandigitalsolutions.com', label: 'WebSwan Digital Solutions' },
+    mn: { file: 'wsmn-config.js', img: 'rachel-wsmn.jpg', site: 'https://ads.webswanmedianetwork.com', label: 'WebSwan Media Network' }
+  };
+  var $ = function (id) { return document.getElementById(id); };
+  var log = $('log'), chips = $('chips'), q = $('q'), playB = $('play'), stopB = $('stop'), vt = $('vt'), rb = $('rb');
+  var root = document.documentElement, synth = window.speechSynthesis, canSpeak = !!(synth && window.SpeechSynthesisUtterance);
+  var cur = null, voiceOn = true, introRunning = false;
+  try { if (localStorage.getItem('rbt_voice') === 'off') voiceOn = false; } catch (e) {}
+
+  /* ---- load each company's knowledge (same files the websites use) ---- */
+  function load(key) {
+    return new Promise(function (res) {
+      var s = document.createElement('script'); s.src = BR[key].file;
+      s.onload = function () { BR[key].cfg = window.RACHEL_CONFIG; res(); };
+      s.onerror = function () { BR[key].cfg = { kb: [], quick: [] }; res(); };
+      document.head.appendChild(s);
+    });
+  }
+  var ready = load('ws').then(function () { return load('ds'); }).then(function () { return load('mn'); });
+
+  /* ---- voice + lip sync ---- */
+  var FEMALE = /samantha|ava|allison|susan|zoe|google us english|aria|jenny|michelle|emma|ashley|cora|elizabeth|jane|nancy|sara|amber|monica|zira|joanna|salli|kendra|kimberly|ivy|female/i;
+  var MALE = /\b(alex|daniel|fred|tom|thomas|oliver|arthur|aaron|gordon|rishi|david|mark|guy|george|james|ryan|eric|andrew|brian|christopher|roger|steffan|male)\b/i;
+  function voice() {
+    if (!canSpeak) return null;
+    var vs = synth.getVoices().filter(function (v) { return /^en[-_]US/i.test(v.lang) && FEMALE.test(v.name) && !MALE.test(v.name); });
+    return vs.filter(function (v) { return /natural|online/i.test(v.name); })[0] || vs.filter(function (v) { return /premium|enhanced|siri/i.test(v.name); })[0] || vs.filter(function (v) { return /google/i.test(v.name); })[0] || vs[0] || null;
+  }
+  if (canSpeak && synth.addEventListener) synth.addEventListener('voiceschanged', function () {});
+  if (canSpeak) setInterval(function () {
+    var on = synth.speaking && !synth.paused;
+    if (on !== root.classList.contains('talking')) root.classList.toggle('talking', on);
+    stopB.disabled = !on && !introRunning;
+  }, 150);
+  function spoken(t) {
+    return String(t).replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/•/g, ', ').replace(/\bUX\/UI\b/g, 'U X, U I').replace(/\bWCAG\b/g, 'W-CAG').replace(/\bSBPA\b/g, 'S B P A').replace(/\bWSMN\b/g, 'W S M N').replace(/\bPWAs?\b/g, function (m) { return m.length > 3 ? 'P W As' : 'P W A'; })
+      .replace(/\(?(\d{3})\)?[ -.]?(\d{3})-(\d{4})/g, function (m, a, b, d) { return a.split('').join(' ') + ', ' + b.split('').join(' ') + ', ' + d.split('').join(' '); })
+      .replace(/\s+/g, ' ').trim();
+  }
+  function utter(text, onstart, onend) {
+    var u = new SpeechSynthesisUtterance(spoken(text)), v = voice();
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+    u.rate = 1; u.pitch = 1; u.onstart = onstart || null; u.onend = u.onerror = onend || null;
+    return u;
+  }
+  function stopAll() {
+    introRunning = false; if (canSpeak) synth.cancel();
+    document.querySelectorAll('.brand.speaking').forEach(function (b) { b.classList.remove('speaking'); });
+    document.querySelectorAll('.lis[aria-pressed="true"]').forEach(function (b) { b.textContent = '🔊 Listen'; b.setAttribute('aria-pressed', 'false'); });
+    root.classList.remove('talking');
+  }
+  function textOf(el) { var c = el.cloneNode(true); c.querySelectorAll('button,.who').forEach(function (b) { b.remove(); }); c.querySelectorAll('li').forEach(function (li) { li.append('. '); }); return c.textContent; }
+  function say(el, btn) {
+    if (!canSpeak) return; stopAll();
+    var u = utter(textOf(el), function () { if (btn) { btn.textContent = '⏹ Stop'; btn.setAttribute('aria-pressed', 'true'); } }, function () { if (btn) { btn.textContent = '🔊 Listen'; btn.setAttribute('aria-pressed', 'false'); } });
+    synth.speak(u);
+  }
+
+  /* ---- chat ---- */
+  function fixLinks(html, key) { return key ? html.replace(/href="\//g, 'href="' + BR[key].site + '/') : html; }
+  function add(html, me, key) {
+    var d = document.createElement('div'); d.className = 'msg' + (me ? ' me' : '');
+    if (me) d.textContent = html;
+    else {
+      d.innerHTML = (key ? '<span class="who">' + BR[key].label + '</span>' : '') + fixLinks(html, key);
+      d.querySelectorAll('a[href^="http"]').forEach(function (a) { a.target = '_blank'; a.rel = 'noopener'; });
+      if (canSpeak) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'lis'; b.textContent = '🔊 Listen'; b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', function () { if (b.getAttribute('aria-pressed') === 'true') stopAll(); else say(d, b); });
+        var w = document.createElement('div'); w.appendChild(b); d.appendChild(w);
+        if (voiceOn) say(d, b);
+      }
+    }
+    log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+  }
+  function score(kb, text) {
+    var t = ' ' + text.toLowerCase().replace(/[’']/g, "'") + ' ', best = null, sc = 0;
+    kb.forEach(function (e) { var s = 0; e.k.forEach(function (k) { if (t.indexOf(k) > -1) s += k.length > 3 ? 2 + (k.indexOf(' ') > -1 ? 1 : 0) : 1; }); if (s > sc) { sc = s; best = e; } });
+    return { a: best && best.a, s: sc };
+  }
+  // which company a question is really about
+  var TOPIC = {
+    ds: ['complian', 'ada', 'wcag', 'accessib', 'cookie', 'hipaa', 'privacy', 'audit', 'lawsuit', 'penalt', 'bar rules', 'disclaimer', 'consent'],
+    ws: ['website', 'web site', 'web design', 'landing', 'pwa', 'app', 'seo', 'logo', 'business card', 'redesign', 'ux', 'portfolio', 'referral'],
+    mn: ['advertis', 'directory', 'listing', 'wsmn', 'media network', 'get found', 'new patients', 'new clients', 'promote my practice', 'receptionist']
+  };
+  function topic(k, text) { var t = ' ' + text.toLowerCase() + ' ', s = 0; TOPIC[k].forEach(function (w) { if (t.indexOf(w.length < 4 ? ' ' + w : w) > -1) s += 3; }); return s; }
+  var active = null;
+  function ask(text) {
+    text = String(text || '').trim(); if (!text) return;
+    stopAll(); add(text, true);
+    ready.then(function () {
+      var key = active, res;
+      if (key) res = score(BR[key].cfg.kb, text);
+      if (!key || !res.a || res.s < 2) {          // not sure? look across all three companies
+        var bestK = key, best = res || { s: 0 };
+        ['ds', 'ws', 'mn'].forEach(function (k) { var r = score(BR[k].cfg.kb, text); if (r.a) r.s += topic(k, text); if (r.s > best.s + (k === key ? -1 : 0)) { best = r; bestK = k; } });
+        if (best.a && best.s >= 2) { key = bestK; res = best; }
+      }
+      var a = res && res.a ? res.a : (key ? BR[key].cfg.fallback : 'Great question! Call or text Tania at <a href="tel:+14158770687">(415) 877-0687</a> and she’ll answer it personally.');
+      setTimeout(function () { add(a, false, key); }, 280);
+    });
+  }
+  function showChips(list) {
+    chips.innerHTML = '';
+    list.forEach(function (x) { var b = document.createElement('button'); b.type = 'button'; b.textContent = x; b.addEventListener('click', function () { ask(x); }); chips.appendChild(b); });
+  }
+  function pick(key, quiet) {
+    active = key;
+    document.querySelectorAll('.brand').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.brand === key)); });
+    rb.style.opacity = '.2'; setTimeout(function () { rb.src = BR[key].img; rb.style.opacity = '1'; }, 180);
+    $('ch-t').textContent = 'Rachel Bennet · ' + BR[key].label;
+    $('ch-s').textContent = { ws: 'Websites, PWAs, landing pages, e-business cards', ds: 'Website compliance questions', mn: 'Online advertising for doctors & attorneys' }[key];
+    ready.then(function () {
+      showChips(BR[key].cfg.quick || []);
+      if (!quiet) { stopAll(); add(BR[key].cfg.greeting, false, key); }
+      q.focus();
+    });
+  }
+  document.querySelectorAll('.brand').forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.brand); }); });
+
+  /* ---- Rachel introduces the family ---- */
+  var INTRO = [
+    { k: null, t: 'Hi! I’m Rachel Bennet, the AI assistant for The WebSwan family. Our founder, Tania Domingue, is a certified web developer and UX/UI designer. The WebSwan is ranked number 2 out of the top 20 web design agencies in California on DesignRush, won the 2024 Best Web Design Agency award from RankWatch, has 5-star ratings on Google, Yelp and Yahoo, and holds an A rating with the BBB in California.' },
+    { k: 'ds', t: 'WebSwan Digital Solutions checks whether your website really meets accessibility and privacy rules: ADA and WCAG accessibility, cookie banners, HIPAA-safe forms for doctors and website rules for attorneys, starting with a complimentary compliance audit.' },
+    { k: 'ws', t: 'The WebSwan designs custom UX/UI websites, progressive web apps, lead-generating landing pages, phone apps and digital business cards, all built to be found on Google and in AI search.' },
+    { k: 'mn', t: 'And WebSwan Media Network helps doctors and attorneys advertise online with a professional directory profile, plus a 24/7 AI receptionist, that’s me on the phone!' },
+    { k: null, t: 'Tap a company to ask me anything about it, or type your question below. You can stop me any time.' }
+  ];
+  playB.addEventListener('click', function () {
+    if (!canSpeak) { INTRO.forEach(function (s) { add(s.t, false, s.k); }); return; }
+    stopAll(); introRunning = true; stopB.disabled = false;
+    if (!log.querySelector('.intro-msg')) { var m = add(INTRO.map(function (s) { return s.t; }).join(' '), false); m.classList.add('intro-msg'); m.querySelector('.lis') && m.querySelector('.lis').parentNode.remove(); stopAll(); introRunning = true; }
+    INTRO.forEach(function (s, i) {
+      synth.speak(utter(s.t, function () {
+        document.querySelectorAll('.brand').forEach(function (b) { b.classList.toggle('speaking', b.dataset.brand === s.k); });
+      }, function () {
+        if (i === INTRO.length - 1) { introRunning = false; document.querySelectorAll('.brand.speaking').forEach(function (b) { b.classList.remove('speaking'); }); }
+      }));
+    });
+    playB.textContent = '↻ Hear it again';
+  });
+  stopB.addEventListener('click', stopAll);
+  q.addEventListener('input', function () { if (canSpeak && synth.speaking) stopAll(); });
+  $('f').addEventListener('submit', function (e) { e.preventDefault(); var v = q.value; q.value = ''; ask(v); });
+  function paintV() { vt.textContent = voiceOn ? '🔊 Voice on' : '🔈 Voice off'; vt.setAttribute('aria-pressed', String(voiceOn)); }
+  vt.addEventListener('click', function () { voiceOn = !voiceOn; try { localStorage.setItem('rbt_voice', voiceOn ? 'on' : 'off'); } catch (e) {} if (!voiceOn) stopAll(); paintV(); });
+  if (!canSpeak) { vt.hidden = true; stopB.hidden = true; playB.textContent = '▶ Meet Rachel (text)'; }
+  paintV();
+  window.addEventListener('pagehide', stopAll);
+
+  /* ---- start ---- */
+  add('Hi! I’m <b>Rachel Bennet</b> 👋 Tap <b>▶ Meet Rachel</b> to hear about The WebSwan family, or pick a company and ask me anything.', false);
+  log.lastChild.querySelector('.lis') && log.lastChild.querySelector('.lis').parentNode.remove(); stopAll();
+  ready.then(function () { if (!active) showChips(['What do you offer?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
+  var hb = (location.hash || '').replace('#', ''); if (BR[hb]) pick(hb, true);
+})();
+</script>
+</body>
+</html>
