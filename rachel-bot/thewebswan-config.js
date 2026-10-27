@@ -2,6 +2,7 @@
 (function () {
   var P = '<a href="tel:+14158770687">(415) 877-0687</a>', E = '<a href="mailto:designs@thewebswan.com">designs@thewebswan.com</a>';
   window.RACHEL_CONFIG = {
+    name: 'Rachel Bennet',
     brand: 'The WebSwan',
     subtitle: 'Web assistant · The WebSwan',
     image: 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/rachel-thewebswan.jpg',
@@ -9,7 +10,7 @@
     launchText: 'Ask Rachel',
     launchCss: 'left:50%;transform:translateX(-50%)',
     hide: '#ws-launcher-wrap,#ws-chat-panel',
-    greeting: 'Hi, I’m <b>Rachel</b>, The WebSwan’s web assistant. 👋 Ask me about our <b>websites, pricing, SEO and AI search, phone apps</b> or our <b>24/7 AI receptionist</b>, or tap a question below.',
+    greeting: 'Hi, I’m <b>Rachel Bennet</b>, The WebSwan’s web assistant. 👋 Ask me about our <b>websites, pricing, SEO and AI search, phone apps</b> or our <b>24/7 AI receptionist</b>, or tap a question below.',
     quick: ['What services do you offer?', 'How much is a website?', 'Phone apps (SBPA)', 'AI receptionist', 'SEO & AI search', 'Is my site ADA compliant?', 'Awards & reviews', 'Hours & location', 'Referral program', 'Talk to Tania'],
     fallback: 'Hmm 🤔 I don’t have that answer, but you can reach The WebSwan directly by call or text at ' + P + ' or email ' + E + '.',
     kb: [
@@ -19,7 +20,7 @@
       { k: ['standard', 'basic', 'cheapest', 'starter website'], a: 'The <b>Standard Website</b> is <b>$1,997 one time or $149/mo</b>: up to 4 pages, custom responsive layout, SSL, basic SEO titles and descriptions, standard graphics, clear calls to action, one lead form, a cookie/privacy banner and an ADA accessibility button.' },
       { k: ['landing page', 'landing'], a: 'A <b>lead-generating landing page</b> is <b>$1,598 one time or $149/mo</b>: one focused mobile page with a conversion headline and offer, a clear call to action, one lead form, a basic SEO title and description, privacy controls and an accessibility button.' },
       { k: ['sbpa', 'phone app', 'app', 'application', 'mobile app', 'home screen'], a: 'An <b>SBPA</b> (Small Business Phone Application) is a branded phone app that works like a 24/7 digital employee. Customers can see your info, respond to an offer, fill out a form and share it with friends, and it can be added to a phone’s home screen.<ul><li><b>Starter Lead App</b>: from $1,299 or $109/mo</li><li><b>Full Custom App</b>: $3,500 or $189/mo</li></ul>Both include one prospect form and a 1-minute ad video.' },
-      { k: ['receptionist', 'rachel', 'answer calls', 'missed call', 'after hours', 'phone answering', 'virtual'], a: 'I’m <b>Rachel</b>, The WebSwan’s AI virtual receptionist! I’m trained on a business’s services, FAQs and brand voice to answer calls, capture leads and take messages 24/7.<ul><li><b>Partial Service</b>: $299/mo + $200 setup (after-hours &amp; overflow)</li><li><b>Full Service</b>: $499/mo + $200 setup (business-hours calls, lead qualification, booking support)</li></ul>Call ' + P + ' to set it up.' },
+      { k: ['receptionist', 'rachel', 'answer calls', 'missed call', 'after hours', 'phone answering', 'virtual'], a: 'I’m <b>Rachel Bennet</b>, The WebSwan’s AI virtual receptionist! I’m trained on a business’s services, FAQs and brand voice to answer calls, capture leads and take messages 24/7.<ul><li><b>Partial Service</b>: $299/mo + $200 setup (after-hours &amp; overflow)</li><li><b>Full Service</b>: $499/mo + $200 setup (business-hours calls, lead qualification, booking support)</li></ul>Call ' + P + ' to set it up.' },
       { k: ['seo', 'google', 'rank', 'ranking', 'search', 'ai search', 'chatgpt', 'gemini', 'claude', 'siri', 'alexa', 'voice', 'geo', 'aeo'], a: 'We build sites to be found on <b>Google, AI search and voice assistants</b> (ChatGPT, Gemini, Claude, Siri, Alexa) with local SEO, structured data, clear Q&amp;A content and consistent business info. No one can guarantee rankings or AI mentions, but a clear, credible site gives you the best chance.' },
       { k: ['ada', 'accessib', 'wcag', 'compliance', 'compliant', 'lawsuit', 'cookie', 'privacy'], a: 'Every WebSwan website includes <b>ADA/WCAG 2.1 accessibility work</b> plus a <b>cookie/privacy banner</b> and an accessibility button. It’s standard, not an upsell. For a complimentary compliance audit of an existing site, visit <a href="https://webswandigitalsolutions.com/#wsc-audit">WebSwan Digital Solutions</a>.' },
       { k: ['review', 'reviews', 'rating', 'award', 'best', 'designrush', 'rankwatch', 'trust'], a: 'The WebSwan is <b>RankWatch’s Best Web Design Agency of 2024</b>, ranked in <b>DesignRush’s Top 20</b> (#2 in California), with <b>5-star reviews</b> on Google and Yelp and a strong BBB rating. ⭐⭐⭐⭐⭐ We’ve launched <b>31+ websites</b> since November 2023.' },

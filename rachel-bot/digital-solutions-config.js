@@ -3,13 +3,14 @@
   var R = '<a href="tel:+12396670151">(239) 667-0151</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
   var AUDIT = '<a href="/#wsc-audit">request your complimentary audit</a>';
   window.RACHEL_CONFIG = {
+    name: 'Rachel Bennet',
     brand: 'WebSwan Digital Solutions',
     subtitle: 'Compliance assistant · WebSwan Digital Solutions',
     image: 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/rachel-digital-solutions.jpg',
     color: '#1b70c2', dark: '#062743',
     launchText: 'Ask Rachel: compliance',
     hide: '#wsc-launch,#wsc-bot',
-    greeting: 'Hi, I’m <b>Rachel</b>, WebSwan Digital Solutions’ compliance assistant. 👋 Ask me about <b>ADA accessibility, cookie banners, HIPAA forms, attorney website rules</b>, state penalties or our <b>24/7 AI receptionist</b>.',
+    greeting: 'Hi, I’m <b>Rachel Bennet</b>, WebSwan Digital Solutions’ compliance assistant. 👋 Ask me about <b>ADA accessibility, cookie banners, HIPAA forms, attorney website rules</b>, state penalties or our <b>24/7 AI receptionist</b>.',
     quick: ['Check my state penalty', 'Book 10-min audit call', 'Is my site ADA compliant?', 'Do I need a cookie banner?', 'Is my form HIPAA safe?', 'Attorney website rules', 'AI receptionist', 'Try Rachel free 1 week', 'Social media marketing', 'Complimentary audit'],
     fallback: 'Great question! I’m not sure I have the full answer, but a WebSwan specialist does. Call ' + P + ' or ' + AUDIT + ' and we’ll cover it personally.',
     kb: [
@@ -25,7 +26,7 @@
       { k: ['attorney', 'lawyer', 'law firm', 'bar', 'advertis', 'legal', '7.1', 'testimonial'], a: '<b>Attorney website rules:</b> Every state bar regulates lawyer advertising, generally based on <b>ABA Model Rules 7.1–7.3</b>:<ul><li>No false or misleading claims</li><li>Rules on testimonials and past results</li><li>An "Attorney Advertising" label in some states</li></ul>Intake forms need proper disclaimers too. Ask me about "intake disclaimer".' },
       { k: ['1.18', '1.6', 'disclaimer', 'attorney-client', 'attorney client', 'confidential', 'prospective', 'privilege'], a: '<b>Legal intake forms:</b> State clearly that submitting the form does <b>not</b> create an attorney-client relationship (<b>Rule 1.18</b>), and avoid inviting confidential details before a conflict check (<b>Rule 1.6</b>). A secure intake button to Clio, MyCase, Filevine or Lawmatics is best practice.' },
       { k: ['tcpa', 'text message', 'sms', 'consent to call'], a: '<b>TCPA:</b> If you call or text leads who fill out your forms, add clear consent language to the form. TCPA claims run <b>$500 to $1,500 per call or text</b>. We add compliant wording for you.' },
-      { k: ['receptionist', 'missed call', 'answer', '24/7', 'after hours', 'answering service', 'voicemail', 'rachel'], a: '<b>Meet me on the phone too!</b> I’m Rachel, the 24/7 AI virtual receptionist. Every missed call is a patient or client calling your competitor. I answer day and night, capture the caller’s name, number and reason, answer FAQs and send you the lead. For medical and legal practices I’m set up not to collect sensitive details.<ul><li>Partial: $299/mo + $200 setup</li><li>Full: $499/mo + $200 setup</li></ul>Call ' + R + '.' },
+      { k: ['receptionist', 'missed call', 'answer', '24/7', 'after hours', 'answering service', 'voicemail', 'rachel'], a: '<b>Meet me on the phone too!</b> I’m Rachel Bennet, the 24/7 AI virtual receptionist. Every missed call is a patient or client calling your competitor. I answer day and night, capture the caller’s name, number and reason, answer FAQs and send you the lead. For medical and legal practices I’m set up not to collect sensitive details.<ul><li>Partial: $299/mo + $200 setup</li><li>Full: $499/mo + $200 setup</li></ul>Call ' + R + '.' },
       { k: ['free week', '1 week', 'one week', 'trial', 'try rachel', 'free trial'], a: '🎁 <b>Try Rachel free for 1 week!</b> I answer every call 24/7 and capture every lead. Call ' + R + ' to start.' },
       { k: ['audit', 'complimentary', 'check my site', 'check my website', 'scan', 'how long', 'book', 'appointment', '10-min', 'schedule'], a: 'Your <b>complimentary audit</b> covers ADA/WCAG, cookie consent, HIPAA form status, tracking pixels, attorney bar and intake rules, SSL and broken links. You get a clear, prioritized fix plan at no cost and no obligation. ' + AUDIT.charAt(0).toUpperCase() + AUDIT.slice(1) + ', or call ' + R + ' to set your <b>10-minute appointment</b>.' },
       { k: ['price', 'cost', 'how much', 'fee', 'pricing', 'charge'], a: 'The <b>audit is complimentary</b>. Fixes are quoted after the audit based on what we find, so you only pay for what your site needs. Call ' + P + ' or ' + AUDIT + '.' },

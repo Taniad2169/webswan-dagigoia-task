@@ -14,6 +14,7 @@
   var BASE = (document.currentScript && document.currentScript.src || '').replace(/[^/]*$/, '');
   var IMG = C.image || BASE + 'rachel-thewebswan.jpg';
   var BRAND = C.brand || 'The WebSwan';
+  var NAME = C.name || 'Rachel';
   var COLOR = C.color || '#1b70c2';
   var DARK = C.dark || '#062743';
   var synth = window.speechSynthesis, canSpeak = !!(synth && window.SpeechSynthesisUtterance);
@@ -57,7 +58,7 @@
     '.rbt-form{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 12px;border-top:1px solid #e1eef4;background:#fff}',
     '.rbt-form input{border:1.5px solid #b9d6e3;border-radius:12px;padding:10px 12px;font:14px Inter,Arial,sans-serif;min-width:0;color:#18364a;background:#fff}',
     '.rbt-form button{border:0;background:' + COLOR + ';color:#fff;border-radius:12px;padding:0 16px;font:800 14px Inter,Arial,sans-serif;cursor:pointer}',
-    '.rbt-foot{padding:0 12px 10px;font-size:10.5px;color:#5c7180;background:#fff}',
+    '.rbt-foot{padding:0 12px 10px;font-size:10.5px!important;line-height:1.4!important;color:#5c7180;background:#fff}',
     '.rbt-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}',
     '@media(max-width:600px){#rbt-launch .rbt-lbl{display:none}#rbt-launch{padding:5px}#rbt-panel{left:8px;right:8px;width:auto;bottom:80px}}',
     '@media(max-height:720px){.rbt-hero .rbt-pic{width:120px;height:120px}.rbt-top .rbt-pic{width:42px;height:42px}}',
@@ -121,14 +122,14 @@
   /* ---------- interface ---------- */
   var launch = document.createElement('button');
   launch.id = 'rbt-launch'; launch.type = 'button'; launch.setAttribute('aria-expanded', 'false'); launch.setAttribute('aria-controls', 'rbt-panel');
-  launch.setAttribute('aria-label', 'Chat with Rachel, ' + BRAND + ' assistant');
+  launch.setAttribute('aria-label', 'Chat with ' + NAME + ', ' + BRAND + ' assistant');
   launch.appendChild(pic());
   var lbl = document.createElement('span'); lbl.className = 'rbt-lbl'; lbl.textContent = C.launchText || 'Ask Rachel'; launch.appendChild(lbl);
 
   var panel = document.createElement('div');
-  panel.id = 'rbt-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Chat with Rachel, ' + BRAND); panel.hidden = true;
+  panel.id = 'rbt-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Chat with ' + NAME + ', ' + BRAND); panel.hidden = true;
   panel.innerHTML =
-    '<div class="rbt-top"><div class="rbt-tp"></div><div><b>Rachel</b><small>' + (C.subtitle || BRAND + ' web assistant') + '</small></div><button type="button" class="rbt-x" aria-label="Close chat">×</button></div>' +
+    '<div class="rbt-top"><div class="rbt-tp"></div><div><b>' + NAME + '</b><small>' + (C.subtitle || BRAND + ' web assistant') + '</small></div><button type="button" class="rbt-x" aria-label="Close chat">×</button></div>' +
     '<div class="rbt-bar"><span>Rachel reads her answers out loud</span><button type="button" class="rbt-voice" aria-pressed="true"></button></div>' +
     '<div class="rbt-log" role="log" aria-live="polite"></div>' +
     '<div class="rbt-chips" aria-label="Suggested questions"></div>' +
