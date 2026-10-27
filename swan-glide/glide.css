@@ -226,6 +226,51 @@ h1 span{display:block;font-style:italic;font-weight:500;font-size:.5em;letter-sp
 @media (max-width:560px){.credit{left:0;right:0;text-align:center}}
 
 @media (prefers-reduced-motion:reduce){
-  .stars,.necklace,.necklace-reflect,.shimmer,.fly,.bird,.wing,.tag,.fwing{animation:none}
+  .bunting i,.confetti,.stars,.necklace,.necklace-reflect,.shimmer,.fly,.bird,.wing,.tag,.fwing{animation:none}
   .replay-card{animation-duration:.01s}
 }
+
+/* ===== PARTY ON THE LAKE ===== */
+/* bunting across the top (always on) */
+.bunting{inset:0;pointer-events:none}
+.bunting i{position:absolute;left:var(--x);top:var(--y);width:2.3%;aspect-ratio:1/1.15;background:var(--c);
+  clip-path:polygon(0 0,100% 0,50% 100%);transform:rotate(var(--r));transform-origin:50% 0;
+  filter:drop-shadow(0 0 .35cqw color-mix(in srgb,var(--c) 60%,transparent));animation:sway 2.4s ease-in-out var(--d) infinite alternate}
+.bunting i::before{content:"";position:absolute;left:-30%;right:-30%;top:0;height:.12cqw;background:rgba(255,255,255,.5)}
+@keyframes sway{from{transform:rotate(calc(var(--r) - 5deg))}to{transform:rotate(calc(var(--r) + 5deg))}}
+.scene:has(#go:checked) .bunting i{animation-duration:.9s}
+
+/* the lake lights turn into party lights once the show starts */
+.scene:has(#go:checked) .necklace,.scene:has(#go:checked) .necklace-reflect{
+  background-image:radial-gradient(circle,#ff5aa8 0 18%,transparent 55%),radial-gradient(circle,#ffd23f 0 18%,transparent 55%),
+    radial-gradient(circle,#48d6fa 0 18%,transparent 55%),radial-gradient(circle,#5be38b 0 18%,transparent 55%);
+  background-size:6.8% 100%;background-position:0 50%,1.7% 50%,3.4% 50%,5.1% 50%;
+  animation:party 4s linear infinite}
+.scene:has(#go:checked) .necklace-reflect{background-size:6.8% 26%;opacity:.4}
+@keyframes party{to{filter:hue-rotate(360deg) drop-shadow(0 0 .35cqw rgba(255,255,255,.8))}}
+
+/* swans dance a little more */
+.scene:has(#go:checked) .bird{animation:dance 1.3s ease-in-out infinite}
+@keyframes dance{25%{transform:translateY(2%) rotate(-3deg)}50%{transform:translateY(4%) rotate(0)}75%{transform:translateY(2%) rotate(3deg)}}
+
+/* fireworks over the city, timed to the build (24s) and the peak (40-55s) */
+.fireworks{inset:0;pointer-events:none}
+.fw{position:absolute;left:var(--x);top:var(--y);width:.55%;aspect-ratio:1;border-radius:50%;color:var(--c);opacity:0;
+  scale:var(--s);
+  box-shadow:
+    0 -6cqw 0 .15cqw,4.2cqw -4.2cqw 0 .15cqw,6cqw 0 0 .15cqw,4.2cqw 4.2cqw 0 .15cqw,
+    0 6cqw 0 .15cqw,-4.2cqw 4.2cqw 0 .15cqw,-6cqw 0 0 .15cqw,-4.2cqw -4.2cqw 0 .15cqw,
+    0 -3.2cqw 0 .08cqw #fff,2.3cqw -2.3cqw 0 .08cqw #fff,3.2cqw 0 0 .08cqw #fff,2.3cqw 2.3cqw 0 .08cqw #fff,
+    0 3.2cqw 0 .08cqw #fff,-2.3cqw 2.3cqw 0 .08cqw #fff,-3.2cqw 0 0 .08cqw #fff,-2.3cqw -2.3cqw 0 .08cqw #fff,
+    0 0 4cqw 1cqw;
+  animation:burst 1.7s cubic-bezier(.1,.7,.3,1) var(--t) 1 both}
+.fw::before{content:"";position:absolute;left:0;top:100%;width:100%;height:30cqw;opacity:0;
+  background:linear-gradient(var(--c),transparent);animation:rocket .5s ease-in calc(var(--t) - .5s) 1 both}
+@keyframes burst{0%{opacity:1;transform:scale(.05)}60%{opacity:1}100%{opacity:0;transform:scale(1) translateY(1.5cqw)}}
+@keyframes rocket{0%{opacity:0;transform:translateY(40%)}30%{opacity:.8}100%{opacity:0;transform:translateY(-10%) scaleY(.2)}}
+
+/* confetti after the takeoff */
+.confetti{inset:0;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;left:var(--x);top:-6%;width:var(--w);aspect-ratio:1/2.2;background:var(--c);border-radius:1px;opacity:0;
+  animation:fall var(--dur) linear var(--d) 2 both}
+@keyframes fall{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:.9;transform:translateY(115cqw) rotate(var(--sp))}}
