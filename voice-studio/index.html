@@ -388,12 +388,16 @@ function logCall(leadId, fromPractice) {
   ${select('Outcome', 'outcome', OUTCOMES, 'Spoke: interested')}
   ${select('Update lead status to', 'newStatus', [{ v: '', l: 'Keep current status' }, ...STATUSES], '')}
   ${field('Follow-up date', 'followUp', '', 'date')}
-  ${area('Notes', 'notes', '')}${transcript ? `<input type="hidden" name="transcript" value="${esc(transcript)}">` : ''}`, v => {
+  ${area('Notes', 'notes', '')}
+  <label for="f_transcript">Conversation ${fromPractice ? '' : '(optional)'}</label><textarea id="f_transcript" name="transcript" style="min-height:120px" placeholder="Tap “Listen to my call”, put your phone on speaker next to the computer, and Voice Studio writes the conversation here. Or say a quick recap after you hang up.">${esc(transcript)}</textarea>
+  ${fromPractice ? '' : `<div class="actions" style="justify-content:flex-start;margin-top:8px"><button type="button" class="btn green small" id="listenBtn" onclick="listenToggle()">🎤 Listen to my call</button><select id="listenLang" aria-label="Language of the call" style="width:auto"><option value="en-US">English</option><option value="es-US">Spanish</option><option value="pt-BR">Portuguese (Brazil)</option><option value="fr-FR">French</option></select><span id="listenState" class="hint" role="status"></span></div>
+  <p class="note warn" style="margin-top:8px">California and other two-party-consent states: tell the person you’re transcribing the call before you start, for example “Just so you know, I take notes with an AI assistant. Is that OK?”</p>`}`, v => {
+    listenStop();
     if (v.outcome === 'Asked not to be called') v.newStatus = 'Do not call';
     if (!v.newStatus && v.outcome === 'Appointment requested') v.newStatus = 'Appointment requested';
-    const cid = uid(); if ((v.notes || transcript) && brainOn()) setTimeout(() => aiReviewCall(cid, true), 400);
+    const cid = uid(); if ((v.notes || v.transcript) && brainOn()) setTimeout(() => aiReviewCall(cid, true), 400);
     state.calls.unshift({ id: cid, at: Date.now(), leadId: lead ? lead.id : '', leadName: lead ? lead.name : 'Sample lead', business: lead ? lead.business : '', agentName: fromPractice ? ((byId('agents', practice.agentId) || {}).name || '') : '', campaignId: fromPractice ? practice.campaignId : '', ...v });
-    if (lead) { const said = [v.notes, transcript.split('\n').filter(s => /^Prospect:/.test(s)).map(s => s.slice(9)).join('. ')].join('. '); const n = sdrLearn(lead, said, fromPractice ? 'Practice call' : (v.type ? v.type.split(' (')[0] : 'Call note')); if (n) setTimeout(() => toast('SDR AI learned ' + n + ' new thing' + (n > 1 ? 's' : '') + ' about ' + (lead.name || 'this lead') + '.'), 1600); }
+    if (lead) { const said = [v.notes, fromPractice ? String(v.transcript || '').split('\n').filter(s => /^Prospect:/.test(s)).map(s => s.slice(9)).join('. ') : String(v.transcript || '')].join('. '); const n = sdrLearn(lead, said, fromPractice ? 'Practice call' : (v.type ? v.type.split(' (')[0] : 'Call note')); if (n) setTimeout(() => toast('SDR AI learned ' + n + ' new thing' + (n > 1 ? 's' : '') + ' about ' + (lead.name || 'this lead') + '.'), 1600); }
     if (lead && v.newStatus) lead.status = v.newStatus;
     if (lead && v.followUp && !v.newStatus) lead.status = 'Follow up';
     if (fromPractice) { practice.turn = -1; practice.lines = []; }
@@ -812,7 +816,23 @@ async function aiCoachAgent(agentId) {
 }
 function undoScript(agentId) { const a = byId('agents', agentId); const p = a && a.prev && a.prev.shift(); if (!p) return; a.opening = p.opening; a.script = p.script; save(); render(); toast(a.name + '’s previous script is back.'); }
 
-$('modal').addEventListener('close', stopSpeech);
+
+/* ---------- listen to my call (speech-to-text in this browser) ---------- */
+let rec = null, listening = false;
+function listenStop() { listening = false; if (rec) { try { rec.stop(); } catch (e) {} rec = null; } const b = $('listenBtn'); if (b) { b.textContent = '🎤 Listen to my call'; b.classList.add('green'); } const st = $('listenState'); if (st) st.textContent = ''; }
+function listenToggle() {
+  if (listening) { listenStop(); toast('Stopped listening. Pick the outcome and Save, and SDR AI will review the call.'); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Listening works in Google Chrome or Microsoft Edge. You can still type or paste notes.'); return; }
+  const box = $('f_transcript'); let base = box.value ? box.value.replace(/\s*$/, '\n') : '';
+  rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = ($('listenLang') || {}).value || 'en-US';
+  rec.onresult = e => { let fin = '', tmp = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) fin += t.trim() + '\n'; else tmp += t; } if (fin) base += fin; box.value = base + (tmp ? '… ' + tmp : ''); box.scrollTop = box.scrollHeight; };
+  rec.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('Please allow the microphone for Voice Studio, then try again.'); listenStop(); } };
+  rec.onend = () => { if (listening) { try { rec.start(); } catch (e) {} } };
+  try { rec.start(); listening = true; } catch (e) { toast('Couldn’t start listening: ' + e.message); return; }
+  const b = $('listenBtn'); b.textContent = '⏹ Stop listening'; b.classList.remove('green'); $('listenState').textContent = '● Listening…';
+}
+$('modal').addEventListener('close', () => { stopSpeech(); listenStop(); });
 window.addEventListener('pagehide', stopSpeech);
 render();
 </script>
