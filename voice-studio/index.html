@@ -102,8 +102,8 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catc
 save();
 
 let page = 'Overview';
-const pages = ['Overview', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Usage & setup'];
-const icons = ['◫', '♙', '◉', '◷', '🎙', '☎', '⚙'];
+const pages = ['Overview', 'SDR AI', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Usage & setup'];
+const icons = ['◫', '✦', '♙', '◉', '◷', '🎙', '☎', '⚙'];
 const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
 const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
 const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
@@ -178,12 +178,12 @@ function speak(text, agent, onend) {
 function stopSpeech() { if (canSpeak) synth.cancel(); document.body.classList.remove('speaking'); }
 
 /* ---------- render ---------- */
-function nav(p) { stopSpeech(); page = p; render(); $('content').focus({ preventScroll: true }); window.scrollTo(0, 0); }
+function nav(p) { stopSpeech(); if (p === 'SDR AI' && state.sdr) state.sdr.lead = ''; page = p; render(); $('content').focus({ preventScroll: true }); window.scrollTo(0, 0); }
 function render() {
   $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}</button>`).join('');
   $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
   const c = $('content');
-  ({ 'Overview': renderOverview, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Usage & setup': renderSetup }[page])(c);
+  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Usage & setup': renderSetup }[page])(c);
 }
 
 function renderOverview(c) {
@@ -203,7 +203,7 @@ function renderOverview(c) {
     <div class="listitem row"><div><strong>3. Prepare a campaign</strong><small>Pick an agent and the leads to call. Ineligible leads are skipped automatically.</small></div><button class="btn secondary small" onclick="nav('Campaigns')">Campaigns</button></div>
     <div class="listitem row"><div><strong>4. Practice the call</strong><small>Hear your agent read the script to a lead, then log the result.</small></div><button class="btn secondary small" onclick="nav('Practice call')">Practice</button></div>
   </div>
-  <div class="card"><h2>Right now</h2><p><b>${callableNow}</b> eligible lead${callableNow === 1 ? ' is' : 's are'} inside calling hours in their own time zone.</p><p>Live AI calls, recordings and transcripts start once a phone and AI voice service are connected.</p><button class="btn secondary" onclick="nav('Usage & setup')">See setup status</button></div></div>`;
+  <div class="card"><h2>Right now</h2><p><b>${callableNow}</b> eligible lead${callableNow === 1 ? ' is' : 's are'} inside calling hours in their own time zone.</p><p>Live AI calls, recordings and transcripts start once a phone and AI voice service are connected.</p><button class="btn secondary" onclick="nav('Usage & setup')">See setup status</button><p style="margin-top:18px"><b>✦ SDR AI:</b> ${sdrQueue().filter(x => x.kind !== 'start').length} outreach action(s) due today, ${sdrReadyList().length} lead(s) ready for you.</p><button class="btn" onclick="nav('SDR AI')">Open SDR AI →</button></div></div>`;
 }
 
 /* ---------- leads ---------- */
@@ -223,11 +223,11 @@ function leadsTable() {
     .filter(x => !fe || (eligibility(x).ok === (fe === 'yes')));
   $('leadTable').innerHTML = rows.length ? `<div class="row" style="margin-top:14px"><span class="muted">${rows.length} of ${state.leads.length} leads</span></div><div class="tablewrap"><table><thead><tr><th>NAME</th><th>BUSINESS</th><th>PHONE</th><th>LOCAL TIME</th><th>AI CALLING</th><th>STATUS</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows.map(x => {
     const e = eligibility(x), t = localInfo(x);
-    return `<tr><td><b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small></td><td>${esc(x.business)}</td><td>${x.phone ? `<a href="tel:${esc(digits(x.phone))}">${esc(x.phone)}</a>` : '—'}<br><small class="muted">${esc(x.lineType || 'Unknown')}</small></td>
+    return `<tr><td><b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small><br>${tierChip(sdrScore(x))}</td><td>${esc(x.business)}</td><td>${x.phone ? `<a href="tel:${esc(digits(x.phone))}">${esc(x.phone)}</a>` : '—'}<br><small class="muted">${esc(x.lineType || 'Unknown')}</small></td>
     <td>${t.known ? `<span class="chip ${t.ok ? 'ok' : 'warn'}">${t.ok ? 'OK now' : 'Outside hours'}</span><br><small class="muted">${esc(t.label)}</small>` : '<span class="chip warn">Add state</span>'}</td>
     <td><span class="chip ${e.ok ? 'ok' : 'bad'}">${e.ok ? 'Eligible' : 'Not eligible'}</span><br><small class="muted">${esc(e.why)}</small></td>
     <td>${esc(x.status || 'New')}</td>
-    <td style="white-space:nowrap"><button class="btn secondary small" onclick="practiceWith('${x.id}')" title="Practice a call with this lead">🎙 Practice</button><button class="btn outline small" onclick="logCall('${x.id}')" title="Log a call you made">☎ Log</button><button class="btn outline small" onclick="leadForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('leads','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></td></tr>`;
+    <td style="white-space:nowrap"><button class="btn small" onclick="sdrOpen('${x.id}')" title="SDR AI brief: score, best offer, memory">✦ Brief</button><button class="btn secondary small" onclick="practiceWith('${x.id}')" title="Practice a call with this lead">🎙 Practice</button><button class="btn outline small" onclick="logCall('${x.id}')" title="Log a call you made">☎ Log</button><button class="btn outline small" onclick="leadForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('leads','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></td></tr>`;
   }).join('')}</tbody></table></div>` : '<div class="empty">No leads to display. Add one or import a CSV file.</div>';
 }
 
@@ -377,6 +377,7 @@ function logCall(leadId, fromPractice) {
     if (v.outcome === 'Asked not to be called') v.newStatus = 'Do not call';
     if (!v.newStatus && v.outcome === 'Appointment requested') v.newStatus = 'Appointment requested';
     state.calls.unshift({ id: uid(), at: Date.now(), leadId: lead ? lead.id : '', leadName: lead ? lead.name : 'Sample lead', business: lead ? lead.business : '', agentName: fromPractice ? ((byId('agents', practice.agentId) || {}).name || '') : '', campaignId: fromPractice ? practice.campaignId : '', ...v });
+    if (lead) { const said = [v.notes, transcript.split('\n').filter(s => /^Prospect:/.test(s)).map(s => s.slice(9)).join('. ')].join('. '); const n = sdrLearn(lead, said, fromPractice ? 'Practice call' : (v.type ? v.type.split(' (')[0] : 'Call note')); if (n) setTimeout(() => toast('SDR AI learned ' + n + ' new thing' + (n > 1 ? 's' : '') + ' about ' + (lead.name || 'this lead') + '.'), 1600); }
     if (lead && v.newStatus) lead.status = v.newStatus;
     if (lead && v.followUp && !v.newStatus) lead.status = 'Follow up';
     if (fromPractice) { practice.turn = -1; practice.lines = []; }
@@ -434,9 +435,294 @@ function exportCalls() { download('webswan-call-records.csv', toCSV(['at', 'lead
 function backup() { download('webswan-voice-studio-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(state, null, 2), 'application/json'); toast('Backup downloaded.'); }
 $('backupFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const s = JSON.parse(await f.text()); if (!s || !Array.isArray(s.leads)) throw 0; if (!confirm('Replace everything in this workspace with the backup?')) return; state = { leads: s.leads || [], agents: s.agents || [], campaigns: s.campaigns || [], calls: s.calls || [] }; save(); render(); toast('Backup restored.'); }
+  try { const s = JSON.parse(await f.text()); if (!s || !Array.isArray(s.leads)) throw 0; if (!confirm('Replace everything in this workspace with the backup?')) return; state = { leads: s.leads || [], agents: s.agents || [], campaigns: s.campaigns || [], calls: s.calls || [], sdr: s.sdr || { tab: 'Today' } }; save(); render(); toast('Backup restored.'); }
   catch (err) { toast('That file isn’t a Voice Studio backup.'); }
 };
+/* =========================================================
+   SDR AI — your AI sales development rep.
+   Remembers every prospect, scores them, picks the best offer and agent,
+   runs a follow-up plan, hands ready buyers to Tania, and keeps guardrails.
+   Rule-based and private: everything stays in this browser.
+   ========================================================= */
+state.sdr = state.sdr || {}; if (!state.sdr.tab) state.sdr.tab = 'Today';
+const YNU = ['Unknown', 'Yes', 'No'];
+const INDUSTRIES = ['Doctor / medical', 'Attorney / legal', 'Other business'];
+const OFFERS = {
+  site: { name: 'Custom website or redesign', short: 'a new website', agent: 'George', brand: 'The WebSwan', pitch: 'a complimentary demo of a new custom website for {b}, at no cost and no obligation' },
+  audit: { name: 'Complimentary compliance audit', short: 'a complimentary compliance audit', agent: 'Rebecca', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary accessibility, cookie consent and privacy audit of {b}’s website' },
+  wsmn: { name: 'WSMN profile ($289/yr + $29/month)', short: 'a WebSwan Media Network profile', agent: 'Tatiana', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
+  recep: { name: 'AI receptionist (Rachel)', short: 'an AI receptionist', agent: 'George', brand: 'The WebSwan', pitch: 'an AI receptionist that answers {b}’s calls 24/7, so no new {who1} goes to voicemail' }
+};
+const SEQ = [
+  { day: 0, kind: 'call', label: 'Call 1: introduce yourself and ask one question' },
+  { day: 1, kind: 'email', tpl: 'intro', label: 'Email 1: short intro and the offer' },
+  { day: 3, kind: 'call', label: 'Call 2: follow up on the email' },
+  { day: 6, kind: 'email', tpl: 'value', label: 'Email 2: one useful finding about their business' },
+  { day: 10, kind: 'call', label: 'Call 3: last call (a voicemail is fine)' },
+  { day: 14, kind: 'email', tpl: 'close', label: 'Email 3: polite close-the-loop' }
+];
+const LEARN = [
+  [/(real person|a human|speak (to|with) (tania|someone|a person)|talk to (tania|someone|a person))/i, 'Preference', 'Wants to talk to a real person'],
+  [/already (have|got|use|work with) (a |an |our )?(website|site|web ?designer|developer|marketing|agency|company)/i, 'Objection', 'Already has a website or vendor'],
+  [/(too expensive|no budget|can'?t afford|costs? too much|how much|what does it cost|price)/i, 'Objection', 'Asked about price / budget'],
+  [/((not|no) (the )?(right )?(person|decision|owner)|talk to (my|the|our) (partner|manager|office manager|owner|doctor|boss))/i, 'Decision', 'Not the decision maker: needs owner, partner or manager'],
+  [/send (me |us )?(an |some )?(email|info|information|details)/i, 'Preference', 'Wants information by email first'],
+  [/(call (me |us )?back|busy|not a good time|in (a )?meeting|with a (patient|client)|in court|in session)/i, 'Timing', 'Was busy: call back at a better time'],
+  [/\b(mornings?|afternoons?|evenings?|lunch ?time|mondays?|tuesdays?|wednesdays?|thursdays?|fridays?)\b/i, 'Timing', m => 'Mentioned “' + m[0].toLowerCase() + '” as a good time'],
+  [/(new|more) (patients|clients|cases|customers|business)/i, 'Need', 'Wants more new patients or clients'],
+  [/(\bada\b|accessib|lawsuit|demand letter|compliance|wcag|sued)/i, 'Need', 'Concerned about ADA / compliance'],
+  [/(miss(ed|ing)? (a lot of |many |some )?calls|voicemail|after hours|nobody answers|no one answers)/i, 'Need', 'Misses calls or after-hours calls'],
+  [/(old|outdated|ugly|slow|broken) (website|site)|website is (old|outdated|slow|broken)/i, 'Need', 'Unhappy with current website'],
+  [/(not interested|no thanks|no thank you|we'?re good|we are good)/i, 'Objection', 'Said not interested'],
+  [/\b(spanish|portuguese|creole|french)\b/i, 'Preference', m => 'Language: ' + m[0][0].toUpperCase() + m[0].slice(1).toLowerCase()],
+  [/(sounds good|tell me more|i'?m interested|we'?re interested|that would be great|yes,? (please|sure)|let'?s do it)/i, 'Need', 'Showed interest']
+];
+const TIPS = {
+  'Already has a website or vendor': 'Keep it friendly: ask if their site has a working accessibility tool and cookie consent, then offer the complimentary audit. No need to replace anyone.',
+  'Asked about price / budget': 'Lead with the low entry: WSMN is $29/month after setup, with no contract, and the audit is complimentary. Then ask what a new patient or client is worth to them.',
+  'Not the decision maker: needs owner, partner or manager': 'Ask for the decision maker’s name and the best time to reach them, and offer to email a one-page summary they can pass along.',
+  'Wants information by email first': 'Send the email draft today, then call 2 days later and ask “did you get a chance to look?”',
+  'Was busy: call back at a better time': 'Ask “is morning or afternoon better?” and set a follow-up date before hanging up.',
+  'Said not interested': 'Thank them warmly. At most one soft check-in in 30 days, or stop. Never push.',
+  'Wants to talk to a real person': 'Hand off to Tania right away with the brief. Don’t let the AI keep selling.'
+};
+const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const addD = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const niceD = iso => { try { return new Date(iso + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' }); } catch (e) { return iso; } };
+function R(l) { l.r = l.r || {}; return l.r; }
+function Q(l) { l.q = l.q || {}; return l.q; }
+function M(l) { l.mem = l.mem || []; return l.mem; }
+function guessIndustry(l) { const t = [l.name, l.business, l.notes].join(' '); return R(l).industry || (/\b(dr\.?|doctor|md|dds|dmd|chiro|clinic|medical|dental|health|spine|ortho|physician|therapy|wellness)\b/i.test(t) ? 'Doctor / medical' : /\b(esq|attorney|law|legal|lawyer|llp|firm)\b/i.test(t) ? 'Attorney / legal' : 'Other business'); }
+function hasMem(l, re) { return M(l).some(m => re.test(m.text)); }
+
+/* ---------- memory ---------- */
+function sdrLearn(l, text, src) {
+  if (!l || !text) return 0; let n = 0;
+  String(text).split(/[.!?\n]+/).map(s => s.trim()).filter(Boolean).forEach(s => LEARN.forEach(([re, cat, t]) => {
+    const m = s.match(re); if (!m) return; const txt = typeof t === 'function' ? t(m) : t;
+    if (M(l).some(x => x.text === txt)) return;
+    M(l).push({ id: uid(), cat, text: txt, src: src || 'Note', quote: s.slice(0, 140), at: Date.now() }); n++;
+  }));
+  return n;
+}
+function memAdd(id) { const l = byId('leads', id), i = $('memText'), c = $('memCat'); const t = i.value.trim(); if (!t) return; M(l).push({ id: uid(), cat: c.value, text: t, src: 'Added by you', at: Date.now() }); save(); render(); }
+function memDel(id, mid) { const l = byId('leads', id); l.mem = M(l).filter(m => m.id !== mid); save(); render(); toast('Memory removed.'); }
+
+/* ---------- scoring + best offer ---------- */
+function sdrScore(l) {
+  const r = R(l), q = Q(l), why = []; let s = 0;
+  if (l.status === 'Do not call') return { score: 0, tier: 'Blocked', why: ['Do not call'] };
+  const ind = guessIndustry(l);
+  if (ind !== 'Other business') { s += 20; why.push('Fits WSMN: ' + ind.split(' /')[0].toLowerCase()); } else s += 8;
+  if (r.hasSite === 'No') { s += 20; why.push('No website'); }
+  if (r.siteQuality === 'Outdated') { s += 12; why.push('Website looks outdated'); }
+  if (r.ada === 'Missing or broken') { s += 15; why.push('No working accessibility tool'); }
+  if (r.cookie === 'Missing or broken') { s += 8; why.push('No cookie consent'); }
+  if (r.missesCalls === 'Yes') { s += 10; why.push('Misses calls'); }
+  if (Number(r.rating) && Number(r.rating) < 4.3) { s += 6; why.push('Google rating ' + r.rating); }
+  if (r.reviews !== undefined && r.reviews !== '' && Number(r.reviews) < 25) { s += 4; why.push('Few reviews (' + r.reviews + ')'); }
+  const st = { Interested: 20, 'Appointment requested': 30, Contacted: 5, 'Follow up': 8, 'Not interested': -25 }[l.status] || 0;
+  if (st) { s += st; why.push('Status: ' + l.status); }
+  const good = state.calls.filter(x => x.leadId === l.id && /interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome)).length;
+  if (good) { s += Math.min(20, good * 10); why.push(good + ' positive call' + (good > 1 ? 's' : '')); }
+  const na = state.calls.filter(x => x.leadId === l.id && x.outcome === 'No answer').length; if (na >= 3) { s -= 5; why.push(na + ' no-answers'); }
+  ['decisionMaker', 'interest', 'newClients', 'timeline'].forEach(k => { if (q[k] === 'Yes') s += 4; });
+  if (hasMem(l, /Showed interest|Wants more new/)) { s += 6; why.push('Said they want more business'); }
+  s = Math.max(0, Math.min(100, s));
+  return { score: s, tier: s >= 60 ? 'Hot' : s >= 35 ? 'Warm' : 'Cold', why };
+}
+function tierChip(sc) { return `<span class="chip ${sc.tier === 'Hot' ? 'bad' : sc.tier === 'Warm' ? 'warn' : sc.tier === 'Blocked' ? '' : 'ok'}" title="${esc(sc.why.join(' · '))}">${sc.tier === 'Hot' ? '🔥' : sc.tier === 'Warm' ? '☀️' : sc.tier === 'Blocked' ? '⛔' : '❄️'} ${sc.tier} · ${sc.score}</span>`; }
+function sdrOffers(l) {
+  const r = R(l), ind = guessIndustry(l), o = [];
+  const add = k => { if (!o.includes(k)) o.push(k); };
+  const happySite = hasMem(l, /Already has a website/);
+  if (r.hasSite === 'No') add('site');
+  if (r.ada === 'Missing or broken' || r.cookie === 'Missing or broken' || hasMem(l, /ADA/)) add('audit');
+  if (r.missesCalls === 'Yes' || hasMem(l, /Misses calls/)) add('recep');
+  if (ind !== 'Other business') add('wsmn');
+  if ((r.siteQuality === 'Outdated' || hasMem(l, /Unhappy with current website/)) && !happySite) add('site');
+  add(ind !== 'Other business' ? 'wsmn' : 'audit'); add('audit');
+  return o;
+}
+function who(l) { const i = guessIndustry(l); return i === 'Doctor / medical' ? ['patients', 'patient'] : i === 'Attorney / legal' ? ['clients', 'client'] : ['customers', 'customer']; }
+function pitchFor(l, key) { const w = who(l); return OFFERS[key].pitch.replace(/\{b\}/g, l.business || 'your practice').replace(/\{who\}/g, w[0]).replace(/\{who1\}/g, w[1]); }
+const FOLLOW = { 'Wants information by email first': 'I’m following up on the information you asked us to send.', 'Was busy: call back at a better time': 'You were busy when we last called, so I’ll be quick.', 'Wants more new patients or clients': 'Last time, you mentioned you’d like more new {who}.', 'Concerned about ADA / compliance': 'Last time, you mentioned website compliance was on your mind.', 'Misses calls or after-hours calls': 'Last time, you mentioned calls sometimes go to voicemail.', 'Unhappy with current website': 'Last time, you mentioned your website could use some love.', 'Showed interest': 'Thank you again for your interest last time.' };
+function agentFor(key) { return state.agents.find(a => (a.name || '').toLowerCase() === OFFERS[key].agent.toLowerCase()) || state.agents[0]; }
+function sdrFinding(l) {
+  const r = R(l), b = l.business || 'your practice';
+  if (r.hasSite === 'No') return `I searched for ${b} online and couldn’t find a website.`;
+  if (r.ada === 'Missing or broken') return `I took a quick look at ${b}’s website and didn’t see a working accessibility tool, which has led to ADA demand letters for many small practices.`;
+  if (r.cookie === 'Missing or broken') return `I noticed ${b}’s website doesn’t ask visitors for cookie consent, which privacy laws in several states now expect.`;
+  if (r.siteQuality === 'Outdated') return `I visited ${b}’s website, and it looks like it hasn’t been refreshed in a while, especially on phones.`;
+  if (r.missesCalls === 'Yes') return `When I called ${b}, it went to voicemail, and every missed call can be a new patient or client calling someone else.`;
+  if (Number(r.reviews) && Number(r.reviews) < 25) return `I saw ${b} has ${r.reviews} Google reviews, and a little more visibility could bring in more new ${who(l)[0]}.`;
+  return '';
+}
+function sdrOpener(l, key) {
+  const o = OFFERS[key], a = agentFor(key), n = greetName(l), b = l.business || 'your practice';
+  const fol = M(l).slice().reverse().find(m => FOLLOW[m.text]);
+  const back = state.calls.some(x => x.leadId === l.id);
+  let s = `Hi ${n}, this is ${a ? a.name : o.agent}, an AI assistant calling on behalf of ${o.brand}.`;
+  if (back && fol) s += ' ' + FOLLOW[fol.text].replace('{who}', who(l)[0]);
+  const f = sdrFinding(l); if (f) s += ' ' + f;
+  s += ` We’d love to offer ${pitchFor(l, key)}. Would you be open to a quick 10-minute call with our founder, Tania?`;
+  return s;
+}
+function sdrEmail(l, tpl) {
+  const k = sdrOffers(l)[0], o = OFFERS[k], n = greetName(l), b = l.business || 'your practice', f = sdrFinding(l);
+  const optout = '\n\nIf you’d rather not hear from us, just reply and let me know.';
+  if (tpl === 'value') return { subject: k === 'audit' ? `Is ${b}’s website accessible?` : k === 'site' ? `A fresh look for ${b}` : k === 'recep' ? `No more missed calls at ${b}` : `More new ${who(l)[0]} for ${b}`, body: `Hi ${n},\n\n${f ? f + '\n\nThat’s exactly why we offer ' : 'One quick idea for ' + b + ': we offer '}${pitchFor(l, k)}. It takes about 10 minutes to walk through, and there’s no obligation.\n\nWould Tuesday or Thursday work for a quick call?${optout}` };
+  if (tpl === 'close') return { subject: 'Should I close your file?', body: `Hi ${n},\n\nI’ve reached out a few times about ${o.short} for ${b} and haven’t heard back, so I’ll assume the timing isn’t right.\n\nIf that changes, just reply to this email or call (415) 877-0687. Wishing you and your team a wonderful month.` };
+  return { subject: `Quick idea for ${b}`, body: `Hi ${n},\n\n${f ? f + '\n\n' : ''}I’m reaching out from ${o.brand}. We’d love to offer ${pitchFor(l, k)}.\n\nWould a quick 10-minute call this week work for you?${optout}` };
+}
+
+/* ---------- queue ---------- */
+function sdrQueue() {
+  const t = todayISO(), items = [];
+  state.leads.forEach(l => {
+    if (['Do not call', 'Not interested', 'Appointment requested'].includes(l.status)) return;
+    const sc = sdrScore(l);
+    const fu = state.calls.filter(x => x.leadId === l.id && x.followUp).map(x => x.followUp).sort().pop();
+    if (fu && fu <= t && !(l.fuDone || []).includes(fu)) { items.push({ l, sc, kind: 'call', fu, label: 'Follow-up you scheduled for ' + niceD(fu), due: fu }); return; }
+    if (l.seq) {
+      const i = SEQ.findIndex((s, k) => !l.seq.done[k]); if (i < 0) return;
+      const due = addD(l.seq.start, SEQ[i].day);
+      if (due <= t) items.push({ l, sc, kind: SEQ[i].kind, step: i, tpl: SEQ[i].tpl, label: SEQ[i].label, due });
+    } else items.push({ l, sc, kind: 'start', label: (!l.status || l.status === 'New') ? 'New lead: start the outreach plan' : l.status + ': not in a follow-up plan yet', due: t });
+  });
+  return items.sort((a, b) => (a.kind === 'start') - (b.kind === 'start') || b.sc.score - a.sc.score);
+}
+function sdrStart(id) { const l = byId('leads', id); l.seq = { start: todayISO(), done: {} }; save(); render(); toast('Outreach plan started: 3 calls and 3 emails over 2 weeks.'); }
+function sdrStartTop() { const n = sdrQueue().filter(x => x.kind === 'start').slice(0, 10); n.forEach(x => { x.l.seq = { start: todayISO(), done: {} }; }); save(); render(); toast(n.length ? `Started the plan for ${n.length} lead${n.length > 1 ? 's' : ''}.` : 'No new leads waiting.'); }
+function sdrStepDone(id, step, fu) { const l = byId('leads', id); if (fu) { l.fuDone = l.fuDone || []; l.fuDone.push(fu); } else if (l.seq) l.seq.done[step] = Date.now(); if (!fu && (!l.status || l.status === 'New')) l.status = 'Contacted'; save(); }
+function sdrCallDone(id, step, fu) { sdrStepDone(id, step, fu); logCall(id); }
+function sdrPractice(id) { const l = byId('leads', id), a = agentFor(sdrOffers(l)[0]); practice = { agentId: a ? a.id : '', leadId: id, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
+function sdrEmailModal(id, tpl, step) {
+  const l = byId('leads', id), e = sdrEmail(l, tpl || 'intro');
+  openForm('Email draft for ' + (l.name || 'lead'), `${field('To', 'to', l.email || '', 'email', false, l.email ? '' : 'Add their email to the lead to open it in your mail app.')}${field('Subject', 'subject', e.subject)}${area('Message', 'body', e.body, 'Your designs@ signature adds your name and contact details. Edit anything before sending.')}
+  <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary" onclick="sdrCopyEmail()">📋 Copy</button><button type="button" class="btn outline" onclick="sdrMailto()">✉ Open in my mail app</button></div>
+  <p class="note">Nothing is sent from here. Press <b>Save</b> after you send it to mark this step done.</p>`, () => { if (step !== undefined && step !== '') sdrStepDone(id, Number(step)); state.calls.unshift({ id: uid(), at: Date.now(), leadId: l.id, leadName: l.name, business: l.business, agentName: 'Tania (email)', type: 'Email', outcome: 'Email sent', notes: $('f_subject').value }); toast('Email step marked done.'); });
+  $('f_body').style.minHeight = '220px';
+}
+function sdrCopyEmail() { const t = 'Subject: ' + $('f_subject').value + '\n\n' + $('f_body').value; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Email copied.'), () => prompt('Copy the email:', t)); }
+function sdrMailto() { const to = $('f_to').value.trim(); location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent($('f_subject').value) + '&body=' + encodeURIComponent($('f_body').value); }
+function sdrPause(v) { state.sdr.paused = v; save(); render(); toast(v ? 'All AI outreach paused.' : 'Outreach resumed.'); }
+
+/* ---------- page ---------- */
+function sdrOpen(id) { state.sdr.lead = id; page = 'SDR AI'; render(); window.scrollTo(0, 0); }
+function renderSDR(c) {
+  const S = state.sdr;
+  if (S.lead && byId('leads', S.lead)) return renderBrief(c, byId('leads', S.lead));
+  S.lead = '';
+  const q = sdrQueue(), hot = state.leads.filter(l => sdrScore(l).tier === 'Hot').length, ready = sdrReadyList().length;
+  const tabs = ['Today', 'Ready for Tania', 'Insights', 'Guardrails'];
+  c.innerHTML = `${S.paused ? '<div class="note warn section row"><span>⏸ <b>All AI outreach is paused.</b> The queue is on hold until you resume.</span><button class="btn small" onclick="sdrPause(false)">▶ Resume</button></div>' : ''}
+  <div class="banner"><div><h2>✦ SDR AI: your AI sales rep</h2><p>It remembers every conversation, scores each lead, picks the right offer and agent, writes the opener and emails, and tells you exactly who to contact today. When someone is ready to buy, it hands them to you.</p></div><div style="text-align:right;min-width:150px"><div style="font-size:34px;font-weight:800">${q.filter(x => x.kind !== 'start').length}</div><div style="font-size:13px;color:#d7f2fb">actions due today</div></div></div>
+  <div class="grid"><div class="card stat"><span>HOT LEADS</span><strong>${hot}</strong><span>Score 60+</span></div><div class="card stat"><span>READY FOR TANIA</span><strong>${ready}</strong><span>Qualified or asked to meet</span></div><div class="card stat"><span>IN A FOLLOW-UP PLAN</span><strong>${state.leads.filter(l => l.seq && SEQ.some((s, k) => !l.seq.done[k])).length}</strong><span>3 calls + 3 emails, 2 weeks</span></div><div class="card stat"><span>MEMORIES</span><strong>${state.leads.reduce((n, l) => n + M(l).length, 0)}</strong><span>Things prospects told us</span></div></div>
+  <div class="toolbar section" role="tablist" aria-label="SDR AI views">${tabs.map(t => `<button class="btn ${S.tab === t ? '' : 'outline'}" role="tab" aria-selected="${S.tab === t}" onclick="state.sdr.tab='${t}';save();render()">${t}${t === 'Ready for Tania' && ready ? ' (' + ready + ')' : ''}</button>`).join('')}</div>
+  <div id="sdrBody" class="section"></div>`;
+  ({ 'Today': sdrToday, 'Ready for Tania': sdrReady, 'Insights': sdrInsights, 'Guardrails': sdrGuard }[S.tab] || sdrToday)($('sdrBody'));
+}
+function sdrToday(el) {
+  if (!state.leads.length) { el.innerHTML = '<div class="card empty">Add or import leads first, and SDR AI will plan your day.<br><br><button class="btn" onclick="nav(\'Leads\')">Go to Leads</button></div>'; return; }
+  const q = sdrQueue(), due = q.filter(x => x.kind !== 'start'), fresh = q.filter(x => x.kind === 'start'), P = state.sdr.paused ? 'disabled' : '';
+  const row = x => {
+    const l = x.l, k = sdrOffers(l)[0], e = eligibility(l), t = localInfo(l);
+    const callChips = x.kind === 'call' ? ` <span class="chip ${e.ok ? 'ok' : 'bad'}">${e.ok ? 'AI-call eligible' : esc(e.why)}</span> ${t.known ? `<span class="chip ${t.ok ? 'ok' : 'warn'}">${t.ok ? 'Good time to call' : 'Outside calling hours'}</span>` : ''}` : '';
+    const btns = x.kind === 'start' ? `<button class="btn small" ${P} onclick="sdrStart('${l.id}')">▶ Start plan</button>`
+      : x.kind === 'email' ? `<button class="btn small" ${P} onclick="sdrEmailModal('${l.id}','${x.tpl}',${x.step})">✉ Draft email</button>`
+      : `<button class="btn secondary small" ${P} onclick="sdrPractice('${l.id}')">🎙 Practice</button>${l.phone ? `<a class="btn outline small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn small" ${P} onclick="sdrCallDone('${l.id}',${x.step === undefined ? "''" : x.step},'${x.fu || ''}')">✔ Done & log</button>`;
+    return `<div class="listitem row"><div style="min-width:0;flex:1 1 280px"><strong>${esc(l.name || 'Lead')}${l.business ? ' · ' + esc(l.business) : ''}</strong><small>${esc(x.label)}${x.due < todayISO() ? ' · <b style="color:#9b2323">overdue since ' + niceD(x.due) + '</b>' : ''}</small><br>${tierChip(x.sc)} <span class="chip">${esc(OFFERS[k].name)}</span>${callChips}</div><div class="toolbar">${btns}<button class="btn outline small" onclick="sdrOpen('${l.id}')">✦ Brief</button></div></div>`;
+  };
+  el.innerHTML = `<div class="card"><div class="row"><h2>Today’s queue</h2><span class="chip">${due.length} due · hottest first</span></div>${due.map(row).join('') || '<div class="empty">Nothing due today. 🎉 Start a plan for new leads below.</div>'}</div>
+  <div class="card section"><div class="row"><h2>Waiting for a plan</h2><button class="btn secondary small" ${P} onclick="sdrStartTop()" ${fresh.length ? '' : 'disabled'}>▶ Start plan for top 10</button></div>${fresh.slice(0, 25).map(row).join('') || '<div class="empty">No new leads waiting.</div>'}${fresh.length > 25 ? `<p class="muted">+ ${fresh.length - 25} more</p>` : ''}</div>
+  <p class="note section">The plan: <b>Day 0</b> call · <b>Day 1</b> email · <b>Day 3</b> call · <b>Day 6</b> email · <b>Day 10</b> call · <b>Day 14</b> close-the-loop email. Follow-up dates you set when logging a call jump to the top. SDR AI never dials or sends anything by itself.</p>`;
+}
+function sdrReadyList() { return state.leads.filter(l => l.status !== 'Do not call' && (l.status === 'Appointment requested' || l.status === 'Interested' || (Q(l).decisionMaker === 'Yes' && Q(l).interest === 'Yes') || hasMem(l, /real person/))); }
+function sdrSummary(l) {
+  const sc = sdrScore(l), k = sdrOffers(l)[0], q = Q(l), last = state.calls.find(x => x.leadId === l.id);
+  return [`${l.name || 'Lead'}${l.business ? ' · ' + l.business : ''}`, `Phone: ${l.phone || '—'} · Email: ${l.email || '—'} · State: ${l.state || '—'}`, `Score: ${sc.score} (${sc.tier}) · Status: ${l.status || 'New'}`, `Best offer: ${OFFERS[k].name}`,
+    `Qualified: decision maker ${q.decisionMaker || 'Unknown'} · interested ${q.interest || 'Unknown'} · taking new clients ${q.newClients || 'Unknown'} · timeline ${q.timeline || 'Unknown'}`,
+    M(l).length ? 'They told us:\n' + M(l).map(m => '- ' + m.text).join('\n') : 'They told us: nothing yet', last ? `Last contact: ${fmtDate(last.at)} · ${last.outcome}${last.notes ? ' · ' + last.notes : ''}` : 'Last contact: none'].join('\n');
+}
+function sdrCopy(id) { const t = sdrSummary(byId('leads', id)); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Summary copied.'), () => prompt('Copy the summary:', t)); }
+function sdrReady(el) {
+  const L = sdrReadyList().sort((a, b) => sdrScore(b).score - sdrScore(a).score);
+  el.innerHTML = `<div class="card"><div class="row"><h2>Ready for Tania</h2><span class="chip">${L.length} lead${L.length === 1 ? '' : 's'}</span></div><p>These prospects asked to meet, said they’re interested, are qualified, or want a real person. Your agent steps back; you close. 💙</p>
+  ${L.map(l => `<div class="listitem"><div class="row"><div><strong>${esc(l.name)}${l.business ? ' · ' + esc(l.business) : ''}</strong>${tierChip(sdrScore(l))} <span class="chip">${esc(l.status || 'New')}</span></div><div class="toolbar">${l.phone ? `<a class="btn small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn secondary small" onclick="sdrCopy('${l.id}')">📋 Copy summary</button><button class="btn outline small" onclick="sdrOpen('${l.id}')">✦ Brief</button></div></div><div class="script" style="margin-top:8px">${esc(sdrSummary(l))}</div></div>`).join('') || '<div class="empty">No one yet. When a lead says yes, asks for a meeting or asks for a real person, they show up here.</div>'}</div>`;
+}
+function sdrInsights(el) {
+  const count = (arr, f) => arr.reduce((m, x) => { const k = f(x); if (k) m[k] = (m[k] || 0) + 1; return m; }, {});
+  const bars = (obj, color) => { const e = Object.entries(obj).sort((a, b) => b[1] - a[1]); const max = Math.max(1, ...e.map(x => x[1])); return e.length ? e.map(([k, v]) => `<div style="margin:8px 0"><div class="row" style="font-size:13px"><span>${esc(k)}</span><b>${v}</b></div><div style="height:8px;background:#edf2f5;border-radius:6px"><div style="height:8px;width:${v / max * 100}%;background:${color};border-radius:6px"></div></div></div>`).join('') : '<p class="muted">Nothing yet. Log calls with notes and this fills in.</p>'; };
+  const mems = state.leads.flatMap(l => M(l));
+  const obj = count(mems.filter(m => m.cat === 'Objection' || m.cat === 'Decision'), m => m.text), need = count(mems.filter(m => m.cat === 'Need'), m => m.text);
+  const funnel = STATUSES.map(s => [s, state.leads.filter(l => (l.status || 'New') === s).length]);
+  const byAgent = count(state.calls.filter(x => x.outcome === 'Appointment requested'), x => x.agentName || 'Manual');
+  const reach = count(state.calls.filter(x => /^Spoke|Appointment/.test(x.outcome)), x => { const h = new Date(x.at).getHours(); return (h % 12 || 12) + (h < 12 ? ' AM' : ' PM'); });
+  const offers = count(state.leads.filter(l => l.status !== 'Do not call'), l => OFFERS[sdrOffers(l)[0]].name);
+  const tiers = count(state.leads, l => sdrScore(l).tier);
+  el.innerHTML = `<div class="two"><div class="card"><h2>🚧 What stops a yes</h2>${bars(obj, '#e0866b')}${Object.keys(obj).length ? '<p class="note">Open a lead’s brief to see how to answer each objection.</p>' : ''}</div><div class="card"><h2>💡 What prospects want</h2>${bars(need, '#12a05c')}</div></div>
+  <div class="two section"><div class="card"><h2>🎯 Best offer across your leads</h2>${bars(offers, '#168fc4')}</div><div class="card"><h2>🌡️ Lead temperature</h2>${bars(tiers, '#7b61ff')}</div></div>
+  <div class="two section"><div class="card"><h2>📊 Pipeline</h2>${bars(Object.fromEntries(funnel.filter(f => f[1])), '#0e7490')}</div><div class="card"><h2>🏆 Appointments by agent</h2>${bars(byAgent, '#f0a020')}<h2 class="section">⏰ When people pick up</h2>${bars(reach, '#48b0d8')}</div></div>
+  <div class="actions"><button class="btn" onclick="sdrReport()">📋 Copy today’s SDR report</button></div>`;
+}
+function sdrReport() {
+  const q = sdrQueue(), t = todayISO(), calls = state.calls.filter(x => new Date(x.at).toISOString().slice(0, 10) === t || fmtDate(x.at).includes(new Date().toLocaleDateString([], { dateStyle: 'medium' })));
+  const txt = [`🦢 WebSwan SDR report · ${new Date().toLocaleDateString([], { dateStyle: 'full' })}`, `Contacts logged today: ${calls.length} (${calls.filter(x => x.outcome === 'Appointment requested').length} appointment requests)`, `Due now: ${q.filter(x => x.kind !== 'start').length} · New leads waiting: ${q.filter(x => x.kind === 'start').length}`, `Hot leads: ${state.leads.filter(l => sdrScore(l).tier === 'Hot').length}`, '', 'Ready for Tania:', ...(sdrReadyList().map(l => `- ${l.name}${l.business ? ' (' + l.business + ')' : ''}: ${l.phone || l.email || ''}`)), sdrReadyList().length ? '' : '- none yet', 'Top 5 to contact next:', ...q.filter(x => x.kind !== 'start').slice(0, 5).map(x => `- ${x.l.name}: ${x.label}`)].join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Report copied. Paste it in WorkPilot.'), () => prompt('Copy the report:', txt));
+}
+function scriptCheck(a) {
+  const op = String(a.opening || ''), all = op + ' ' + (a.script || ''), out = [];
+  out.push([/\b(AI|artificial intelligence|virtual assistant)\b/i.test(op), 'Says it’s an AI in the opening']);
+  out.push([(/\{agent\}/.test(op) || op.toLowerCase().includes(String(a.name || '').toLowerCase())), 'Gives the agent’s name']);
+  out.push([/(on behalf of|calling for|calling from|with (the )?webswan)/i.test(op), 'Says who it’s calling for']);
+  out.push([!/\bfree\b/i.test(all), 'Uses “complimentary”, not “free”']);
+  out.push([!/(guarantee|#1 on google|number one on google|first page guaranteed)/i.test(all), 'No ranking or result guarantees']);
+  out.push([!/(act now|limited time only|last chance)/i.test(all), 'No pressure phrases']);
+  return out;
+}
+function sdrGuard(el) {
+  const ex = state.leads.filter(l => l.status !== 'Do not call' && (hasMem(l, /real person|Not the decision maker/) || (state.calls.filter(x => x.leadId === l.id && x.outcome === 'No answer').length >= 3)));
+  const graded = state.calls.filter(x => x.transcript).slice(0, 10).map(x => {
+    const lines = x.transcript.split('\n'), first = (lines[0] || ''), pro = lines.filter(s => /^Prospect:/.test(s)).join(' ');
+    const disclosed = /\b(AI|assistant)\b/.test(first), optout = /(do not call|don'?t call|stop calling|remove me|take me off)/i.test(pro), handled = !optout || x.outcome === 'Asked not to be called';
+    const good = /interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome);
+    const g = !disclosed || !handled ? 'Needs review' : good ? 'A' : 'B';
+    return `<div class="listitem row"><div><strong>${esc(x.leadName)} · ${esc(x.agentName || '')}</strong><small>${esc(fmtDate(x.at))} · ${esc(x.outcome)}</small><br><small>${disclosed ? '✅ AI disclosed' : '⚠️ AI not disclosed in first line'} · ${optout ? (handled ? '✅ Opt-out honored' : '⚠️ Opt-out heard but not marked Do not call') : 'No opt-out request'}</small></div><span class="chip ${g === 'A' ? 'ok' : g === 'B' ? '' : 'bad'}">${g === 'Needs review' ? '⚠️ Needs review' : 'Grade ' + g}</span></div>`;
+  });
+  el.innerHTML = `<div class="two"><div class="card"><h2>🛑 Kill switch</h2><p>Pause every outreach action at once (queue, emails, calls) while you fix a script or a problem. Practice calls still work.</p><button class="btn ${state.sdr.paused ? 'green' : 'danger'}" onclick="sdrPause(${!state.sdr.paused})">${state.sdr.paused ? '▶ Resume outreach' : '⏸ Pause all outreach'}</button>
+  <h2 class="section">🙋 Needs a human</h2>${ex.map(l => `<div class="listitem row"><div><strong>${esc(l.name)}</strong><small>${esc(M(l).filter(m => /real person|decision/i.test(m.text)).map(m => m.text).join(' · ') || '3+ calls with no answer: try email or a different time')}</small></div><button class="btn outline small" onclick="sdrOpen('${l.id}')">✦ Brief</button></div>`).join('') || '<p class="muted">Nobody needs you right now.</p>'}</div>
+  <div class="card"><h2>📝 Script check</h2>${state.agents.map(a => { const r = scriptCheck(a), bad = r.filter(x => !x[0]).length; return `<div class="listitem"><div class="row"><strong>${esc(a.name)}</strong><span class="chip ${bad ? 'bad' : 'ok'}">${bad ? bad + ' to fix' : 'All good'}</span></div><small>${r.map(x => (x[0] ? '✅ ' : '⚠️ ') + esc(x[1])).join('<br>')}</small>${bad ? `<div style="margin-top:6px"><button class="btn outline small" onclick="agentForm('${a.id}')">Edit script</button></div>` : ''}</div>`; }).join('') || '<p class="muted">Add agents to check their scripts.</p>'}</div></div>
+  <div class="card section"><h2>🎧 Call review (last 10 with transcripts)</h2>${graded.join('') || '<p class="muted">Practice calls you log with a transcript are graded here: AI disclosure, opt-outs honored and the outcome.</p>'}</div>
+  <p class="note warn section">General guidance, not legal advice. Always honor opt-outs right away, call business landlines (or leads with written consent) only, and stay inside calling hours.</p>`;
+}
+function sdrSet(id, grp, k, v) { const l = byId('leads', id); (grp === 'r' ? R(l) : Q(l))[k] = v; save(); renderBriefStats(l); }
+function renderBriefStats(l) { const sc = sdrScore(l), el = $('briefScore'); if (el) el.innerHTML = tierChip(sc) + `<div class="muted" style="font-size:13px;margin-top:6px">${esc(sc.why.join(' · ') || 'Fill in the research to sharpen the score.')}</div>`; }
+function sdrHear(id, key) { const l = byId('leads', id); speak(sdrOpener(l, key), agentFor(key)); }
+function renderBrief(c, l) {
+  const r = R(l), q = Q(l), offs = sdrOffers(l), k = offs[0], sel = (g, key, label, opts, val) => `<label for="b_${key}">${label}</label><select id="b_${key}" onchange="sdrSet('${l.id}','${g}','${key}',this.value)">${opts.map(o => `<option ${String(val) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const inp = (key, label, type, val, ph) => `<label for="b_${key}">${label}</label><input id="b_${key}" type="${type}" value="${esc(val || '')}" placeholder="${esc(ph || '')}" onchange="sdrSet('${l.id}','r','${key}',this.value)">`;
+  const objs = M(l).filter(m => TIPS[m.text]);
+  const done = l.seq ? SEQ.filter((s, i) => l.seq.done[i]).length : 0;
+  c.innerHTML = `<div class="row section"><button class="btn outline" onclick="state.sdr.lead='';render()">← Back to SDR AI</button><div class="toolbar">${l.phone ? `<a class="btn small" href="tel:${esc(digits(l.phone))}">📞 Call</a>` : ''}<button class="btn secondary small" onclick="sdrPractice('${l.id}')">🎙 Practice with ${esc(OFFERS[k].agent)}</button><button class="btn outline small" onclick="sdrEmailModal('${l.id}','intro','')">✉ Email draft</button><button class="btn outline small" onclick="leadForm('${l.id}')">Edit lead</button></div></div>
+  <div class="card section"><div class="row"><div><h2 style="margin:0">${esc(l.name || 'Lead')}</h2><p style="margin:4px 0 0">${esc(l.business || '')}${l.state ? ' · ' + esc(l.state) : ''} · ${esc(l.status || 'New')}${r.website ? ` · <a href="${esc(/^https?:/.test(r.website) ? r.website : 'https://' + r.website)}" target="_blank" rel="noopener">website ↗</a>` : ''}</p></div><div id="briefScore" style="max-width:420px;text-align:right"></div></div></div>
+  <div class="two section"><div class="card"><h2>🎯 Best offer & opener</h2><p style="margin-top:0"><span class="chip ok">${esc(OFFERS[k].name)}</span> with <b>${esc(OFFERS[k].agent)}</b>${offs[1] ? ` · Next best: ${esc(OFFERS[offs[1]].name)}` : ''}</p>
+    <div class="script" style="max-height:none">${esc(sdrOpener(l, k))}</div><div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="sdrHear('${l.id}','${k}')">▶ Hear it</button><button class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
+    ${objs.length ? `<h2 class="section">🧭 How to handle what they said</h2>${objs.map(m => `<div class="listitem"><strong>${esc(m.text)}</strong><small>${esc(TIPS[m.text])}</small></div>`).join('')}` : ''}
+    <h2 class="section">📅 Follow-up plan</h2>${l.seq ? `<p style="margin-top:0">${done} of ${SEQ.length} steps done · started ${niceD(l.seq.start)}</p>${SEQ.map((s, i) => `<div class="listitem row"><small>${l.seq.done[i] ? '✅' : addD(l.seq.start, s.day) <= todayISO() ? '🔔' : '⏳'} ${niceD(addD(l.seq.start, s.day))} · ${esc(s.label)}</small></div>`).join('')}` : `<p>Not started.</p><button class="btn small" ${state.sdr.paused ? 'disabled' : ''} onclick="sdrStart('${l.id}');state.sdr.lead='${l.id}';render()">▶ Start plan</button>`}</div>
+  <div class="card"><h2>🧠 What they’ve told us</h2><p style="margin-top:0">SDR AI learns from call notes and practice-call replies. Review, add or delete anything.</p>
+    ${M(l).map(m => `<div class="listitem row"><div><strong>${esc(m.text)}</strong><small>${esc(m.cat)} · ${esc(m.src)} · ${esc(fmtDate(m.at))}${m.quote ? ' · “' + esc(m.quote) + '”' : ''}</small></div><button class="btn danger small" onclick="memDel('${l.id}','${m.id}')" aria-label="Delete memory">🗑</button></div>`).join('') || '<p class="muted">Nothing yet.</p>'}
+    <div class="formgrid" style="grid-template-columns:2fr 1fr"><div><label for="memText">Add a memory</label><input id="memText" placeholder="Example: Office manager Maria handles marketing" onkeydown="if(event.key==='Enter'){event.preventDefault();memAdd('${l.id}')}"></div><div><label for="memCat">Type</label><select id="memCat">${['Fact', 'Need', 'Objection', 'Timing', 'Preference', 'Decision'].map(x => `<option>${x}</option>`).join('')}</select></div></div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="memAdd('${l.id}')">+ Add</button></div></div></div>
+  <div class="two section"><div class="card"><h2>🔎 Research</h2><p style="margin-top:0">A 2-minute look at their website and Google listing. Each answer sharpens the score and the offer.</p>
+    <div class="formgrid">${'<div>' + sel('r', 'industry', 'Industry', INDUSTRIES, guessIndustry(l)) + '</div><div>' + inp('website', 'Website', 'url', r.website, 'https://…') + '</div><div>' + sel('r', 'hasSite', 'Has a website?', YNU, r.hasSite || 'Unknown') + '</div><div>' + sel('r', 'siteQuality', 'Website looks', ['Unknown', 'Modern', 'Outdated'], r.siteQuality || 'Unknown') + '</div><div>' + sel('r', 'ada', 'Accessibility tool', ['Unknown', 'Has a working one', 'Missing or broken'], r.ada || 'Unknown') + '</div><div>' + sel('r', 'cookie', 'Cookie consent', ['Unknown', 'Has a working one', 'Missing or broken'], r.cookie || 'Unknown') + '</div><div>' + inp('rating', 'Google rating', 'number', r.rating, '4.6') + '</div><div>' + inp('reviews', 'Google reviews', 'number', r.reviews, '37') + '</div><div>' + sel('r', 'missesCalls', 'Goes to voicemail / misses calls?', YNU, r.missesCalls || 'Unknown') + '</div><div>' + sel('r', 'advertising', 'Already advertising?', YNU, r.advertising || 'Unknown') + '</div>'}</div>
+    ${l.business ? `<div class="actions" style="justify-content:flex-start"><a class="btn outline small" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(l.business + ' ' + (l.state || ''))}">Google them ↗</a><a class="btn outline small" target="_blank" rel="noopener" href="https://www.google.com/maps/search/${encodeURIComponent(l.business + ' ' + (l.state || ''))}">Maps & reviews ↗</a></div>` : ''}</div>
+  <div class="card"><h2>✅ Qualification</h2><p style="margin-top:0">The questions a great SDR asks. When the first two are “Yes”, the lead moves to Ready for Tania.</p>
+    ${sel('q', 'decisionMaker', 'Talking to the decision maker?', YNU, q.decisionMaker || 'Unknown')}${sel('q', 'interest', 'Interested in more patients, clients or a better site?', YNU, q.interest || 'Unknown')}${sel('q', 'newClients', 'Taking new patients or clients?', YNU, q.newClients || 'Unknown')}${sel('q', 'timeline', 'Ready to start within 30 days?', YNU, q.timeline || 'Unknown')}
+    <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="sdrCopy('${l.id}')">📋 Copy handoff summary</button></div></div></div>`;
+  renderBriefStats(l);
+}
+
 $('modal').addEventListener('close', stopSpeech);
 window.addEventListener('pagehide', stopSpeech);
 render();
