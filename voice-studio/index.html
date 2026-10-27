@@ -72,7 +72,7 @@ a{color:#137fae}
 <a class="skip" href="#content">Skip to content</a>
 <aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><nav id="nav" aria-label="Sections"></nav><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
 <main>
-  <header><div><div class="muted" style="font-size:13px">WEBSWAN VOICE STUDIO / <span id="crumb">OVERVIEW</span></div><h1 id="title">Overview</h1></div><span class="pill">● Calling service not connected · practice mode</span></header>
+  <header><div><div class="muted" style="font-size:13px">WEBSWAN VOICE STUDIO / <span id="crumb">OVERVIEW</span></div><h1 id="title">Overview</h1></div><div class="toolbar"><span class="pill">● Calling service not connected · practice mode</span><button type="button" id="cloudBtn" class="btn outline small" onclick="window.cloudClick && window.cloudClick()" title="Sync your workspace to your private WebSwan cloud">☁ Sign in to sync</button></div></header>
   <div id="content" tabindex="-1"></div>
 </main>
 <dialog id="modal" aria-labelledby="modalTitle"><div class="row"><h2 id="modalTitle"></h2><button class="nav" style="width:auto" type="button" onclick="closeModal()" aria-label="Close">✕</button></div><form id="form"></form></dialog>
@@ -410,9 +410,10 @@ function renderSetup(c) {
   c.innerHTML = `<div class="two section"><div class="card"><h2>Connections</h2>
     <div class="listitem row"><strong>Phone service</strong><span class="pill">Not connected</span></div>
     <div class="listitem row"><strong>AI voice service</strong><span class="pill">Not connected</span></div>
+    <div class="listitem row"><strong>Cloud sync (your private Firebase)</strong><span class="pill" id="cloudRow">${window.cloudUser ? 'On · ' + esc(window.cloudUser) : 'Off · sign in at the top'}</span></div>
     <div class="listitem row"><strong>Google Sheets sync</strong><span class="pill">Not connected · use CSV import</span></div>
     <div class="listitem row"><strong>Voice preview</strong><span class="pill ${canSpeak ? 'ok' : 'bad'}">${canSpeak ? 'Working in this browser' : 'Not supported here'}</span></div>
-    <h2 class="section">Your data</h2><p>Leads, agents, campaigns and call logs are saved in this browser only, not across devices. Download a backup to keep them safe or move them to another computer.</p>
+    <h2 class="section">Your data</h2><p>Leads, agents, campaigns and call logs are saved in this browser, and in your private WebSwan cloud when you sign in, so they follow you to every device. Download a backup to keep them safe or move them to another computer.</p>
     <div class="toolbar"><button class="btn" onclick="backup()">⬇ Download backup</button><button class="btn outline" onclick="$('backupFile').click()">⬆ Restore backup</button></div></div>
     <div class="card"><h2>Before live calls</h2>
     <div class="listitem"><strong>Business landlines first</strong><small>FCC: AI-generated voices count as “artificial” voices under the TCPA. Calling mobile numbers with an AI voice for marketing needs prior written consent.</small></div>
@@ -744,5 +745,63 @@ window.addEventListener('pagehide', stopSpeech);
 render();
 </script>
 <style>.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
+<script type="module">
+/* WebSwan cloud sync: Firebase project webswan-voice-studio.
+   Only Tania's Google accounts can read or write (enforced by Firestore security rules). */
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+import { getFirestore, collection, getDocs, doc, writeBatch } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
+const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
+window.fbApp = app;
+const auth = getAuth(app), db = getFirestore(app);
+const LISTS = ['leads', 'agents', 'campaigns', 'calls'];
+let user = null, last = {}, timer = null, busy = false, lastPull = 0;
+const btn = document.getElementById('cloudBtn');
+function status(txt, title) { btn.textContent = txt; btn.title = title || ''; const r = document.getElementById('cloudRow'); if (r) r.textContent = user ? 'On · ' + user.email : 'Off · sign in at the top'; }
+function snap() { const m = {}; LISTS.forEach(l => state[l].forEach(x => { m[l + '/' + x.id] = JSON.stringify(x); })); m['meta/sdr'] = JSON.stringify(state.sdr || {}); return m; }
+async function push() {
+  if (!user || busy) return; busy = true;
+  try {
+    const now = snap(), ops = [];
+    for (const k in now) if (now[k] !== last[k]) ops.push(['set', k, now[k]]);
+    for (const k in last) if (!(k in now)) ops.push(['del', k]);
+    for (let i = 0; i < ops.length; i += 400) {
+      const b = writeBatch(db);
+      ops.slice(i, i + 400).forEach(([t, k, v]) => { const [c, id] = k.split('/'); const r = doc(db, 'studios', user.uid, c, id); if (t === 'set') b.set(r, { json: v, at: Date.now() }); else b.delete(r); });
+      await b.commit();
+    }
+    last = now; status('☁ Synced', 'Saved to your private WebSwan cloud as ' + user.email + '. Click to sign out.');
+  } catch (e) { console.error(e); status('☁ Sync error', String(e.message || e)); }
+  finally { busy = false; }
+}
+async function pull() {
+  const cloud = {};
+  for (const c of [...LISTS, 'meta']) { const s = await getDocs(collection(db, 'studios', user.uid, c)); s.forEach(d => { cloud[c + '/' + d.id] = d.data().json; }); }
+  LISTS.forEach(l => {
+    const m = new Map(state[l].map(x => [x.id, x]));
+    Object.keys(cloud).filter(k => k.startsWith(l + '/')).forEach(k => { try { const o = JSON.parse(cloud[k]); m.set(o.id, o); } catch (e) {} });
+    state[l] = [...m.values()];
+  });
+  state.calls.sort((a, b) => (b.at || 0) - (a.at || 0));
+  if (cloud['meta/sdr']) { try { state.sdr = Object.assign(state.sdr || {}, JSON.parse(cloud['meta/sdr']), { lead: (state.sdr || {}).lead || '' }); } catch (e) {} }
+  last = cloud; lastPull = Date.now();
+  localSave(); render(); await push();
+}
+const localSave = window.save;
+window.save = function () { localSave(); if (user) { clearTimeout(timer); status('☁ Saving…'); timer = setTimeout(push, 1200); } };
+window.cloudClick = async () => {
+  if (user) { if (confirm('Sign out of cloud sync? Your data stays in this browser and in your cloud.')) { await push(); await signOut(auth); } return; }
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { if (!/popup-closed|cancelled/.test(e.code || '')) toast('Sign-in didn’t work: ' + (e.code || e.message)); }
+};
+onAuthStateChanged(auth, async u => {
+  user = u; window.cloudUser = u ? u.email : '';
+  if (!u) { last = {}; status('☁ Sign in to sync', 'Sync your workspace to your private WebSwan cloud'); return; }
+  status('☁ Syncing…');
+  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); }
+  catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else status('☁ Sync error', String(e.message || e)); }
+});
+window.addEventListener('focus', () => { if (user && Date.now() - lastPull > 60000) push().then(pull).catch(() => {}); });
+window.addEventListener('pagehide', () => { if (user) push(); });
+</script>
 </body>
 </html>
