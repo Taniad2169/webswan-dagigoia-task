@@ -61,6 +61,7 @@
     '.rbt-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}',
     '@media(max-width:600px){#rbt-launch .rbt-lbl{display:none}#rbt-launch{padding:5px}#rbt-panel{left:8px;right:8px;width:auto;bottom:80px}}',
     '@media(max-height:720px){.rbt-hero .rbt-pic{width:120px;height:120px}.rbt-top .rbt-pic{width:42px;height:42px}}',
+    C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     C.hide ? C.hide + '{display:none!important}' : ''
   ].join('\n');
   var st = document.createElement('style'); st.id = 'rbt-style'; st.textContent = css; document.head.appendChild(st);
