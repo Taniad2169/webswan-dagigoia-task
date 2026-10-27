@@ -840,6 +840,8 @@
         ✉️ Webmail
       </a>
       <a class="btn-topbar btn-email" href="studio/">🦢 Studio</a>
+      <a class="btn-topbar btn-email" href="rachel-bot/" target="_blank" rel="noopener" title="Open Rachel Bennet, the talking assistant for The WebSwan family">🎙️ Rachel Bennet</a>
+      <button type="button" class="btn-topbar btn-email" id="btn-copy-rachel" title="Copy Rachel's link to send to people" onclick="(function(b){var u='https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/';function ok(){var t=b.textContent;b.textContent='✅ Link copied';setTimeout(function(){b.textContent=t;},1800);}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(ok,function(){prompt('Copy Rachel\'s link:',u);});}else{prompt('Copy Rachel\'s link:',u);}})(this)">🔗 Copy Rachel link</button>
       <button type="button" class="btn-topbar btn-email" onclick="switchTab('billing');setTimeout(function(){var c=document.getElementById('sow-card');if(c){c.scrollIntoView({behavior:'smooth',block:'start'});var i=document.getElementById('sow-client');if(i)setTimeout(function(){i.focus({preventScroll:true});},600);}},150);">✍️ Scope of Work</button>
       <button class="btn-topbar btn-lock-app" id="btn-relock">🔐 Lock</button>
     </div>

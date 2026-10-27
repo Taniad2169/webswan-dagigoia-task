@@ -66,6 +66,12 @@ html.talking .live{display:inline-flex}
 .creds b{color:var(--navy)}
 .creds .ic{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--b1),var(--b3));color:#fff;font-size:14px}
 
+.sites{margin-top:14px;display:grid;gap:8px}
+.sites>b{font:700 12px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sites a{display:grid;grid-template-columns:28px 1fr;column-gap:10px;align-items:center;text-decoration:none;color:var(--navy);font-weight:700;font-size:14px;border:1.5px solid var(--line);border-radius:12px;padding:9px 11px;word-break:break-word}
+.sites a:hover{border-color:var(--b1)}
+.sites a span{grid-row:span 2;font-size:18px;text-align:center}
+.sites a small{font-weight:500;color:var(--muted);font-size:12px}
 /* right column */
 .intro h2{margin:2px 0 4px;font:800 clamp(22px,3vw,30px)/1.2 Poppins,Arial,sans-serif;color:var(--navy)}
 .intro p{margin:0 0 14px;color:var(--muted)}
@@ -126,6 +132,12 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
       <li><span class="ic" aria-hidden="true">🥇</span><span><b>2024 Best Web Design Agency</b> award from RankWatch</span></li>
       <li><span class="ic" aria-hidden="true">⭐</span><span><b>5-star</b> on Google, Yelp &amp; Yahoo · <b>A rating</b> with the BBB California</span></li>
     </ul>
+    <nav class="sites" aria-label="Our websites">
+      <b>Our websites</b>
+      <a href="https://www.thewebswan.com/" target="_blank" rel="noopener"><span>🌐</span>thewebswan.com<small>Websites, PWAs &amp; apps</small></a>
+      <a href="https://webswandigitalsolutions.com/" target="_blank" rel="noopener"><span>🛡️</span>webswandigitalsolutions.com<small>Website compliance</small></a>
+      <a href="https://ads.webswanmedianetwork.com/" target="_blank" rel="noopener"><span>📣</span>ads.webswanmedianetwork.com<small>Advertising for doctors &amp; attorneys</small></a>
+    </nav>
   </section>
 
   <section aria-labelledby="pick-h">
@@ -243,11 +255,18 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     mn: ['advertis', 'directory', 'listing', 'wsmn', 'media network', 'get found', 'new patients', 'new clients', 'promote my practice', 'receptionist']
   };
   function topic(k, text) { var t = ' ' + text.toLowerCase() + ' ', s = 0; TOPIC[k].forEach(function (w) { if (t.indexOf(w.length < 4 ? ' ' + w : w) > -1) s += 3; }); return s; }
+  var FAMILY = [
+    { k: ['your website', 'your websites', 'website address', 'web address', 'url', 'link to', 'links', 'visit your', 'your site', 'where can i see', 'all your'], a: 'Here are our websites:<ul><li>🌐 <a href="https://www.thewebswan.com/">thewebswan.com</a>: custom UX/UI websites, PWAs, landing pages, phone apps and e-business cards</li><li>🛡️ <a href="https://webswandigitalsolutions.com/">webswandigitalsolutions.com</a>: website compliance (ADA, cookies, HIPAA, attorney rules)</li><li>📣 <a href="https://ads.webswanmedianetwork.com/">ads.webswanmedianetwork.com</a>: online advertising for doctors and attorneys</li></ul>' },
+    { k: ['family', 'three companies', 'your companies', 'what companies', 'difference between', 'which company', 'brands'], a: 'The WebSwan family has three companies, all founded by <b>Tania Domingue</b>, a certified web developer and UX/UI designer:<ul><li><b>The WebSwan</b>: websites, PWAs, landing pages, phone apps and e-business cards</li><li><b>WebSwan Digital Solutions</b>: website compliance audits and fixes</li><li><b>WebSwan Media Network</b>: online advertising for doctors and attorneys</li></ul>Tap a company above to ask about it.' },
+    { k: ['award', 'ranking', 'ranked', 'designrush', 'rankwatch', 'reviews', 'rating', 'bbb', 'trust', 'credentials', 'certified', 'why choose', 'why should'], a: 'Why businesses trust The WebSwan:<ul><li>Founder Tania Domingue is a <b>certified web developer and UX/UI designer</b></li><li><b>#2 of the Top 20</b> web design agencies in California on DesignRush</li><li><b>2024 Best Web Design Agency</b> award from RankWatch</li><li><b>5-star</b> ratings on Google, Yelp and Yahoo, and an <b>A rating</b> with the BBB California</li></ul>' }
+  ];
   var active = null;
   function ask(text) {
     text = String(text || '').trim(); if (!text) return;
     stopAll(); add(text, true);
     ready.then(function () {
+      var fam = score(FAMILY, text);
+      if (fam.a && fam.s >= 3) { setTimeout(function () { add(fam.a, false, null); }, 280); return; }
       var key = active, res;
       if (key) res = score(BR[key].cfg.kb, text);
       if (!key || !res.a || res.s < 2) {          // not sure? look across all three companies
@@ -280,9 +299,9 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
   /* ---- Rachel introduces the family ---- */
   var INTRO = [
     { k: null, t: 'Hi! I’m Rachel Bennet, the AI assistant for The WebSwan family. Our founder, Tania Domingue, is a certified web developer and UX/UI designer. The WebSwan is ranked number 2 out of the top 20 web design agencies in California on DesignRush, won the 2024 Best Web Design Agency award from RankWatch, has 5-star ratings on Google, Yelp and Yahoo, and holds an A rating with the BBB in California.' },
-    { k: 'ds', t: 'WebSwan Digital Solutions checks whether your website really meets accessibility and privacy rules: ADA and WCAG accessibility, cookie banners, HIPAA-safe forms for doctors and website rules for attorneys, starting with a complimentary compliance audit.' },
-    { k: 'ws', t: 'The WebSwan designs custom UX/UI websites, progressive web apps, lead-generating landing pages, phone apps and digital business cards, all built to be found on Google and in AI search.' },
-    { k: 'mn', t: 'And WebSwan Media Network helps doctors and attorneys advertise online with a professional directory profile, plus a 24/7 AI receptionist, that’s me on the phone!' },
+    { k: 'ds', t: 'WebSwan Digital Solutions checks whether your website really meets accessibility and privacy rules: ADA and WCAG accessibility, cookie banners, HIPAA-safe forms for doctors and website rules for attorneys, starting with a complimentary compliance audit. Visit webswandigitalsolutions.com.' },
+    { k: 'ws', t: 'The WebSwan designs custom UX/UI websites, progressive web apps, lead-generating landing pages, phone apps and digital business cards, all built to be found on Google and in AI search. Visit thewebswan.com.' },
+    { k: 'mn', t: 'And WebSwan Media Network helps doctors and attorneys advertise online with a professional directory profile, plus a 24/7 AI receptionist, that’s me on the phone! Visit ads.webswanmedianetwork.com.' },
     { k: null, t: 'Tap a company to ask me anything about it, or type your question below. You can stop me any time.' }
   ];
   playB.addEventListener('click', function () {
@@ -310,7 +329,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
   /* ---- start ---- */
   add('Hi! I’m <b>Rachel Bennet</b> 👋 Tap <b>▶ Meet Rachel</b> to hear about The WebSwan family, or pick a company and ask me anything.', false);
   log.lastChild.querySelector('.lis') && log.lastChild.querySelector('.lis').parentNode.remove(); stopAll();
-  ready.then(function () { if (!active) showChips(['What do you offer?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
+  ready.then(function () { if (!active) showChips(['What do you offer?', 'Your websites', 'Why choose The WebSwan?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
   var hb = (location.hash || '').replace('#', ''); if (BR[hb]) pick(hb, true);
 })();
 </script>
