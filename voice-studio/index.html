@@ -832,9 +832,48 @@ function listenToggle() {
   try { rec.start(); listening = true; } catch (e) { toast('Couldn’t start listening: ' + e.message); return; }
   const b = $('listenBtn'); b.textContent = '⏹ Stop listening'; b.classList.remove('green'); $('listenState').textContent = '● Listening…';
 }
+
+/* ---------- import from Lead Prospector (link: #import=...) ---------- */
+const STATE_CODES = { alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY','puerto rico':'PR' };
+function toStateCode(v) { v = String(v || '').trim(); if (/^[A-Za-z]{2}$/.test(v)) return v.toUpperCase(); return STATE_CODES[v.toLowerCase()] || ''; }
+function checkImport() {
+  const m = location.hash.match(/^#import=([A-Za-z0-9_-]+)/); if (!m) return;
+  let data;
+  try { let b = m[1].replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '='; data = JSON.parse(decodeURIComponent(escape(atob(b)))); }
+  catch (e) { history.replaceState(null, '', location.pathname); toast('That import link is incomplete. Try pushing again from Lead Prospector.'); return; }
+  history.replaceState(null, '', location.pathname);
+  const list = (data && Array.isArray(data.leads) ? data.leads : []).slice(0, 300);
+  const have = new Set(state.leads.map(l => digits(l.phone).slice(-10)).filter(Boolean));
+  const fresh = [], dupes = [];
+  list.forEach(x => { const d = digits(x.phone).slice(-10); if (!d) return; if (have.has(d)) dupes.push(x); else { have.add(d); fresh.push(x); } });
+  if (!fresh.length) { toast(dupes.length ? `All ${dupes.length} lead${dupes.length > 1 ? 's are' : ' is'} already in Voice Studio.` : 'No leads with phone numbers in that link.'); return; }
+  openForm(`Import ${fresh.length} lead${fresh.length > 1 ? 's' : ''} from ${esc(data.src || 'Lead Prospector')}`,
+    `<p style="margin-top:0">${dupes.length ? `${dupes.length} already in Voice Studio will be skipped. ` : ''}Website scan findings come along, so SDR AI can mention real issues.</p>
+    <div class="script" style="max-height:200px">${fresh.slice(0, 12).map(x => `<div>• <b>${esc(x.business || x.name)}</b>${x.state ? ' · ' + esc(toStateCode(x.state) || x.state) : ''}${x.findings && x.findings.length ? ' · <span class="muted">' + esc(x.findings[0]) + '</span>' : ''}</div>`).join('')}${fresh.length > 12 ? `<div class="muted">+ ${fresh.length - 12} more</div>` : ''}</div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="landline" value="1" style="width:auto;margin-top:3px"> <span>These are <b>business office lines</b> from business listings (needed for AI-voice calls). Leave unchecked if you're not sure; you can set it per lead.</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="plan" value="1" checked style="width:auto;margin-top:3px"> <span>Start the SDR AI follow-up plan for them today</span></label>`,
+    v => {
+      const now = Date.now();
+      fresh.forEach(x => {
+        const l = { id: uid(), created: now, name: x.name || '', business: x.business || '', phone: x.phone, email: x.email || '', state: toStateCode(x.state),
+          lineType: v.landline ? 'Business landline' : 'Unknown', consent: 'None', status: 'New',
+          notes: [x.city ? 'City: ' + x.city : '', x.type ? 'Type: ' + x.type : '', x.notes || ''].filter(Boolean).join('\n'), src: 'Lead Prospector', lpId: x.lpId };
+        l.r = { industry: x.industry || '', website: x.website || '', hasSite: x.noSite ? 'No' : (x.website ? 'Yes' : 'Unknown'),
+          siteQuality: x.outdated ? 'Outdated' : 'Unknown', ada: x.ada ? 'Missing or broken' : 'Unknown', cookie: x.cookie ? 'Missing or broken' : 'Unknown',
+          missesCalls: x.missesCalls ? 'Yes' : 'Unknown', rating: x.rating || '', reviews: x.reviews || '' };
+        l.mem = (x.findings || []).map(f => ({ id: uid(), cat: 'Fact', text: 'Website scan: ' + f, src: 'Lead Prospector scan', at: now }));
+        if (v.plan) l.seq = { start: todayISO(), done: {} };
+        state.leads.push(l);
+      });
+      toast(`🎙 ${fresh.length} lead${fresh.length > 1 ? 's' : ''} imported from Lead Prospector${dupes.length ? ` (${dupes.length} duplicate${dupes.length > 1 ? 's' : ''} skipped)` : ''}.`);
+      page = v.plan ? 'SDR AI' : 'Leads'; if (state.sdr) { state.sdr.lead = ''; state.sdr.tab = 'Today'; }
+    });
+}
 $('modal').addEventListener('close', () => { stopSpeech(); listenStop(); });
 window.addEventListener('pagehide', stopSpeech);
 render();
+checkImport();
+window.addEventListener('hashchange', checkImport);
 </script>
 <style>.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
 <script type="module">
