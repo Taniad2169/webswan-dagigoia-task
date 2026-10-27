@@ -73,6 +73,12 @@ html.talking .live{display:inline-flex}
 .sites a:hover{border-color:var(--b1)}
 .sites a span{grid-row:span 2;font-size:18px;text-align:center}
 .sites a small{font-weight:500;color:var(--muted);font-size:12px}
+.bigplay{position:absolute;z-index:3;left:50%;bottom:31%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:10px 20px 10px 10px;background:rgba(6,39,67,.82);color:#fff;font:800 16px Inter,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.35);backdrop-filter:blur(4px);white-space:nowrap}
+.bigplay .pi{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--b1),var(--b3));font-size:18px;animation:ring 1.6s ease-out infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(72,214,250,.7)}100%{box-shadow:0 0 0 16px rgba(72,214,250,0)}}
+html.talking .bigplay,.bigplay.done{display:none}
+.family{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;text-decoration:none;font:800 15px Inter,Arial,sans-serif;color:#fff;border-radius:16px;padding:14px 16px;background:linear-gradient(115deg,var(--navy),#1563b8 55%,var(--b3));box-shadow:0 10px 22px rgba(21,99,184,.3)}
+.family:hover{filter:brightness(1.08)}
 /* right column */
 .intro h2{margin:2px 0 4px;font:800 clamp(22px,3vw,30px)/1.2 Poppins,Arial,sans-serif;color:var(--navy)}
 .intro p{margin:0 0 14px;color:var(--muted)}
@@ -121,12 +127,13 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
 
 <main>
   <section class="stagecard" aria-label="Rachel Bennet">
-    <div class="rpic" aria-hidden="true"><span class="rstage"><img class="rb" id="rb" src="rachel-thewebswan.jpg" alt=""><img class="rg" src="rachel-gap.png" alt=""><img class="rj" src="rachel-jaw.png" alt=""></span></div>
+    <div class="rpic"><button type="button" class="bigplay" id="bigplay" aria-label="Play: hear Rachel introduce The WebSwan family"><span class="pi">▶</span><span>Tap to hear Rachel</span></button><span class="rstage" aria-hidden="true"><img class="rb" id="rb" src="rachel-thewebswan.jpg" alt=""><img class="rg" src="rachel-gap.png" alt=""><img class="rj" src="rachel-jaw.png" alt=""></span></div>
     <div class="name"><h1>Rachel Bennet<span>AI assistant for The WebSwan family</span></h1><span class="live" aria-hidden="true"><i></i>Talking</span></div>
     <div class="ctrls">
       <button class="btn play" id="play" type="button">▶ Meet Rachel</button>
       <button class="btn stop" id="stop" type="button" disabled>⏹ Stop talking</button>
     </div>
+    <a class="family" href="https://taniad2169.github.io/WebSwan-Terminal/" target="_blank" rel="noopener">🦢 Click to learn more about the Swan family</a>
     <ul class="creds" aria-label="Why businesses trust The WebSwan">
       <li><span class="ic" aria-hidden="true">🎓</span><span><b>Certified web developer &amp; UX/UI designer</b>, founder Tania Domingue</span></li>
       <li><span class="ic" aria-hidden="true">🏆</span><span><b>#2 of the Top 20</b> web design agencies in California on DesignRush</span></li>
@@ -152,6 +159,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
       <button class="brand" type="button" data-brand="mn" aria-pressed="false"><span class="tag t-mn">Advertising</span><h3>WebSwan Media Network</h3><p>Online advertising and a professional directory for doctors and attorneys, plus a 24/7 AI receptionist.</p><span class="go">Ask about advertising →</span></button>
     </div>
 
+    <a class="family" href="https://taniad2169.github.io/WebSwan-Terminal/" target="_blank" rel="noopener" style="margin:12px 0 0">🦢 Click to learn more about the Swan family →</a>
     <div class="chat">
       <div class="chat-h"><div><b id="ch-t">Chat with Rachel Bennet</b><small id="ch-s">Choose a company above, or just ask</small></div><button class="vt" id="vt" type="button" aria-pressed="true">🔊 Voice on</button></div>
       <div id="log" role="log" aria-live="polite"></div>
@@ -261,6 +269,11 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     { k: ['family', 'three companies', 'your companies', 'what companies', 'difference between', 'which company', 'brands'], a: 'The WebSwan family has three companies, all founded by <b>Tania Domingue</b>, a certified web developer and UX/UI designer:<ul><li><b>The WebSwan</b>: websites, PWAs, landing pages, phone apps and e-business cards</li><li><b>WebSwan Digital Solutions</b>: website compliance audits and fixes</li><li><b>WebSwan Media Network</b>: online advertising for doctors and attorneys</li></ul>Tap a company above to ask about it.' },
     { k: ['award', 'ranking', 'ranked', 'designrush', 'rankwatch', 'reviews', 'rating', 'bbb', 'trust', 'credentials', 'certified', 'why choose', 'why should'], a: 'Why businesses trust The WebSwan:<ul><li>Founder Tania Domingue is a <b>certified web developer and UX/UI designer</b></li><li><b>#2 of the Top 20</b> web design agencies in California on DesignRush</li><li><b>2024 Best Web Design Agency</b> award from RankWatch</li><li><b>5-star</b> ratings on Google, Yelp and Yahoo, and an <b>A rating</b> with the BBB California</li></ul>' }
   ];
+  var WELCOME = {
+    ds: 'Welcome to <b>WebSwan Digital Solutions</b>! 🛡️ We’re here to <b>protect your digital assets from penalties and lawsuits</b>. We review your website’s accessibility, privacy and security, including ADA and WCAG, cookie consent, HIPAA-safe forms for doctors and website rules for attorneys, and fix what isn’t working. Why we do it: a button or a banner is not a compliance strategy, and one demand letter can cost far more than doing it right. It all starts with a <b>complimentary audit</b>. What would you like to know?',
+    ws: 'Welcome to <b>The WebSwan</b>! 🦢 We give your business a <b>unique presence online</b>. We design custom UX/UI websites, PWAs, landing pages, phone apps and digital business cards, built around your customers, fast, accessible and ready for Google and AI search. Why we do it: your business isn’t a template, so your website shouldn’t be either. It should look like you, work like your best employee and turn visitors into customers. What would you like to know?',
+    mn: 'Welcome to <b>WebSwan Media Network</b>! 📣 We give <b>doctors and attorneys extra visibility online</b>. Your professional profile in our directory shows your specialties, service area and how to reach you, on a network built to be found on Google and in AI search, plus a 24/7 AI receptionist so no call is missed. Why we do it: great professionals deserve to be found by the patients and clients who need them. What would you like to know?'
+  };
   var active = null;
   function ask(text) {
     text = String(text || '').trim(); if (!text) return;
@@ -291,7 +304,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     $('ch-s').textContent = { ws: 'Websites, PWAs, landing pages, e-business cards', ds: 'Website compliance questions', mn: 'Online advertising for doctors & attorneys' }[key];
     ready.then(function () {
       showChips(BR[key].cfg.quick || []);
-      if (!quiet) { stopAll(); add(BR[key].cfg.greeting, false, key); }
+      if (!quiet) { stopAll(); $('bigplay').classList.add('done'); add(WELCOME[key], false, key); }
       q.focus();
     });
   }
@@ -318,6 +331,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     });
     playB.textContent = '↻ Hear it again';
   });
+  $('bigplay').addEventListener('click', function () { $('bigplay').classList.add('done'); playB.click(); });
   stopB.addEventListener('click', stopAll);
   q.addEventListener('input', function () { if (canSpeak && synth.speaking) stopAll(); });
   $('f').addEventListener('submit', function (e) { e.preventDefault(); var v = q.value; q.value = ''; ask(v); });
@@ -328,7 +342,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
   window.addEventListener('pagehide', stopAll);
 
   /* ---- start ---- */
-  add('Hi! I’m <b>Rachel Bennet</b> 👋 Tap <b>▶ Meet Rachel</b> to hear about The WebSwan family, or pick a company and ask me anything.', false);
+  add('Hi! I’m <b>Rachel Bennet</b> 👋 Tap <b>▶ Tap to hear Rachel</b> on my picture to hear about The WebSwan family, or pick a company and ask me anything.', false);
   log.lastChild.querySelector('.lis') && log.lastChild.querySelector('.lis').parentNode.remove(); stopAll();
   ready.then(function () { if (!active) showChips(['What do you offer?', 'Your websites', 'Why choose The WebSwan?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
   var hb = (location.hash || '').replace('#', ''); if (BR[hb]) pick(hb, true);
