@@ -107,10 +107,29 @@ body{font-family:'Space Mono',ui-monospace,monospace}
 .beak::before{content:"";position:absolute;left:-12%;top:-10%;width:30%;height:120%;border-radius:40%;background:#141414}
 .eye{position:absolute;left:78.5%;top:5%;width:1.6%;aspect-ratio:1;border-radius:50%;background:#0b0b14}
 
-.tag{position:absolute;left:8%;bottom:104%;white-space:nowrap;padding:.35cqw .8cqw;border-radius:99px;
+.tag{position:absolute;left:4%;bottom:122%;white-space:nowrap;padding:.35cqw .8cqw;border-radius:99px;
   font:700 calc(var(--s)*1cqw)/1.2 'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);
   background:var(--brand);box-shadow:0 0 1.4cqw rgba(72,214,250,.45);animation:bob 2.6s ease-in-out infinite reverse}
 .tag::after{content:"";position:absolute;left:50%;top:100%;width:2px;height:1.2cqw;background:rgba(200,230,255,.6)}
+
+/* the WebSwan crew look (from Tania's Salvador swans): bucket hats, sunglasses, a flower lei */
+.swan.blue{--hat:#7fb2ec;--hat2:#4f86cf;--lens:#0d1220;--rim:#1b2233}
+.swan.pink{--hat:#ff5aa8;--hat2:#e43b8b;--lens:#5a1636;--rim:#ff8fc7}
+.hat{position:absolute;left:60%;top:-19%;width:33%;height:21%;z-index:2;filter:drop-shadow(0 0 .3cqw rgba(255,255,255,.35))}
+.hat::before{content:"";position:absolute;left:22%;top:0;width:56%;height:70%;border-radius:45% 45% 12% 12%;
+  background:radial-gradient(circle at 70% 40%,#fff 0 6%,transparent 7%),linear-gradient(var(--hat),var(--hat2));
+  box-shadow:inset 0 -.15cqw 0 rgba(0,0,0,.25)}
+.hat::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:40%;border-radius:50%;
+  background:linear-gradient(var(--hat),var(--hat2));box-shadow:0 .15cqw .25cqw rgba(0,0,0,.35)}
+.swan.pink .hat::before{background:radial-gradient(circle at 30% 45%,#ffd84a 0 9%,transparent 10%),radial-gradient(circle at 62% 38%,#fff 0 7%,transparent 8%),linear-gradient(var(--hat),var(--hat2))}
+.shades{position:absolute;left:72.5%;top:2.6%;width:15%;height:6.6%;z-index:3;border-radius:35% 45% 50% 40%;
+  background:radial-gradient(ellipse 40% 60% at 30% 40%,rgba(255,255,255,.35),transparent 60%),var(--lens);
+  border:.12cqw solid var(--rim)}
+.shades::before{content:"";position:absolute;right:92%;top:30%;width:45%;height:22%;background:var(--rim)}
+.lei{position:absolute;left:62%;top:31%;width:17%;height:7%;z-index:2;border-radius:50%;
+  background:radial-gradient(circle,#ffd23f 0 34%,transparent 38%) 0 0/25% 100%,radial-gradient(circle,#ff4f9a 0 34%,transparent 38%) 12.5% 50%/25% 100%;
+  transform:rotate(-12deg)}
+.swan.pink .tag{background:linear-gradient(90deg,#ff5aa8,#ff9bd0,#48d6fa)}
 
 /* finale: a big swan skims off the lake and flies over the city */
 .finale{inset:0;pointer-events:none}
@@ -130,6 +149,7 @@ body{font-family:'Space Mono',ui-monospace,monospace}
 .fhead{position:absolute;left:86%;top:42%;width:7%;aspect-ratio:1.4;border-radius:50% 60% 50% 50%;background:#fff}
 .fhead::after{content:"";position:absolute;left:92%;top:30%;width:90%;height:45%;background:linear-gradient(#ff9d3b,#f06a1d);
   clip-path:polygon(0 0,100% 50%,0 100%)}
+.fshades{position:absolute;left:30%;top:10%;width:55%;height:45%;border-radius:40%;background:#0d1220;border:.1cqw solid #1b2233}
 .fwing{position:absolute;left:20%;bottom:52%;width:36%;height:100%;transform-origin:50% 100%;
   background:linear-gradient(200deg,#ffffff,#cddff9);
   clip-path:polygon(100% 100%,0 100%,6% 74%,18% 46%,36% 20%,58% 4%,74% 0,70% 24%,82% 40%,78% 64%,92% 78%);
@@ -193,6 +213,11 @@ h1 span{display:block;font-style:italic;font-weight:500;font-size:.5em;letter-sp
   background:radial-gradient(ellipse at center,rgba(2,6,22,.4),rgba(2,6,22,.86));animation:reveal 1.6s ease var(--show) 1 both}
 .scene:has(#go:checked) .replay-card{display:grid}
 @keyframes reveal{from{opacity:0;visibility:hidden}to{opacity:1;visibility:visible}}
+.polaroid{margin:0 0 4px;padding:8px 8px 6px;background:#f6f8ff;border-radius:6px;transform:rotate(-2.5deg);
+  box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 30px rgba(72,214,250,.25);width:min(420px,70cqw)}
+.polaroid img{display:block;width:100%;height:auto;border-radius:3px}
+.polaroid figcaption{margin-top:6px;font:italic 500 clamp(11px,1.2vw,14px)/1.2 'Playfair Display',serif;color:#0b1d59}
+@container (max-height:520px){.polaroid{width:min(300px,40cqw)}}
 .replay-card h2{font-size:clamp(34px,6.4vw,80px);line-height:1.05}
 .cta-line{margin:0;font-size:clamp(12px,1.4vw,16px);letter-spacing:.06em}
 .cta-line a{color:var(--b3);text-decoration:none;border-bottom:1px dotted}
