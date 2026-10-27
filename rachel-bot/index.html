@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ask Rachel Bennet | The WebSwan Family</title>
-<meta name="description" content="Meet Rachel Bennet, the talking AI assistant for The WebSwan family: The WebSwan (custom UX/UI websites, PWAs, landing pages, e-business cards), WebSwan Digital Solutions (website compliance) and WebSwan Media Network (online advertising for doctors and attorneys).">
+<meta name="description" content="Meet Rachel Bennet, the talking AI assistant for The WebSwan family: The WebSwan (custom UX/UI websites, WSBPA phone apps, landing pages, e-business cards), WebSwan Digital Solutions (website compliance) and WebSwan Media Network (online advertising for doctors and attorneys).">
 <meta property="og:title" content="Ask Rachel Bennet | The WebSwan Family">
 <meta property="og:description" content="Websites, website compliance and online advertising. Ask Rachel anything, she talks back.">
 <meta property="og:image" content="https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/rachel-thewebswan.jpg">
@@ -79,6 +79,13 @@ html.talking .live{display:inline-flex}
 html.talking .bigplay,.bigplay.done{display:none}
 .family{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;text-decoration:none;font:800 15px Inter,Arial,sans-serif;color:#fff;border-radius:16px;padding:14px 16px;background:linear-gradient(115deg,var(--navy),#1563b8 55%,var(--b3));box-shadow:0 10px 22px rgba(21,99,184,.3)}
 .family:hover{filter:brightness(1.08)}
+.owner{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:start;margin-top:12px;background:var(--card);border:2px solid var(--line);border-radius:20px;padding:16px}
+.owner img{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--b3);box-shadow:0 6px 16px rgba(6,39,67,.18)}
+.owner h3{margin:2px 0 4px;font:800 19px/1.2 Poppins,Arial,sans-serif;color:var(--navy)}
+.owner p{margin:0 0 10px;font-size:14px;color:var(--muted)}
+.owner .tag{display:inline-block;font:800 11px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;border-radius:999px;padding:3px 9px}
+.owner .btn{padding:10px 14px;font-size:14px}
+@media(max-width:520px){.owner{grid-template-columns:64px 1fr}.owner img{width:64px;height:64px}}
 /* right column */
 .intro h2{margin:2px 0 4px;font:800 clamp(22px,3vw,30px)/1.2 Poppins,Arial,sans-serif;color:var(--navy)}
 .intro p{margin:0 0 14px;color:var(--muted)}
@@ -142,7 +149,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     </ul>
     <nav class="sites" aria-label="Our websites">
       <b>Our websites</b>
-      <a href="https://www.thewebswan.com/" target="_blank" rel="noopener"><span>🌐</span>thewebswan.com<small>Websites, PWAs &amp; apps</small></a>
+      <a href="https://www.thewebswan.com/" target="_blank" rel="noopener"><span>🌐</span>thewebswan.com<small>Websites &amp; WSBPA phone apps</small></a>
       <a href="https://webswandigitalsolutions.com/" target="_blank" rel="noopener"><span>🛡️</span>webswandigitalsolutions.com<small>Website compliance</small></a>
       <a href="https://ads.webswanmedianetwork.com/" target="_blank" rel="noopener"><span>📣</span>ads.webswanmedianetwork.com<small>Advertising for doctors &amp; attorneys</small></a>
     </nav>
@@ -155,10 +162,19 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     </div>
     <div class="brands" role="group" aria-label="Choose a company">
       <button class="brand" type="button" data-brand="ds" aria-pressed="false"><span class="tag t-ds">Compliance</span><h3>WebSwan Digital Solutions</h3><p>ADA &amp; WCAG accessibility, cookie banners, HIPAA-safe forms, attorney website rules and complimentary compliance audits.</p><span class="go">Ask about compliance →</span></button>
-      <button class="brand" type="button" data-brand="ws" aria-pressed="false"><span class="tag t-ws">Websites</span><h3>The WebSwan</h3><p>Custom UX/UI websites, PWAs, landing pages, phone apps, e-business cards, SEO and AI search.</p><span class="go">Ask about websites →</span></button>
+      <button class="brand" type="button" data-brand="ws" aria-pressed="false"><span class="tag t-ws">Websites</span><h3>The WebSwan</h3><p>Custom UX/UI websites, WSBPA phone apps, landing pages, e-business cards, SEO and AI search.</p><span class="go">Ask about websites →</span></button>
       <button class="brand" type="button" data-brand="mn" aria-pressed="false"><span class="tag t-mn">Advertising</span><h3>WebSwan Media Network</h3><p>Online advertising and a professional directory for doctors and attorneys, plus a 24/7 AI receptionist.</p><span class="go">Ask about advertising →</span></button>
     </div>
 
+    <article class="owner" aria-labelledby="own-h">
+      <img src="tania.jpg" alt="Tania Domingue, founder of The WebSwan" width="96" height="96">
+      <div>
+        <span class="tag t-ws">Meet the owner</span>
+        <h3 id="own-h">Tania Domingue</h3>
+        <p>Computer programming &amp; information systems background, front-end and software developer, certified in SEO content writing, internet marketing, marketing, advertising and sales writing. Technology isn’t her job, it’s her passion, and she won’t stop until it’s done right.</p>
+        <button type="button" class="btn play" id="ownerplay">▶ Rachel, tell me about Tania</button>
+      </div>
+    </article>
     <a class="family" href="https://taniad2169.github.io/WebSwan-Terminal/" target="_blank" rel="noopener" style="margin:12px 0 0">🦢 Click to learn more about the Swan family →</a>
     <div class="chat">
       <div class="chat-h"><div><b id="ch-t">Chat with Rachel Bennet</b><small id="ch-s">Choose a company above, or just ask</small></div><button class="vt" id="vt" type="button" aria-pressed="true">🔊 Voice on</button></div>
@@ -212,7 +228,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     stopB.disabled = !on && !introRunning;
   }, 150);
   function spoken(t) {
-    return String(t).replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/•/g, ', ').replace(/\bUX\/UI\b/g, 'U X, U I').replace(/\bWCAG\b/g, 'W-CAG').replace(/\bSBPA\b/g, 'S B P A').replace(/\bWSMN\b/g, 'W S M N').replace(/\bPWAs?\b/g, function (m) { return m.length > 3 ? 'P W As' : 'P W A'; })
+    return String(t).replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/•/g, ', ').replace(/\bWSBPA\b/g, 'W S B P A').replace(/\bSBPA\b/g, 'W S B P A').replace(/\bADA\b/g, 'A D A').replace(/\bWCAG\b/g, 'W-CAG').replace(/\bUX\/UI\b/g, 'U X, U I').replace(/\bWSMN\b/g, 'W S M N').replace(/\bHIPAA\b/g, 'hippa').replace(/\bSEO\b/g, 'S E O').replace(/\bPWAs?\b/g, 'W S B P A').replace(/\/month\b/g, ' per month').replace(/\/mo\b/g, ' per month').replace(/\/year\b/g, ' per year').replace(/\/yr\b/g, ' per year')
       .replace(/\(?(\d{3})\)?[ -.]?(\d{3})-(\d{4})/g, function (m, a, b, d) { return a.split('').join(' ') + ', ' + b.split('').join(' ') + ', ' + d.split('').join(' '); })
       .replace(/\s+/g, ' ').trim();
   }
@@ -265,13 +281,14 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
   };
   function topic(k, text) { var t = ' ' + text.toLowerCase() + ' ', s = 0; TOPIC[k].forEach(function (w) { if (t.indexOf(w.length < 4 ? ' ' + w : w) > -1) s += 3; }); return s; }
   var FAMILY = [
-    { k: ['your website', 'your websites', 'website address', 'web address', 'url', 'link to', 'links', 'visit your', 'your site', 'where can i see', 'all your'], a: 'Here are our websites:<ul><li>🌐 <a href="https://www.thewebswan.com/">thewebswan.com</a>: custom UX/UI websites, PWAs, landing pages, phone apps and e-business cards</li><li>🛡️ <a href="https://webswandigitalsolutions.com/">webswandigitalsolutions.com</a>: website compliance (ADA, cookies, HIPAA, attorney rules)</li><li>📣 <a href="https://ads.webswanmedianetwork.com/">ads.webswanmedianetwork.com</a>: online advertising for doctors and attorneys</li></ul>' },
-    { k: ['family', 'three companies', 'your companies', 'what companies', 'difference between', 'which company', 'brands'], a: 'The WebSwan family has three companies, all founded by <b>Tania Domingue</b>, a certified web developer and UX/UI designer:<ul><li><b>The WebSwan</b>: websites, PWAs, landing pages, phone apps and e-business cards</li><li><b>WebSwan Digital Solutions</b>: website compliance audits and fixes</li><li><b>WebSwan Media Network</b>: online advertising for doctors and attorneys</li></ul>Tap a company above to ask about it.' },
+    { k: ['owner', 'founder', 'tania', 'who is behind', 'who runs', 'your background', 'your story', 'meet the owner'], a: 'Meet <b>Tania Domingue</b>, founder of The WebSwan. 🦢 Her background is in <b>computer programming and information systems</b>, with continuing education in web development as a <b>front-end developer and software developer</b>. She’s also certified in <b>SEO content writing, internet marketing, marketing, advertising and sales writing</b>. Technology isn’t her job, it’s her passion: she’s constantly learning to keep up with change, and she watches Google’s algorithm and every change in website compliance and regulation very closely to protect her clients’ assets. Her goal is to deliver, and she won’t stop until it’s done right, because her clients’ success is her story.' },
+    { k: ['website address', 'web address', 'url', 'link to your', 'your links', 'website links', 'visit your', 'where can i see', 'what are your websites', 'list your websites', 'all your websites', 'your websites?', 'websites you have'], a: 'Here are our websites:<ul><li>🌐 <a href="https://www.thewebswan.com/">thewebswan.com</a>: custom UX/UI websites, WSBPA phone apps, landing pages and e-business cards</li><li>🛡️ <a href="https://webswandigitalsolutions.com/">webswandigitalsolutions.com</a>: website compliance (ADA, cookies, HIPAA, attorney rules)</li><li>📣 <a href="https://ads.webswanmedianetwork.com/">ads.webswanmedianetwork.com</a>: online advertising for doctors and attorneys</li></ul>' },
+    { k: ['family', 'three companies', 'your companies', 'what companies', 'difference between', 'which company', 'brands'], a: 'The WebSwan family has three companies, all founded by <b>Tania Domingue</b>, a certified web developer and UX/UI designer:<ul><li><b>The WebSwan</b>: websites, WSBPA phone apps, landing pages and e-business cards</li><li><b>WebSwan Digital Solutions</b>: website compliance audits and fixes</li><li><b>WebSwan Media Network</b>: online advertising for doctors and attorneys</li></ul>Tap a company above to ask about it.' },
     { k: ['award', 'ranking', 'ranked', 'designrush', 'rankwatch', 'reviews', 'rating', 'bbb', 'trust', 'credentials', 'certified', 'why choose', 'why should'], a: 'Why businesses trust The WebSwan:<ul><li>Founder Tania Domingue is a <b>certified web developer and UX/UI designer</b></li><li><b>#2 of the Top 20</b> web design agencies in California on DesignRush</li><li><b>2024 Best Web Design Agency</b> award from RankWatch</li><li><b>5-star</b> ratings on Google, Yelp and Yahoo, and an <b>A rating</b> with the BBB California</li></ul>' }
   ];
   var WELCOME = {
     ds: 'Welcome to <b>WebSwan Digital Solutions</b>! 🛡️ We’re here to <b>protect your digital assets from penalties and lawsuits</b>. We review your website’s accessibility, privacy and security, including ADA and WCAG, cookie consent, HIPAA-safe forms for doctors and website rules for attorneys, and fix what isn’t working. Why we do it: a button or a banner is not a compliance strategy, and one demand letter can cost far more than doing it right. It all starts with a <b>complimentary audit</b>. What would you like to know?',
-    ws: 'Welcome to <b>The WebSwan</b>! 🦢 We give your business a <b>unique presence online</b>. We design custom UX/UI websites, PWAs, landing pages, phone apps and digital business cards, built around your customers, fast, accessible and ready for Google and AI search. Why we do it: your business isn’t a template, so your website shouldn’t be either. It should look like you, work like your best employee and turn visitors into customers. What would you like to know?',
+    ws: 'Welcome to <b>The WebSwan</b>! 🦢 We give your business a <b>unique presence online</b>. We design custom UX/UI websites, WSBPA phone apps, landing pages and digital business cards, built around your customers, fast, accessible and ready for Google and AI search. Why we do it: your business isn’t a template, so your website shouldn’t be either. It should look like you, work like your best employee and turn visitors into customers. What would you like to know?',
     mn: 'Welcome to <b>WebSwan Media Network</b>! 📣 We give <b>doctors and attorneys extra visibility online</b>. Your professional profile in our directory shows your specialties, service area and how to reach you, on a network built to be found on Google and in AI search, plus a 24/7 AI receptionist so no call is missed. Why we do it: great professionals deserve to be found by the patients and clients who need them. What would you like to know?'
   };
   var active = null;
@@ -286,7 +303,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
       if (!key || !res.a || res.s < 2) {          // not sure? look across all three companies
         var bestK = key, best = res || { s: 0 };
         ['ds', 'ws', 'mn'].forEach(function (k) { var r = score(BR[k].cfg.kb, text); if (r.a) r.s += topic(k, text); if (r.s > best.s + (k === key ? -1 : 0)) { best = r; bestK = k; } });
-        if (best.a && best.s >= 2) { key = bestK; res = best; }
+        if (best.a && best.s >= (key && bestK !== key ? 5 : 2)) { key = bestK; res = best; }
       }
       var a = res && res.a ? res.a : (key ? BR[key].cfg.fallback : 'Great question! Call or text Tania at <a href="tel:+14158770687">(415) 877-0687</a> and she’ll answer it personally.');
       setTimeout(function () { add(a, false, key); }, 280);
@@ -301,7 +318,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     document.querySelectorAll('.brand').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.brand === key)); });
     rb.style.opacity = '.2'; setTimeout(function () { rb.src = BR[key].img; rb.style.opacity = '1'; }, 180);
     $('ch-t').textContent = 'Rachel Bennet · ' + BR[key].label;
-    $('ch-s').textContent = { ws: 'Websites, PWAs, landing pages, e-business cards', ds: 'Website compliance questions', mn: 'Online advertising for doctors & attorneys' }[key];
+    $('ch-s').textContent = { ws: 'Websites, WSBPA phone apps, landing pages, e-business cards', ds: 'Website compliance questions', mn: 'Online advertising for doctors & attorneys' }[key];
     ready.then(function () {
       showChips(BR[key].cfg.quick || []);
       if (!quiet) { stopAll(); $('bigplay').classList.add('done'); add(WELCOME[key], false, key); }
@@ -332,6 +349,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     playB.textContent = '↻ Hear it again';
   });
   $('bigplay').addEventListener('click', function () { $('bigplay').classList.add('done'); playB.click(); });
+  $('ownerplay').addEventListener('click', function () { stopAll(); $('bigplay').classList.add('done'); var v = voiceOn; voiceOn = true; add('Meet <b>Tania Domingue</b>, founder of The WebSwan. 🦢 Her background is in <b>computer programming and information systems</b>, with continuing education in web development as a <b>front-end developer and software developer</b>. She’s also certified in <b>SEO content writing, internet marketing, marketing, advertising and sales writing</b>. Technology isn’t her job, it’s her passion: she’s constantly learning to keep up with change, and she watches Google’s algorithm and every change in website compliance and regulation very closely to protect her clients’ assets. Her goal is to deliver, and she won’t stop until it’s done right, because her clients’ success is her story.', false, 'ws'); voiceOn = v; log.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   stopB.addEventListener('click', stopAll);
   q.addEventListener('input', function () { if (canSpeak && synth.speaking) stopAll(); });
   $('f').addEventListener('submit', function (e) { e.preventDefault(); var v = q.value; q.value = ''; ask(v); });
@@ -344,7 +362,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
   /* ---- start ---- */
   add('Hi! I’m <b>Rachel Bennet</b> 👋 Tap <b>▶ Tap to hear Rachel</b> on my picture to hear about The WebSwan family, or pick a company and ask me anything.', false);
   log.lastChild.querySelector('.lis') && log.lastChild.querySelector('.lis').parentNode.remove(); stopAll();
-  ready.then(function () { if (!active) showChips(['What do you offer?', 'Your websites', 'Why choose The WebSwan?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
+  ready.then(function () { if (!active) showChips(['What do you offer?', 'What are your websites?', 'Why choose The WebSwan?', 'Is my website compliant?', 'How much is a website?', 'How do doctors advertise?', 'Talk to Tania']); });
   var hb = (location.hash || '').replace('#', ''); if (BR[hb]) pick(hb, true);
 })();
 </script>

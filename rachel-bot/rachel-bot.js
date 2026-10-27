@@ -91,7 +91,7 @@
   function plain(el) {
     var c = el.cloneNode(true); c.querySelectorAll('button').forEach(function (b) { b.remove(); });
     c.querySelectorAll('li').forEach(function (li) { li.append('. '); });
-    return (c.textContent || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/•/g, ', ')
+    return (c.textContent || '').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').replace(/•/g, ', ').replace(/\bWSBPA\b/g, 'W S B P A').replace(/\bSBPA\b/g, 'W S B P A').replace(/\bADA\b/g, 'A D A').replace(/\bWCAG\b/g, 'W-CAG').replace(/\bUX\/UI\b/g, 'U X, U I').replace(/\bWSMN\b/g, 'W S M N').replace(/\bHIPAA\b/g, 'hippa').replace(/\bSEO\b/g, 'S E O').replace(/\bPWAs?\b/g, 'W S B P A').replace(/\/month\b/g, ' per month').replace(/\/mo\b/g, ' per month').replace(/\/year\b/g, ' per year').replace(/\/yr\b/g, ' per year')
       .replace(/\(?(\d{3})\)?[ -.]?(\d{3})-(\d{4})/g, function (m, a, b, d) { return a.split('').join(' ') + ', ' + b.split('').join(' ') + ', ' + d.split('').join(' '); })
       .replace(/\s+/g, ' ').trim();
   }
