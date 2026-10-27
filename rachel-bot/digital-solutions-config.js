@@ -12,7 +12,7 @@
     hide: '#wsc-launch,#wsc-bot',
     greeting: 'Hi, I’m <b>Rachel Bennet</b>, WebSwan Digital Solutions’ compliance assistant. 👋 Ask me about <b>ADA accessibility, cookie banners, HIPAA forms, attorney website rules</b>, state penalties or our <b>24/7 AI receptionist</b>.',
     quick: ['Check my state penalty', 'Book 10-min audit call', 'Is my site ADA compliant?', 'Do I need a cookie banner?', 'Is my form HIPAA safe?', 'Attorney website rules', 'AI receptionist', 'Try Rachel free 1 week', 'Social media marketing', 'Complimentary audit'],
-    fallback: 'Great question! I’m not sure I have the full answer, but a WebSwan specialist does. Call ' + P + ' or ' + AUDIT + ' and we’ll cover it personally.',
+    fallback: 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>',
     kb: [
       { k: ['ada', 'disab', 'title iii', 'lawsuit', 'sued', 'demand letter', 'accessib'], a: '<b>ADA &amp; websites:</b> Courts regularly apply ADA Title III to websites of businesses open to the public, including medical offices and law firms. The benchmark is <b>WCAG 2.1/2.2 Level AA</b>. In California, the Unruh Act adds statutory damages of <b>at least $4,000 per violation</b>. Want us to check your site? ' + AUDIT + '.' },
       { k: ['wcag', 'contrast', 'alt text', 'screen reader', 'keyboard', 'caption'], a: '<b>WCAG 2.2 AA</b> is the target. The most common failures we find:<ul><li>Images with no alt text</li><li>Low color contrast</li><li>Form fields without labels</li><li>Menus that don’t work with a keyboard</li><li>Videos without captions</li></ul>We fix these in the code itself, not with an overlay.' },

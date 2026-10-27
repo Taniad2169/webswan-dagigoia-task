@@ -112,11 +112,11 @@
 
   /* ---------- knowledge ---------- */
   var KB = C.kb || [];
-  var FALLBACK = C.fallback || 'I don’t have that answer yet, but our team does. Call or text <a href="tel:+14158770687">(415) 877-0687</a>.';
+  var FALLBACK = C.fallback || 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>';
   function answer(text) {
     var t = ' ' + text.toLowerCase().replace(/[’']/g, "'") + ' ', best = null, score = 0;
     KB.forEach(function (e) { var s = 0; e.k.forEach(function (k) { if (t.indexOf(k) > -1) s += k.length > 3 ? 2 + (k.indexOf(' ') > -1 ? 1 : 0) : 1; }); if (s > score) { score = s; best = e; } });
-    return best ? best.a : FALLBACK;
+    return best && score >= 2 ? best.a : FALLBACK;
   }
 
   /* ---------- interface ---------- */

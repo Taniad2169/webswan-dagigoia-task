@@ -291,6 +291,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
     ws: 'Welcome to <b>The WebSwan</b>! 🦢 We give your business a <b>unique presence online</b>. We design custom UX/UI websites, WSBPA phone apps, landing pages and digital business cards, built around your customers, fast, accessible and ready for Google and AI search. Why we do it: your business isn’t a template, so your website shouldn’t be either. It should look like you, work like your best employee and turn visitors into customers. What would you like to know?',
     mn: 'Welcome to <b>WebSwan Media Network</b>! 📣 We give <b>doctors and attorneys extra visibility online</b>. Your professional profile in our directory shows your specialties, service area and how to reach you, on a network built to be found on Google and in AI search, plus a 24/7 AI receptionist so no call is missed. Why we do it: great professionals deserve to be found by the patients and clients who need them. What would you like to know?'
   };
+  var FALLBACK = 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>';
   var active = null;
   function ask(text) {
     text = String(text || '').trim(); if (!text) return;
@@ -305,7 +306,7 @@ footer a{color:#1563b8;font-weight:700;text-decoration:none}
         ['ds', 'ws', 'mn'].forEach(function (k) { var r = score(BR[k].cfg.kb, text); if (r.a) r.s += topic(k, text); if (r.s > best.s + (k === key ? -1 : 0)) { best = r; bestK = k; } });
         if (best.a && best.s >= (key && bestK !== key ? 5 : 2)) { key = bestK; res = best; }
       }
-      var a = res && res.a ? res.a : (key ? BR[key].cfg.fallback : 'Great question! Call or text Tania at <a href="tel:+14158770687">(415) 877-0687</a> and she’ll answer it personally.');
+      var a = res && res.a && res.s >= 2 ? res.a : (key ? BR[key].cfg.fallback : FALLBACK);
       setTimeout(function () { add(a, false, key); }, 280);
     });
   }

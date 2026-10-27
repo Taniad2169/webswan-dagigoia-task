@@ -11,7 +11,7 @@
     launchText: 'Ask Rachel: advertising',
     greeting: 'Hi, I’m <b>Rachel Bennet</b> with <b>WebSwan Media Network</b>. 👋 We help <b>doctors and attorneys</b> get found online. Ask me how advertising works, what it costs or how to join.',
     quick: ['What is WebSwan Media Network?', 'Who can advertise?', 'How much does it cost?', 'Is there a contract?', 'What do I get?', 'How do I join?', 'AI receptionist for my practice', 'Talk to someone'],
-    fallback: 'Great question! Call me at ' + R + ' (calls only) or call or text Tania at ' + P + ' and we’ll answer it personally.',
+    fallback: 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>',
     kb: [
       { k: ['what is', 'media network', 'wsmn', 'about', 'directory', 'platform'], a: '<b>WebSwan Media Network (WSMN)</b>, powered by The WebSwan, is an online advertising platform and professional directory for <b>doctors and attorneys</b>. Your hosted WSMN profile shows who you are, your specialties, your service area and how patients or clients can reach you, on a site built to rank on Google and in AI search. See it at ' + ADS + '.' },
       { k: ['who can', 'eligible', 'qualify', 'doctor', 'attorney', 'lawyer', 'chiropractor', 'dentist', 'surgeon', 'hairdresser', 'mechanic', 'trades'], a: 'WSMN is <b>only for doctors and attorneys</b>: medical professionals such as physicians, surgeons, chiropractors and dentists, and legal professionals such as attorneys and law firms. That focus keeps the network trusted and relevant for patients and clients.' },
