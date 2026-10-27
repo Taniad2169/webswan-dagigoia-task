@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The WebSwan · Midnight Glide</title>
+<meta name="description" content="A pure-CSS midnight glide on Lake Merritt, Oakland, by The WebSwan. No JavaScript.">
+<meta property="og:title" content="The WebSwan · Midnight Glide">
+<meta property="og:description" content="Six swans, one lake, zero JavaScript. Where your business takes flight.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,500&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="./glide.css">
+</head>
+<body>
+<!--
+  THE WEBSWAN · MIDNIGHT GLIDE
+  Pure HTML + CSS. No JavaScript anywhere.
+
+  HOW IT WORKS
+  1. One click: "START THE GLIDE" is a <label> for a hidden checkbox (#go).
+     .scene:has(#go:checked) reveals the show, and every animation in it starts from zero.
+  2. Music with no JavaScript: the song lives in song.html inside a lazy iframe that is
+     display:none until the click. A lazy iframe only loads once it's shown, so the click
+     that shows it is the click that starts the song.
+  3. Timed captions: each caption has its own --t start time. "HIDE CAPTIONS" is a second
+     checkbox that hides them without stopping them, so they stay on the beat.
+  4. The replay card waits --show seconds (the length of the show), then fades in.
+     Change --show in glide.css to match the final song length.
+-->
+<main class="scene">
+  <input type="checkbox" id="go" class="switch">
+  <input type="checkbox" id="cc-off" class="switch">
+
+  <!-- THE STAGE: one 16:9 box; everything is placed in % of it -->
+  <div class="stage" aria-hidden="true">
+    <div class="sky"></div>
+    <div class="stars"></div>
+    <div class="stars stars-2"></div>
+    <div class="moon"></div>
+    <div class="hills"></div>
+
+    <div class="skyline">
+      <i style="--x:4%;--w:5%;--h:26%"></i><i style="--x:9%;--w:3.5%;--h:38%"></i>
+      <i style="--x:13%;--w:6%;--h:21%"></i><i style="--x:20%;--w:4%;--h:46%"></i>
+      <i style="--x:24.5%;--w:5%;--h:33%"></i><i style="--x:31%;--w:3%;--h:55%"></i>
+      <i style="--x:34.5%;--w:6.5%;--h:29%"></i><i style="--x:42%;--w:4.5%;--h:41%"></i>
+      <i style="--x:47%;--w:3.5%;--h:63%"></i><i style="--x:51%;--w:6%;--h:35%"></i>
+      <i style="--x:58%;--w:4%;--h:49%"></i><i style="--x:62.5%;--w:5.5%;--h:27%"></i>
+      <i style="--x:69%;--w:3.5%;--h:43%"></i><i style="--x:73%;--w:6%;--h:31%"></i>
+      <i style="--x:80%;--w:4.5%;--h:52%"></i><i style="--x:85%;--w:5%;--h:24%"></i>
+      <i style="--x:91%;--w:4%;--h:37%"></i>
+    </div>
+
+    <div class="lake"></div>
+    <div class="necklace"></div>
+    <div class="necklace necklace-reflect"></div>
+    <div class="shimmer"></div>
+
+    <!-- ambient: fireflies over the water -->
+    <i class="fly" style="--x:12%;--y:52%;--d:0s"></i><i class="fly" style="--x:28%;--y:47%;--d:1.4s"></i>
+    <i class="fly" style="--x:44%;--y:55%;--d:2.8s"></i><i class="fly" style="--x:63%;--y:49%;--d:.7s"></i>
+    <i class="fly" style="--x:78%;--y:53%;--d:2.1s"></i><i class="fly" style="--x:90%;--y:46%;--d:3.3s"></i>
+
+    <!-- THE GLIDE: hidden until the click -->
+    <div class="show">
+      <!-- each swan: --d start, --y lane (waterline), --s size, --dur crossing time -->
+      <div class="swan" style="--d:2s;--y:72%;--s:1;--dur:22s">
+        <b class="tag">Custom Websites</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+      <div class="swan" style="--d:8s;--y:63%;--s:.8;--dur:24s">
+        <b class="tag">ADA &amp; Privacy Compliance</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+      <div class="swan" style="--d:14s;--y:80%;--s:1.15;--dur:21s">
+        <b class="tag">WSBPA Phone Apps</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+      <div class="swan" style="--d:20s;--y:68%;--s:.9;--dur:23s">
+        <b class="tag">AI Receptionist</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+      <div class="swan" style="--d:26s;--y:76%;--s:1.05;--dur:22s">
+        <b class="tag">SEO &amp; AI Search</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+      <div class="swan" style="--d:32s;--y:65%;--s:.85;--dur:24s">
+        <b class="tag">WebSwan Media Network</b><div class="bird"><i class="wing"></i><i class="beak"></i><i class="eye"></i></div>
+      </div>
+
+      <!-- finale: the big swan lifts off the water and flies over the city -->
+      <div class="finale">
+        <div class="flyer"><i class="fwing fwing-back"></i><div class="fbody"></div><i class="fneck"></i><i class="fhead"></i><i class="fwing"></i></div>
+      </div>
+      <div class="sparkles"><i style="--x:30%;--d:0s"></i><i style="--x:42%;--d:.4s"></i><i style="--x:55%;--d:.8s"></i><i style="--x:67%;--d:.2s"></i><i style="--x:78%;--d:.6s"></i></div>
+    </div>
+  </div>
+
+  <!-- TITLE CARD -->
+  <section class="title-card">
+    <p class="kicker">LAKE MERRITT · OAKLAND · AFTER MIDNIGHT</p>
+    <h1>The WebSwan<span>Midnight Glide</span></h1>
+    <label for="go" class="btn">START THE GLIDE</label>
+    <p class="note">Sound on. Pure CSS, no JavaScript.</p>
+  </section>
+
+  <!-- PLAYER + CONTROLS: shown after the click (showing the lazy iframe starts the song) -->
+  <div class="controls">
+    <iframe class="player" src="./song.html" loading="lazy" title="Midnight Glide soundtrack"></iframe>
+    <label for="cc-off" class="ctrl"><span class="on">HIDE CAPTIONS</span><span class="off">SHOW CAPTIONS</span></label>
+    <a class="ctrl" href="./">RESTART</a>
+  </div>
+
+  <!-- TIMED CAPTIONS (start times in --t) -->
+  <div class="captions" aria-live="off">
+    <p class="cap" style="--t:.5s">Lake Merritt, Oakland. Just past midnight…</p>
+    <p class="cap" style="--t:4s">First on the water: <b>custom websites</b>, no templates.</p>
+    <p class="cap" style="--t:10s"><b>ADA &amp; privacy compliance</b>, built in from day one.</p>
+    <p class="cap" style="--t:16s"><b>WSBPA phone apps</b>: your business on every home screen.</p>
+    <p class="cap" style="--t:22s">An <b>AI receptionist</b> that answers every call, 24/7.</p>
+    <p class="cap" style="--t:28s">Found on Google, and in <b>AI search</b>.</p>
+    <p class="cap" style="--t:34s"><b>WebSwan Media Network</b>, for doctors &amp; attorneys.</p>
+    <p class="cap cap-big" style="--t:42s">The WebSwan. Where your business takes flight.</p>
+  </div>
+
+  <!-- REPLAY CARD: fades in after --show seconds -->
+  <section class="replay-card">
+    <p class="kicker">BEST WEB DESIGN AGENCY 2024 · RANKWATCH</p>
+    <h2>Ready to take flight?</h2>
+    <p class="cta-line"><a href="https://thewebswan.com" target="_blank" rel="noopener">thewebswan.com</a> · <a href="tel:+14158770687">(415) 877-0687</a></p>
+    <a class="btn" href="./">GLIDE AGAIN</a>
+  </section>
+
+  <p class="credit">PURE CSS · NO JAVASCRIPT · THE WEBSWAN, OAKLAND CA</p>
+</main>
+</body>
+</html>
