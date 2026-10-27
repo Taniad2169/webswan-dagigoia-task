@@ -541,6 +541,7 @@ function sdrScore(l) {
   if (r.ada === 'Missing or broken') { s += 15; why.push('No working accessibility tool'); }
   if (r.cookie === 'Missing or broken') { s += 8; why.push('No cookie consent'); }
   if (r.missesCalls === 'Yes') { s += 10; why.push('Misses calls'); }
+  if (r.advertising === 'Yes') { s += 8; why.push('Runs paid ads (PPC)'); }
   if (Number(r.rating) && Number(r.rating) < 4.3) { s += 6; why.push('Google rating ' + r.rating); }
   if (r.reviews !== undefined && r.reviews !== '' && Number(r.reviews) < 25) { s += 4; why.push('Few reviews (' + r.reviews + ')'); }
   const st = { Interested: 20, 'Appointment requested': 30, Contacted: 5, 'Follow up': 8, 'Not interested': -25 }[l.status] || 0;
@@ -558,6 +559,7 @@ function sdrOffers(l) {
   const r = R(l), ind = guessIndustry(l), o = [];
   const add = k => { if (!o.includes(k)) o.push(k); };
   const happySite = hasMem(l, /Already has a website/);
+  if (r.advertising === 'Yes' && ind !== 'Other business') add('wsmn');
   if (r.hasSite === 'No') add('site');
   if (r.ada === 'Missing or broken' || r.cookie === 'Missing or broken' || hasMem(l, /ADA/)) add('audit');
   if (r.missesCalls === 'Yes' || hasMem(l, /Misses calls/)) add('recep');
@@ -860,8 +862,9 @@ function checkImport() {
           notes: [x.city ? 'City: ' + x.city : '', x.type ? 'Type: ' + x.type : '', x.notes || ''].filter(Boolean).join('\n'), src: 'Lead Prospector', lpId: x.lpId };
         l.r = { industry: x.industry || '', website: x.website || '', hasSite: x.noSite ? 'No' : (x.website ? 'Yes' : 'Unknown'),
           siteQuality: x.outdated ? 'Outdated' : 'Unknown', ada: x.ada ? 'Missing or broken' : 'Unknown', cookie: x.cookie ? 'Missing or broken' : 'Unknown',
-          missesCalls: x.missesCalls ? 'Yes' : 'Unknown', rating: x.rating || '', reviews: x.reviews || '' };
+          missesCalls: x.missesCalls ? 'Yes' : 'Unknown', advertising: x.ppc || (x.ads && x.ads.length) ? 'Yes' : 'Unknown', rating: x.rating || '', reviews: x.reviews || '' };
         l.mem = (x.findings || []).map(f => ({ id: uid(), cat: 'Fact', text: 'Website scan: ' + f, src: 'Lead Prospector scan', at: now }));
+        if (x.ads && x.ads.length) l.mem.push({ id: uid(), cat: 'Fact', text: 'Runs paid ads: ' + x.ads.join(', ') + (x.ppc ? ' (PPC)' : ''), src: 'Lead Prospector scan', at: now });
         if (v.plan) l.seq = { start: todayISO(), done: {} };
         state.leads.push(l);
       });
