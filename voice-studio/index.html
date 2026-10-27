@@ -749,7 +749,7 @@ render();
 /* WebSwan cloud sync: Firebase project webswan-voice-studio.
    Only Tania's Google accounts can read or write (enforced by Firestore security rules). */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
 import { getFirestore, collection, getDocs, doc, writeBatch } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
 const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
 window.fbApp = app;
@@ -791,7 +791,12 @@ const localSave = window.save;
 window.save = function () { localSave(); if (user) { clearTimeout(timer); status('☁ Saving…'); timer = setTimeout(push, 1200); } };
 window.cloudClick = async () => {
   if (user) { if (confirm('Sign out of cloud sync? Your data stays in this browser and in your cloud.')) { await push(); await signOut(auth); } return; }
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { if (!/popup-closed|cancelled/.test(e.code || '')) toast('Sign-in didn’t work: ' + (e.code || e.message)); }
+  const gp = new GoogleAuthProvider(); gp.setCustomParameters({ prompt: 'select_account' });
+  try { await signInWithPopup(auth, gp); }
+  catch (e) {
+    if (/popup-blocked|operation-not-supported|web-storage-unsupported/.test(e.code || '')) { status('☁ Opening Google…'); return signInWithRedirect(auth, gp); }
+    if (!/popup-closed|cancelled/.test(e.code || '')) toast('Sign-in didn’t work: ' + (e.code || e.message));
+  }
 };
 onAuthStateChanged(auth, async u => {
   user = u; window.cloudUser = u ? u.email : '';
@@ -800,6 +805,7 @@ onAuthStateChanged(auth, async u => {
   try { await pull(); toast('☁ Synced with your WebSwan cloud.'); }
   catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else status('☁ Sync error', String(e.message || e)); }
 });
+getRedirectResult(auth).catch(e => { if (e && e.code) toast('Sign-in didn’t work: ' + e.code); });
 window.addEventListener('focus', () => { if (user && Date.now() - lastPull > 60000) push().then(pull).catch(() => {}); });
 window.addEventListener('pagehide', () => { if (user) push(); });
 </script>
