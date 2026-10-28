@@ -11,7 +11,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
@@ -27,6 +27,7 @@
   const db = getFirestore(app);
   const auth = getAuth(app);
   const ref = doc(db, "swan_budget", "main");
+  const rcpt = (id) => doc(db, "swan_budget_receipts", id);
 
   window._cloud = {
     async signIn() {
@@ -39,7 +40,10 @@
     },
     async signOut() { await signOut(auth); },
     async load() { const s = await getDoc(ref); return s.exists() ? s.data() : null; },
-    async save(data) { await setDoc(ref, { json: JSON.stringify(data), updatedAt: new Date().toISOString() }); }
+    async save(data) { await setDoc(ref, { json: JSON.stringify(data), updatedAt: new Date().toISOString() }); },
+    async saveReceipt(id, r) { await setDoc(rcpt(id), { ...r, createdAt: new Date().toISOString() }); },
+    async getReceipt(id) { const s = await getDoc(rcpt(id)); return s.exists() ? s.data() : null; },
+    async deleteReceipt(id) { await deleteDoc(rcpt(id)); }
   };
   onAuthStateChanged(auth, (user) => {
     const email = user ? (user.email || "").toLowerCase() : "";
@@ -168,6 +172,14 @@
   .modal p{margin:0 0 16px;font-size:14px;color:var(--muted);line-height:1.5}
   .modal .formbtns .btn{flex:1}
   .btn-bad{background:var(--bad);color:#fff}
+  .rcpt-in{padding:8px;font-size:13px;background:#f7fbff}
+  .rcpt-cur{margin-top:6px;font-size:12.5px;color:var(--navy);background:#eef6fe;border:1px solid var(--sky);border-radius:9px;padding:7px 10px}
+  .rcpt-cur button{border:0;background:none;color:var(--blue);font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
+  #rv .box{max-width:720px}
+  #rv .rvbody{max-height:70vh;overflow:auto;background:#f5f8fb;border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:160px}
+  #rv img{max-width:100%;display:block}
+  #rv iframe{width:100%;height:65vh;border:0}
+  .btn-dl{background:var(--blue);color:#fff;text-decoration:none;text-align:center}
 
   @media (max-width:900px){
     .stats{grid-template-columns:1fr 1fr}
@@ -255,6 +267,10 @@
               <label><input type="radio" name="f-type" value="want"> Want (lifestyle)</label>
             </div>
           </div>
+          <label class="lb" for="f-rcpt">🧾 Receipt (optional)</label>
+          <input class="in rcpt-in" id="f-rcpt" type="file" accept="image/*,application/pdf">
+          <div class="rcpt-cur hidden" id="f-rcpt-cur">🧾 Receipt attached · <button type="button" onclick="viewReceipt(ui.editing && ui.editing.receiptId)">view</button> · <button type="button" onclick="dropReceipt()">remove</button></div>
+          <div class="hint" style="margin-top:4px">Photo or PDF. On your phone you can snap it with the camera.</div>
           <div class="formbtns">
             <button class="btn btn-main" type="submit" id="f-submit">Add item</button>
             <button class="btn btn-ghost hidden" type="button" id="f-cancel" onclick="cancelEdit()">Cancel</button>
@@ -299,6 +315,17 @@
       </div>
     </div>
   </main>
+</div>
+
+<div class="modal hidden" id="rv">
+  <div class="box">
+    <h4 id="rv-title">Receipt</h4>
+    <div class="rvbody" id="rv-body"><div class="empty">Loading…</div></div>
+    <div class="formbtns">
+      <button class="btn btn-ghost" type="button" onclick="closeReceipt()">Close</button>
+      <a class="btn btn-dl hidden" id="rv-dl" download>⬇️ Download</a>
+    </div>
+  </div>
 </div>
 
 <div class="modal hidden" id="modal">
@@ -411,45 +438,107 @@
     var name=document.getElementById('f-name').value.trim();
     var amount=Math.round(parseFloat(document.getElementById('f-amt').value)*100)/100;
     if(!name || !(amount>0)) return;
-    var item={ id: ui.editing?ui.editing.id:uid(), name:name, amount:amount, category:document.getElementById('f-cat').value };
+    var file=document.getElementById('f-rcpt').files[0];
+    var old=ui.editing;
+    var item={ id: old?old.id:uid(), name:name, amount:amount, category:document.getElementById('f-cat').value };
     if(ui.kind==='expense'){ var r=document.querySelector('input[name=f-type]:checked'); item.type=r?r.value:'need'; }
-    if(ui.editing){
-      var old=ui.editing, src=old.when==='fixed'?(old.kind==='income'?state.fixedIncome:state.fixedExpenses):((state.months[old.month]||{})[old.kind==='income'?'extraIncome':'extraExpenses']||[]);
-      var i=src.findIndex(function(x){return x.id===old.id;}); if(i>-1) src.splice(i,1);
+    if(old && old.receiptId && !old.dropReceipt){ item.receiptId=old.receiptId; item.receiptName=old.receiptName; }
+    var btn=document.getElementById('f-submit');
+    var finish=function(){
+      if(old){
+        var src=old.when==='fixed'?(old.kind==='income'?state.fixedIncome:state.fixedExpenses):((state.months[old.month]||{})[old.kind==='income'?'extraIncome':'extraExpenses']||[]);
+        var i=src.findIndex(function(x){return x.id===old.id;}); if(i>-1) src.splice(i,1);
+        if(old.receiptId && (old.dropReceipt || (item.receiptId && item.receiptId!==old.receiptId))) window._cloud.deleteReceipt(old.receiptId).catch(function(){});
+      }
+      listFor(ui.kind, ui.when).push(item);
+      btn.disabled=false; cancelEdit(); persist(); render();
+    };
+    if(!file){ finish(); return; }
+    btn.disabled=true; btn.textContent='Uploading receipt…';
+    prepReceipt(file).then(function(rc){
+      var rid=uid();
+      return window._cloud.saveReceipt(rid, { name:rc.name, type:rc.type, data:rc.data, item:name }).then(function(){ item.receiptId=rid; item.receiptName=rc.name; finish(); });
+    }).catch(function(err){
+      btn.disabled=false; btn.textContent=old?'Save changes':'Add item';
+      confirmBox('Receipt not saved', (typeof err==='string'?err:'The receipt could not be uploaded. Check your connection and try again.')+' Nothing was saved yet.', 'OK', function(){});
+    });
+  }
+  function readDataURL(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){res(r.result);}; r.onerror=rej; r.readAsDataURL(f); }); }
+  function prepReceipt(file){
+    var LIMIT=900000;
+    if(file.type==='application/pdf'){
+      return readDataURL(file).then(function(d){ if(d.length>LIMIT) throw 'That PDF is too big (max about 650 KB). Take a photo of the receipt instead.'; return {name:file.name,type:file.type,data:d}; });
     }
-    listFor(ui.kind, ui.when).push(item);
-    cancelEdit(); persist(); render();
+    if(!/^image\//.test(file.type)) return Promise.reject('Please choose a photo or a PDF.');
+    return new Promise(function(res,rej){
+      var url=URL.createObjectURL(file), img=new Image();
+      img.onload=function(){
+        var max=1800, q=0.8, d='', c=document.createElement('canvas');
+        for(var n=0;n<8;n++){
+          var sc=Math.min(1, max/Math.max(img.naturalWidth,img.naturalHeight));
+          c.width=Math.max(1,Math.round(img.naturalWidth*sc)); c.height=Math.max(1,Math.round(img.naturalHeight*sc));
+          var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
+          d=c.toDataURL('image/jpeg',q); if(d.length<=LIMIT) break; max=Math.round(max*0.8); q=Math.max(0.5,q-0.06);
+        }
+        URL.revokeObjectURL(url);
+        if(d.length>LIMIT) rej('That photo is too big to save. Try a smaller photo.'); else res({name:file.name.replace(/\.[^.]+$/,'')+'.jpg',type:'image/jpeg',data:d});
+      };
+      img.onerror=function(){ URL.revokeObjectURL(url); rej('That photo format could not be read. Try a JPG or PNG.'); };
+      img.src=url;
+    });
+  }
+  function findItem(kind, when, id, create){
+    var src = when==='fixed' ? (kind==='income'?state.fixedIncome:state.fixedExpenses) : (kind==='income'?(create?month():peekMonth()).extraIncome:(create?month():peekMonth()).extraExpenses);
+    return { src:src, it:src.find(function(x){return x.id===id;}) };
   }
   function startEdit(kind, when, id){
-    var src = when==='fixed' ? (kind==='income'?state.fixedIncome:state.fixedExpenses) : (kind==='income'?peekMonth().extraIncome:peekMonth().extraExpenses);
-    var it = src.find(function(x){return x.id===id;}); if(!it) return;
-    ui.editing={kind:kind, when:when, id:id, month:ui.month};
+    var it=findItem(kind,when,id).it; if(!it) return;
+    ui.editing={kind:kind, when:when, id:id, month:ui.month, receiptId:it.receiptId||null, receiptName:it.receiptName||null, dropReceipt:false};
     setKind(kind); setWhen(when); fillCats(it.category);
     document.getElementById('f-name').value=it.name;
     document.getElementById('f-amt').value=it.amount;
     if(kind==='expense'){ var r=document.querySelector('input[name=f-type][value='+(it.type||'need')+']'); if(r) r.checked=true; }
+    document.getElementById('f-rcpt-cur').classList.toggle('hidden', !it.receiptId);
     document.getElementById('formtitle').textContent='Edit item';
     document.getElementById('f-submit').textContent='Save changes';
     document.getElementById('f-cancel').classList.remove('hidden');
     document.getElementById('f-name').focus();
     window.scrollTo({top: document.getElementById('f').getBoundingClientRect().top + window.scrollY - 140, behavior:'smooth'});
   }
+  function dropReceipt(){ if(ui.editing){ ui.editing.dropReceipt=true; document.getElementById('f-rcpt-cur').classList.add('hidden'); } }
   function cancelEdit(){
     ui.editing=null;
     document.getElementById('f').reset();
+    document.getElementById('f-rcpt-cur').classList.add('hidden');
     document.getElementById('formtitle').textContent='Add an item';
     document.getElementById('f-submit').textContent='Add item';
     document.getElementById('f-cancel').classList.add('hidden');
   }
   function removeItem(kind, when, id){
-    var src = when==='fixed' ? (kind==='income'?state.fixedIncome:state.fixedExpenses) : (kind==='income'?month().extraIncome:month().extraExpenses);
-    var it = src.find(function(x){return x.id===id;}); if(!it) return;
-    confirmBox('Remove this item?', '"'+it.name+'" ('+money(it.amount)+')'+(when==='fixed'?' will be removed from every month.':' will be removed from '+monthLabel(ui.month)+'.'), 'Remove', function(){
+    var f=findItem(kind,when,id,true), src=f.src, it=f.it; if(!it) return;
+    confirmBox('Remove this item?', '"'+it.name+'" ('+money(it.amount)+')'+(when==='fixed'?' will be removed from every month.':' will be removed from '+monthLabel(ui.month)+'.')+(it.receiptId?' Its receipt will be deleted too.':''), 'Remove', function(){
       var i=src.findIndex(function(x){return x.id===id;}); if(i>-1) src.splice(i,1);
+      if(it.receiptId) window._cloud.deleteReceipt(it.receiptId).catch(function(){});
       if(ui.editing && ui.editing.id===id) cancelEdit();
       persist(); render();
     });
   }
+  function viewReceipt(rid){
+    if(!rid) return;
+    var body=document.getElementById('rv-body'), dl=document.getElementById('rv-dl');
+    body.innerHTML='<div class="empty">Loading…</div>'; dl.classList.add('hidden');
+    document.getElementById('rv').classList.remove('hidden');
+    window._cloud.getReceipt(rid).then(function(r){
+      if(!r){ body.innerHTML='<div class="empty">This receipt could not be found.</div>'; return; }
+      document.getElementById('rv-title').textContent='🧾 '+(r.item||'Receipt');
+      var bin=atob(r.data.split(',')[1]), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      if(window.__rvUrl) URL.revokeObjectURL(window.__rvUrl);
+      var url=window.__rvUrl=URL.createObjectURL(new Blob([u8],{type:r.type}));
+      body.innerHTML = r.type==='application/pdf' ? '<iframe title="Receipt" src="'+url+'"></iframe>' : '<img alt="Receipt" src="'+url+'">';
+      dl.href=url; dl.download=r.name||'receipt'; dl.classList.remove('hidden');
+    }).catch(function(){ body.innerHTML='<div class="empty">Could not load the receipt. Check your connection.</div>'; });
+  }
+  function closeReceipt(){ document.getElementById('rv').classList.add('hidden'); document.getElementById('rv-body').innerHTML=''; }
   function setGoal(){
     var v=parseFloat(document.getElementById('goal-in').value);
     state.savingsGoal = v>0 ? Math.round(v*100)/100 : 0;
@@ -462,10 +551,12 @@
 
   /* ---------- reset / export / import ---------- */
   function askReset(){
-    confirmBox('Reset everything?', 'This clears all fixed items, every month\'s extras and your savings goal, back to $0. Export first if you want a copy.', 'Reset to $0', function(){
+    confirmBox('Reset everything?', 'This clears all fixed items, every month\'s extras, their receipts and your savings goal, back to $0. Export first if you want a copy.', 'Reset to $0', function(){
+      allItems().forEach(function(x){ if(x.receiptId) window._cloud.deleteReceipt(x.receiptId).catch(function(){}); });
       state=blank(); cancelEdit(); persist(); render();
     });
   }
+  function allItems(){ var a=state.fixedIncome.concat(state.fixedExpenses); Object.keys(state.months).forEach(function(k){ var m=state.months[k]; a=a.concat(m.extraIncome||[], m.extraExpenses||[]); }); return a; }
   function exportData(){
     var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='swan-budget-'+monthKey(new Date())+'.json';
@@ -500,6 +591,7 @@
       return '<div class="item"><div><div class="nm">'+esc(it.name)+'</div><span class="cat">'+esc(it.category)+'</span>'+
         (kind==='expense'?'<span class="tag t-'+(it.type==='want'?'want':'need')+'">'+(it.type==='want'?'want':'need')+'</span>':'')+
         '</div><div style="display:flex;align-items:center;gap:4px"><span class="amt '+(kind==='income'?'p':'m')+'">'+(kind==='income'?'+':'-')+money(it.amount)+'</span>'+
+        (it.receiptId?'<button class="ibtn" type="button" title="View receipt" onclick="viewReceipt(\''+it.receiptId+'\')">🧾</button>':'')+
         '<button class="ibtn" type="button" title="Edit" onclick="startEdit(\''+kind+'\',\''+when+'\',\''+it.id+'\')">✏️</button>'+
         '<button class="ibtn" type="button" title="Remove" onclick="removeItem(\''+kind+'\',\''+when+'\',\''+it.id+'\')">🗑️</button></div></div>';
     }).join('');
