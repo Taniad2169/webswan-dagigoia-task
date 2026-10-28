@@ -1,0 +1,194 @@
+// WebSwan Voice Studio bridge: places live AI calls through Cartesia (Line agents) and reads results.
+// Security (all checked here on the server, never in the browser):
+//   1. Caller must be signed in with Google as one of OWNERS (Firebase ID token from webswan-voice-studio, verified with Google's keys).
+//   2. Only requests from the Voice Studio page origin are accepted.
+//   3. The Cartesia key never leaves Netlify. Live calling stays OFF until VOICE_CALLING_ENABLED = on.
+//   4. US numbers only, a server Do Not Call list, a daily cap per caller-ID number, and numbers rotate.
+// Env vars (set by Tania in Netlify, never in code):
+//   CARTESIA_API_KEY          sk_car_... from play.cartesia.ai (API keys)
+//   CARTESIA_FROM_NUMBER_IDS  comma-separated Cartesia phone-number IDs (up to 5 on the Startup plan)
+//   CARTESIA_AGENT_GEORGE     Cartesia agent ID for George  (also _REBECCA, _MONICA, _ALEK, _TATIANA)
+//   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
+//   VOICE_DAILY_CAP           optional: max calls per number per day (default 60)
+import crypto from "node:crypto";
+import { getStore } from "@netlify/blobs";
+
+const PROJECT_ID = "webswan-voice-studio";
+const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
+const AGENTS = ["george", "rebecca", "monica", "alek", "tatiana"];
+const API = "https://api.cartesia.ai";
+const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
+const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
+const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+
+let jwksCache = { keys: null, at: 0 };
+
+function cors(origin) {
+  const ok = ALLOWED_ORIGINS.includes(origin);
+  return {
+    "Access-Control-Allow-Origin": ok ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Vary": "Origin",
+    "Cache-Control": "no-store"
+  };
+}
+function reply(status, body, origin) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors(origin) } });
+}
+const b64urlJson = (s) => JSON.parse(Buffer.from(s, "base64url").toString("utf8"));
+
+async function verifyFirebaseToken(token) {
+  const parts = (token || "").split(".");
+  if (parts.length !== 3) throw new Error("bad token");
+  const header = b64urlJson(parts[0]), payload = b64urlJson(parts[1]);
+  if (header.alg !== "RS256" || !header.kid) throw new Error("bad token header");
+  if (!jwksCache.keys || Date.now() - jwksCache.at > 3600e3) {
+    const r = await fetch(JWKS_URL);
+    if (!r.ok) throw new Error("cannot load Google keys");
+    jwksCache = { keys: (await r.json()).keys, at: Date.now() };
+  }
+  const jwk = jwksCache.keys.find((k) => k.kid === header.kid);
+  if (!jwk) throw new Error("unknown key");
+  const key = crypto.createPublicKey({ key: jwk, format: "jwk" });
+  const ok = crypto.verify("RSA-SHA256", Buffer.from(parts[0] + "." + parts[1]), key, Buffer.from(parts[2], "base64url"));
+  if (!ok) throw new Error("bad signature");
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.aud !== PROJECT_ID || payload.iss !== "https://securetoken.google.com/" + PROJECT_ID) throw new Error("wrong project");
+  if (!(payload.exp > now) || !(payload.iat <= now + 60) || !payload.sub) throw new Error("expired");
+  if (!payload.email_verified) throw new Error("email not verified");
+  return String(payload.email || "").toLowerCase();
+}
+
+const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
+const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || "";
+const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
+const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
+function e164(p) {
+  let d = String(p || "").replace(/\D/g, "");
+  if (d.length === 10) d = "1" + d;
+  return /^1[2-9]\d{2}[2-9]\d{6}$/.test(d) ? "+" + d : "";
+}
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+
+async function cartesia(method, path, version, body) {
+  const r = await fetch(API + path, {
+    method,
+    headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": version, ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await r.text();
+  let data; try { data = JSON.parse(text); } catch (e) { data = { message: text.slice(0, 300) }; }
+  if (!r.ok) throw new Error((data && (data.message || data.error || data.detail)) ? String(data.message || data.error || JSON.stringify(data.detail)).slice(0, 300) : "Cartesia error " + r.status);
+  return data;
+}
+
+// Keep only what Voice Studio needs (no raw provider data).
+function slimCall(c) {
+  if (!c) return null;
+  const t = c.telephony_params || {};
+  return {
+    id: c.id || c.agent_call_id || "", agentId: c.agent_id || "", status: c.status || "",
+    start: c.start_time || null, end: c.end_time || null, endReason: c.end_reason || "",
+    to: t.to || "", from: t.from || "", summary: c.summary || "",
+    metadata: c.metadata || null,
+    transcript: Array.isArray(c.transcript) ? c.transcript.slice(0, 400).map((x) => ({ role: x.role, text: clean(x.text, 2000), at: x.start_timestamp })) : []
+  };
+}
+
+export default async (req) => {
+  const origin = req.headers.get("origin") || "";
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
+  if (req.method !== "POST") return reply(405, { error: "Method not allowed" }, origin);
+  if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
+
+  let email;
+  try { email = await verifyFirebaseToken((req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "")); }
+  catch (e) { return reply(401, { error: "Please sign in with Google again." }, origin); }
+  if (!OWNERS.includes(email)) return reply(403, { error: "This account can't place calls." }, origin);
+
+  let b;
+  try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
+  const store = getStore({ name: "voice-studio", consistency: "strong" });
+  const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
+
+  // ---------- status: what is connected (never returns secrets) ----------
+  if (b.action === "status") {
+    const counts = (await store.get("count-" + today(), { type: "json" })) || {};
+    return reply(200, {
+      keySet: hasKey, numbers: nums.length, live: liveOn(), dailyCap: cap(),
+      agents: AGENTS.filter((a) => agentId(a)),
+      callsToday: Object.values(counts).reduce((s, n) => s + n, 0)
+    }, origin);
+  }
+
+  // ---------- Do Not Call list (server side, shared by every device) ----------
+  if (b.action === "dnc") {
+    const list = (await store.get("dnc", { type: "json" })) || [];
+    const n = e164(b.phone);
+    if (b.add && n && !list.includes(n)) { list.push(n); await store.setJSON("dnc", list); }
+    return reply(200, { count: list.length, listed: n ? list.includes(n) : false }, origin);
+  }
+
+  if (!hasKey) return reply(503, { error: "Cartesia isn't connected yet. Add CARTESIA_API_KEY in Netlify, then redeploy." }, origin);
+
+  // ---------- start one live call ----------
+  if (b.action === "start") {
+    if (!liveOn()) return reply(403, { error: "Live calling is switched off (VOICE_CALLING_ENABLED is not on)." }, origin);
+    const name = String(b.agent || "").toLowerCase();
+    const aid = AGENTS.includes(name) ? agentId(name) : "";
+    if (!aid) return reply(400, { error: `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` }, origin);
+    if (!nums.length) return reply(400, { error: "No caller-ID numbers yet (CARTESIA_FROM_NUMBER_IDS)." }, origin);
+    const to = e164(b.phone);
+    if (!to) return reply(400, { error: "That isn't a valid US phone number." }, origin);
+    const dnc = (await store.get("dnc", { type: "json" })) || [];
+    if (dnc.includes(to)) return reply(403, { error: "This number is on the Do Not Call list." }, origin);
+
+    // one call per lead number per day, and rotate caller IDs under the daily cap
+    const day = today(), countsKey = "count-" + day, dialedKey = "dialed-" + day;
+    const dialed = (await store.get(dialedKey, { type: "json" })) || [];
+    if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
+    const counts = (await store.get(countsKey, { type: "json" })) || {};
+    const pick = nums.map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
+    if (!pick) return reply(429, { error: `Every number reached today's cap of ${cap()} calls. Try again tomorrow.` }, origin);
+
+    const metadata = { leadId: clean(b.leadId, 60), lead: clean(b.leadName, 120), business: clean(b.business, 160), campaign: clean(b.campaign, 120), by: email };
+    let data;
+    try {
+      data = await cartesia("POST", "/agents/calls", V_CREATE, {
+        agent_id: aid, from_number_id: pick.id,
+        outbound_calls: [{ to_number: to, metadata }],
+        ringing_timeout_seconds: 30, max_call_duration_minutes: 10
+      });
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+    const r0 = (data.calls || [])[0] || {};
+    if (!r0.agent_call_id) return reply(502, { error: "Cartesia didn't start the call: " + clean(r0.error && (r0.error.message || r0.error) || "unknown", 200) }, origin);
+    counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
+    await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
+    return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name }, origin);
+  }
+
+  // ---------- read one call (status, transcript, summary) ----------
+  if (b.action === "get") {
+    const id = clean(b.callId, 120);
+    if (!/^[\w-]+$/.test(id)) return reply(400, { error: "Bad call id." }, origin);
+    try { return reply(200, { call: slimCall(await cartesia("GET", "/agents/calls/" + encodeURIComponent(id), V_READ)) }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- list recent calls for one agent (to backfill the call log) ----------
+  if (b.action === "list") {
+    const name = String(b.agent || "").toLowerCase(), aid = agentId(name);
+    if (!aid) return reply(400, { error: "Unknown agent." }, origin);
+    const q = new URLSearchParams({ agent_id: aid, limit: String(Math.max(1, Math.min(100, parseInt(b.limit, 10) || 50))), expand: "transcript" });
+    if (b.since) q.set("start_time_gte", new Date(Number(b.since) || b.since).toISOString());
+    try {
+      const d = await cartesia("GET", "/agents/calls?" + q.toString(), V_READ);
+      return reply(200, { agent: name, calls: (d.data || []).map(slimCall), hasMore: !!d.has_more }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  return reply(400, { error: "Unknown action." }, origin);
+};
