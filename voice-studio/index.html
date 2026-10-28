@@ -322,11 +322,11 @@ function campaignLeads(cp) {
   return { pool, ok: pool.filter(l => eligibility(l).ok), skipped: pool.filter(l => !eligibility(l).ok) };
 }
 function renderCampaigns(c) {
-  c.innerHTML = `<div class="row section"><p>Organize outreach and prepare your calling schedule.</p><button class="btn" onclick="campaignForm()">+ Create campaign</button></div>
+  c.innerHTML = `${dialCard()}<div class="row section"><p>Organize outreach and prepare your calling schedule.</p><button class="btn" onclick="campaignForm()">+ Create campaign</button></div>
   <div class="card">${state.campaigns.map(x => { const a = byId('agents', x.agentId); const L = campaignLeads(x);
     return `<div class="listitem row"><div><strong>${esc(x.name)}</strong><small>Agent: ${esc(a ? a.name : (x.agent || 'Not assigned'))} · ${esc(x.schedule || 'Schedule not set')} · Leads: ${esc(x.statusFilter || 'all statuses')}</small><br><small><span class="chip ok">${L.ok.length} ready</span> <span class="chip ${L.skipped.length ? 'warn' : ''}">${L.skipped.length} skipped</span>${x.goal ? ' · Goal: ' + esc(x.goal) : ''}</small></div>
-    <div class="toolbar"><span class="chip">Draft</span><button class="btn secondary small" onclick="practiceCampaign('${x.id}')" ${L.ok.length && a ? '' : 'disabled'}>🎙 Practice next lead</button><button class="btn outline small" onclick="campaignForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('campaigns','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></div></div>`; }).join('') || '<div class="empty">No campaigns yet. Create a draft when you are ready.</div>'}</div>
-  <p class="note section">Campaigns are drafts. Leads marked Do not call, leads without a phone and mobile numbers without written consent are skipped automatically. Live scheduling and outbound calling turn on once a calling service is connected.</p>`;
+    <div class="toolbar"><span class="chip">Draft</span><button class="btn green small" onclick="dialAddCampaign('${x.id}')" ${L.ok.length ? '' : 'disabled'} title="Send this campaign's eligible leads to the auto-dialer">🤖 Auto-dial</button><button class="btn secondary small" onclick="practiceCampaign('${x.id}')" ${L.ok.length && a ? '' : 'disabled'}>🎙 Practice next lead</button><button class="btn outline small" onclick="campaignForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('campaigns','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></div></div>`; }).join('') || '<div class="empty">No campaigns yet. Create a draft when you are ready.</div>'}</div>
+  <p class="note section">Campaigns are drafts. Leads marked Do not call, leads without a phone and mobile numbers without written consent are skipped automatically. Live calls go out through the 🤖 Auto-dialer above or the 📞 Call button on each lead.</p>`;
 }
 function campaignForm(id) {
   const x = id ? byId('campaigns', id) : {};
@@ -631,7 +631,7 @@ function sdrEmailModal(id, tpl, step) {
 }
 function sdrCopyEmail() { const t = 'Subject: ' + $('f_subject').value + '\n\n' + $('f_body').value; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Email copied.'), () => prompt('Copy the email:', t)); }
 function sdrMailto() { const to = $('f_to').value.trim(); location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent($('f_subject').value) + '&body=' + encodeURIComponent($('f_body').value); }
-function sdrPause(v) { state.sdr.paused = v; save(); render(); toast(v ? 'All AI outreach paused.' : 'Outreach resumed.'); }
+function sdrPause(v) { state.sdr.paused = v; save(); if (v && window.cloudUser && typeof dialPause === 'function') dialPause(true); render(); toast(v ? 'All AI outreach paused.' : 'Outreach resumed.'); }
 
 /* ---------- page ---------- */
 function sdrOpen(id) { state.sdr.lead = id; page = 'SDR AI'; render(); window.scrollTo(0, 0); }
@@ -975,7 +975,7 @@ async function livePoll() {
   liveTimer = setTimeout(livePoll, 12000);
 }
 window.livePoll = livePoll;
-async function liveSync() {
+async function liveSync(quiet) {
   try {
     if (!liveStatus || liveStatus.error) await liveRefresh(true);
     const ags = (liveStatus && liveStatus.agents) || []; if (!ags.length) return toast((liveStatus && liveStatus.error) || 'No Cartesia agents linked yet.');
@@ -994,9 +994,67 @@ async function liveSync() {
       }
     }
     state.calls.sort((a, b) => (b.at || 0) - (a.at || 0)); save(); render();
-    toast(added || updated ? `Live results: ${added} new, ${updated} updated.` : 'No new live call results.');
-  } catch (e) { toast('Couldn’t pull live results: ' + e.message); }
+    if (!quiet || added) toast(added || updated ? `Live results: ${added} new, ${updated} updated.` : 'No new live call results.');
+  } catch (e) { if (!quiet) toast('Couldn’t pull live results: ' + e.message); }
 }
+
+/* ---------- auto-dialer (Netlify dials the queue every minute inside the schedule) ---------- */
+let dialQ = null;
+const DIAL_DAYS = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri']];
+async function dialRefresh(quiet) {
+  try { dialQ = await voiceApi({ action: 'queue_get' }); } catch (e) { dialQ = { error: e.message }; }
+  if (page === 'Campaigns') render(); else if (!quiet) toast(dialQ.error || 'Auto-dialer updated.');
+}
+function dialCard() {
+  if (!window.cloudUser) return `<div class="card section"><h2>🤖 Auto-dialer</h2><p class="muted">Sign in at the top to see and run the auto-dialer.</p></div>`;
+  if (!dialQ) { setTimeout(() => dialRefresh(true), 50); return `<div class="card section"><h2>🤖 Auto-dialer</h2><p class="muted">Loading…</p></div>`; }
+  if (dialQ.error) return `<div class="card section"><h2>🤖 Auto-dialer</h2><p class="muted">${esc(dialQ.error)}</p><button class="btn outline small" onclick="dialRefresh()">↻ Try again</button></div>`;
+  const s = dialQ.settings || {}, k = dialQ.counts || {}, L = liveStatus && !liveStatus.error ? liveStatus : null;
+  const ready = L && L.keySet && L.numbers && L.live;
+  const ags = ['rebecca', 'george', 'monica', 'alek', 'tatiana'];
+  const recent = (dialQ.leads || []).filter(l => l.status !== 'queued').slice(-8).reverse();
+  return `<div class="card section"><div class="row"><h2>🤖 Auto-dialer</h2><span class="chip ${dialQ.paused ? 'warn' : ready ? 'ok' : 'warn'}">${dialQ.paused ? '⏸ Paused' : ready ? '▶ On' : 'Waiting for Cartesia setup'}</span></div>
+    <p style="margin-top:0">Netlify dials the queue by itself, one lead at a time, only inside this schedule and only during business hours in each lead’s own time zone. Do Not Call numbers, numbers already called today and leads outside hours are skipped automatically. It works even when this page is closed.</p>
+    <div class="formgrid"><div><label>Days</label><div class="toolbar">${DIAL_DAYS.map(([v, l]) => `<label style="display:inline-flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" class="dialDay" value="${v}" ${(s.days || []).includes(v) ? 'checked' : ''}> ${l}</label>`).join('')}</div></div>
+    <div><label for="dialStart">Start (Eastern Time)</label><input id="dialStart" type="time" value="${esc(s.start || '11:00')}"></div>
+    <div><label for="dialEnd">End (Eastern Time)</label><input id="dialEnd" type="time" value="${esc(s.end || '12:00')}"></div>
+    <div><label for="dialAgent">Default agent</label><select id="dialAgent">${ags.map(a => `<option value="${a}" ${s.agent === a ? 'selected' : ''}>${a[0].toUpperCase() + a.slice(1)}</option>`).join('')}</select></div>
+    <div><label for="dialPace">Calls started per minute</label><select id="dialPace">${[1, 2, 3].map(n => `<option ${Number(s.perMinute || 1) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+    <div class="toolbar section"><button class="btn" onclick="dialSave()">Save schedule</button>${dialQ.paused ? `<button class="btn green" onclick="dialPause(false)" ${state.sdr && state.sdr.paused ? 'disabled title="Resume outreach in SDR AI first"' : ''}>▶ Start auto-dialing</button>` : `<button class="btn danger" onclick="dialPause(true)">⏸ Pause</button>`}<button class="btn outline" onclick="dialRefresh()">↻ Refresh</button><button class="btn outline" onclick="dialClear('done')" ${k.called || k.skipped || k.error ? '' : 'disabled'}>Clear finished</button><button class="btn danger" onclick="dialClear('all')" ${(dialQ.leads || []).length ? '' : 'disabled'}>Empty queue</button></div>
+    <p><span class="chip">${k.queued || 0} waiting</span> <span class="chip ok">${k.called || 0} dialed</span> <span class="chip warn">${k.skipped || 0} skipped</span> ${k.error ? `<span class="chip bad">${k.error} errors</span>` : ''} ${dialQ.lastRun ? `<small class="muted">Last check ${esc(fmtDate(dialQ.lastRun))}</small>` : ''}</p>
+    ${recent.length ? `<details><summary>Latest activity</summary>${recent.map(l => `<div class="listitem row"><small><b>${esc(l.name || '')}</b> · ${esc(l.business || '')}</small><small class="muted">${esc(l.status)}${l.note ? ' · ' + esc(l.note) : ''}${l.calledAt ? ' · ' + esc(fmtDate(l.calledAt)) : ''}</small></div>`).join('')}</details>` : ''}
+    <p class="note">Add leads with <b>🤖 Auto-dial</b> on a campaign below. Results (transcripts and outcomes) land in Call records; press 🔄 Pull live results there anytime. ${ready ? '' : 'Nothing will be dialed until Cartesia is paid and VOICE_CALLING_ENABLED is on in Netlify.'}</p></div>`;
+}
+async function dialSave() {
+  const days = [...document.querySelectorAll('.dialDay:checked')].map(x => x.value);
+  if (!days.length) return toast('Pick at least one day.');
+  try { dialQ = await voiceApi({ action: 'queue_set', settings: { days, start: $('dialStart').value, end: $('dialEnd').value, agent: $('dialAgent').value, perMinute: $('dialPace').value } }); render(); toast('Auto-dial schedule saved.'); }
+  catch (e) { toast('Couldn’t save: ' + e.message); }
+}
+async function dialPause(v) {
+  try { dialQ = await voiceApi({ action: 'queue_set', paused: v }); if (page === 'Campaigns') render(); toast(v ? 'Auto-dialer paused.' : 'Auto-dialer started. It dials only inside the schedule.'); }
+  catch (e) { toast('Couldn’t change the auto-dialer: ' + e.message); }
+}
+async function dialClear(kind) {
+  if (kind === 'all' && !confirm('Remove every lead from the auto-dial queue? Your leads stay in Voice Studio.')) return;
+  try { dialQ = await voiceApi({ action: 'queue_set', clear: kind }); render(); toast(kind === 'all' ? 'Queue emptied.' : 'Finished leads cleared from the queue.'); }
+  catch (e) { toast('Couldn’t clear: ' + e.message); }
+}
+async function dialAddCampaign(id) {
+  const cp = byId('campaigns', id); if (!cp) return;
+  const a = byId('agents', cp.agentId), agent = a ? String(a.name || '').trim().toLowerCase() : '';
+  const ok = campaignLeads(cp).ok.filter(l => l.status !== 'Do not call' && l.status !== 'Not interested');
+  const noState = ok.filter(l => !stateCode(l.state)).length, send = ok.filter(l => stateCode(l.state));
+  if (!send.length) return toast(noState ? 'Add the state to these leads first (needed for their local calling hours).' : 'No eligible leads in this campaign.');
+  try {
+    dialQ = await voiceApi({ action: 'queue_set', add: send.map(l => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, campaign: cp.name })) });
+    render(); toast(`Sent ${send.length} lead${send.length > 1 ? 's' : ''} to the auto-dialer${noState ? ` (${noState} skipped: no state)` : ''}. Leads already waiting are not added twice.`);
+  } catch (e) { toast('Couldn’t add to the auto-dialer: ' + e.message); }
+}
+async function liveAutoSync() {
+  try { await liveRefresh(true); if (liveStatus && !liveStatus.error && liveStatus.keySet && liveStatus.agents.length) await liveSync(true); } catch (e) {}
+}
+window.liveAutoSync = liveAutoSync;
 
 </script>
 <style>.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
@@ -1097,7 +1155,7 @@ onAuthStateChanged(auth, async u => {
   user = u; window.cloudUser = u ? u.email : '';
   if (!u) { last = {}; status('☁ Sign in to sync', 'Sync your workspace to your private WebSwan cloud'); return; }
   status('☁ Syncing…');
-  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); if (window.livePoll) window.livePoll(); }
+  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); if (window.livePoll) window.livePoll(); if (window.liveAutoSync) window.liveAutoSync(); }
   catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else status('☁ Sync error', String(e.message || e)); }
 });
 window.fbIdToken = async () => (user ? user.getIdToken() : null);
