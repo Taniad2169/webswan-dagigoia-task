@@ -132,6 +132,39 @@ export default async (req) => {
     return reply(200, { count: list.length, listed: n ? list.includes(n) : false }, origin);
   }
 
+  // ---------- auto-dial queue (dialed every minute by voice-autodial) ----------
+  if (b.action === "queue_get" || b.action === "queue_set") {
+    const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "11:00", end: "12:00", tz: "America/New_York", agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
+    if (b.action === "queue_set") {
+      const s = b.settings;
+      if (s) {
+        const days = (Array.isArray(s.days) ? s.days : []).filter((d) => ["mon", "tue", "wed", "thu", "fri"].includes(d));
+        const hm = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || "")) ? String(v) : null;
+        const start = hm(s.start), end = hm(s.end);
+        if (!start || !end || end <= start) return reply(400, { error: "Pick a start and end time (end after start)." }, origin);
+        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1)) };
+      }
+      if (typeof b.paused === "boolean") q.paused = b.paused;
+      if (b.clear === "all") q.leads = [];
+      if (b.clear === "done") q.leads = q.leads.filter((l) => l.status === "queued");
+      if (Array.isArray(b.add)) {
+        const have = new Set(q.leads.filter((l) => l.status === "queued").map((l) => e164(l.phone)));
+        for (const x of b.add.slice(0, 1000)) {
+          const phone = e164(x && x.phone), st = clean(x && x.state, 2).toUpperCase();
+          if (!phone || have.has(phone) || !/^[A-Z]{2}$/.test(st)) continue;
+          const ag = String((x && x.agent) || "").toLowerCase();
+          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
+          have.add(phone);
+        }
+        if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
+      }
+      await store.setJSON("queue", q);
+    }
+    const n = (k) => q.leads.filter((l) => l.status === k).length;
+    return reply(200, { settings: q.settings, paused: !!q.paused, lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
+      leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
+  }
+
   if (!hasKey) return reply(503, { error: "Cartesia isn't connected yet. Add CARTESIA_API_KEY in Netlify, then redeploy." }, origin);
 
   // ---------- start one live call ----------
