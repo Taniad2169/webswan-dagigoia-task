@@ -227,7 +227,7 @@ function leadsTable() {
     <td>${t.known ? `<span class="chip ${t.ok ? 'ok' : 'warn'}">${t.ok ? 'OK now' : 'Outside hours'}</span><br><small class="muted">${esc(t.label)}</small>` : '<span class="chip warn">Add state</span>'}</td>
     <td><span class="chip ${e.ok ? 'ok' : 'bad'}">${e.ok ? 'Eligible' : 'Not eligible'}</span><br><small class="muted">${esc(e.why)}</small></td>
     <td>${esc(x.status || 'New')}</td>
-    <td style="white-space:nowrap"><button class="btn small" onclick="sdrOpen('${x.id}')" title="SDR AI brief: score, best offer, memory">✦ Brief</button><button class="btn secondary small" onclick="practiceWith('${x.id}')" title="Practice a call with this lead">🎙 Practice</button><button class="btn outline small" onclick="logCall('${x.id}')" title="Log a call you made">☎ Log</button><button class="btn outline small" onclick="leadForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('leads','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></td></tr>`;
+    <td style="white-space:nowrap"><button class="btn small" onclick="sdrOpen('${x.id}')" title="SDR AI brief: score, best offer, memory">✦ Brief</button><button class="btn green small" onclick="liveCall('${x.id}')" ${e.ok && !(state.sdr && state.sdr.paused) ? '' : 'disabled'} title="${e.ok ? 'Live AI call through Cartesia' : 'Not eligible: ' + esc(e.why)}">📞 Call</button><button class="btn secondary small" onclick="practiceWith('${x.id}')" title="Practice a call with this lead">🎙 Practice</button><button class="btn outline small" onclick="logCall('${x.id}')" title="Log a call you made">☎ Log</button><button class="btn outline small" onclick="leadForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('leads','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></td></tr>`;
   }).join('')}</tbody></table></div>` : '<div class="empty">No leads to display. Add one or import a CSV file.</div>';
 }
 
@@ -405,16 +405,16 @@ function logCall(leadId, fromPractice) {
   });
 }
 function renderCalls(c) {
-  c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
+  c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn green" onclick="liveSync()" title="Bring in results of live AI calls from Cartesia">🔄 Pull live results</button><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
   <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome) ? 'ok' : /not|Wrong|Asked/.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span></td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
-    : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live recordings and transcripts arrive when a calling service is connected.</div>'}</div>`;
+    : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live AI call transcripts arrive here automatically, or press 🔄 Pull live results.</div>'}</div>`;
 }
 
 /* ---------- setup ---------- */
 function renderSetup(c) {
+  if (!liveStatus && window.cloudUser) setTimeout(() => liveRefresh(true), 50);
   c.innerHTML = `<div class="two section"><div class="card"><h2>Connections</h2>
-    <div class="listitem row"><strong>Phone service</strong><span class="pill">Not connected</span></div>
-    <div class="listitem row"><strong>AI voice service</strong><span class="pill">Not connected</span></div>
+    ${liveRows()}
     <div class="listitem row"><strong>Cloud sync (your private Firebase)</strong><span class="pill" id="cloudRow">${window.cloudUser ? 'On · ' + esc(window.cloudUser) : 'Off · sign in at the top'}</span></div>
     <div class="listitem row"><strong>SDR AI brain (Gemini)</strong><span class="pill ${brainOn() ? 'ok' : ''}">${brainOn() ? 'Online' : 'Loading…'}</span></div>
     <div class="listitem row"><strong>Google Sheets sync</strong><span class="pill">Not connected · use CSV import</span></div>
@@ -878,6 +878,127 @@ render();
 checkImport();
 window.addEventListener('hashchange', checkImport);
 </script>
+<script>
+/* ---------- live AI calls: Cartesia through the WebSwan Netlify bridge ----------
+   The Cartesia key stays in Netlify. This page only sends your Google sign-in token. */
+const VOICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
+let liveStatus = null, liveTimer = null;
+async function voiceApi(body) {
+  if (!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
+  const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');
+  let r;
+  try { r = await fetch(VOICE_API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error('The calling bridge isn’t reachable yet (Netlify).'); }
+  let d = {}; try { d = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(d.error || ('Calling bridge error ' + r.status + (r.status === 404 ? ': not deployed yet' : '')));
+  return d;
+}
+async function liveRefresh(quiet) {
+  try { liveStatus = await voiceApi({ action: 'status' }); } catch (e) { liveStatus = { error: e.message }; }
+  if (page === 'Usage & setup') render(); else if (!quiet) toast(liveStatus.error || 'Calling connection checked.');
+}
+function liveRows() {
+  const L = liveStatus, pill = (ok, txt) => `<span class="pill ${ok ? 'ok' : ''}">${esc(txt)}</span>`;
+  if (!window.cloudUser) return `<div class="listitem row"><strong>Live calling (Cartesia)</strong>${pill(false, 'Sign in at the top to check')}</div>`;
+  if (!L) return `<div class="listitem row"><strong>Live calling (Cartesia)</strong>${pill(false, 'Checking…')}</div>`;
+  if (L.error) return `<div class="listitem row"><strong>Live calling (Cartesia)</strong>${pill(false, L.error)}</div><div class="toolbar"><button class="btn outline small" onclick="liveRefresh()">↻ Check again</button></div>`;
+  return `<div class="listitem row"><strong>Calling bridge (Netlify)</strong>${pill(true, 'Online')}</div>
+    <div class="listitem row"><strong>Cartesia account</strong>${pill(L.keySet, L.keySet ? 'Connected' : 'Add CARTESIA_API_KEY in Netlify')}</div>
+    <div class="listitem row"><strong>Phone service (caller-ID numbers)</strong>${pill(L.numbers > 0, L.numbers ? L.numbers + ' number' + (L.numbers > 1 ? 's' : '') + ' · rotating · max ' + L.dailyCap + '/day each' : 'No numbers yet')}</div>
+    <div class="listitem row"><strong>AI voice agents</strong>${pill(L.agents.length > 0, L.agents.length ? L.agents.map(a => a[0].toUpperCase() + a.slice(1)).join(', ') : 'None linked yet')}</div>
+    <div class="listitem row"><strong>Live calling switch</strong>${pill(L.live, L.live ? 'On · ' + L.callsToday + ' calls today' : 'Off (practice only)')}</div>
+    <div class="toolbar"><button class="btn outline small" onclick="liveRefresh()">↻ Check again</button></div>`;
+}
+const OPT_OUT = /(do not call|don'?t call|stop calling|remove (me|us|this number)|take (me|us) off|not interested,? (thank|bye)|put (me|us) on (your|the) do not call)/i;
+function liveAgentsFor() { const on = (liveStatus && liveStatus.agents) || []; return state.agents.filter(a => on.includes(String(a.name || '').trim().toLowerCase())); }
+async function liveCall(leadId) {
+  const l = byId('leads', leadId); if (!l) return;
+  if (state.sdr && state.sdr.paused) return toast('All outreach is paused (kill switch). Resume it in SDR AI first.');
+  const e = eligibility(l); if (!e.ok) return toast('Not eligible for an AI call: ' + e.why);
+  const t = localInfo(l); if (!t.known) return toast('Add the lead’s state first so I can check their local calling hours.');
+  if (!t.ok) return toast('Outside calling hours for this lead (' + t.label + ').');
+  if (!liveStatus || liveStatus.error) await liveRefresh(true);
+  const L = liveStatus || {};
+  if (L.error) return toast(L.error);
+  if (!L.keySet || !L.numbers || !L.agents.length) return toast('Live calling isn’t set up yet. See Usage & setup.');
+  if (!L.live) return toast('Live calling switch is Off in Netlify (VOICE_CALLING_ENABLED).');
+  const ags = liveAgentsFor(); if (!ags.length) return toast('None of your Voice Studio agents match a linked Cartesia agent.');
+  const sugg = (typeof agentFor === 'function' && typeof sdrOffers === 'function') ? agentFor(sdrOffers(l)[0], l) : null;
+  const cur = ags.find(a => sugg && a.id === sugg.id) || ags[0];
+  openForm('📞 Live AI call', `<p style="margin:0"><b>${esc(l.name || '')}</b>${l.business ? ' · ' + esc(l.business) : ''}<br><span class="muted">${esc(l.phone)} · ${esc(e.why)} · ${esc(t.label)}</span></p>
+    ${select('Agent', 'agentId', ags.map(a => ({ v: a.id, l: a.name })), cur.id)}
+    <p class="note">The agent says it is an AI assistant, never leaves a voicemail and hangs up right away on “do not call”. The caller ID rotates between your numbers.</p>`, v => {
+    const a = byId('agents', v.agentId) || cur;
+    liveStart(l, a); return undefined;
+  });
+  const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
+}
+async function liveStart(l, a) {
+  toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
+  try {
+    const d = await voiceApi({ action: 'start', agent: String(a.name).trim().toLowerCase(), phone: l.phone, leadId: l.id, leadName: l.name, business: l.business });
+    state.calls.unshift({ id: uid(), at: Date.now(), leadId: l.id, leadName: l.name || '', business: l.business || '', agentName: a.name, type: 'Live AI call', outcome: 'Calling…', notes: '', live: { callId: d.callId, status: 'created', to: d.to } });
+    l.status = l.status === 'New' || !l.status ? 'Contacted' : l.status;
+    save(); render(); toast('📞 ' + a.name + ' is calling ' + (l.name || l.phone) + '.'); livePoll();
+  } catch (err) { toast('Call not placed: ' + err.message); }
+}
+function liveApply(x, c) {
+  const before = JSON.stringify(x.live);
+  x.live = Object.assign(x.live || {}, { status: c.status, endReason: c.endReason, start: c.start, end: c.end });
+  if (c.start && c.end) x.live.seconds = Math.max(0, Math.round((new Date(c.end) - new Date(c.start)) / 1000));
+  const done = c.status === 'completed' || c.status === 'failed';
+  if (!done) { x.outcome = c.status === 'started' ? 'In progress…' : 'Calling…'; return before !== JSON.stringify(x.live); }
+  if (x.live.final) return before !== JSON.stringify(x.live);
+  x.live.final = true;
+  const lines = (c.transcript || []).filter(m => m.text);
+  x.transcript = lines.map(m => (m.role === 'user' ? 'Prospect' : (x.agentName || 'Agent')) + ': ' + m.text).join('\n');
+  x.notes = [c.summary, x.live.seconds ? 'Length ' + Math.floor(x.live.seconds / 60) + 'm ' + (x.live.seconds % 60) + 's' : '', c.endReason ? 'Ended: ' + c.endReason.replace(/_/g, ' ') : ''].filter(Boolean).join(' · ');
+  const said = lines.filter(m => m.role === 'user').map(m => m.text).join(' ');
+  const l = byId('leads', x.leadId);
+  if (/^dial_(no_answer|busy|timeout)$|voicemail/.test(c.endReason || '') || (c.status === 'failed' && !said)) x.outcome = 'No answer';
+  else if (/^dial_failed$/.test(c.endReason || '')) x.outcome = 'Wrong number';
+  else if (OPT_OUT.test(said)) {
+    x.outcome = 'Asked not to be called';
+    if (l) { l.status = 'Do not call'; voiceApi({ action: 'dnc', add: true, phone: l.phone }).catch(() => {}); }
+  } else x.outcome = 'Spoke: review needed';
+  if (l && said && typeof sdrLearn === 'function') sdrLearn(l, said, 'Live AI call');
+  if (said && brainOn()) setTimeout(() => aiReviewCall(x.id, true), 500);
+  return true;
+}
+async function livePoll() {
+  clearTimeout(liveTimer);
+  const pend = state.calls.filter(x => x.live && x.live.callId && !x.live.final && Date.now() - x.at < 3 * 3600e3);
+  if (!pend.length || !window.cloudUser) return;
+  let changed = false;
+  for (const x of pend) { try { const d = await voiceApi({ action: 'get', callId: x.live.callId }); if (d.call && liveApply(x, d.call)) changed = true; } catch (e) {} }
+  if (changed) { save(); if (page === 'Call records' || page === 'Leads' || page === 'Overview') render(); }
+  liveTimer = setTimeout(livePoll, 12000);
+}
+window.livePoll = livePoll;
+async function liveSync() {
+  try {
+    if (!liveStatus || liveStatus.error) await liveRefresh(true);
+    const ags = (liveStatus && liveStatus.agents) || []; if (!ags.length) return toast((liveStatus && liveStatus.error) || 'No Cartesia agents linked yet.');
+    const since = Date.now() - 14 * 864e5; let added = 0, updated = 0;
+    for (const name of ags) {
+      const d = await voiceApi({ action: 'list', agent: name, since, limit: 100 });
+      for (const c of d.calls || []) {
+        if (!c.id) continue;
+        let x = state.calls.find(k => k.live && k.live.callId === c.id);
+        if (!x) {
+          const m = c.metadata || {}, l = (m.leadId && byId('leads', m.leadId)) || state.leads.find(k => digits(k.phone) && c.to && digits(c.to).endsWith(digits(k.phone).slice(-10)));
+          x = { id: uid(), at: c.start ? new Date(c.start).getTime() : Date.now(), leadId: l ? l.id : '', leadName: l ? l.name : (m.lead || c.to), business: l ? l.business : (m.business || ''), agentName: name[0].toUpperCase() + name.slice(1), type: 'Live AI call', outcome: 'Calling…', notes: '', live: { callId: c.id, to: c.to } };
+          state.calls.push(x); added++;
+        }
+        if (liveApply(x, c)) updated++;
+      }
+    }
+    state.calls.sort((a, b) => (b.at || 0) - (a.at || 0)); save(); render();
+    toast(added || updated ? `Live results: ${added} new, ${updated} updated.` : 'No new live call results.');
+  } catch (e) { toast('Couldn’t pull live results: ' + e.message); }
+}
+
+</script>
 <style>.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}</style>
 <script type="module">
 /* WebSwan cloud sync: Firebase project webswan-voice-studio.
@@ -976,9 +1097,10 @@ onAuthStateChanged(auth, async u => {
   user = u; window.cloudUser = u ? u.email : '';
   if (!u) { last = {}; status('☁ Sign in to sync', 'Sync your workspace to your private WebSwan cloud'); return; }
   status('☁ Syncing…');
-  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); }
+  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); if (window.livePoll) window.livePoll(); }
   catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else status('☁ Sync error', String(e.message || e)); }
 });
+window.fbIdToken = async () => (user ? user.getIdToken() : null);
 getRedirectResult(auth).catch(e => { if (e && e.code) toast('Sign-in didn’t work: ' + e.code); });
 window.addEventListener('focus', () => { if (user && Date.now() - lastPull > 60000) push().then(pull).catch(() => {}); });
 window.addEventListener('pagehide', () => { if (user) push(); });
