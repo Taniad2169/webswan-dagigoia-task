@@ -370,10 +370,16 @@ export default async (req) => {
       for (const k of ["language", "audio", "model", "tools", "system_tools", "turn", "timezone"]) if (c[k] !== undefined) config[k] = JSON.parse(JSON.stringify(c[k]));
       config.instructions = ins;
       config.initial_message = null;
-      config.language = Object.assign({}, config.language || {}, { primary: lang });
+      // English agent: keep its own language settings. Spanish = Latin American (es-MX) only; Portuguese = Brazil (pt-BR) only.
+      const langTries = lang === "en" ? [config.language || null] : lang === "es" ? [{ primary: "es-MX" }, { primary: "es", additional: [] }, { primary: "es" }] : [{ primary: "pt-BR" }, { primary: "pt", additional: [] }, { primary: "pt" }];
       if (b.voiceId && /^[\w-]{8,80}$/.test(String(b.voiceId))) { config.audio = config.audio || {}; config.audio.output = Object.assign({}, config.audio.output || {}, { voice_id: String(b.voiceId) }); }
       const label = (clean(b.displayName, 60) || (name[0].toUpperCase() + name.slice(1))) + (lang === "en" ? "" : " - " + (lang === "es" ? "Español" : "Português"));
-      const made = await cartesia("POST", "/v1/agents", V_READ, { name: label + " (WebSwan)", description: clean(b.description, 300) || "Created from WebSwan Voice Studio", config });
+      let made = null, lastErr = null;
+      for (const lt of langTries) {
+        if (lt) config.language = lt; else delete config.language;
+        try { made = await cartesia("POST", "/v1/agents", V_READ, { name: label + " (WebSwan)", description: clean(b.description, 300) || "Created from WebSwan Voice Studio", config }); break; } catch (e) { lastErr = e; }
+      }
+      if (!made) throw lastErr || new Error("Cartesia refused the new agent.");
       const newId = made.id || (made.agent && made.agent.id) || "";
       if (!newId) return reply(502, { error: "Cartesia didn't return the new agent's id." }, origin);
       EXTRA_IDS[key] = newId; await store.setJSON("agent-ids", EXTRA_IDS);
