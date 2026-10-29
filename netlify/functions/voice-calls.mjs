@@ -74,7 +74,23 @@ const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Port
 const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
 // The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
-const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" ? agentId(name) : "");
+const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
+// Alek has no separate Portuguese agent (plan limit): his one agent switches to Brazilian Portuguese for a pt call
+// and back to English + Mexican Spanish for the next English or Spanish call.
+const ALEK_DEFAULT_LANG = { primary: "en", additional: [{ code: "es-MX" }] };
+async function alekLanguage(id, lang, store) {
+  const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+  const cur = (d.config || (d.agent && d.agent.config) || {}).language || {};
+  const isPt = String(cur.primary || "").startsWith("pt");
+  if (lang === "pt" && !isPt) {
+    await store.setJSON("alek-lang", cur);
+    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: { primary: "pt-BR", additional: [] } }, version_description: "Alek: Brazilian Portuguese call" });
+  } else if (lang !== "pt" && isPt) {
+    const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG;
+    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig }, version_description: "Alek: back to English and Spanish" });
+  }
+}
+const MODES = { selling: "Selling: phone application (PWA) and digital e-card", floating: "Floating: follow Tania's task below" };
 const LANG_RULE = {
   es: "LANGUAGE (HIGHEST PRIORITY): Speak only in neutral Latin American Spanish (Mexican / Latin American style, use \"usted\"). Never use Spain Spanish words or the \"vosotros\" form. If the person clearly prefers English, switch to English politely.",
   pt: "LANGUAGE (HIGHEST PRIORITY): Speak only in Brazilian Portuguese (português do Brasil), never European Portuguese. If the person clearly prefers English, switch to English politely."
@@ -171,7 +187,7 @@ export default async (req) => {
           const phone = e164(x && x.phone), st = clean(x && x.state, 2).toUpperCase();
           if (!phone || have.has(phone) || !/^[A-Z]{2}$/.test(st)) continue;
           const ag = String((x && x.agent) || "").toLowerCase();
-          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", lang: LANGS[x.lang] ? x.lang : "en", findings: clean(x.findings, 400), campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
+          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", lang: LANGS[x.lang] ? x.lang : "en", mode: x.mode === "floating" ? "floating" : "selling", task: String(x.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500), findings: clean(x.findings, 400), campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
           have.add(phone);
         }
         if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
@@ -274,6 +290,9 @@ export default async (req) => {
     const lang = LANGS[b.lang] ? b.lang : "en";
     if (AGENTS.includes(name) && !(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} doesn't call in ${LANGS[lang]}.` }, origin);
     const aid = AGENTS.includes(name) ? callAgentId(name, lang) : "";
+    const mode = b.mode === "floating" ? "floating" : "selling", task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
+    if (name === "alek" && mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his task or script for this call first." }, origin);
+    if (name === "alek" && aid && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { return reply(502, { error: "Couldn't switch Alek's language: " + e.message }, origin); } }
     if (!aid) return reply(400, { error: lang === "en" ? `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` : `${name}'s ${LANGS[lang]} version isn't created yet (AI Team > Coach > Live Cartesia agents).` }, origin);
     if (!nums.length) return reply(400, { error: "No caller-ID numbers yet (CARTESIA_FROM_NUMBER_IDS)." }, origin);
     const to = e164(b.phone);
@@ -294,7 +313,7 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 400) || "none listed", lead_language: LANGS[lang] } }],
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 400) || "none listed", lead_language: LANGS[lang], call_mode: name === "alek" ? MODES[mode] : "standard", task: name === "alek" && mode === "floating" ? task : "none" } }],
         ringing_timeout_seconds: 30, max_call_duration_minutes: 6
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }

@@ -31,6 +31,20 @@ const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase
 const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
 const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
 let EXTRA_IDS = {};
+const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
+async function cart(method, path, body) {
+  const r = await fetch(API + path, { method, headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(String(d.message || d.error || "Cartesia " + r.status).slice(0, 200)); return d;
+}
+// Alek's one agent switches to Brazilian Portuguese for pt leads and back for English/Spanish leads.
+const ALEK_DEFAULT_LANG = { primary: "en", additional: [{ code: "es-MX" }] };
+async function alekLanguage(id, lang, store) {
+  const d = await cart("GET", "/v1/agents/" + encodeURIComponent(id));
+  const cur = (d.config || (d.agent && d.agent.config) || {}).language || {};
+  const isPt = String(cur.primary || "").startsWith("pt");
+  if (lang === "pt" && !isPt) { await store.setJSON("alek-lang", cur); await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: { primary: "pt-BR", additional: [] } }, version_description: "Alek: Brazilian Portuguese call" }); }
+  else if (lang !== "pt" && isPt) { const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG; await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig }, version_description: "Alek: back to English and Spanish" }); }
+}
 const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
 function e164(p) {
   let d = String(p || "").replace(/\D/g, "");
@@ -72,8 +86,10 @@ export default async () => {
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
-    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" ? agentId(name) : "");
+    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
+    if (name === "alek" && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
+    const floating = name === "alek" && lead.mode === "floating" && String(lead.task || "").length >= 10;
     const pick = numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
     if (!pick) break; // every number hit today's cap
     try {
@@ -83,7 +99,7 @@ export default async () => {
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
           outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" },
-            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English" } }],
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: floating ? lead.task : "none" } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 6
         })
       });
