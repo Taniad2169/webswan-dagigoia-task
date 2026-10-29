@@ -76,8 +76,9 @@ export default async () => {
         headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
-          outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" } }],
-          ringing_timeout_seconds: 30, max_call_duration_minutes: 10
+          outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" },
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "" } }],
+          ringing_timeout_seconds: 30, max_call_duration_minutes: 6
         })
       });
       const d = await r.json().catch(() => ({}));

@@ -12,6 +12,7 @@
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 60)
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
+import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
 
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
@@ -20,6 +21,7 @@ const AGENTS = ["george", "rebecca", "monica", "alek", "tatiana"];
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
+const TOOLS_URL = "https://webswan-billing.netlify.app/.netlify/functions/voice-tools";
 const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 
 let jwksCache = { keys: null, at: 0 };
@@ -165,7 +167,77 @@ export default async (req) => {
       leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
   }
 
+
+  // ---------- calendar booking settings (Tania's Google Calendar via her Apps Script) ----------
+  if (b.action === "cal_get" || b.action === "cal_set" || b.action === "cal_test") {
+    let calSecret = await store.get("cal-secret");
+    if (!calSecret) { calSecret = crypto.randomBytes(24).toString("base64url"); await store.set("cal-secret", calSecret); }
+    let cal = sanitizeCal(await store.get("calendar", { type: "json" }));
+    if (b.action === "cal_set" && b.calendar) {
+      const raw = String(b.calendar.scriptUrl || "").trim();
+      if (raw && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(raw)) return reply(400, { error: "That isn't an Apps Script web app link. It should start with https://script.google.com/macros/s/ and end with /exec." }, origin);
+      cal = sanitizeCal(Object.assign({}, cal, b.calendar));
+      await store.setJSON("calendar", cal);
+    }
+    const out = { calendar: cal, script: scriptCode(calSecret), bookings: ((await store.get("bookings", { type: "json" })) || []).slice(0, 50) };
+    if (b.action === "cal_test") {
+      try {
+        const ping = await callScript(cal, calSecret, { action: "ping" });
+        const busy = (await callScript(cal, calSecret, Object.assign({ action: "busy" }, busyWindow(cal)))).busy;
+        out.test = { ok: true, account: ping.account, calendar: ping.calendar, next: pickChoices(openSlots(cal, busy), cal.tz).map((s) => say(s, cal.tz)) };
+      } catch (e) { out.test = { ok: false, error: e.message }; }
+    }
+    return reply(200, out, origin);
+  }
+
   if (!hasKey) return reply(503, { error: "Cartesia isn't connected yet. Add CARTESIA_API_KEY in Netlify, then redeploy." }, origin);
+
+
+  // ---------- connect calendar tools + safety switches to the Cartesia agents ----------
+  if (b.action === "agent_setup") {
+    let toolSecret = await store.get("tool-secret");
+    if (!toolSecret) { toolSecret = crypto.randomBytes(32).toString("base64url"); await store.set("tool-secret", toolSecret); }
+    const auth = { mode: "bearer", token: { type: "secret", secret_value: toolSecret } };
+    const defs = [
+      { key: "slots", body: { type: "webhook", name: "check_availability", description: "Get Tania's open times for a 10-minute onboarding call. Use it as soon as the doctor or attorney agrees to a call with Tania, before suggesting any day or time.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 20,
+          api_schema: { url: TOOLS_URL, method: "GET", query_params_schema: { properties: { action: { type: "string", constant_value: "slots" }, lead_state: { type: "string", dynamic_variable: "lead_state" } } }, authentication: auth } } },
+      { key: "book", body: { type: "webhook", name: "book_appointment", description: "Book the onboarding call on Tania's calendar after the person picks one of the times from check_availability. Never book a time that did not come from check_availability.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 25,
+          api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
+            action: { type: "string", constant_value: "book" },
+            slot_id: { type: "string", description: "The exact slot_id of the time they chose, copied from check_availability." },
+            contact_name: { type: "string", description: "Name of the doctor or attorney Tania will speak with." },
+            practice_name: { type: "string", description: "Name of the practice or law firm." },
+            email: { type: "string", description: "Best email for the calendar invitation, spelled out and confirmed with them. Empty if they would not give one." },
+            notes: { type: "string", description: "Anything useful Tania should know, in one or two sentences." },
+            lead_state: { type: "string", dynamic_variable: "lead_state" },
+            lead_id: { type: "string", dynamic_variable: "lead_id" },
+            call_id: { type: "string", dynamic_variable: "system__conversation_id" },
+            lead_phone: { type: "string", dynamic_variable: "system__called_number" }
+          }, required: ["slot_id"] }, authentication: auth } } }
+    ];
+    const saved = (await store.get("tool-ids", { type: "json" })) || {};
+    const tries = async (method, path, body) => { try { return await cartesia(method, path, V_READ, body); } catch (e) { if (/not found|404/i.test(e.message)) return await cartesia(method, "/v1" + path, V_READ, body); throw e; } };
+    const report = { tools: {}, agents: {} };
+    try {
+      for (const d of defs) {
+        if (saved[d.key]) { try { await tries("PATCH", "/agents/tools/" + saved[d.key], d.body); report.tools[d.body.name] = "updated"; continue; } catch (e) { delete saved[d.key]; } }
+        const t = await tries("POST", "/agents/tools", d.body);
+        saved[d.key] = t.id || (t.tool && t.tool.id) || ""; report.tools[d.body.name] = saved[d.key] ? "created" : "created (no id returned)";
+      }
+      await store.setJSON("tool-ids", saved);
+    } catch (e) { return reply(502, { error: "Couldn't create the calendar tools in Cartesia: " + e.message }, origin); }
+    for (const a of AGENTS) {
+      const id = agentId(a); if (!id) continue;
+      try {
+        await tries("PATCH", "/agents/" + encodeURIComponent(id), { config: {
+          tools: Object.values(saved).filter(Boolean).map((x) => ({ id: x })),
+          system_tools: { end_call: {}, send_dtmf: {}, voicemail_detection: {} }
+        } });
+        report.agents[a] = "connected";
+      } catch (e) { report.agents[a] = "error: " + e.message; }
+    }
+    return reply(200, report, origin);
+  }
 
   // ---------- start one live call ----------
   if (b.action === "start") {
@@ -192,8 +264,8 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata }],
-        ringing_timeout_seconds: 30, max_call_duration_minutes: 10
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase() } }],
+        ringing_timeout_seconds: 30, max_call_duration_minutes: 6
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
     const r0 = (data.calls || [])[0] || {};
