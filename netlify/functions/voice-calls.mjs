@@ -330,7 +330,7 @@ export default async (req) => {
     try {
       const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
       const cfg = d.config || (d.agent && d.agent.config) || {};
-      return reply(200, { agent: name, id, name: d.name || "", instructions: cfg.instructions || "", voiceId: (cfg.audio && cfg.audio.output && cfg.audio.output.voice_id) || "" }, origin);
+      return reply(200, { agent: name, id, name: d.name || "", instructions: cfg.instructions || "", language: cfg.language || null, voiceId: (cfg.audio && cfg.audio.output && cfg.audio.output.voice_id) || "" }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
