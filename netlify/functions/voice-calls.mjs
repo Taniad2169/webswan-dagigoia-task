@@ -17,7 +17,7 @@ import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scrip
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek", "tatiana"];
+const AGENTS = ["george", "rebecca", "monica", "alek"];
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
@@ -68,6 +68,15 @@ const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split
 // agents created from Voice Studio are remembered in Blobs ("agent-ids"); a Netlify env var always wins
 let EXTRA_IDS = {};
 const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
+// Languages: an agent's English version is its base name; other languages are separate Cartesia agents
+// saved as name_es (Latin American Spanish) and name_pt (Brazilian Portuguese).
+const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
+const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"] };
+const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
+const LANG_RULE = {
+  es: "LANGUAGE (HIGHEST PRIORITY): Speak only in neutral Latin American Spanish (Mexican / Latin American style, use \"usted\"). Never use Spain Spanish words or the \"vosotros\" form. If the person clearly prefers English, switch to English politely.",
+  pt: "LANGUAGE (HIGHEST PRIORITY): Speak only in Brazilian Portuguese (português do Brasil), never European Portuguese. If the person clearly prefers English, switch to English politely."
+};
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
 const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
 function e164(p) {
@@ -125,6 +134,8 @@ export default async (req) => {
     return reply(200, {
       keySet: hasKey, numbers: nums.length, live: liveOn(), dailyCap: cap(),
       agents: AGENTS.filter((a) => agentId(a)),
+      languages: Object.fromEntries(AGENTS.filter((a) => agentId(a)).map((a) => [a, (ALLOWED_LANGS[a] || ["en"]).filter((l) => agentId(agentKey(a, l)))])),
+      allowedLanguages: ALLOWED_LANGS,
       callsToday: Object.values(counts).reduce((s, n) => s + n, 0)
     }, origin);
   }
@@ -158,7 +169,7 @@ export default async (req) => {
           const phone = e164(x && x.phone), st = clean(x && x.state, 2).toUpperCase();
           if (!phone || have.has(phone) || !/^[A-Z]{2}$/.test(st)) continue;
           const ag = String((x && x.agent) || "").toLowerCase();
-          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
+          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", lang: LANGS[x.lang] ? x.lang : "en", findings: clean(x.findings, 400), campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
           have.add(phone);
         }
         if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
@@ -167,7 +178,7 @@ export default async (req) => {
     }
     const n = (k) => q.leads.filter((l) => l.status === k).length;
     return reply(200, { settings: q.settings, paused: !!q.paused, lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
-      leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
+      leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, lang: l.lang || "en", status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
   }
 
 
@@ -229,7 +240,7 @@ export default async (req) => {
       }
       await store.setJSON("tool-ids", saved);
     } catch (e) { return reply(502, { error: "Couldn't create the calendar tools in Cartesia: " + e.message }, origin); }
-    for (const a of AGENTS) {
+    for (const a of AGENTS.flatMap((n) => (ALLOWED_LANGS[n] || ["en"]).map((l) => agentKey(n, l)))) {
       const id = agentId(a); if (!id) continue;
       try {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
@@ -244,7 +255,7 @@ export default async (req) => {
 
   // ---------- update one agent's instructions (system prompt) in Cartesia ----------
   if (b.action === "agent_prompt") {
-    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
     if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
     const ins = String(b.instructions || "").trim();
     if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
@@ -258,8 +269,10 @@ export default async (req) => {
   if (b.action === "start") {
     if (!liveOn()) return reply(403, { error: "Live calling is switched off (VOICE_CALLING_ENABLED is not on)." }, origin);
     const name = String(b.agent || "").toLowerCase();
-    const aid = AGENTS.includes(name) ? agentId(name) : "";
-    if (!aid) return reply(400, { error: `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` }, origin);
+    const lang = LANGS[b.lang] ? b.lang : "en";
+    if (AGENTS.includes(name) && !(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} doesn't call in ${LANGS[lang]}.` }, origin);
+    const aid = AGENTS.includes(name) ? agentId(agentKey(name, lang)) : "";
+    if (!aid) return reply(400, { error: lang === "en" ? `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` : `${name}'s ${LANGS[lang]} version isn't created yet (AI Team > Coach > Live Cartesia agents).` }, origin);
     if (!nums.length) return reply(400, { error: "No caller-ID numbers yet (CARTESIA_FROM_NUMBER_IDS)." }, origin);
     const to = e164(b.phone);
     if (!to) return reply(400, { error: "That isn't a valid US phone number." }, origin);
@@ -279,7 +292,7 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase() } }],
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 400) || "none listed", lead_language: LANGS[lang] } }],
         ringing_timeout_seconds: 30, max_call_duration_minutes: 6
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
@@ -287,7 +300,7 @@ export default async (req) => {
     if (!r0.agent_call_id) return reply(502, { error: "Cartesia didn't start the call: " + clean(r0.error && (r0.error.message || r0.error) || "unknown", 200) }, origin);
     counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
     await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
-    return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name }, origin);
+    return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name, lang }, origin);
   }
 
   // ---------- read one call (status, transcript, summary) ----------
@@ -301,7 +314,7 @@ export default async (req) => {
   // ---------- list recent calls for one agent (to backfill the call log) ----------
   if (b.action === "list") {
     const name = String(b.agent || "").toLowerCase(), aid = agentId(name);
-    if (!aid) return reply(400, { error: "Unknown agent." }, origin);
+    if (!aid || !AGENTS.includes(name.split("_")[0])) return reply(400, { error: "Unknown agent." }, origin);
     const q = new URLSearchParams({ agent_id: aid, limit: String(Math.max(1, Math.min(100, parseInt(b.limit, 10) || 50))), expand: "transcript" });
     if (b.since) q.set("start_time_gte", new Date(Number(b.since) || b.since).toISOString());
     try {
@@ -312,7 +325,7 @@ export default async (req) => {
 
   // ---------- read one agent's live Cartesia settings (instructions, voice) ----------
   if (b.action === "agent_get") {
-    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
     if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
     try {
       const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
@@ -336,10 +349,19 @@ export default async (req) => {
   if (b.action === "agent_create") {
     const name = String(b.agent || "").toLowerCase();
     if (!AGENTS.includes(name)) return reply(400, { error: "Unknown agent name." }, origin);
-    if (agentId(name)) return reply(409, { error: name[0].toUpperCase() + name.slice(1) + " already has a Cartesia agent." }, origin);
-    const fromId = agentId(String(b.from || "rebecca").toLowerCase());
-    if (!fromId) return reply(400, { error: "Rebecca's Cartesia agent is needed as the starting point." }, origin);
-    const ins = String(b.instructions || "").trim();
+    const lang = LANGS[b.lang] ? b.lang : "en";
+    if (!(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} isn't set up to call in ${LANGS[lang]}.` }, origin);
+    const key = agentKey(name, lang);
+    if (agentId(key)) return reply(409, { error: name[0].toUpperCase() + name.slice(1) + (lang === "en" ? "" : " (" + LANGS[lang] + ")") + " already has a Cartesia agent." }, origin);
+    // a language version starts from the same person's English agent; a brand-new agent starts from Rebecca
+    const fromId = lang !== "en" ? agentId(name) : agentId(String(b.from || "rebecca").toLowerCase());
+    if (!fromId) return reply(400, { error: lang !== "en" ? "Create or link the English version first." : "Rebecca's Cartesia agent is needed as the starting point." }, origin);
+    let ins = String(b.instructions || "").trim();
+    if (lang !== "en" && ins.length < 200) {
+      const src0 = await cartesia("GET", "/v1/agents/" + encodeURIComponent(fromId), V_READ).catch(() => null);
+      ins = String(((src0 && (src0.config || (src0.agent && src0.agent.config))) || {}).instructions || "").trim();
+    }
+    if (lang !== "en" && LANG_RULE[lang] && !ins.startsWith("LANGUAGE")) ins = LANG_RULE[lang] + "\n\n" + ins;
     if (ins.length < 200 || ins.length > 30000) return reply(400, { error: "The new agent needs her full instructions (script)." }, origin);
     try {
       const src = await cartesia("GET", "/v1/agents/" + encodeURIComponent(fromId), V_READ);
@@ -348,13 +370,14 @@ export default async (req) => {
       for (const k of ["language", "audio", "model", "tools", "system_tools", "turn", "timezone"]) if (c[k] !== undefined) config[k] = JSON.parse(JSON.stringify(c[k]));
       config.instructions = ins;
       config.initial_message = null;
+      config.language = Object.assign({}, config.language || {}, { primary: lang });
       if (b.voiceId && /^[\w-]{8,80}$/.test(String(b.voiceId))) { config.audio = config.audio || {}; config.audio.output = Object.assign({}, config.audio.output || {}, { voice_id: String(b.voiceId) }); }
-      const label = clean(b.displayName, 60) || (name[0].toUpperCase() + name.slice(1));
+      const label = (clean(b.displayName, 60) || (name[0].toUpperCase() + name.slice(1))) + (lang === "en" ? "" : " - " + (lang === "es" ? "Español" : "Português"));
       const made = await cartesia("POST", "/v1/agents", V_READ, { name: label + " (WebSwan)", description: clean(b.description, 300) || "Created from WebSwan Voice Studio", config });
       const newId = made.id || (made.agent && made.agent.id) || "";
       if (!newId) return reply(502, { error: "Cartesia didn't return the new agent's id." }, origin);
-      EXTRA_IDS[name] = newId; await store.setJSON("agent-ids", EXTRA_IDS);
-      return reply(200, { ok: true, agent: name, id: newId }, origin);
+      EXTRA_IDS[key] = newId; await store.setJSON("agent-ids", EXTRA_IDS);
+      return reply(200, { ok: true, agent: name, lang, id: newId }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 

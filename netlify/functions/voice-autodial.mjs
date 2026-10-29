@@ -72,7 +72,7 @@ export default async () => {
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
-    const name = String(lead.agent || s.agent || "").toLowerCase(), aid = agentId(name);
+    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang);
     if (!aid) continue; // agent not connected yet; stays in the queue
     const pick = numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
     if (!pick) break; // every number hit today's cap
@@ -83,7 +83,7 @@ export default async () => {
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
           outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" },
-            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "" } }],
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English" } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 6
         })
       });
