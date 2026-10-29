@@ -144,7 +144,7 @@ export default async (req) => {
         const hm = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || "")) ? String(v) : null;
         const start = hm(s.start), end = hm(s.end);
         if (!start || !end || end <= start) return reply(400, { error: "Pick a start and end time (end after start)." }, origin);
-        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1)) };
+        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1)) };
       }
       if (typeof b.paused === "boolean") q.paused = b.paused;
       if (b.clear === "all") q.leads = [];

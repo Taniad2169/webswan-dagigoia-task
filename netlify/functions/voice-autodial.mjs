@@ -57,7 +57,9 @@ export default async () => {
   const dnc = (await store.get("dnc", { type: "json" })) || [];
   const dialed = (await store.get(dialedKey, { type: "json" })) || [];
   const counts = (await store.get(countsKey, { type: "json" })) || {};
-  const perRun = Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1));
+  // pace 0.5 = one call every 2 minutes: rest on odd minutes
+  if (Number(s.perMinute) === 0.5 && now.mins % 2 === 1) return new Response("resting (1 call every 2 minutes)");
+  const perRun = Number(s.perMinute) === 0.5 ? 1 : Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1));
   let placed = 0;
 
   for (const lead of q.leads) {
