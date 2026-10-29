@@ -102,8 +102,8 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catc
 save();
 
 let page = 'Overview';
-const pages = ['Overview', 'SDR AI', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Usage & setup'];
-const icons = ['◫', '✦', '♙', '◉', '◷', '🎙', '☎', '⚙'];
+const pages = ['Overview', 'SDR AI', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
+const icons = ['◫', '✦', '♙', '◉', '◷', '🎙', '☎', '📋', '⚙'];
 const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
 const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
 const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
@@ -180,10 +180,11 @@ function stopSpeech() { if (canSpeak) synth.cancel(); document.body.classList.re
 /* ---------- render ---------- */
 function nav(p) { stopSpeech(); if (p === 'SDR AI' && state.sdr) state.sdr.lead = ''; page = p; render(); $('content').focus({ preventScroll: true }); window.scrollTo(0, 0); }
 function render() {
-  $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}</button>`).join('');
+  const cbN = typeof callbackList === 'function' ? callbackList().length : 0;
+  $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}${p === 'Tania call-back' && cbN ? ` <span class="pill ok" style="margin-left:6px;padding:1px 8px">${cbN}</span>` : ''}</button>`).join('');
   $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
   const c = $('content');
-  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Usage & setup': renderSetup }[page])(c);
+  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
 }
 
 function renderOverview(c) {
@@ -406,7 +407,7 @@ function logCall(leadId, fromPractice) {
 }
 function renderCalls(c) {
   c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn green" onclick="liveSync()" title="Bring in results of live AI calls from Cartesia">🔄 Pull live results</button><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
-  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment/.test(x.outcome) && !/not/.test(x.outcome) ? 'ok' : /not|Wrong|Asked/.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span></td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
+  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment|Email captured/.test(x.outcome) && !/not/i.test(x.outcome) ? 'ok' : /not|Wrong|Asked/i.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span>${factsLine(x)}</td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
     : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live AI call transcripts arrive here automatically, or press 🔄 Pull live results.</div>'}</div>`;
 }
 
@@ -420,7 +421,8 @@ function renderSetup(c) {
     <div class="listitem row"><strong>Google Sheets sync</strong><span class="pill">Not connected · use CSV import</span></div>
     <div class="listitem row"><strong>Voice preview</strong><span class="pill ${canSpeak ? 'ok' : 'bad'}">${canSpeak ? 'Working in this browser' : 'Not supported here'}</span></div>
     <h2 class="section">Your data</h2><p>Leads, agents, campaigns and call logs are saved in this browser, and in your private WebSwan cloud when you sign in, so they follow you to every device. Download a backup to keep them safe or move them to another computer.</p>
-    <div class="toolbar"><button class="btn" onclick="backup()">⬇ Download backup</button><button class="btn outline" onclick="$('backupFile').click()">⬆ Restore backup</button></div></div>
+    <div class="toolbar"><button class="btn" onclick="backup()">⬇ Download backup</button><button class="btn outline" onclick="$('backupFile').click()">⬆ Restore backup</button></div>
+    ${calCard()}</div>
     <div class="card"><h2>Before live calls</h2>
     <div class="listitem"><strong>Business landlines first</strong><small>FCC: AI-generated voices count as “artificial” voices under the TCPA. Calling mobile numbers with an AI voice for marketing needs prior written consent.</small></div>
     <div class="listitem"><strong>Calling hours</strong><small>8 AM–9 PM in the lead’s time zone (stricter in some states, like CT, FL, OK, MD, WA and TX). The Leads page checks this for you.</small></div>
@@ -936,7 +938,7 @@ async function liveCall(leadId) {
 async function liveStart(l, a) {
   toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
   try {
-    const d = await voiceApi({ action: 'start', agent: String(a.name).trim().toLowerCase(), phone: l.phone, leadId: l.id, leadName: l.name, business: l.business });
+    const d = await voiceApi({ action: 'start', agent: String(a.name).trim().toLowerCase(), phone: l.phone, leadId: l.id, leadName: l.name, business: l.business, state: l.state || '' });
     state.calls.unshift({ id: uid(), at: Date.now(), leadId: l.id, leadName: l.name || '', business: l.business || '', agentName: a.name, type: 'Live AI call', outcome: 'Calling…', notes: '', live: { callId: d.callId, status: 'created', to: d.to } });
     l.status = l.status === 'New' || !l.status ? 'Contacted' : l.status;
     save(); render(); toast('📞 ' + a.name + ' is calling ' + (l.name || l.phone) + '.'); livePoll();
@@ -961,10 +963,142 @@ function liveApply(x, c) {
     x.outcome = 'Asked not to be called';
     if (l) { l.status = 'Do not call'; voiceApi({ action: 'dnc', add: true, phone: l.phone }).catch(() => {}); }
   } else x.outcome = 'Spoke: review needed';
+  callFacts(x, lines, c.endReason || '', c.status);
   if (l && said && typeof sdrLearn === 'function') sdrLearn(l, said, 'Live AI call');
   if (said && brainOn()) setTimeout(() => aiReviewCall(x.id, true), 500);
   return true;
 }
+
+/* ---------- results form: read every live call and fill in the facts (no AI needed) ---------- */
+const IVR = /(press (one|two|three|four|five|six|seven|eight|nine|zero|\d)|para español|listen carefully|menu options|dial by name|extension|your call is important|please hold|you(?:'ve| have) reached|office (hours|is (currently )?closed)|after the (tone|beep)|leave (a|your) message|mailbox|not available to take your call)/i;
+const HUMAN = /(this is \w+|speaking|how (can|may) i help|who'?s calling|what is this (about|regarding)|can i ask who|good (morning|afternoon)[, ]+\w+ (office|dental|law|clinic))/i;
+const NOT_INT = /(not interested|no,? thank(s| you)|we'?re (good|all set|fine)|we are (good|all set|fine)|don'?t need (it|that|this|any)|no need|we already have)/i;
+const CALLBACK = /(call (me |us )?back|try (again|back|later)|not (in|available|here)( right now| today)?|out of (the )?office|with a patient|in (court|surgery|a meeting|session)|busy right now|call (tomorrow|next week|later|in the (morning|afternoon))|(he|she)'?s (out|gone|off)|lunch)/i;
+const BOOKED = /(you'?re (all )?set for|i have you (down|booked) for|i'?ve (booked|scheduled)|booked:? (you|for)|your (appointment|call) (is|with tania is) (set|booked|confirmed)|calendar invitation)/i;
+function spokenEmail(t) {
+  let s = ' ' + String(t || '').toLowerCase().replace(/[“”"]/g, ' ') + ' ';
+  s = s.replace(/\b([a-z0-9])(?:[\s-]+(?=[a-z0-9]\b))/g, '$1');            // d-e-s-i-g-n -> design
+  const TLD = '(com|net|org|us|biz|info|co|io|law|legal|health|dental|edu|gov|me)';
+  // spoken form: "info at kirsch dental dot com"
+  const re = new RegExp('([a-z0-9._%+-]+(?: (?:dot|underscore|dash) [a-z0-9]+)*)\\s+at\\s+((?:[a-z0-9-]+\\s+){0,3}?[a-z0-9-]+)\\s+dot\\s+' + TLD + '\\b', 'g');
+  let m, found = [];
+  while ((m = re.exec(s))) found.push((m[1].replace(/ dot /g, '.').replace(/ underscore /g, '_').replace(/ dash /g, '-') + '@' + m[2].replace(/\s+/g, '') + '.' + m[3]).replace(/\s+/g, ''));
+  found = found.concat(s.match(new RegExp('[a-z0-9._%+-]+@[a-z0-9-]+(\\.[a-z0-9-]+)*\\.' + TLD + '\\b', 'g')) || []);
+  return found.find(e => !/webswan/.test(e)) || '';
+}
+function callFacts(x, lines, endReason, status) {
+  const prospect = lines.filter(m => m.role === 'user').map(m => m.text).join(' ');
+  const agent = lines.filter(m => m.role !== 'user').map(m => m.text).join(' ');
+  const all = prospect + ' ' + agent, f = { at: Date.now() };
+  f.email = spokenEmail(prospect) || spokenEmail(agent);
+  const nm = prospect.match(/\b(?:this is|my name is|i'?m|it'?s)\s+((?:dr\.?\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+  if (nm && !/^(Calling|Busy|Sorry|Not|Just|Here|Fine|Good|Great|Okay|Ok)$/i.test(nm[1])) f.contact = nm[1];
+  const humanSpoke = HUMAN.test(prospect) || (prospect.split(/[.?!]/).filter(s => s.trim().split(/\s+/).length >= 4).length >= 2 && !IVR.test(prospect));
+  if (/voicemail/.test(endReason)) f.result = 'Voicemail';
+  else if (/^dial_(no_answer|busy|timeout)$/.test(endReason) || (status === 'failed' && !prospect)) f.result = 'No answer';
+  else if (/^dial_failed$/.test(endReason)) f.result = 'Wrong number';
+  else if (OPT_OUT.test(prospect)) f.result = 'Asked not to be called';
+  else if (BOOKED.test(agent)) f.result = 'Appointment booked';
+  else if (IVR.test(prospect) && !humanSpoke) f.result = 'Phone menu';
+  else if (NOT_INT.test(prospect)) f.result = 'Not interested';
+  else if (CALLBACK.test(prospect)) f.result = 'Call back later';
+  else if (f.email) f.result = 'Email captured';
+  else f.result = prospect ? 'Spoke: no email' : 'No answer';
+  const cb = prospect.match(CALLBACK); if (cb) f.callback = cb[0];
+  f.interested = f.result === 'Appointment booked' || f.result === 'Email captured';
+  // who needs Tania personally
+  f.needsTania = ['Not interested', 'Phone menu', 'Call back later', 'Spoke: no email', 'Voicemail', 'No answer'].includes(f.result);
+  f.why = { 'Not interested': 'Said not interested to the AI. A personal call from you often turns this around.', 'Phone menu': 'Got stuck in a phone menu, never reached a person.', 'Call back later': 'Asked for a call back' + (f.callback ? ' (“' + f.callback + '”)' : '') + '.', 'Spoke: no email': 'Talked, but no email or appointment.', 'Voicemail': 'Went to voicemail (no message left).', 'No answer': 'No answer.' }[f.result] || '';
+  x.facts = Object.assign(x.facts || {}, f);
+  x.outcome = f.result === 'Spoke: no email' ? 'Spoke: review needed' : f.result;
+  const l = byId('leads', x.leadId);
+  if (l) {
+    if (f.email && !l.email) l.email = f.email;
+    if (f.result === 'Appointment booked') l.status = 'Appointment requested';
+    else if (f.result === 'Email captured' && /^(New|Contacted)?$/.test(l.status || '')) l.status = 'Interested';
+    else if (f.needsTania && l.status !== 'Do not call') l.status = 'Follow up';
+  }
+  return f;
+}
+function factsLine(x) {
+  const f = x.facts; if (!f) return '';
+  const bits = [f.email ? '📧 ' + esc(f.email) : '', f.contact ? '👤 ' + esc(f.contact) : '', f.callback ? '⏰ ' + esc(f.callback) : '', f.needsTania && !f.done ? '<b>📋 Tania call-back</b>' : ''].filter(Boolean);
+  return bits.length ? `<br><small>${bits.join(' · ')}</small>` : '';
+}
+function linesFromTranscript(t) { return String(t || '').split('\n').filter(Boolean).map(s => /^Prospect:/.test(s) ? { role: 'user', text: s.slice(9).trim() } : { role: 'agent', text: s.replace(/^[^:]{1,40}:/, '').trim() }); }
+function callbackList() {
+  const seen = new Set();
+  return (state.calls || []).filter(x => x.facts && x.facts.needsTania && !x.facts.done).filter(x => { const k = x.leadId || x.leadName; if (seen.has(k)) return false; seen.add(k); return true; })
+    .filter(x => { const l = byId('leads', x.leadId); return !(l && l.status === 'Do not call'); });
+}
+function renderCallback(c) {
+  const list = callbackList();
+  const order = ['Call back later', 'Not interested', 'Spoke: no email', 'Phone menu', 'Voicemail', 'No answer'];
+  list.sort((a, b) => order.indexOf(a.facts.result) - order.indexOf(b.facts.result) || (b.at || 0) - (a.at || 0));
+  c.innerHTML = `<div class="row section"><p>Leads the AI couldn't close, ready for your personal touch. Warmest first. ${list.length} to call.</p><div class="toolbar"><button class="btn green" onclick="liveSync()">🔄 Pull live results</button></div></div>
+  ${list.length ? list.map(x => { const l = byId('leads', x.leadId) || {}; const ph = l.phone || (x.live && x.live.to) || ''; const last = linesFromTranscript(x.transcript).filter(m => m.role === 'user').slice(-2).map(m => m.text).join(' … ');
+    return `<div class="card section"><div class="row"><div><h2 style="margin:0">${esc(x.leadName || l.name || ph)}</h2><small class="muted">${esc(x.business || l.business || '')}${l.state ? ' · ' + esc(l.state) : ''} · first call ${esc(fmtDate(x.at))}${x.agentName ? ' by ' + esc(x.agentName) : ''}</small></div><span class="chip ${x.facts.result === 'Not interested' ? 'bad' : ''}">${esc(x.facts.result)}</span></div>
+      <p style="margin:10px 0 4px">${esc(x.facts.why)}</p>
+      ${x.facts.contact ? `<p class="muted" style="margin:0">Spoke with: ${esc(x.facts.contact)}</p>` : ''}${last ? `<p class="note" style="margin:8px 0">They said: “${esc(last.slice(0, 300))}”</p>` : ''}
+      <div class="toolbar">${ph ? `<a class="btn" href="tel:${esc(digits(ph))}">📞 Call ${esc(ph)}</a>` : ''}${x.transcript ? `<button class="btn outline small" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">📄 Transcript</button><div class="script" hidden style="width:100%">${esc(x.transcript)}</div>` : ''}
+      <button class="btn green small" onclick="cbDone('${x.id}')">✅ Done</button><button class="btn danger small" onclick="cbDnc('${x.id}')">🚫 Do not call</button></div></div>`; }).join('')
+    : '<div class="card"><div class="empty">Nobody waiting for a call-back. 🎉<br>When an AI call ends with “not interested”, a phone menu, a call-back request or no email, the lead lands here for you.</div></div>'}`;
+}
+function cbDone(id) { const x = byId('calls', id); if (!x || !x.facts) return; x.facts.done = Date.now(); state.calls.filter(k => k.leadId && k.leadId === x.leadId && k.facts).forEach(k => k.facts.done = k.facts.done || Date.now()); save(); render(); toast('Marked done.'); }
+function cbDnc(id) {
+  const x = byId('calls', id); if (!x) return; const l = byId('leads', x.leadId);
+  if (!confirm('Put ' + (x.leadName || 'this lead') + ' on the Do Not Call list?')) return;
+  const ph = (l && l.phone) || (x.live && x.live.to) || '';
+  if (l) l.status = 'Do not call'; if (x.facts) x.facts.done = Date.now();
+  if (ph) voiceApi({ action: 'dnc', add: true, phone: ph }).catch(() => {});
+  save(); render(); toast('Added to Do Not Call.');
+}
+
+
+/* ---------- calendar booking: Rebecca books Tania's 10-minute onboardings on Google Calendar ---------- */
+let calState = null;
+async function calLoad(action, extra) {
+  try { calState = Object.assign(await voiceApi(Object.assign({ action: action || 'cal_get' }, extra || {})), { loaded: true }); }
+  catch (e) { calState = { error: e.message }; }
+  if (page === 'Usage & setup') render();
+  return calState;
+}
+function calCard() {
+  if (!window.cloudUser) return `<h2 class="section">📅 Calendar booking</h2><p class="muted">Sign in at the top to connect your Google Calendar.</p>`;
+  if (!calState) { setTimeout(() => calLoad(), 60); return `<h2 class="section">📅 Calendar booking</h2><p class="muted">Loading…</p>`; }
+  if (calState.error) return `<h2 class="section">📅 Calendar booking</h2><p class="note warn">${esc(calState.error)}</p><button class="btn outline small" onclick="calLoad()">↻ Try again</button>`;
+  const C = calState.calendar || {}, T = calState.test, B = calState.bookings || [];
+  const dayBox = DIAL_DAYS.map(([k, n]) => `<label style="display:inline-flex;gap:4px;align-items:center;margin-right:8px"><input type="checkbox" class="calDay" style="width:auto" value="${k}" ${(C.days || []).includes(k) ? 'checked' : ''}> ${n}</label>`).join('');
+  return `<h2 class="section">📅 Calendar booking</h2>
+    <p>Rebecca checks your Google Calendar and books 10-minute onboardings only in open times, so you're never double-booked. Bookings from your appointment page count as busy too.</p>
+    <div class="listitem row"><strong>Google Calendar</strong><span class="pill ${C.scriptUrl ? 'ok' : ''}">${C.scriptUrl ? (T && T.ok ? 'Connected · ' + esc(T.account || '') : 'Link saved') : 'Not connected yet'}</span></div>
+    <details ${C.scriptUrl ? '' : 'open'}><summary><b>Connect it (one time, about 3 minutes)</b></summary>
+      <ol style="padding-left:18px;line-height:1.7"><li>Press <b>📋 Copy calendar script</b>.</li><li>Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a> (signed in as thewebswann@gmail.com), delete what's there and paste.</li><li>Choose <b>setup</b> at the top, press <b>▶ Run</b> and allow calendar access.</li><li><b>Deploy → New deployment → Web app</b>: Execute as <b>Me</b>, Who has access <b>Anyone</b> → Deploy. Copy the <b>Web app URL</b>.</li><li>Paste it below and press <b>💾 Save</b>, then <b>🧪 Test</b>.</li></ol>
+      <button class="btn outline small" onclick="calCopy()">📋 Copy calendar script</button></details>
+    <label class="field">Apps Script web app URL<input id="calUrl" value="${esc(C.scriptUrl || '')}" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <p style="margin:10px 0 4px"><b>Your available hours</b> (Pacific time)</p><div>${dayBox}</div>
+    <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px"><label class="field" style="flex:1;min-width:120px">From<input id="calStart" type="time" value="${esc(C.start || '09:00')}"></label><label class="field" style="flex:1;min-width:120px">To<input id="calEnd" type="time" value="${esc(C.end || '16:00')}"></label><label class="field" style="flex:1;min-width:120px">Gap between calls (min)<input id="calGap" type="number" min="0" max="60" value="${esc(C.gap ?? 10)}"></label><label class="field" style="flex:1;min-width:120px">Earliest booking (hours ahead)<input id="calNotice" type="number" min="1" max="72" value="${esc(C.noticeHours ?? 3)}"></label></div>
+    <div class="toolbar"><button class="btn" onclick="calSave()">💾 Save</button><button class="btn outline" onclick="calLoad('cal_test')">🧪 Test calendar</button><button class="btn secondary" onclick="calAgents()">🔧 Connect tools to agents</button></div>
+    ${T ? (T.ok ? `<p class="note">✅ Calendar works (${esc(T.calendar || '')}). Next open times: ${esc((T.next || []).slice(0, 4).join(' · ') || 'none in the next few days')}</p>` : `<p class="note warn">❌ ${esc(T.error)}</p>`) : ''}
+    ${calState.agentReport ? `<p class="note">${Object.entries(calState.agentReport.agents || {}).map(([a, r]) => esc(a[0].toUpperCase() + a.slice(1)) + ': ' + esc(r)).join('<br>') || 'No agents linked yet.'}</p>` : ''}
+    ${B.length ? `<p style="margin:12px 0 4px"><b>Booked by your agents</b></p>${B.slice(0, 8).map(k => `<div class="listitem"><strong>${esc(k.practice || k.name || 'Onboarding')}</strong><small>${esc(fmtDate(k.start))}${k.email ? ' · ' + esc(k.email) : ''}${k.phone ? ' · ' + esc(k.phone) : ''}</small></div>`).join('')}` : ''}`;
+}
+async function calCopy() {
+  if (!calState || !calState.script) await calLoad();
+  try { await navigator.clipboard.writeText(calState.script); toast('Calendar script copied. Paste it into script.google.com.'); }
+  catch (e) { openForm('Calendar script', `<p>Copy all of this:</p><textarea style="width:100%;height:260px" readonly>${esc(calState.script)}</textarea>`, () => true); }
+}
+async function calSave() {
+  const days = [...document.querySelectorAll('.calDay:checked')].map(b => b.value);
+  await calLoad('cal_set', { calendar: { scriptUrl: $('calUrl').value.trim(), days, start: $('calStart').value, end: $('calEnd').value, gap: $('calGap').value, noticeHours: $('calNotice').value } });
+  toast(calState.error || 'Calendar settings saved.');
+}
+async function calAgents() {
+  toast('Connecting the calendar and safety tools to your Cartesia agents…');
+  try { const r = await voiceApi({ action: 'agent_setup' }); calState = Object.assign(calState || {}, { agentReport: r }); render(); toast('Agents updated.'); }
+  catch (e) { toast('Not connected: ' + e.message); }
+}
+
 async function livePoll() {
   clearTimeout(liveTimer);
   const pend = state.calls.filter(x => x.live && x.live.callId && !x.live.final && Date.now() - x.at < 3 * 3600e3);
@@ -991,6 +1125,7 @@ async function liveSync(quiet) {
           state.calls.push(x); added++;
         }
         if (liveApply(x, c)) updated++;
+        else if (x.live && x.live.final && !x.facts && x.transcript !== undefined) { callFacts(x, linesFromTranscript(x.transcript), x.live.endReason || c.endReason || '', c.status); updated++; }
       }
     }
     state.calls.sort((a, b) => (b.at || 0) - (a.at || 0)); save(); render();
