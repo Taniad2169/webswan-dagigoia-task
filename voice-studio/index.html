@@ -334,7 +334,9 @@ function campaignForm(id) {
   if (!state.agents.length) { toast('Create an agent first.'); nav('Agents'); return; }
   openForm(id ? 'Edit campaign' : 'Create campaign', `${field('Campaign name', 'name', x.name || '', 'text', true)}
   ${select('Agent', 'agentId', [{ v: '', l: 'Not assigned' }, ...state.agents.map(a => ({ v: a.id, l: a.name }))], x.agentId || '')}
-  ${select('Call language', 'lang', [{ v: 'en', l: 'English' }, { v: 'es', l: 'Español (Latinoamérica)' }, { v: 'pt', l: 'Português (Brasil)' }], x.lang || 'en', 'Used for leads that don’t have their own preferred language.')}
+  ${select('Call language', 'lang', [{ v: 'en', l: 'English' }, { v: 'es', l: 'Español (Latinoamérica)' }, { v: 'pt', l: 'Português (Brasil)' }], x.lang || 'en', 'Used for leads that don’t have their own preferred language. Portuguese: Alek only.')}
+  ${select('Alek’s job (only when Alek is the agent)', 'mode', [{ v: 'selling', l: 'Selling: phone application & e-card' }, { v: 'floating', l: 'Floating: follow my task' }], x.mode || 'selling')}
+  ${area('Alek’s task for this campaign (floating)', 'task', x.task || '', 'Example: “Call these Brazilian businesses, invite them to the free Mache Ayisien Global listing and get the best email.”')}
   ${select('Which leads', 'statusFilter', [{ v: '', l: 'All statuses' }, ...STATUSES.filter(s => s !== 'Do not call')], x.statusFilter || '')}
   ${field('Preferred calling schedule', 'schedule', x.schedule || '', 'text', false, 'Example: Tue–Thu, 10 AM–12 PM in the lead’s time zone')}
   ${field('Goal', 'goal', x.goal || '', 'text', false, 'Example: book a 10-minute call with Tania')}
@@ -914,7 +916,7 @@ function liveRows() {
 }
 const OPT_OUT = /(do not call|don'?t call|stop calling|remove (me|us|this number)|take (me|us) off|not interested,? (thank|bye)|put (me|us) on (your|the) do not call)/i;
 function liveAgentsFor() { const on = (liveStatus && liveStatus.agents) || []; return state.agents.filter(a => on.includes(String(a.name || '').trim().toLowerCase())); }
-async function liveCall(leadId) {
+async function liveCall(leadId, prefer) {
   const l = byId('leads', leadId); if (!l) return;
   if (state.sdr && state.sdr.paused) return toast('All outreach is paused (kill switch). Resume it in SDR AI first.');
   const e = eligibility(l); if (!e.ok) return toast('Not eligible for an AI call: ' + e.why);
@@ -927,21 +929,34 @@ async function liveCall(leadId) {
   if (!L.live) return toast('Live calling switch is Off in Netlify (VOICE_CALLING_ENABLED).');
   const ags = liveAgentsFor(); if (!ags.length) return toast('None of your Voice Studio agents match a linked Cartesia agent.');
   const sugg = (typeof agentFor === 'function' && typeof sdrOffers === 'function') ? agentFor(sdrOffers(l)[0], l) : null;
-  const cur = ags.find(a => sugg && a.id === sugg.id) || ags[0];
+  const isAlek = a => /^alek\b/i.test(String((a && a.name) || '').trim());
+  const cur = (prefer && ags.find(a => String(a.name || '').trim().toLowerCase().startsWith(prefer))) || ags.find(a => sugg && a.id === sugg.id) || ags[0];
   openForm('📞 Live AI call', `<p style="margin:0"><b>${esc(l.name || '')}</b>${l.business ? ' · ' + esc(l.business) : ''}<br><span class="muted">${esc(l.phone)} · ${esc(e.why)} · ${esc(t.label)}</span></p>
     ${select('Agent', 'agentId', ags.map(a => ({ v: a.id, l: a.name })), cur.id)}
-    ${select('Call language', 'lang', [{ v: 'en', l: 'English' }, { v: 'es', l: 'Español (Latinoamérica)' }, { v: 'pt', l: 'Português (Brasil)' }], l.lang || 'en', 'Rebecca, Monica and George: English or Spanish. Alek: English, Spanish or Portuguese. The language version must be created in AI Team first.')}
+    ${select('Call language', 'lang', [{ v: 'en', l: 'English' }, { v: 'es', l: 'Español (Latinoamérica)' }, { v: 'pt', l: 'Português (Brasil)' }], l.lang || 'en', 'Rebecca, Monica and George: English or Spanish. Alek: English, Spanish or Brazilian Portuguese.')}
+    <div id="alekBox">${select('Alek’s job for this call', 'mode', [{ v: 'selling', l: 'Selling: phone application & e-card' }, { v: 'floating', l: 'Floating: follow my task' }], prefer === 'alek' ? 'floating' : ((state.alek || {}).mode || 'selling'))}
+    ${area('Task or script for this call (floating)', 'task', (state.alek || {}).task || '', 'Tell Alek exactly who he is calling, why, and what to get (example: “Call Mr. Silva to confirm Friday’s 2 PM meeting and ask if he wants the e-card in Portuguese”). He still follows every safety rule.')}</div>
     <p class="note">The agent says it is an AI assistant, never leaves a voicemail and hangs up right away on “do not call”. The caller ID rotates between your numbers.</p>`, v => {
     const a = byId('agents', v.agentId) || cur;
-    liveStart(l, a, v.lang); return undefined;
+    if (!isAlek(a) && v.lang === 'pt') { toast('Only Alek calls in Portuguese.'); return false; }
+    let opts = {};
+    if (isAlek(a)) {
+      if (v.mode === 'floating' && String(v.task || '').trim().length < 10) { toast('Write Alek’s task for this call first.'); return false; }
+      state.alek = { mode: v.mode, task: String(v.task || '').trim() }; opts = { mode: v.mode, task: v.mode === 'floating' ? String(v.task || '').trim() : '' };
+    }
+    liveStart(l, a, v.lang, opts); return undefined;
+  }, () => {
+    const sel = $('f_agentId'), box = $('alekBox');
+    const sync = () => { const a = byId('agents', sel.value); box.style.display = isAlek(a) ? '' : 'none'; };
+    sel.addEventListener('change', sync); sync();
   });
   const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
 }
 const findingsOf = l => ((String((l && l.notes) || '').match(/Findings:\s*([^|]+)/i) || [])[1] || '').trim();
-async function liveStart(l, a, lang) {
+async function liveStart(l, a, lang, opts = {}) {
   toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
   try {
-    const d = await voiceApi({ action: 'start', agent: String(a.name).trim().toLowerCase().split(' ')[0], lang: lang || l.lang || 'en', findings: findingsOf(l), phone: l.phone, leadId: l.id, leadName: l.name, business: l.business, state: l.state || '' });
+    const d = await voiceApi({ action: 'start', agent: String(a.name).trim().toLowerCase().split(' ')[0], lang: lang || l.lang || 'en', mode: opts.mode || 'selling', task: opts.task || '', findings: findingsOf(l), phone: l.phone, leadId: l.id, leadName: l.name, business: l.business, state: l.state || '' });
     state.calls.unshift({ id: uid(), at: Date.now(), leadId: l.id, leadName: l.name || '', business: l.business || '', agentName: a.name, type: 'Live AI call', outcome: 'Calling…', notes: '', live: { callId: d.callId, status: 'created', to: d.to } });
     l.status = l.status === 'New' || !l.status ? 'Contacted' : l.status;
     save(); render(); toast('📞 ' + a.name + ' is calling ' + (l.name || l.phone) + '.'); livePoll();
@@ -1181,11 +1196,13 @@ async function dialClear(kind) {
 async function dialAddCampaign(id) {
   const cp = byId('campaigns', id); if (!cp) return;
   const a = byId('agents', cp.agentId), agent = a ? String(a.name || '').trim().toLowerCase() : '';
+  if (/^alek/.test(agent) && cp.mode === 'floating' && String(cp.task || '').trim().length < 10) return toast('Write Alek’s task in this campaign first (Edit).');
+  if (!/^alek/.test(agent) && cp.lang === 'pt') return toast('Only Alek calls in Portuguese. Change the agent or the language.');
   const ok = campaignLeads(cp).ok.filter(l => l.status !== 'Do not call' && l.status !== 'Not interested');
   const noState = ok.filter(l => !stateCode(l.state)).length, send = ok.filter(l => stateCode(l.state));
   if (!send.length) return toast(noState ? 'Add the state to these leads first (needed for their local calling hours).' : 'No eligible leads in this campaign.');
   try {
-    dialQ = await voiceApi({ action: 'queue_set', add: send.map(l => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent: agent.split(' ')[0], lang: (l.lang && l.lang !== 'en' ? l.lang : cp.lang) || 'en', findings: findingsOf(l), campaign: cp.name })) });
+    dialQ = await voiceApi({ action: 'queue_set', add: send.map(l => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent: agent.split(' ')[0], lang: (l.lang && l.lang !== 'en' ? l.lang : cp.lang) || 'en', mode: cp.mode || 'selling', task: cp.mode === 'floating' ? (cp.task || '') : '', findings: findingsOf(l), campaign: cp.name })) });
     render(); toast(`Sent ${send.length} lead${send.length > 1 ? 's' : ''} to the auto-dialer${noState ? ` (${noState} skipped: no state)` : ''}. Leads already waiting are not added twice.`);
   } catch (e) { toast('Couldn’t add to the auto-dialer: ' + e.message); }
 }
@@ -1539,6 +1556,15 @@ async function teamAgentCreate() {
     newAgentForm = { name: 'Alek', voices: [] }; liveStatus = null; await liveRefresh(true); render();
   } catch (e) { toast(e.message); }
 }
+function alekQuickCall() {
+  openForm('📞 Quick call with Alek', `${field('Who is he calling', 'name', '', 'text', true)}${field('Business (optional)', 'business', '')}${field('Phone', 'phone', '', 'tel', true)}${field('State (2 letters)', 'state', '', 'text', true, 'Needed for their local calling hours.')}
+    ${select('Line type', 'lineType', LINE_TYPES, 'Business landline', 'AI-voice calls: business landlines only, unless they gave you written consent.')}${select('Consent', 'consent', CONSENTS, 'None')}
+    <p class="note">Next you choose the language and write Alek’s task for this call.</p>`, v => {
+    const l = { id: uid(), created: Date.now(), status: 'New', source: 'Quick call (Alek)', name: v.name, business: v.business, phone: v.phone, state: String(v.state || '').toUpperCase().slice(0, 2), lineType: v.lineType, consent: v.consent, notes: '' };
+    state.leads.unshift(l); setTimeout(() => liveCall(l.id, 'alek'), 200); return undefined;
+  });
+  const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = 'Next';
+}
 async function teamMakeLang(name, lang) {
   if (!confirm('Create the ' + (lang === 'es' ? 'Spanish (Latin America)' : 'Brazilian Portuguese') + ' version of ' + name + ' in Cartesia?')) return;
   toast('Creating…');
@@ -1554,6 +1580,7 @@ function teamAgentsCard() {
   const f = newAgentForm;
   return `<div class="card section"><h2>Live Cartesia agents</h2>
     <p>${linked.length ? 'Linked now: ' + linked.map(n => `<span class="pill ok">${esc(cap(n))}</span>`).join(' ') : (window.cloudUser ? 'Checking…' : 'Sign in to see your agents.')}</p>
+    ${linked.includes('alek') && window.cloudUser ? `<div class="toolbar"><button class="btn green small" onclick="alekQuickCall()">📞 Quick call with Alek (floating)</button><span class="muted" style="font-size:13px">Give Alek a task and he calls right away, in English, Spanish or Portuguese.</span></div>` : ''}
     ${missing.length && window.cloudUser ? `<div class="toolbar">${missing.map(n => `<button class="btn ${f.name === cap(n) && f.voices.length ? '' : 'secondary'} small" onclick="teamAgentFormLoad('${cap(n)}')">+ Create ${cap(n)}</button>`).join('')}</div>` : ''}
     ${toMake.length && window.cloudUser ? `<p style="margin-top:10px"><b>Language versions</b> <span class="muted">(same voice and script, speaking the new language)</span></p><div class="toolbar">${toMake.map(([n, l]) => `<button class="btn outline small" onclick="teamMakeLang('${n}','${l}')">+ ${cap(n)} ${LN[l]}</button>`).join('')}</div>` : ''}
     ${Object.keys(langs).length ? `<p class="muted" style="margin-top:6px">Languages ready: ${Object.entries(langs).map(([n, ls]) => esc(cap(n)) + ' ' + ls.map(x => x.toUpperCase()).join('/')).join(' · ')}</p>` : ''}
