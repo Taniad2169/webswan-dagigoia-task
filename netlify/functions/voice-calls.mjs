@@ -78,7 +78,7 @@ const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/
 async function cartesia(method, path, version, body) {
   const r = await fetch(API + path, {
     method,
-    headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": version, ...(body ? { "Content-Type": "application/json" } : {}) },
+    headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": version, ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined
   });
   const text = await r.text();
@@ -229,7 +229,7 @@ export default async (req) => {
     for (const a of AGENTS) {
       const id = agentId(a); if (!id) continue;
       try {
-        await tries("PATCH", "/agents/" + encodeURIComponent(id), { config: {
+        await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           tools: Object.values(saved).filter(Boolean).map((x) => ({ id: x })),
           system_tools: { end_call: {}, send_dtmf: {}, voicemail_detection: {} }
         } });
@@ -246,8 +246,7 @@ export default async (req) => {
     const ins = String(b.instructions || "").trim();
     if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
     try {
-      try { await cartesia("PATCH", "/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } }); }
-      catch (e) { if (/not found|404/i.test(e.message)) await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } }); else throw e; }
+      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins }, version_description: "Updated from WebSwan Voice Studio" });
       return reply(200, { ok: true, agent: name, chars: ins.length }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
