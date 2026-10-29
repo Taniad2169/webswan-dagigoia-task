@@ -8,7 +8,9 @@
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { getStore } from "@netlify/blobs";
 
-export const config = { schedule: "* * * * *" };
+// Runs only Tue, Wed and Thu, 15:00-16:59 UTC (covers 11 AM-12 PM Eastern in both summer and winter time).
+// The schedule in Voice Studio narrows it to the exact hour; outside these times the dialer doesn't even wake up.
+export const config = { schedule: "* 15-16 * * 2-4" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
