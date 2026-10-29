@@ -239,6 +239,19 @@ export default async (req) => {
     return reply(200, report, origin);
   }
 
+  // ---------- update one agent's instructions (system prompt) in Cartesia ----------
+  if (b.action === "agent_prompt") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
+    const ins = String(b.instructions || "").trim();
+    if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
+    try {
+      try { await cartesia("PATCH", "/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } }); }
+      catch (e) { if (/not found|404/i.test(e.message)) await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } }); else throw e; }
+      return reply(200, { ok: true, agent: name, chars: ins.length }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
   // ---------- start one live call ----------
   if (b.action === "start") {
     if (!liveOn()) return reply(403, { error: "Live calling is switched off (VOICE_CALLING_ENABLED is not on)." }, origin);
