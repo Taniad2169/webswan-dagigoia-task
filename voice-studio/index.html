@@ -102,8 +102,8 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catc
 save();
 
 let page = 'Overview';
-const pages = ['Overview', 'SDR AI', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
-const icons = ['◫', '✦', '♙', '◉', '◷', '🎙', '☎', '📋', '⚙'];
+const pages = ['Overview', 'SDR AI', 'AI Team', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
+const icons = ['◫', '✦', '★', '♙', '◉', '◷', '🎙', '☎', '📋', '⚙'];
 const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
 const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
 const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
@@ -184,7 +184,7 @@ function render() {
   $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}${p === 'Tania call-back' && cbN ? ` <span class="pill ok" style="margin-left:6px;padding:1px 8px">${cbN}</span>` : ''}</button>`).join('');
   $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
   const c = $('content');
-  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
+  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'AI Team': cc => (typeof renderTeam === 'function' ? renderTeam(cc) : (cc.innerHTML = '<div class="card empty">Loading your AI team…</div>')), 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
 }
 
 function renderOverview(c) {
@@ -1297,6 +1297,189 @@ window.fbIdToken = async () => (user ? user.getIdToken() : null);
 getRedirectResult(auth).catch(e => { if (e && e.code) toast('Sign-in didn’t work: ' + e.code); });
 window.addEventListener('focus', () => { if (user && Date.now() - lastPull > 60000) push().then(pull).catch(() => {}); });
 window.addEventListener('pagehide', () => { if (user) push(); });
+</script>
+<script>
+/* ---------- ★ AI Team: research manager, sales manager & coach, chief report ----------
+   Brains live in the Lead Prospector (Netlify keys never reach this page). This page sends only
+   your Google sign-in token. Emails are drafted here and you send them yourself from Gmail. */
+const TEAM_API = 'https://webswan-lead-prospector.netlify.app/api/team';
+Object.defineProperty(window, 'T', { configurable: true, get() { const t = state.team = state.team || {}; t.tab = t.tab || 'Research'; t.found = t.found || []; t.drafts = t.drafts || []; t.log = t.log || []; return t; } });
+let teamStatus = null, teamBusy = '';
+async function teamApi(body) {
+  if (!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
+  const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');
+  let r; try { r = await fetch(TEAM_API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error('The AI team isn’t reachable (Lead Prospector).'); }
+  let d = {}; try { d = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(d.error || ('AI team error ' + r.status));
+  return d;
+}
+const teamLog = (kind, n = 1) => { T.log.push({ at: Date.now(), kind, n }); T.log = T.log.filter(x => Date.now() - x.at < 40 * 864e5); save(); };
+const todayKey = ts => new Date(ts).toLocaleDateString('en-CA');
+const isToday = ts => todayKey(ts) === todayKey(Date.now());
+async function teamRefresh() { try { teamStatus = await teamApi({ action: 'status' }); } catch (e) { teamStatus = { error: e.message }; } if (page === 'AI Team') render(); }
+function teamSet(k, v) { T[k] = v; save(); render(); }
+
+function renderTeam(c) {
+  if (!teamStatus && window.cloudUser) teamRefresh();
+  const S = teamStatus, pill = (ok, t) => `<span class="pill ${ok ? 'ok' : ''}">${esc(t)}</span>`;
+  const head = !window.cloudUser ? `<div class="note">Sign in with Google at the top to wake up your AI team.</div>`
+    : !S ? `<div class="note">Checking your AI team…</div>`
+    : S.error ? `<div class="note">${esc(S.error)} <button class="btn outline small" onclick="teamRefresh()">Try again</button></div>`
+    : `<div class="row" style="flex-wrap:wrap;gap:8px">${pill(S.claude, 'Claude · sales manager')}${pill(S.deepseek, 'DeepSeek · research')}${pill(S.brave, 'Brave · search')}${pill(S.gpt, 'ChatGPT · 2nd opinion')}<span class="muted">This month: <b>$${(S.spend && S.spend.usd || 0).toFixed(2)}</b> of $${(S.cap || 10).toFixed(2)} cap</span></div>`;
+  const tabs = ['Research', 'Emails', 'Coach', 'Report'];
+  c.innerHTML = `<div class="banner"><div><h2>★ Your AI sales team</h2><p>DeepSeek finds practices and our scanner checks their websites. Claude, your sales manager, writes the emails and coaches Rebecca, Monica and George from their real calls. ChatGPT can double-check. You approve everything.</p></div></div>
+  <div class="card section">${head}<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" style="width:auto" ${T.second ? 'checked' : ''} onchange="teamSet('second', this.checked)"> Ask ChatGPT for a second opinion (a little slower, about a tenth of a cent more)</label></div>
+  <div class="toolbar section">${tabs.map(t => `<button class="btn ${T.tab === t ? '' : 'secondary'}" onclick="teamSet('tab','${t}')">${t}${t === 'Emails' && T.drafts.filter(d => !d.sent).length ? ' (' + T.drafts.filter(d => !d.sent).length + ')' : ''}</button>`).join('')}</div>
+  <div id="teamBody"></div>`;
+  ({ Research: teamResearchView, Emails: teamEmailsView, Coach: teamCoachView, Report: teamReportView }[T.tab] || teamResearchView)($('teamBody'));
+}
+
+/* ----- Research ----- */
+function teamResearchView(el) {
+  const f = T.found;
+  el.innerHTML = `<div class="card"><h2>Find practices</h2><div class="filters">
+    <div><label for="tq" style="margin-top:0">Who</label><input id="tq" value="${esc(T.q || '')}" placeholder="chiropractors, dentists, personal injury attorneys…"></div>
+    <div><label for="tcity" style="margin-top:0">City</label><input id="tcity" value="${esc(T.city || '')}" placeholder="Miami"></div>
+    <div><label for="tstate" style="margin-top:0">State</label><input id="tstate" value="${esc(T.st || '')}" maxlength="2" placeholder="FL"></div>
+    <div><label for="tind" style="margin-top:0">Type</label><select id="tind"><option value="medical" ${T.ind !== 'legal' ? 'selected' : ''}>Medical / dental</option><option value="legal" ${T.ind === 'legal' ? 'selected' : ''}>Attorneys</option></select></div></div>
+    <div class="toolbar" style="margin-top:12px"><button class="btn" onclick="teamFind()" ${teamBusy ? 'disabled' : ''}>${teamBusy === 'find' ? 'Searching…' : '🔎 Find practices'}</button>${f.length ? `<button class="btn green" onclick="teamScanAll()" ${teamBusy ? 'disabled' : ''}>${teamBusy === 'scan' ? 'Checking websites…' : '🩺 Check all websites'}</button><button class="btn secondary" onclick="teamAddAll()">+ Add all with a phone to Leads</button><button class="btn outline" onclick="teamSet('found', [])">Clear</button>` : ''}</div>
+    <small class="muted">Each search uses up to 3 Brave searches from your Lead Prospector allowance. Website checks are free.</small>
+    ${T.summary ? `<p style="margin-top:10px">${esc(T.summary)}</p>` : ''}</div>
+  ${f.length ? `<div class="card section"><div class="tablewrap"><table><thead><tr><th>PRACTICE</th><th>PHONE</th><th>WEBSITE CHECK</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${f.map((x, i) => `<tr>
+    <td><b>${esc(x.business)}</b><br><small class="muted">${esc([x.city, x.state].filter(Boolean).join(', '))} · <a href="${esc(x.website)}" target="_blank" rel="noopener">${esc(x.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''))}</a>${x.why ? '<br>' + esc(x.why) : ''}</small></td>
+    <td>${esc(x.phone || '—')}${x.email ? `<br><small>${esc(x.email)}</small>` : ''}</td>
+    <td>${x.scan ? (x.scan.reachable === false ? '<span class="chip bad">Site not loading</span>' : `<b>${esc(x.scan.score)}/100</b>${(x.scan.findings || []).slice(0, 4).map(k => `<br><small>${k.severity === 'high' ? '🔴' : k.severity === 'medium' ? '🟠' : '⚪'} ${esc(k.text)}</small>`).join('')}`) : `<button class="btn outline small" onclick="teamScan(${i})">Check site</button>`}</td>
+    <td style="white-space:nowrap"><button class="btn secondary small" onclick="teamAdd(${i})" ${x.added ? 'disabled' : ''}>${x.added ? '✓ In Leads' : '+ Lead'}</button> <button class="btn small" onclick="teamWrite(${i})" ${x.scan ? '' : 'disabled title="Check the site first"'}>✉ Email</button></td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+}
+async function teamFind() {
+  T.q = $('tq').value.trim(); T.city = $('tcity').value.trim(); T.st = $('tstate').value.trim().toUpperCase(); T.ind = $('tind').value; save();
+  if (!T.q) return toast('Type who to look for first.');
+  teamBusy = 'find'; render();
+  try { const d = await teamApi({ action: 'research', query: T.q, city: T.city, state: T.st }); T.found = (d.leads || []).map(x => ({ ...x, ind: T.ind })); T.summary = d.summary || ''; teamLog('research'); toast(T.found.length + ' practice' + (T.found.length === 1 ? '' : 's') + ' found.'); }
+  catch (e) { toast(e.message); }
+  teamBusy = ''; save(); render(); teamRefresh();
+}
+async function teamScan(i, quiet) {
+  const x = T.found[i]; if (!x) return;
+  try {
+    const d = await teamApi({ action: 'scan', url: x.website, industry: x.ind || 'medical' }); x.scan = d;
+    if (!x.phone && d.phones && d.phones[0]) x.phone = d.phones[0];
+    if (!x.email && d.emails && d.emails[0]) x.email = d.emails[0];
+    teamLog('scan');
+  } catch (e) { x.scan = { reachable: false, findings: [], error: e.message }; if (!quiet) toast(e.message); }
+  save(); if (!quiet) render();
+}
+async function teamScanAll() {
+  teamBusy = 'scan'; render();
+  const todo = T.found.map((x, i) => i).filter(i => !T.found[i].scan);
+  for (let k = 0; k < todo.length; k += 3) { await Promise.all(todo.slice(k, k + 3).map(i => teamScan(i, true))); render(); }
+  teamBusy = ''; render(); toast('Website checks done.');
+}
+function teamLeadFrom(x) {
+  const finds = ((x.scan && x.scan.findings) || []).slice(0, 3).map(k => k.text).join('; ');
+  return { name: '', business: x.business, phone: x.phone || '', email: x.email || '', state: x.state || '', lineType: 'Business landline', consent: 'None', status: 'New', notes: ['Website: ' + x.website, finds ? 'Findings: ' + finds : '', 'Found by AI Team'].filter(Boolean).join(' | ') };
+}
+function teamAdd(i, quiet) {
+  const x = T.found[i]; if (!x || x.added) return false;
+  const p = digits(x.phone).slice(-10);
+  if (p && state.leads.some(l => digits(l.phone).slice(-10) === p)) { x.added = true; save(); if (!quiet) { toast('Already in your Leads.'); render(); } return false; }
+  state.leads.push({ id: uid(), created: Date.now(), ...teamLeadFrom(x) }); x.added = true; save();
+  if (!quiet) { toast('Added to Leads. Send it to the calling list from Campaigns.'); render(); }
+  return true;
+}
+function teamAddAll() { let n = 0; T.found.forEach((x, i) => { if (x.phone && teamAdd(i, true)) n++; }); render(); toast(n + ' lead' + (n === 1 ? '' : 's') + ' added.'); }
+
+/* ----- Emails ----- */
+async function teamWrite(i) {
+  const x = T.found[i]; if (!x) return;
+  toast('Your sales manager is writing the email…');
+  try {
+    const d = await teamApi({ action: 'write', second: !!T.second, lead: { business: x.business, website: x.website, city: x.city, state: x.state }, findings: (x.scan && x.scan.findings || []).filter(k => k.severity !== 'low').map(k => k.text) });
+    T.drafts.unshift({ id: uid(), at: Date.now(), to: x.email || '', business: x.business, subject: d.subject, body: d.body, review: d.review, needsAddress: d.needsAddress });
+    teamLog('draft'); T.tab = 'Emails'; save(); render(); teamRefresh();
+  } catch (e) { toast(e.message); }
+}
+function gmailLink(d) { return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(d.to || '') + '&su=' + encodeURIComponent(d.subject || '') + '&body=' + encodeURIComponent(d.body || ''); }
+function teamDraft(id, k, v) { const d = T.drafts.find(x => x.id === id); if (d) { d[k] = v; save(); } }
+function teamSent(id) { const d = T.drafts.find(x => x.id === id); if (d) { d.sent = Date.now(); teamLog('sent'); save(); render(); } }
+function teamDel(id) { T.drafts = T.drafts.filter(x => x.id !== id); save(); render(); }
+function teamEmailsView(el) {
+  const ds = T.drafts;
+  el.innerHTML = !ds.length ? `<div class="card empty">No email drafts yet. In Research, check a practice’s website, then press ✉ Email.</div>`
+    : `${ds.some(d => d.needsAddress) ? `<div class="note">Business emails must show a mailing address. Add <b>TEAM_MAIL_ADDRESS</b> in the Lead Prospector’s Netlify environment variables, or type it at the bottom of each email before sending.</div>` : ''}
+    ${ds.map(d => `<div class="card section"><div class="row"><strong>${esc(d.business)}</strong><span class="chip ${d.sent ? 'ok' : ''}">${d.sent ? 'Sent ' + esc(fmtDate(d.sent)) : 'Draft'}</span></div>
+    <label>To</label><input value="${esc(d.to)}" placeholder="their email" onchange="teamDraft('${d.id}','to',this.value)">
+    <label>Subject</label><input value="${esc(d.subject)}" onchange="teamDraft('${d.id}','subject',this.value)">
+    <label>Email</label><textarea style="min-height:220px" onchange="teamDraft('${d.id}','body',this.value)">${esc(d.body)}</textarea>
+    ${d.review ? `<small class="muted">ChatGPT: ${esc(d.review.verdict || '')}${(d.review.notes || []).length ? ' · ' + esc(d.review.notes.join(' · ')) : ''}</small>` : ''}
+    <div class="toolbar" style="margin-top:10px"><a class="btn" href="${esc(gmailLink(d))}" target="_blank" rel="noopener" onclick="setTimeout(()=>render(),50)">Open in Gmail</a><button class="btn secondary" onclick="navigator.clipboard.writeText(T.drafts.find(x=>x.id==='${d.id}').body).then(()=>toast('Copied.'))">Copy</button>${d.sent ? '' : `<button class="btn green" onclick="teamSent('${d.id}')">✓ I sent it</button>`}<button class="btn danger small" onclick="teamDel('${d.id}')" aria-label="Delete draft">🗑</button></div></div>`).join('')}`;
+}
+
+/* ----- Coach ----- */
+function teamAgentNames() { const s = new Set(['Rebecca', 'Monica', 'George', 'Alek', 'Tatiana']); state.agents.forEach(a => a.name && s.add(String(a.name).split(' ')[0])); return [...s]; }
+function teamCallsFor(name) { return state.calls.filter(x => x.transcript && String(x.agentName || '').toLowerCase().startsWith(name.toLowerCase())).slice(0, 8); }
+function teamCoachView(el) {
+  const name = T.coachAgent || 'Rebecca', calls = teamCallsFor(name), r = T.coach && T.coach[name];
+  el.innerHTML = `<div class="card"><h2>Sales manager’s coaching</h2><p>Claude reads ${name}’s latest calls (up to 8 with a transcript) and tells you what to fix, with new rules ready to add to her script.</p>
+    <div class="filters"><div><label for="tca" style="margin-top:0">Agent</label><select id="tca" onchange="teamSet('coachAgent', this.value)">${teamAgentNames().map(n => `<option ${n === name ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div></div>
+    <p class="muted" style="margin-top:8px">${calls.length} call${calls.length === 1 ? '' : 's'} with a transcript. Live calls appear after 🔄 Pull live results in Call records.</p>
+    <button class="btn" onclick="teamCoach()" ${calls.length && !teamBusy ? '' : 'disabled'}>${teamBusy === 'coach' ? 'Reviewing calls…' : '✦ Coach ' + esc(name)}</button></div>
+  ${r ? `<div class="card section"><div class="row"><h2>${esc(name)}: ${esc(r.review.grade)}/10</h2><small class="muted">${esc(fmtDate(r.at))} · ${r.callsReviewed} calls</small></div>
+    ${(r.review.wins || []).length ? `<p><b>Doing well</b></p><ul>${r.review.wins.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+    ${(r.review.fixes || []).length ? `<p><b>Fix next</b></p><ul>${r.review.fixes.map(f => `<li><b>${esc(f.problem)}</b>${f.quote ? ` <i>“${esc(f.quote)}”</i>` : ''}<br>${esc(f.rule)}</li>`).join('')}</ul>` : ''}
+    ${r.second ? `<p class="muted">ChatGPT ${r.second.agree === false ? 'disagrees in part' : 'agrees'}${(r.second.extra || []).length ? ': ' + esc(r.second.extra.join(' · ')) : ''}</p>` : ''}
+    ${r.review.tip ? `<div class="note">${esc(r.review.tip)}</div>` : ''}
+    <label>New rules for ${esc(name)}’s script</label><textarea id="tcadd" style="min-height:140px">${esc(r.review.prompt_additions || '')}</textarea>
+    <div class="toolbar" style="margin-top:10px"><button class="btn secondary" onclick="navigator.clipboard.writeText($('tcadd').value).then(()=>toast('Copied. Paste it into the agent’s instructions.'))">Copy rules</button><button class="btn green" onclick="teamApplyRules('${esc(name)}')">Add to ${esc(name)}’s script here</button></div>
+    <small class="muted">“Add to script here” updates the agent in Voice Studio. For her live Cartesia voice, paste the rules into her Cartesia instructions (or ask me to push them).</small></div>` : ''}`;
+}
+async function teamCoach() {
+  const name = T.coachAgent || 'Rebecca', calls = teamCallsFor(name); if (!calls.length) return;
+  const a = state.agents.find(x => String(x.name || '').toLowerCase().startsWith(name.toLowerCase()));
+  teamBusy = 'coach'; render();
+  try {
+    const d = await teamApi({ action: 'coach', agent: name, second: !!T.second, prompt: a ? (a.script || '').slice(0, 3000) : '', calls: calls.map(x => ({ lead: x.leadName, outcome: x.outcome, endReason: x.live && x.live.endReason, seconds: x.live && x.live.seconds, transcript: linesFromTranscript(x.transcript) })) });
+    T.coach = T.coach || {}; T.coach[name] = { ...d, at: Date.now() }; teamLog('coach'); save();
+  } catch (e) { toast(e.message); }
+  teamBusy = ''; render(); teamRefresh();
+}
+function teamApplyRules(name) {
+  const a = state.agents.find(x => String(x.name || '').toLowerCase().startsWith(name.toLowerCase()));
+  const add = ($('tcadd').value || '').trim(); if (!add) return;
+  if (!a) return toast('No ' + name + ' agent in Voice Studio yet. Copy the rules instead.');
+  a.script = String(a.script || '').trimEnd() + '\n\nCOACHING RULES (' + new Date().toLocaleDateString() + ')\n' + add; save(); toast('Added to ' + a.name + '’s script.');
+}
+
+/* ----- Report ----- */
+function teamStats() {
+  const calls = state.calls.filter(x => isToday(x.at)), by = {};
+  calls.forEach(x => { by[x.outcome || 'Unknown'] = (by[x.outcome || 'Unknown'] || 0) + 1; });
+  const cnt = k => T.log.filter(x => x.kind === k && isToday(x.at)).reduce((s, x) => s + x.n, 0);
+  return { date: new Date().toDateString(), leads_total: state.leads.length, leads_added_today: state.leads.filter(l => l.created && isToday(l.created)).length,
+    calls_today: calls.length, call_outcomes_today: by, appointment_requests_total: state.leads.filter(l => l.status === 'Appointment requested').length,
+    callbacks_waiting: typeof callbackList === 'function' ? callbackList().length : 0, practices_researched_today: cnt('research'), websites_checked_today: cnt('scan'),
+    email_drafts_today: cnt('draft'), emails_sent_today: cnt('sent'), coaching_sessions_today: cnt('coach') };
+}
+function teamReportView(el) {
+  const s = teamStats(), r = T.report;
+  el.innerHTML = `<div class="card"><h2>Today at a glance</h2><div class="grid">
+    <div class="card stat"><span>CALLS TODAY</span><strong>${s.calls_today}</strong></div><div class="card stat"><span>EMAILS SENT</span><strong>${s.emails_sent_today}</strong><span>${s.email_drafts_today} drafted</span></div>
+    <div class="card stat"><span>NEW LEADS</span><strong>${s.leads_added_today}</strong><span>${s.websites_checked_today} sites checked</span></div><div class="card stat"><span>CALL-BACKS</span><strong>${s.callbacks_waiting}</strong><span>waiting for you</span></div></div>
+    <button class="btn section" onclick="teamReport()" ${teamBusy ? 'disabled' : ''}>${teamBusy === 'report' ? 'Writing…' : '✦ Write today’s chief report'}</button></div>
+  ${r ? `<div class="card section"><div class="row"><h2>Chief report</h2><small class="muted">${esc(fmtDate(r.at))}</small></div><p><b>${esc(r.headline)}</b></p>
+    ${(r.numbers || []).length ? `<ul>${r.numbers.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+    ${(r.wins || []).length ? `<p><b>Wins</b></p><ul>${r.wins.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+    ${(r.watch || []).length ? `<p><b>Watch</b></p><ul>${r.watch.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+    ${(r.tomorrow || []).length ? `<p><b>Tomorrow</b></p><ol>${r.tomorrow.map(n => `<li>${esc(n)}</li>`).join('')}</ol>` : ''}</div>` : ''}`;
+}
+async function teamReport() {
+  teamBusy = 'report'; render();
+  try { const d = await teamApi({ action: 'report', stats: teamStats() }); T.report = { ...(d.report || {}), at: Date.now() }; save(); }
+  catch (e) { toast(e.message); }
+  teamBusy = ''; render(); teamRefresh();
+}
+window.addEventListener('load', () => { if (page === 'AI Team') render(); });
 </script>
 </body>
 </html>
