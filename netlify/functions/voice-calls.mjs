@@ -65,7 +65,9 @@ async function verifyFirebaseToken(token) {
 
 const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
 const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
-const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || "";
+// agents created from Voice Studio are remembered in Blobs ("agent-ids"); a Netlify env var always wins
+let EXTRA_IDS = {};
+const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
 const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
 function e164(p) {
@@ -114,6 +116,7 @@ export default async (req) => {
   let b;
   try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
   const store = getStore({ name: "voice-studio", consistency: "strong" });
+  EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
 
   // ---------- status: what is connected (never returns secrets) ----------
@@ -305,6 +308,63 @@ export default async (req) => {
       const d = await cartesia("GET", "/agents/calls?" + q.toString(), V_READ);
       return reply(200, { agent: name, calls: (d.data || []).map(slimCall), hasMore: !!d.has_more }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- read one agent's live Cartesia settings (instructions, voice) ----------
+  if (b.action === "agent_get") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
+    try {
+      const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+      const cfg = d.config || (d.agent && d.agent.config) || {};
+      return reply(200, { agent: name, id, name: d.name || "", instructions: cfg.instructions || "", voiceId: (cfg.audio && cfg.audio.output && cfg.audio.output.voice_id) || "" }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- a few English voices to choose from (for a new agent) ----------
+  if (b.action === "voices") {
+    try {
+      const d = await cartesia("GET", "/voices?limit=100", V_READ);
+      const list = (Array.isArray(d) ? d : d.data || []).filter((v) => !v.language || v.language === "en")
+        .map((v) => ({ id: v.id, name: v.name || "", gender: v.gender || "", description: clean(v.description, 140) }));
+      const want = String(b.gender || "").toLowerCase();
+      return reply(200, { voices: (want ? list.filter((v) => String(v.gender).toLowerCase().startsWith(want.slice(0, 4))) : list).slice(0, 40) }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- create a new calling agent (copies Rebecca's tools, model and safety switches) ----------
+  if (b.action === "agent_create") {
+    const name = String(b.agent || "").toLowerCase();
+    if (!AGENTS.includes(name)) return reply(400, { error: "Unknown agent name." }, origin);
+    if (agentId(name)) return reply(409, { error: name[0].toUpperCase() + name.slice(1) + " already has a Cartesia agent." }, origin);
+    const fromId = agentId(String(b.from || "rebecca").toLowerCase());
+    if (!fromId) return reply(400, { error: "Rebecca's Cartesia agent is needed as the starting point." }, origin);
+    const ins = String(b.instructions || "").trim();
+    if (ins.length < 200 || ins.length > 30000) return reply(400, { error: "The new agent needs her full instructions (script)." }, origin);
+    try {
+      const src = await cartesia("GET", "/v1/agents/" + encodeURIComponent(fromId), V_READ);
+      const c = src.config || (src.agent && src.agent.config) || {};
+      const config = {};
+      for (const k of ["language", "audio", "model", "tools", "system_tools", "turn", "timezone"]) if (c[k] !== undefined) config[k] = JSON.parse(JSON.stringify(c[k]));
+      config.instructions = ins;
+      config.initial_message = null;
+      if (b.voiceId && /^[\w-]{8,80}$/.test(String(b.voiceId))) { config.audio = config.audio || {}; config.audio.output = Object.assign({}, config.audio.output || {}, { voice_id: String(b.voiceId) }); }
+      const label = clean(b.displayName, 60) || (name[0].toUpperCase() + name.slice(1));
+      const made = await cartesia("POST", "/v1/agents", V_READ, { name: label + " (WebSwan)", description: clean(b.description, 300) || "Created from WebSwan Voice Studio", config });
+      const newId = made.id || (made.agent && made.agent.id) || "";
+      if (!newId) return reply(502, { error: "Cartesia didn't return the new agent's id." }, origin);
+      EXTRA_IDS[name] = newId; await store.setJSON("agent-ids", EXTRA_IDS);
+      return reply(200, { ok: true, agent: name, id: newId }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- play a call recording (streams the WAV from Cartesia) ----------
+  if (b.action === "audio") {
+    const id = clean(b.callId, 120);
+    if (!/^[\w-]+$/.test(id)) return reply(400, { error: "Bad call id." }, origin);
+    const r = await fetch(API + "/agents/calls/" + encodeURIComponent(id) + "/audio", { headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ } });
+    if (!r.ok) return reply(r.status === 404 ? 404 : 502, { error: r.status === 404 ? "No recording for this call yet." : "Cartesia recording error " + r.status }, origin);
+    return new Response(r.body, { status: 200, headers: { "Content-Type": r.headers.get("content-type") || "audio/wav", ...cors(origin) } });
   }
 
   return reply(400, { error: "Unknown action." }, origin);

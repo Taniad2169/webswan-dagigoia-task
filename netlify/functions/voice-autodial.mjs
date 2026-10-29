@@ -30,7 +30,8 @@ const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
 const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
 const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
-const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || "";
+let EXTRA_IDS = {};
+const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
 function e164(p) {
   let d = String(p || "").replace(/\D/g, "");
   if (d.length === 10) d = "1" + d;
@@ -45,6 +46,7 @@ function leadOpen(lead) {
 export default async () => {
   if (!liveOn() || !process.env.CARTESIA_API_KEY || !numberIds().length) return new Response("off");
   const store = getStore({ name: "voice-studio", consistency: "strong" });
+  EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const q = await store.get("queue", { type: "json" });
   if (!q || q.paused || !Array.isArray(q.leads) || !q.leads.length) return new Response("idle");
   const s = q.settings || {};
