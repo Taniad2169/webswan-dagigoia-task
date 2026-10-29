@@ -407,7 +407,7 @@ function logCall(leadId, fromPractice) {
 }
 function renderCalls(c) {
   c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn green" onclick="liveSync()" title="Bring in results of live AI calls from Cartesia">🔄 Pull live results</button><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
-  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment|Email captured/.test(x.outcome) && !/not/i.test(x.outcome) ? 'ok' : /not|Wrong|Asked/i.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span>${factsLine(x)}</td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
+  <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment|Email captured/.test(x.outcome) && !/not/i.test(x.outcome) ? 'ok' : /not|Wrong|Asked/i.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span>${factsLine(x)}</td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}${x.live && x.live.callId && x.live.final ? `<button class="btn outline small" onclick="playRec('${x.id}')" title="Listen to the call">▶ Recording</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
     : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live AI call transcripts arrive here automatically, or press 🔄 Pull live results.</div>'}</div>`;
 }
 
@@ -1431,8 +1431,10 @@ function teamCoachView(el) {
     ${r.second ? `<p class="muted">ChatGPT ${r.second.agree === false ? 'disagrees in part' : 'agrees'}${(r.second.extra || []).length ? ': ' + esc(r.second.extra.join(' · ')) : ''}</p>` : ''}
     ${r.review.tip ? `<div class="note">${esc(r.review.tip)}</div>` : ''}
     <label>New rules for ${esc(name)}’s script</label><textarea id="tcadd" style="min-height:140px">${esc(r.review.prompt_additions || '')}</textarea>
-    <div class="toolbar" style="margin-top:10px"><button class="btn secondary" onclick="navigator.clipboard.writeText($('tcadd').value).then(()=>toast('Copied. Paste it into the agent’s instructions.'))">Copy rules</button><button class="btn green" onclick="teamApplyRules('${esc(name)}')">Add to ${esc(name)}’s script here</button></div>
-    <small class="muted">“Add to script here” updates the agent in Voice Studio. For her live Cartesia voice, paste the rules into her Cartesia instructions (or ask me to push them).</small></div>` : ''}`;
+    <div class="toolbar" style="margin-top:10px"><button class="btn secondary" onclick="navigator.clipboard.writeText($('tcadd').value).then(()=>toast('Copied. Paste it into the agent’s instructions.'))">Copy rules</button><button class="btn" onclick="teamPushLive('${esc(name)}')">🎙 Put into ${esc(name)}’s live voice</button><button class="btn green" onclick="teamApplyRules('${esc(name)}')">Add to ${esc(name)}’s script here</button></div>
+    <small class="muted">“Put into live voice” updates her real Cartesia agent right away. “Add to script here” only updates Voice Studio’s copy.${T.pushed && T.pushed[name] ? ' Last pushed ' + esc(fmtDate(T.pushed[name])) + '.' : ''}</small></div>` : ''}`;
+  el.insertAdjacentHTML('beforeend', typeof teamAgentsCard === 'function' ? teamAgentsCard() : '');
+  if (window.cloudUser && !liveStatus) liveRefresh(true).then(() => { if (page === 'AI Team') render(); });
 }
 async function teamCoach() {
   const name = T.coachAgent || 'Rebecca', calls = teamCallsFor(name); if (!calls.length) return;
@@ -1480,6 +1482,73 @@ async function teamReport() {
   teamBusy = ''; render(); teamRefresh();
 }
 window.addEventListener('load', () => { if (page === 'AI Team') render(); });
+</script>
+<script>
+/* ---------- call recordings + live Cartesia agents (create, coach into the live voice) ---------- */
+async function playRec(id) {
+  const x = state.calls.find(k => k.id === id); if (!x || !x.live || !x.live.callId) return;
+  toast('Loading the recording…');
+  try {
+    const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');
+    const r = await fetch(VOICE_API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ action: 'audio', callId: x.live.callId }) });
+    if (!r.ok) { let d = {}; try { d = await r.json(); } catch (e) {} throw new Error(d.error || 'Recording not available (' + r.status + ')'); }
+    const url = URL.createObjectURL(await r.blob());
+    let bar = $('recBar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'recBar'; bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:50;background:var(--card,#fff);border:1px solid #cfd8e3;border-radius:14px;padding:10px 12px;box-shadow:0 8px 30px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center;flex-wrap:wrap'; document.body.appendChild(bar); }
+    bar.innerHTML = `<strong style="font-size:14px">▶ ${esc(x.leadName || 'Call')} · ${esc(x.agentName || '')}</strong><audio controls autoplay src="${url}" style="flex:1;min-width:220px"></audio><a class="btn secondary small" href="${url}" download="call-${esc(x.live.callId)}.wav">Save</a><button class="btn outline small" onclick="this.parentElement.remove()" aria-label="Close player">✕</button>`;
+  } catch (e) { toast(e.message); }
+}
+
+async function teamPushLive(name) {
+  const add = ($('tcadd') ? $('tcadd').value : '').trim(); if (!add) return toast('No rules to add.');
+  try {
+    const cur = await voiceApi({ action: 'agent_get', agent: name.toLowerCase() });
+    if (cur.instructions.includes(add)) return toast('These rules are already in ' + name + '’s live voice.');
+    if (!confirm('Add these rules to ' + name + '’s LIVE Cartesia voice now?')) return;
+    const next = String(cur.instructions || '').trimEnd() + '\n\nCOACHING RULES (' + new Date().toLocaleDateString() + ')\n' + add;
+    await voiceApi({ action: 'agent_prompt', agent: name.toLowerCase(), instructions: next });
+    T.pushed = T.pushed || {}; T.pushed[name] = Date.now(); save(); toast(name + '’s live voice now has the new rules.'); render();
+  } catch (e) { toast(e.message); }
+}
+
+/* ----- create Alek / Monica / George / Tatiana in Cartesia ----- */
+let newAgentForm = { name: 'Alek', voices: [], loading: false };
+async function teamAgentFormLoad(name) {
+  newAgentForm = { name, voices: [], loading: true }; render();
+  try {
+    const male = /^(alek|george)$/i.test(name);
+    const v = await voiceApi({ action: 'voices', gender: male ? 'masculine' : 'feminine' });
+    newAgentForm.voices = v.voices || [];
+    if (/^alek$/i.test(name)) {
+      const r = await voiceApi({ action: 'agent_get', agent: 'rebecca' });
+      newAgentForm.instructions = String(r.instructions || '').replace(/Rebecca Steins/g, 'Alek').replace(/Rebecca/g, 'Alek');
+    } else newAgentForm.instructions = '';
+  } catch (e) { toast(e.message); }
+  newAgentForm.loading = false; render();
+}
+async function teamAgentCreate() {
+  const name = newAgentForm.name, ins = ($('afIns').value || '').trim(), voiceId = $('afVoice').value;
+  if (ins.length < 200) return toast('Paste ' + name + '’s full script first.');
+  try {
+    const r = await voiceApi({ action: 'agent_create', agent: name.toLowerCase(), instructions: ins, voiceId, displayName: name });
+    toast(name + ' is now a Cartesia agent.');
+    await voiceApi({ action: 'agent_setup' }).catch(() => {});
+    newAgentForm = { name: 'Alek', voices: [] }; liveStatus = null; await liveRefresh(true); render();
+  } catch (e) { toast(e.message); }
+}
+function teamAgentsCard() {
+  const linked = (liveStatus && liveStatus.agents) || [];
+  const cap = n => n[0].toUpperCase() + n.slice(1);
+  const missing = ['alek', 'monica', 'george', 'tatiana'].filter(n => !linked.includes(n));
+  const f = newAgentForm;
+  return `<div class="card section"><h2>Live Cartesia agents</h2>
+    <p>${linked.length ? 'Linked now: ' + linked.map(n => `<span class="pill ok">${esc(cap(n))}</span>`).join(' ') : (window.cloudUser ? 'Checking…' : 'Sign in to see your agents.')}</p>
+    ${missing.length && window.cloudUser ? `<div class="toolbar">${missing.map(n => `<button class="btn ${f.name === cap(n) && f.voices.length ? '' : 'secondary'} small" onclick="teamAgentFormLoad('${cap(n)}')">+ Create ${cap(n)}</button>`).join('')}</div>` : ''}
+    ${f.loading ? '<p class="muted">Loading voices…</p>' : f.voices.length ? `<label for="afVoice">${esc(f.name)}’s voice</label><select id="afVoice">${f.voices.map(v => `<option value="${esc(v.id)}">${esc(v.name)}${v.description ? ' — ' + esc(v.description.slice(0, 70)) : ''}</option>`).join('')}</select>
+      <label for="afIns">${esc(f.name)}’s script (instructions)</label><textarea id="afIns" style="min-height:200px" placeholder="Paste ${esc(f.name)}’s full script here">${esc(f.instructions || '')}</textarea>
+      <small class="muted">${/Alek/.test(f.name) ? 'Started from Rebecca’s script with the name changed. Read it over before creating.' : 'Paste the script you want this agent to follow.'} The new agent gets Rebecca’s calendar tools, phone-menu keypad and safety switches.</small>
+      <div class="toolbar" style="margin-top:10px"><button class="btn green" onclick="teamAgentCreate()">Create ${esc(f.name)} in Cartesia</button></div>` : ''}</div>`;
+}
 </script>
 </body>
 </html>
