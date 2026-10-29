@@ -72,7 +72,7 @@ export default async () => {
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
-    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang);
+    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
     const pick = numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
     if (!pick) break; // every number hit today's cap

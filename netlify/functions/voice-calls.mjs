@@ -73,6 +73,8 @@ const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toU
 const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
 const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
+// The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
+const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" ? agentId(name) : "");
 const LANG_RULE = {
   es: "LANGUAGE (HIGHEST PRIORITY): Speak only in neutral Latin American Spanish (Mexican / Latin American style, use \"usted\"). Never use Spain Spanish words or the \"vosotros\" form. If the person clearly prefers English, switch to English politely.",
   pt: "LANGUAGE (HIGHEST PRIORITY): Speak only in Brazilian Portuguese (português do Brasil), never European Portuguese. If the person clearly prefers English, switch to English politely."
@@ -134,7 +136,7 @@ export default async (req) => {
     return reply(200, {
       keySet: hasKey, numbers: nums.length, live: liveOn(), dailyCap: cap(),
       agents: AGENTS.filter((a) => agentId(a)),
-      languages: Object.fromEntries(AGENTS.filter((a) => agentId(a)).map((a) => [a, (ALLOWED_LANGS[a] || ["en"]).filter((l) => agentId(agentKey(a, l)))])),
+      languages: Object.fromEntries(AGENTS.filter((a) => agentId(a)).map((a) => [a, (ALLOWED_LANGS[a] || ["en"]).filter((l) => callAgentId(a, l))])),
       allowedLanguages: ALLOWED_LANGS,
       callsToday: Object.values(counts).reduce((s, n) => s + n, 0)
     }, origin);
@@ -271,7 +273,7 @@ export default async (req) => {
     const name = String(b.agent || "").toLowerCase();
     const lang = LANGS[b.lang] ? b.lang : "en";
     if (AGENTS.includes(name) && !(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} doesn't call in ${LANGS[lang]}.` }, origin);
-    const aid = AGENTS.includes(name) ? agentId(agentKey(name, lang)) : "";
+    const aid = AGENTS.includes(name) ? callAgentId(name, lang) : "";
     if (!aid) return reply(400, { error: lang === "en" ? `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` : `${name}'s ${LANGS[lang]} version isn't created yet (AI Team > Coach > Live Cartesia agents).` }, origin);
     if (!nums.length) return reply(400, { error: "No caller-ID numbers yet (CARTESIA_FROM_NUMBER_IDS)." }, origin);
     const to = e164(b.phone);
