@@ -53,6 +53,7 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
   <div><h1>👩‍💼 Jennifer Back Office</h1><p>One private profile per virtual-receptionist client · Jennifer only sees the office whose line was dialed</p></div>
   <div class="sp"></div>
   <span id="who" style="font-size:13px;color:var(--sky)"></span>
+  <a class="back" href="../jennifer-onboarding/">+ Onboarding form</a>
   <a class="back" href="./">← Voice Studio</a>
 </div></header>
 
@@ -95,6 +96,12 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
         <div class="f"><label for="officePhone">Office phone</label><input id="officePhone" name="officePhone" inputmode="tel" placeholder="(510) 555-0123"></div>
         <div class="f"><label for="notifyEmail">Email for call updates <span class="hint">(theirs, never Tania's)</span></label><input id="notifyEmail" name="notifyEmail" type="email" required placeholder="frontdesk@practice.com"></div>
         <div class="f full"><label for="hours">Hours of operation</label><textarea id="hours" name="hours" rows="2" placeholder="Mon–Fri 8 AM–5 PM, Sat 9 AM–12 PM, closed Sunday"></textarea></div>
+
+        <div class="f"><label for="contactName">Office contact <span class="hint">(office manager)</span></label><input id="contactName" name="contactName"></div>
+        <div class="f"><label for="contactPhone">Contact's phone</label><input id="contactPhone" name="contactPhone" inputmode="tel"></div>
+        <div class="f"><label for="startDate">Start date</label><input id="startDate" name="startDate" type="date"></div>
+        <div class="f"><label for="baaSigned">BAA signed <span class="hint">(doctors)</span></label><select id="baaSigned" name="baaSigned"><option value="">Not yet / not needed</option><option value="yes">Yes, signed</option><option value="attorney">Attorney: not HIPAA</option></select></div>
+        <input type="hidden" name="source">
 
         <div class="sec-h">Jennifer's line</div>
         <div class="f"><label for="jennLine">Jennifer's number for this client <span class="hint">(Twilio, imported to Cartesia)</span></label><input id="jennLine" name="jennLine" inputmode="tel" placeholder="+1 510 555 0199"></div>
@@ -163,7 +170,7 @@ function drawList() {
     .sort((a, b) => String(a.practiceName).localeCompare(String(b.practiceName)));
   $('cnt').textContent = '(' + clients.length + ')';
   $('list').innerHTML = rows.map(c => `<button type="button" class="cl${c.id === current ? ' on' : ''}" data-id="${esc(c.id)}"><b>${esc(c.practiceName)}</b><small>${esc(c.providerName)}${c.jennLine ? ' · ' + esc(c.jennLine) : ' · no line yet'}</small><br>
-    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? 'Paused' : ({ basic299: '$299 basic', wsmn149_299: '$149 + $299', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
+    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? (c.source === 'onboarding' && !c.jennLine ? '🆕 New onboarding' : 'Paused') : ({ basic299: '$299 basic', wsmn149_299: '$149 + $299', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
     || '<p style="color:var(--muted);margin:0">No clients yet. Click "+ New client".</p>';
 }
 function fill(c) {

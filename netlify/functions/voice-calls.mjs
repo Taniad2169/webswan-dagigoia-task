@@ -27,7 +27,8 @@ const CLIENT_PLANS = {
   full499: { label: "$499 Full Service (standalone)", full: true }
 };
 const CLIENT_FIELDS = { type: 12, providerName: 160, practiceName: 200, address: 300, officePhone: 30, notifyEmail: 160, jennLine: 30, hours: 1000, greeting: 400,
-  website: 300, specialties: 1000, yearsInBusiness: 60, reviews: 300, insurance: 1000, cashPay: 300, consultation: 300, providerCode: 12, script: 45000, notes: 2000, minutesIncluded: 8 };
+  website: 300, specialties: 1000, yearsInBusiness: 60, reviews: 300, insurance: 1000, cashPay: 300, consultation: 300, providerCode: 12, script: 45000, notes: 2000, minutesIncluded: 8,
+  contactName: 160, contactPhone: 30, startDate: 20, baaSigned: 20, source: 30 };
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";

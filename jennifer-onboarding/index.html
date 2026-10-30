@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Jennifer Onboarding · WebSwan Media Network</title>
+<style>
+:root{--blue:#339cde;--sky:#93e5fa;--navy:#082a48;--ink:#17324c;--muted:#5f7891;--line:#dce8f1;--bg:#f3f8fc;--ok:#12805c;--bad:#b42318;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0}
+header{background:linear-gradient(120deg,var(--navy),#0d4a7a);color:#fff;padding:22px 16px}
+header .in{max-width:860px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:var(--sky);font-size:14px}
+header .sp{flex:1}#who{font-size:13px;color:var(--sky)}
+main{max-width:860px;margin:0 auto;padding:18px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 4px;color:var(--navy)}.card .sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.f{display:flex;flex-direction:column;gap:5px}.f.full{grid-column:1/-1}
+label{font-size:13px;font-weight:700;color:var(--navy)}label .hint{font-weight:400;color:var(--muted)}label .req{color:var(--bad)}
+input,select,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;color:var(--ink);width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue)}
+textarea{min-height:84px;resize:vertical}#script{min-height:220px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}@media(max-width:700px){.plans{grid-template-columns:1fr}}
+.plan{position:relative;border:2px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;background:#fff}
+.plan input{position:absolute;opacity:0;pointer-events:none}
+.plan b{display:block;color:var(--navy);font-size:15px}.plan span{font-size:13px;color:var(--muted)}
+.plan:has(input:checked){border-color:var(--blue);background:#f2f9fe;box-shadow:0 0 0 3px #339cde26}
+.plan:has(input:focus-visible){outline:2px solid var(--blue);outline-offset:2px}
+.idle{opacity:.55}.idle label::after{content:" · not on the $299 basic plan";font-weight:400;color:#98a2b3;font-size:12px}
+.idle input,.idle textarea,.idle select{background:#f2f4f7}
+.btn{font:inherit;cursor:pointer;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
+.btn.sec{background:#fff;color:var(--navy);border:1px solid var(--line)}.btn:disabled{opacity:.5;cursor:default}
+.bar{position:sticky;bottom:0;background:#fffffff2;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;border-radius:14px}
+.msg{font-size:14px}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+.count{font-size:12px;color:var(--muted);text-align:right}.count.over{color:var(--bad);font-weight:700}
+#done{text-align:center}#done h2{font-size:20px}
+#gate{text-align:center}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>👩‍💼 Jennifer Onboarding</h1><p>New virtual-receptionist client · saves straight to Jennifer's back office</p></div>
+  <div class="sp"></div><span id="who"></span>
+</div></header>
+<main>
+  <div class="card" id="gate" hidden>
+    <h2>Sign in to onboard a client</h2>
+    <p class="sub">Only your WebSwan Google account can send clients to Jennifer's back office.</p>
+    <button class="btn" id="signin" type="button">Sign in with Google</button>
+    <p class="msg bad" id="gateMsg"></p>
+  </div>
+
+  <div class="card" id="done" hidden role="status" aria-live="polite">
+    <h2>✅ <span id="doneName"></span> is in Jennifer's back office</h2>
+    <p class="sub">Saved as <b>New onboarding (paused)</b>. Next: prompt Jennifer for this office and assign their line, then switch them to Active.</p>
+    <p><a class="btn sec" href="../voice-studio/jennifer.html" style="text-decoration:none;display:inline-block">Open Jennifer's back office</a> <button class="btn" type="button" id="again">Onboard another client</button></p>
+  </div>
+
+  <form id="form" autocomplete="off" novalidate hidden>
+    <div class="card">
+      <h2>1. Plan</h2><p class="sub">This decides what Jennifer is allowed to say.</p>
+      <div class="plans" role="radiogroup" aria-label="Plan">
+        <label class="plan"><input type="radio" name="plan" value="basic299"><b>$299 Partial</b><span>Standalone. Appointment setter only: name, practice, phone, hours.</span></label>
+        <label class="plan"><input type="radio" name="plan" value="wsmn149_299"><b>$149 WSMN + $299</b><span>Full receptionist + WebSwan Media Network listing.</span></label>
+        <label class="plan"><input type="radio" name="plan" value="full499"><b>$499 Full Service</b><span>Standalone full receptionist.</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. The practice</h2>
+      <div class="grid">
+        <div class="f"><label for="type">Doctor or attorney</label><select id="type" name="type"><option value="doctor">Doctor</option><option value="attorney">Attorney</option></select></div>
+        <div class="f" data-full><label for="providerCode">WSMN provider code <span class="hint">(if listed)</span></label><input id="providerCode" name="providerCode" placeholder="CA-0045TB" style="text-transform:uppercase"></div>
+        <div class="f"><label for="providerName">Doctor / attorney name <span class="req">*</span></label><input id="providerName" name="providerName" required></div>
+        <div class="f"><label for="practiceName">Practice / firm name <span class="req">*</span></label><input id="practiceName" name="practiceName" required></div>
+        <div class="f"><label for="officePhone">Office phone <span class="req">*</span></label><input id="officePhone" name="officePhone" inputmode="tel" required></div>
+        <div class="f"><label for="notifyEmail">Email for Jennifer's call updates <span class="req">*</span> <span class="hint">(the client's)</span></label><input id="notifyEmail" name="notifyEmail" type="email" required></div>
+        <div class="f full"><label for="hours">Hours of operation <span class="req">*</span></label><textarea id="hours" name="hours" rows="2" required placeholder="Mon–Fri 8 AM–5 PM, Sat 9 AM–12 PM, closed Sunday"></textarea></div>
+        <div class="f"><label for="contactName">Office contact <span class="hint">(office manager)</span></label><input id="contactName" name="contactName"></div>
+        <div class="f"><label for="contactPhone">Contact's phone</label><input id="contactPhone" name="contactPhone" inputmode="tel"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. What Jennifer can share <span style="font-weight:400;color:var(--muted);font-size:13px">(full plans)</span></h2>
+      <div class="grid">
+        <div class="f full" data-full><label for="address">Address</label><input id="address" name="address"></div>
+        <div class="f" data-full><label for="website">Website URL</label><input id="website" name="website" type="url" placeholder="https://"></div>
+        <div class="f" data-full><label for="yearsInBusiness">Years in business</label><input id="yearsInBusiness" name="yearsInBusiness" placeholder="Since 2009"></div>
+        <div class="f full" data-full><label for="specialties">Specialties</label><textarea id="specialties" name="specialties" rows="2"></textarea></div>
+        <div class="f" data-full><label for="reviews">Reviews</label><input id="reviews" name="reviews" placeholder="4.9 stars, 212 Google reviews"></div>
+        <div class="f" data-full><label for="cashPay">Cash / self-pay</label><input id="cashPay" name="cashPay" placeholder="Yes, cash and card"></div>
+        <div class="f full" data-full><label for="insurance">Insurance accepted</label><textarea id="insurance" name="insurance" rows="2"></textarea></div>
+        <div class="f full" data-full><label for="consultation">Consultations</label><input id="consultation" name="consultation" placeholder="Free 15-minute consultation / $150 paid consultation"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Setup</h2>
+      <div class="grid">
+        <div class="f"><label for="startDate">Start date</label><input id="startDate" name="startDate" type="date"></div>
+        <div class="f"><label for="minutesIncluded">Included minutes / month</label><input id="minutesIncluded" name="minutesIncluded" inputmode="numeric" placeholder="400"></div>
+        <div class="f"><label for="baaSigned">BAA signed <span class="hint">(doctors)</span></label><select id="baaSigned" name="baaSigned"><option value="">Not yet / not needed</option><option value="yes">Yes, signed</option><option value="attorney">Attorney: not HIPAA</option></select></div>
+        <div class="f"><label for="greeting">Greeting <span class="hint">(optional)</span></label><input id="greeting" name="greeting" placeholder="Thank you for calling …, this is Jennifer."></div>
+        <div class="f full"><label for="script">Notes for Jennifer's office script <span class="hint">(FAQs, booking rules, what not to say · up to 6,000 words)</span></label><textarea id="script" name="script"></textarea><div class="count" id="words">0 / 6,000 words</div></div>
+        <div class="f full"><label for="notes">Internal notes <span class="hint">(Tania only)</span></label><textarea id="notes" name="notes" rows="2"></textarea></div>
+      </div>
+    </div>
+
+    <div class="bar">
+      <span class="msg" id="msg" role="status" aria-live="polite"></span>
+      <button class="btn sec" type="reset" id="clear">Clear</button>
+      <button class="btn" type="submit" id="send">Send to Jennifer's back office</button>
+    </div>
+  </form>
+</main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
+const auth = getAuth(app);
+const API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
+const $ = id => document.getElementById(id);
+let user = null;
+const show = which => { ['gate', 'done', 'form'].forEach(id => { $(id).hidden = id !== which; }); };
+function say(t, ok) { $('msg').textContent = t; $('msg').className = 'msg ' + (ok ? 'ok' : 'bad'); }
+function words() { const n = $('script').value.split(/\s+/).filter(Boolean).length; $('words').textContent = n.toLocaleString() + ' / 6,000 words'; $('words').classList.toggle('over', n > 6000); return n; }
+function plan() { const r = document.querySelector('input[name=plan]:checked'); return r ? r.value : ''; }
+function applyPlan() { const basic = plan() === 'basic299'; document.querySelectorAll('[data-full]').forEach(el => { el.classList.toggle('idle', basic); el.querySelectorAll('input,textarea,select').forEach(i => { i.disabled = basic; }); }); }
+document.querySelectorAll('input[name=plan]').forEach(r => r.addEventListener('change', applyPlan));
+$('script').addEventListener('input', words);
+$('form').addEventListener('reset', () => setTimeout(() => { applyPlan(); words(); say('', true); }, 0));
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!plan()) return say('Pick a plan first.', false);
+  const f = $('form'), need = ['providerName', 'practiceName', 'officePhone', 'notifyEmail', 'hours'].filter(n => !f.elements[n].value.trim());
+  if (need.length) { f.elements[need[0]].focus(); return say('Please fill in the required fields (*).', false); }
+  if (words() > 6000) return say('The script notes are over 6,000 words.', false);
+  const c = { plan: plan(), active: false, source: 'onboarding' };
+  [...f.elements].forEach(el => { if (el.name && el.name !== 'plan') c[el.name] = el.disabled ? '' : el.value; });
+  $('send').disabled = true; say('Sending…', true);
+  try {
+    const t = await user.getIdToken();
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ action: 'client_set', client: c }) });
+    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Error ' + r.status);
+    $('doneName').textContent = d.client.practiceName;
+    f.reset(); show('done'); window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) { say(err.message, false); } finally { $('send').disabled = false; }
+});
+$('again').addEventListener('click', () => { show('form'); applyPlan(); words(); say('', true); $('providerName').focus(); });
+$('signin').addEventListener('click', async () => {
+  const gp = new GoogleAuthProvider(); gp.setCustomParameters({ prompt: 'select_account' });
+  try { await signInWithPopup(auth, gp); } catch (e) { if (/popup-blocked|operation-not-supported/.test(e.code || '')) return signInWithRedirect(auth, gp); $('gateMsg').textContent = 'Sign-in didn’t work: ' + (e.code || e.message); }
+});
+getRedirectResult(auth).catch(() => {});
+onAuthStateChanged(auth, u => { user = u; $('who').textContent = u ? u.email : ''; if (u) { show('form'); applyPlan(); } else show('gate'); });
+</script>
+</body>
+</html>
