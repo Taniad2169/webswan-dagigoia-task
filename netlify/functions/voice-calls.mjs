@@ -23,7 +23,8 @@ const RECEPTIONISTS = ["jennifer"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
-  wsmn149_299: { label: "$149 WSMN + $299 receptionist", full: true },
+  wsmn69_399: { label: "$69 WSMN Found + Leads + $399 receptionist", full: true },
+  wsmn149_299: { label: "(old) $149 WSMN + $299 receptionist", full: true },
   full499: { label: "$499 Full Service (standalone)", full: true }
 };
 const CLIENT_FIELDS = { type: 12, providerName: 160, practiceName: 200, address: 300, officePhone: 30, notifyEmail: 160, jennLine: 30, hours: 1000, greeting: 400,

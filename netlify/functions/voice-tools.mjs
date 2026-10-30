@@ -157,7 +157,7 @@ async function clientInfo(store, called) {
   const list = (await store.get("clients", { type: "json" })) || [];
   const c = list.find((x) => x.jennLine === num && x.active !== false);
   if (!c) return "This line isn't connected to an active office yet. Say: \"Thank you for calling, this is Jennifer.\" Take the caller's name, number and message, and say the office will call them back.";
-  const full = c.plan === "wsmn149_299" || c.plan === "full499";
+  const full = c.plan === "wsmn69_399" || c.plan === "wsmn149_299" || c.plan === "full499";
   const L = [
     "OFFICE YOU ARE ANSWERING FOR (use only this; never mention any other practice):",
     `Provider: ${c.providerName} (${c.type === "attorney" ? "attorney" : "doctor"})`,

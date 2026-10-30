@@ -69,8 +69,8 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
     <div class="row" style="margin:0 0 12px;justify-content:space-between"><h2 id="lh" style="margin:0">Clients <span id="cnt" style="color:var(--muted);font-weight:400"></span></h2><button class="btn" id="new" type="button">+ New client</button></div>
     <input id="search" type="search" placeholder="Search name, practice, line, code…" aria-label="Search clients" style="margin-bottom:10px">
     <div id="list"></div>
-    <h2 style="margin:22px 0 8px">📞 Jennifer Reid requests <span id="ccnt" style="color:var(--muted);font-weight:400"></span></h2>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 8px">From Rachel's matches: $149 call-backs and $69 office leads.</p>
+    <h2 style="margin:22px 0 8px">✉️ WSMN $69 lead emails <span id="ccnt" style="color:var(--muted);font-weight:400"></span></h2>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px">From Rachel's matches: requests emailed to $69 Found + Leads offices.</p>
     <div id="central" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto"></div>
   </section>
 
@@ -84,7 +84,7 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
             <option value="">Choose a plan</option>
             <option value="full499">$499 Standalone: full virtual receptionist</option>
             <option value="basic299">$299 Standalone: appointment setting only</option>
-            <option value="wsmn149_299">$149 / $299: WSMN listing + full virtual receptionist</option>
+            <option value="wsmn69_399">$69 + $399: WSMN Found + Leads + full virtual receptionist</option>
           </select></div>
         <div class="f"><label for="active">Status</label>
           <select id="active" name="active"><option value="true">Active: Jennifer answers this line</option><option value="false">Paused</option></select></div>
@@ -152,6 +152,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 let user = null, clients = [], current = '';
 const PLAN_INFO = {
   basic299: '<b>Appointment setter only.</b> Jennifer gets the name, practice, office phone, hours, greeting and your script. Everything else is greyed out and never sent to her. Other questions go to the office: "Let me take your name and number so they can call you back."',
+  wsmn69_399: '<b>Full receptionist.</b> Jennifer answers from every filled-in field and the script, and pushes for the appointment.',
   wsmn149_299: '<b>Full receptionist.</b> Jennifer answers from every filled-in field and the script, and pushes for the appointment.',
   full499: '<b>Full receptionist.</b> Jennifer answers from every filled-in field and the script, and pushes for the appointment.'
 };
@@ -163,7 +164,7 @@ async function api(body) {
 function say(t, ok) { const m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); }
 function words() { const n = $('script').value.split(/\s+/).filter(Boolean).length; const w = $('words'); w.textContent = n.toLocaleString() + ' / 6,000 words'; w.classList.toggle('over', n > 6000); return n; }
 function applyPlan() {
-  const p = $('plan').value, full = p === 'wsmn149_299' || p === 'full499';
+  const p = $('plan').value, full = p === 'wsmn69_399' || p === 'wsmn149_299' || p === 'full499';
   $('planbox').innerHTML = PLAN_INFO[p] || 'Pick a plan to see what Jennifer will be allowed to say.';
   document.querySelectorAll('[data-full]').forEach(el => { el.classList.toggle('idle', p === 'basic299'); el.querySelectorAll('input,textarea,button').forEach(i => { i.disabled = p === 'basic299'; }); });
 }
@@ -173,13 +174,13 @@ function drawList() {
     .sort((a, b) => String(a.practiceName).localeCompare(String(b.practiceName)));
   $('cnt').textContent = '(' + clients.length + ')';
   $('list').innerHTML = rows.map(c => `<button type="button" class="cl${c.id === current ? ' on' : ''}" data-id="${esc(c.id)}"><b>${esc(c.practiceName)}</b><small>${esc(c.providerName)}${c.jennLine ? ' · ' + esc(c.jennLine) : ' · no line yet'}</small><br>
-    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? (c.source === 'onboarding' && !c.jennLine ? '🆕 New onboarding' : 'Paused') : ({ basic299: '$299 basic', wsmn149_299: '$149 + $299', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
+    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? (c.source === 'onboarding' && !c.jennLine ? '🆕 New onboarding' : 'Paused') : ({ basic299: '$299 basic', wsmn69_399: '$69 + $399', wsmn149_299: '$69 + $399', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
     || '<p style="color:var(--muted);margin:0">No clients yet. Click "+ New client".</p>';
 }
 function fill(c) {
   current = c ? c.id : '';
   const f = $('form'); f.reset();
-  if (c) Object.entries(c).forEach(([k, v]) => { const el = f.elements[k]; if (el) el.value = String(v); });
+  if (c) Object.entries(c).forEach(([k, v]) => { const el = f.elements[k]; if (el) el.value = String(k === 'plan' && v === 'wsmn149_299' ? 'wsmn69_399' : v); });
   $('fh').textContent = c ? c.practiceName : 'New client';
   $('del').hidden = !c; $('pv').hidden = true; $('msg').textContent = '';
   applyPlan(); words(); drawList();

@@ -18,7 +18,8 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(o) });
   if (req.method !== "POST" || !ORIGINS.includes(o)) return reply(403, { error: "Not allowed." }, o);
   let b; try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, o); }
-  const kind = b.kind === "call" ? "call" : b.kind === "lead" ? "lead" : "";
+  // $149 Jennifer booking calls were retired Oct 30, 2026: only $69 lead emails remain.
+  const kind = b.kind === "lead" ? "lead" : "";
   const name = clean(b.name, 80), phone = e164(b.phone), email = clean(b.email, 120).toLowerCase(), pid = clean(b.providerId, 60);
   if (!kind || !/^[\w-]{4,60}$/.test(pid)) return reply(400, { error: "Something went wrong. Please try again." }, o);
   if (!name) return reply(400, { error: "Please add your name." }, o);
@@ -33,7 +34,7 @@ export default async (req) => {
   if (fsv(f.active) !== true) return reply(404, { error: "This provider isn't available right now." }, o);
   const plan = fsv(f.plan), code = fsv(f.code), providerName = fsv(f.name);
   if (kind === "call" && (plan !== "premium" || !code)) return reply(400, { error: "This provider doesn't offer call-backs. Please call the office directly." }, o);
-  if (kind === "lead" && plan !== "leads" && plan !== "premium") return reply(400, { error: "Please contact this office directly." }, o);
+  if (plan !== "leads") return reply(400, { error: "Please contact this office directly." }, o);
 
   const s = store();
   const list = (await s.get("central", { type: "json" })) || [];
