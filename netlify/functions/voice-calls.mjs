@@ -199,7 +199,7 @@ export default async (req) => {
           const phone = e164(x && x.phone), st = clean(x && x.state, 2).toUpperCase();
           if (!phone || have.has(phone) || !/^[A-Z]{2}$/.test(st)) continue;
           const ag = String((x && x.agent) || "").toLowerCase();
-          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", lang: LANGS[x.lang] ? x.lang : "en", mode: x.mode === "floating" ? "floating" : "selling", task: String(x.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500), findings: clean(x.findings, 400), campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
+          q.leads.push({ id: clean(x.id, 60), name: clean(x.name, 120), business: clean(x.business, 160), phone, state: st, agent: AGENTS.includes(ag) ? ag : "", lang: LANGS[x.lang] ? x.lang : "en", mode: x.mode === "floating" ? "floating" : "selling", task: String(x.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500), findings: clean(x.findings, 900), campaign: clean(x.campaign, 120), status: "queued", addedAt: Date.now() });
           have.add(phone);
         }
         if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
@@ -457,7 +457,7 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 400) || "none listed", lead_language: LANGS[lang], call_mode: name === "alek" ? MODES[mode] : "standard", task: name === "alek" && mode === "floating" ? task : "none" } }],
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_language: LANGS[lang], call_mode: name === "alek" ? MODES[mode] : "standard", task: name === "alek" && mode === "floating" ? task : "none" } }],
         ringing_timeout_seconds: 30, max_call_duration_minutes: 6
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }

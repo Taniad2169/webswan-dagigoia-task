@@ -843,6 +843,8 @@ function listenToggle() {
 /* ---------- import from Lead Prospector (link: #import=...) ---------- */
 const STATE_CODES = { alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY','puerto rico':'PR' };
 function toStateCode(v) { v = String(v || '').trim(); if (/^[A-Za-z]{2}$/.test(v)) return v.toUpperCase(); return STATE_CODES[v.toLowerCase()] || ''; }
+// Lead Prospector status → Voice Studio status. Lost / not interested become Do not call.
+const lpStatus = st => ({ new: 'New', contacted: 'Contacted', 'follow-up': 'Follow up', 'follow up': 'Follow up', interested: 'Interested', 'meeting set': 'Appointment requested', lost: 'Do not call', 'not interested': 'Do not call', 'do not call': 'Do not call' })[String(st || '').trim().toLowerCase()] || 'New';
 function checkImport() {
   const m = location.hash.match(/^#import=([A-Za-z0-9_-]+)/); if (!m) return;
   let data;
@@ -857,20 +859,25 @@ function checkImport() {
   openForm(`Import ${fresh.length} lead${fresh.length > 1 ? 's' : ''} from ${esc(data.src || 'Lead Prospector')}`,
     `<p style="margin-top:0">${dupes.length ? `${dupes.length} already in Voice Studio will be skipped. ` : ''}Website scan findings come along, so SDR AI can mention real issues.</p>
     <div class="script" style="max-height:200px">${fresh.slice(0, 12).map(x => `<div>• <b>${esc(x.business || x.name)}</b>${x.state ? ' · ' + esc(toStateCode(x.state) || x.state) : ''}${x.findings && x.findings.length ? ' · <span class="muted">' + esc(x.findings[0]) + '</span>' : ''}</div>`).join('')}${fresh.length > 12 ? `<div class="muted">+ ${fresh.length - 12} more</div>` : ''}</div>
-    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="landline" value="1" style="width:auto;margin-top:3px"> <span>These are <b>business office lines</b> from business listings (needed for AI-voice calls). Leave unchecked if you're not sure; you can set it per lead.</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="landline" value="1" checked style="width:auto;margin-top:3px"> <span>These are <b>business office lines</b> from business listings (needed for AI-voice calls). Leave unchecked if you're not sure; you can set it per lead.</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="plan" value="1" checked style="width:auto;margin-top:3px"> <span>Start the SDR AI follow-up plan for them today</span></label>`,
     v => {
       const now = Date.now();
       fresh.forEach(x => {
         const l = { id: uid(), created: now, name: x.name || '', business: x.business || '', phone: x.phone, email: x.email || '', state: toStateCode(x.state),
-          lineType: v.landline ? 'Business landline' : 'Unknown', consent: 'None', status: 'New',
+          lineType: v.landline ? 'Business landline' : 'Unknown', consent: 'None', status: lpStatus(x.status),
           notes: [x.city ? 'City: ' + x.city : '', x.type ? 'Type: ' + x.type : '', x.notes || ''].filter(Boolean).join('\n'), src: 'Lead Prospector', lpId: x.lpId };
         l.r = { industry: x.industry || '', website: x.website || '', hasSite: x.noSite ? 'No' : (x.website ? 'Yes' : 'Unknown'),
           siteQuality: x.outdated ? 'Outdated' : 'Unknown', ada: x.ada ? 'Missing or broken' : 'Unknown', cookie: x.cookie ? 'Missing or broken' : 'Unknown',
           missesCalls: x.missesCalls ? 'Yes' : 'Unknown', advertising: x.ppc || (x.ads && x.ads.length) ? 'Yes' : 'Unknown', rating: x.rating || '', reviews: x.reviews || '' };
-        l.mem = (x.findings || []).map(f => ({ id: uid(), cat: 'Fact', text: 'Website scan: ' + f, src: 'Lead Prospector scan', at: now }));
+        const rep = Array.isArray(x.report) && x.report.length ? x.report : (x.findings || []);
+        if (rep.length) l.scanReport = rep.join('; ').slice(0, 900);
+        if (x.hipaa) l.r.hipaa = 'Red flags';
+        if (x.broken) l.r.brokenLinks = 'Yes';
+        l.mem = rep.map(f => ({ id: uid(), cat: 'Fact', text: 'Website scan: ' + f, src: 'Lead Prospector scan', at: now }));
         if (x.ads && x.ads.length) l.mem.push({ id: uid(), cat: 'Fact', text: 'Runs paid ads: ' + x.ads.join(', ') + (x.ppc ? ' (PPC)' : ''), src: 'Lead Prospector scan', at: now });
-        if (v.plan) l.seq = { start: todayISO(), done: {} };
+        if (l.status === 'Do not call') voiceApi({ action: 'dnc', add: true, phone: l.phone }).catch(() => {});
+        else if (v.plan && l.status !== 'Appointment requested') l.seq = { start: todayISO(), done: {} };
         state.leads.push(l);
       });
       toast(`🎙 ${fresh.length} lead${fresh.length > 1 ? 's' : ''} imported from Lead Prospector${dupes.length ? ` (${dupes.length} duplicate${dupes.length > 1 ? 's' : ''} skipped)` : ''}.`);
@@ -952,7 +959,7 @@ async function liveCall(leadId, prefer) {
   });
   const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
 }
-const findingsOf = l => ((String((l && l.notes) || '').match(/Findings:\s*([^|]+)/i) || [])[1] || '').trim();
+const findingsOf = l => (l && l.scanReport) || ((String((l && l.notes) || '').match(/Findings:\s*([^|\n]+)/i) || [])[1] || '').trim();
 async function liveStart(l, a, lang, opts = {}) {
   toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
   try {
