@@ -861,7 +861,7 @@ function checkImport() {
     <div class="script" style="max-height:200px">${fresh.slice(0, 12).map(x => `<div>• <b>${esc(x.business || x.name)}</b>${x.state ? ' · ' + esc(toStateCode(x.state) || x.state) : ''}${x.findings && x.findings.length ? ' · <span class="muted">' + esc(x.findings[0]) + '</span>' : ''}</div>`).join('')}${fresh.length > 12 ? `<div class="muted">+ ${fresh.length - 12} more</div>` : ''}</div>
     <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="landline" value="1" checked style="width:auto;margin-top:3px"> <span>These are <b>business office lines</b> from business listings (needed for AI-voice calls). Leave unchecked if you're not sure; you can set it per lead.</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="plan" value="1" checked style="width:auto;margin-top:3px"> <span>Start the SDR AI follow-up plan for them today</span></label>
-    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="route" value="1" checked style="width:auto;margin-top:3px"> <span>Put them in the <b>auto-dial queue</b> right away: doctors → <b>Monica</b>, lawyers → <b>George</b>. The queue doesn't start until you press Start.</span></label>`,
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="route" value="1" checked style="width:auto;margin-top:3px"> <span>Put them in the <b>auto-dial queue</b> right away: doctors → <b>Monica</b> (compliance) or <b>Rebecca</b> (Media Network ad leads), lawyers → <b>George</b>. The queue doesn't start until you press Start.</span></label>`,
     v => {
       const now = Date.now(), added = [];
       fresh.forEach(x => {
@@ -883,9 +883,9 @@ function checkImport() {
       });
       if (v.route) {
         const send = added.filter(({ l }) => l.status !== 'Do not call' && l.status !== 'Appointment requested' && stateCode(l.state))
-          .map(({ l, x }) => ({ l, agent: /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? 'monica' : '' })).filter(o => o.agent);
-        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: 'selling', task: '', findings: findingsOf(l), campaign: agent === 'george' ? 'Prospector: lawyers (compliance)' : 'Prospector: doctors (compliance)' })) })
-          .then(q => { dialQ = q; const g = send.filter(o => o.agent === 'george').length; toast(`🤖 In the auto-dial queue: ${send.length - g} for Monica, ${g} for George${q.paused ? '. The queue is paused, press Start when you’re ready.' : '.'}`); if (page === 'Campaigns') render(); })
+          .map(({ l, x }) => ({ l, agent: /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? (/media network|advertis|billboard|ppc/i.test((x.type || '') + ' ' + (x.notes || '')) ? 'rebecca' : 'monica') : '' })).filter(o => o.agent);
+        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: 'selling', task: '', findings: findingsOf(l), campaign: agent === 'george' ? 'Prospector: lawyers' : agent === 'rebecca' ? 'Prospector: doctors (Media Network ad)' : 'Prospector: doctors (compliance)' })) })
+          .then(q => { dialQ = q; const g = send.filter(o => o.agent === 'george').length; const rb = send.filter(o => o.agent === 'rebecca').length; toast(`🤖 In the auto-dial queue: ${send.length - g - rb} for Monica, ${rb} for Rebecca, ${g} for George${q.paused ? '. The queue is paused, press Start when you’re ready.' : '.'}`); if (page === 'Campaigns') render(); })
           .catch(e => toast('Imported, but couldn’t add to the auto-dial queue: ' + e.message));
       }
       toast(`🎙 ${fresh.length} lead${fresh.length > 1 ? 's' : ''} imported from Lead Prospector${dupes.length ? ` (${dupes.length} duplicate${dupes.length > 1 ? 's' : ''} skipped)` : ''}.`);
