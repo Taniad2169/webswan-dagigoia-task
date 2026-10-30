@@ -212,7 +212,7 @@ $('preview').addEventListener('click', async () => {
 $('prefill').addEventListener('click', async () => {
   const code = $('providerCode').value.trim().toUpperCase(); if (!/^[A-Z]{2}-\d{4}[A-Z]{2}$/.test(code)) return say('Type a code like CA-0045TB first.', false);
   try {
-    const r = await fetch(FS + ':runQuery?key=' + FS_KEY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'providers' }], where: { fieldFilter: { field: { fieldPath: 'code' }, op: 'EQUAL', value: { stringValue: code } } }, limit: 1 } }) });
+    const r = await fetch(FS + ':runQuery?key=' + FS_KEY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'providers' }], where: { compositeFilter: { op: 'AND', filters: [{ fieldFilter: { field: { fieldPath: 'active' }, op: 'EQUAL', value: { booleanValue: true } } }, { fieldFilter: { field: { fieldPath: 'code' }, op: 'EQUAL', value: { stringValue: code } } }] } }, limit: 1 } }) });
     const row = (await r.json()).find(x => x.document); if (!row) return say('No live WSMN profile has the code ' + code + '.', false);
     const v = k => { const x = row.document.fields[k]; return !x ? '' : 'stringValue' in x ? x.stringValue : 'arrayValue' in x ? (x.arrayValue.values || []).map(y => y.stringValue).join(', ') : 'booleanValue' in x ? x.booleanValue : 'integerValue' in x ? x.integerValue : 'doubleValue' in x ? x.doubleValue : ''; };
     const set = (id, val) => { if (val !== '' && val != null && !$(id).value) $(id).value = val; };
