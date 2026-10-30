@@ -435,8 +435,8 @@ export default async (req) => {
       const d = await cartesia("GET", "/voices?limit=100", V_READ);
       const list = (Array.isArray(d) ? d : d.data || []).filter((v) => !v.language || v.language === "en")
         .map((v) => ({ id: v.id, name: v.name || "", gender: v.gender || "", description: clean(v.description, 140) }));
-      const want = String(b.gender || "").toLowerCase();
-      return reply(200, { voices: (want ? list.filter((v) => String(v.gender).toLowerCase().startsWith(want.slice(0, 4))) : list).slice(0, 40) }, origin);
+      const want = String(b.gender || "").toLowerCase(), g = /^f/.test(want) ? /^(fem|female|woman)/ : /^m/.test(want) ? /^(masc|male|man)/ : null;
+      return reply(200, { voices: (g ? list.filter((v) => g.test(String(v.gender).toLowerCase())) : list).slice(0, 40) }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
