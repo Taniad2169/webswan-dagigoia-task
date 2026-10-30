@@ -70,7 +70,7 @@ a{color:#137fae}
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
-<aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><nav id="nav" aria-label="Sections"></nav><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
+<aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><nav id="nav" aria-label="Sections"></nav><a href="jennifer.html" style="display:block;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">👩‍💼 Jennifer Back Office</a><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
 <main>
   <header><div><div class="muted" style="font-size:13px">WEBSWAN VOICE STUDIO / <span id="crumb">OVERVIEW</span></div><h1 id="title">Overview</h1></div><div class="toolbar"><span class="pill">● Calling service not connected · practice mode</span><a class="btn outline small" href="https://play.cartesia.ai/agents" target="_blank" rel="noopener noreferrer" title="Cartesia: your AI voice agents (Rebecca, George), phone numbers, API keys and usage">🎧 Cartesia Agents</a><button type="button" id="cloudBtn" class="btn outline small" onclick="window.cloudClick && window.cloudClick()" title="Sync your workspace to your private WebSwan cloud">☁ Sign in to sync</button></div></header>
   <div id="content" tabindex="-1"></div>
@@ -477,7 +477,7 @@ const INDUSTRIES = ['Doctor / medical', 'Attorney / legal', 'Other business'];
 const OFFERS = {
   site: { name: 'Custom website or redesign', short: 'a new website', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary demo of a new custom website for {b}, at no cost and no obligation' },
   audit: { name: 'Complimentary compliance audit', short: 'a complimentary compliance audit', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'a complimentary accessibility, cookie consent and privacy audit of {b}’s website' },
-  wsmn: { name: 'WSMN profile ($289/yr + $29/month)', short: 'a WebSwan Media Network profile', agent: 'Rebecca', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
+  wsmn: { name: 'WSMN profile ($289/yr + $49/month)', short: 'a WebSwan Media Network profile', agent: 'Rebecca', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
   recep: { name: 'AI receptionist (Rachel)', short: 'an AI receptionist', agent: 'Monica', brand: 'WebSwan Digital Solutions', pitch: 'an AI receptionist that answers {b}’s calls 24/7, so no new {who1} goes to voicemail' }
 };
 const SEQ = [
@@ -506,7 +506,7 @@ const LEARN = [
 ];
 const TIPS = {
   'Already has a website or vendor': 'Keep it friendly: ask if their site has a working accessibility tool and cookie consent, then offer the complimentary audit. No need to replace anyone.',
-  'Asked about price / budget': 'Lead with the low entry: WSMN is $29/month after setup, with no contract, and the audit is complimentary. Then ask what a new patient or client is worth to them.',
+  'Asked about price / budget': 'Lead with the low entry: WSMN is $49/month after setup, with no contract, and the audit is complimentary. Then ask what a new patient or client is worth to them.',
   'Not the decision maker: needs owner, partner or manager': 'Ask for the decision maker’s name and the best time to reach them, and offer to email a one-page summary they can pass along.',
   'Wants information by email first': 'Send the email draft today, then call 2 days later and ask “did you get a chance to look?”',
   'Was busy: call back at a better time': 'Ask “is morning or afternoon better?” and set a follow-up date before hanging up.',
@@ -1230,7 +1230,7 @@ const MODELS = ['gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-flash-l
 const RULES = `You coach AI cold-calling agents for Tania Domingue's three companies:
 - The WebSwan: custom websites and WSBPA small business phone apps.
 - WebSwan Digital Solutions: website compliance (ADA/WCAG accessibility, cookie consent, privacy). The entry offer is a complimentary compliance audit. Monica calls doctors, George calls attorneys.
-- WebSwan Media Network (WSMN): directory profiles and advertising for doctors and attorneys at ads.webswanmedianetwork.com, $400 setup + $289/year + $29/month, no contract. Rebecca and Alek call for WSMN.
+- WebSwan Media Network (WSMN): directory profiles and advertising for doctors and attorneys at ads.webswanmedianetwork.com, $400 setup + $289/year + $49/month, no contract. Rebecca and Alek call for WSMN.
 The goal of every call is a 10-minute call with Tania, the founder.
 House rules: the agent must say it is an AI assistant and who it calls for in the first sentence; say "complimentary", never "free"; never guarantee rankings or results; no pressure tactics; honor every opt-out immediately; keep lines short, warm and human; one question at a time.
 Never include phone numbers, emails or personal data in your output. Always answer with valid JSON only.`;

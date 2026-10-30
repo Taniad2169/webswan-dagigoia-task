@@ -20,6 +20,14 @@ const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billin
 const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer"];
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
 const RECEPTIONISTS = ["jennifer"];
+// Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
+const CLIENT_PLANS = {
+  basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
+  wsmn149_299: { label: "$149 WSMN + $299 receptionist", full: true },
+  full499: { label: "$499 Full Service (standalone)", full: true }
+};
+const CLIENT_FIELDS = { type: 12, providerName: 160, practiceName: 200, address: 300, officePhone: 30, notifyEmail: 160, jennLine: 30, hours: 1000, greeting: 400,
+  website: 300, specialties: 1000, yearsInBusiness: 60, reviews: 300, insurance: 1000, cashPay: 300, consultation: 300, providerCode: 12, script: 45000, notes: 2000, minutesIncluded: 8 };
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
@@ -255,6 +263,11 @@ export default async (req) => {
             provider_code: { type: "string", description: "The provider code if you were given one, like CA-0045TB (2 letters, dash, 4 digits, 2 letters). Otherwise leave empty." },
             provider_id: { type: "string", description: "The provider_id from your call details or from an earlier lookup, if you have one. Otherwise leave empty." }
           } }, authentication: auth } } }
+      ,{ key: "client", body: { type: "webhook", name: "get_office_info", description: "Load the office you are answering for on this call: its name, greeting, hours, and the only details you may share. Call it at the very start of every call to a practice's own line.", pre_tool_speech: "none", execution_mode: "immediate", response_timeout_secs: 10,
+          api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
+            action: { type: "string", constant_value: "client" },
+            called_number: { type: "string", dynamic_variable: "system__called_number" }
+          } }, authentication: auth } } }
     ];
     const saved = (await store.get("tool-ids", { type: "json" })) || {};
     const tries = async (method, path, body) => { try { return await cartesia(method, path, V_READ, body); } catch (e) { if (/not found|404/i.test(e.message)) return await cartesia(method, "/v1" + path, V_READ, body); throw e; } };
@@ -271,7 +284,7 @@ export default async (req) => {
       const id = agentId(a); if (!id) continue;
       try {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
-          tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? k === "provider" : k !== "provider")).map(([, x]) => ({ id: x })),
+          tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? (k === "provider" || k === "client") : (k !== "provider" && k !== "client"))).map(([, x]) => ({ id: x })),
           system_tools: { end_call: {}, send_dtmf: {}, voicemail_detection: {} }
         } });
         report.agents[a] = "connected";
@@ -287,6 +300,53 @@ export default async (req) => {
     if (process.env["CARTESIA_AGENT_" + key.toUpperCase()]) return reply(409, { error: "This agent is set in Netlify (CARTESIA_AGENT_" + key.toUpperCase() + "). Remove that variable there and redeploy." }, origin);
     const had = !!EXTRA_IDS[key]; delete EXTRA_IDS[key]; await store.setJSON("agent-ids", EXTRA_IDS);
     return reply(200, { ok: true, removed: had, key }, origin);
+  }
+
+  // ---------- Jennifer's back office: one private profile per virtual-receptionist client ----------
+  if (b.action === "client_list" || b.action === "client_set" || b.action === "client_delete" || b.action === "client_preview") {
+    const list = (await store.get("clients", { type: "json" })) || [];
+    if (b.action === "client_set") {
+      const c = b.client || {};
+      const err = [];
+      const plan = CLIENT_PLANS[c.plan] ? c.plan : "";
+      if (!plan) err.push("plan");
+      const out = { id: /^[\w-]{6,40}$/.test(String(c.id || "")) ? String(c.id) : "cl_" + crypto.randomBytes(6).toString("hex"), plan, active: c.active !== false };
+      for (const [k, max] of Object.entries(CLIENT_FIELDS)) out[k] = String(c[k] == null ? "" : c[k]).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, max);
+      out.type = out.type === "attorney" ? "attorney" : "doctor";
+      out.jennLine = out.jennLine ? e164(out.jennLine) : "";
+      if (c.jennLine && !out.jennLine) err.push("Jennifer's line (valid US number)");
+      out.notifyEmail = out.notifyEmail.toLowerCase();
+      if (!out.providerName) err.push("provider name");
+      if (!out.practiceName) err.push("practice name");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(out.notifyEmail)) err.push("notification email");
+      if (out.providerCode && !/^[A-Z]{2}-\d{4}[A-Z]{2}$/.test(out.providerCode.toUpperCase())) err.push("provider code like CA-0045TB");
+      out.providerCode = out.providerCode.toUpperCase();
+      const words = out.script ? out.script.split(/\s+/).filter(Boolean).length : 0;
+      if (words > 6000) err.push("script under 6,000 words (now " + words + ")");
+      if (out.jennLine && list.some((x) => x.id !== out.id && x.jennLine === out.jennLine)) err.push("a different line (that number already belongs to another client)");
+      if (err.length) return reply(400, { error: "Please fix: " + err.join(", ") + "." }, origin);
+      out.updatedAt = Date.now(); out.updatedBy = email;
+      const i = list.findIndex((x) => x.id === out.id);
+      if (i >= 0) { out.createdAt = list[i].createdAt || Date.now(); list[i] = out; } else { out.createdAt = Date.now(); list.push(out); }
+      await store.setJSON("clients", list);
+      return reply(200, { ok: true, client: out, clients: list }, origin);
+    }
+    if (b.action === "client_delete") {
+      const next = list.filter((x) => x.id !== String(b.id || ""));
+      if (next.length === list.length) return reply(404, { error: "Client not found." }, origin);
+      await store.setJSON("clients", next);
+      return reply(200, { ok: true, clients: next }, origin);
+    }
+    if (b.action === "client_preview") {
+      const c = list.find((x) => x.id === String(b.id || ""));
+      if (!c) return reply(404, { error: "Save the client first." }, origin);
+      const toolSecret = await store.get("tool-secret");
+      if (!toolSecret) return reply(400, { error: "Jennifer's tools aren't set up yet." }, origin);
+      if (!c.jennLine) return reply(400, { error: "Add Jennifer's line for this client to preview what she hears on a call to it." }, origin);
+      const r = await fetch(TOOLS_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + toolSecret }, body: JSON.stringify({ action: "client", called_number: c.jennLine }) });
+      return reply(200, { text: await r.text() }, origin);
+    }
+    return reply(200, { clients: list, plans: CLIENT_PLANS }, origin);
   }
 
   // ---------- change one agent's voice (keeps every other audio setting) ----------
@@ -319,7 +379,7 @@ export default async (req) => {
         const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
         const c = d.config || (d.agent && d.agent.config) || {};
         const have = new Set((c.tools || []).map((t) => t.id || t));
-        const want = RECEPTIONISTS.includes(a) ? ["provider"] : ["slots", "book"];
+        const want = RECEPTIONISTS.includes(a) ? ["provider", "client"] : ["slots", "book"];
         const missing = want.filter((k) => !savedTools[k] || !have.has(savedTools[k]));
         const v = (c.audio && c.audio.output && c.audio.output.voice_id) || "";
         voices[a] = v;

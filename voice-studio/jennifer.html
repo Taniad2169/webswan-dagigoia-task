@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Jennifer Back Office · WebSwan Voice Studio</title>
+<style>
+:root{--blue:#339cde;--sky:#93e5fa;--navy:#082a48;--ink:#17324c;--muted:#5f7891;--line:#dce8f1;--bg:#f3f8fc;--ok:#12805c;--bad:#b42318;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0}
+header{background:linear-gradient(120deg,var(--navy),#0d4a7a);color:#fff;padding:18px 20px}
+header .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0}header p{margin:2px 0 0;color:var(--sky);font-size:13px}
+header .sp{flex:1}
+a.back{color:#fff;font-size:13px;text-decoration:none;border:1px solid #ffffff55;border-radius:999px;padding:7px 12px}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.sec{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn.danger{background:#fff;color:var(--bad);border:1px solid #f1c3be}
+.btn:disabled{opacity:.5;cursor:default}
+main{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:330px 1fr;gap:18px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h2{font-size:16px;margin:0 0 12px;color:var(--navy)}
+#list{display:flex;flex-direction:column;gap:8px}
+.cl{border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;background:#fff;width:100%}
+.cl.on{border-color:var(--blue);box-shadow:0 0 0 2px #339cde33}
+.cl b{display:block;color:var(--navy)}.cl small{color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:4px;background:#e8f5fc;color:#0b5c8a}
+.pill.off{background:#f2f4f7;color:#667085}
+form .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){form .grid{grid-template-columns:1fr}}
+.f{display:flex;flex-direction:column;gap:5px}.f.full{grid-column:1/-1}
+label{font-size:13px;font-weight:700;color:var(--navy)}
+label .hint{font-weight:400;color:var(--muted)}
+input,select,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink);width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue)}
+textarea{min-height:90px;resize:vertical}
+#script{min-height:260px}
+.idle input,.idle textarea,.idle select{background:#f2f4f7;color:#98a2b3}
+.idle label::after{content:" · not on this plan (opens on upgrade)";font-weight:400;color:#98a2b3;font-size:12px}
+.sec-h{grid-column:1/-1;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin:8px 0 -2px;border-top:1px solid var(--line);padding-top:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.msg{font-size:14px;margin-top:10px}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+.count{font-size:12px;color:var(--muted);text-align:right}.count.over{color:var(--bad);font-weight:700}
+pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;max-height:360px;overflow:auto}
+.planbox{background:#f4fafd;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);grid-column:1/-1}
+#gate{max-width:520px;margin:60px auto;text-align:center}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>👩‍💼 Jennifer Back Office</h1><p>One private profile per virtual-receptionist client · Jennifer only sees the office whose line was dialed</p></div>
+  <div class="sp"></div>
+  <span id="who" style="font-size:13px;color:var(--sky)"></span>
+  <a class="back" href="./">← Voice Studio</a>
+</div></header>
+
+<div id="gate" class="card" hidden>
+  <h2>Sign in to manage Jennifer's clients</h2>
+  <p style="color:var(--muted)">Use your WebSwan Google account.</p>
+  <button class="btn" id="signin" type="button">Sign in with Google</button>
+  <p id="gateMsg" class="msg bad"></p>
+</div>
+
+<main id="app" hidden>
+  <section class="card" aria-labelledby="lh">
+    <div class="row" style="margin:0 0 12px;justify-content:space-between"><h2 id="lh" style="margin:0">Clients <span id="cnt" style="color:var(--muted);font-weight:400"></span></h2><button class="btn" id="new" type="button">+ New client</button></div>
+    <input id="search" type="search" placeholder="Search name, practice, line, code…" aria-label="Search clients" style="margin-bottom:10px">
+    <div id="list"></div>
+  </section>
+
+  <section class="card" aria-labelledby="fh">
+    <h2 id="fh">New client</h2>
+    <form id="form" autocomplete="off" novalidate>
+      <input type="hidden" name="id">
+      <div class="grid">
+        <div class="f"><label for="plan">Plan</label>
+          <select id="plan" name="plan" required>
+            <option value="">Choose a plan</option>
+            <option value="basic299">$299 Partial (standalone): appointment setter only</option>
+            <option value="wsmn149_299">$149 WSMN + $299 receptionist</option>
+            <option value="full499">$499 Full Service (standalone)</option>
+          </select></div>
+        <div class="f"><label for="active">Status</label>
+          <select id="active" name="active"><option value="true">Active: Jennifer answers this line</option><option value="false">Paused</option></select></div>
+        <div class="planbox" id="planbox">Pick a plan to see what Jennifer will be allowed to say.</div>
+
+        <div class="sec-h">Who Jennifer answers for</div>
+        <div class="f"><label for="type">Type</label><select id="type" name="type"><option value="doctor">Doctor</option><option value="attorney">Attorney</option></select></div>
+        <div class="f" data-full><label for="providerCode">WSMN provider code <span class="hint">(optional)</span></label>
+          <div style="display:flex;gap:6px"><input id="providerCode" name="providerCode" placeholder="CA-0045TB" style="text-transform:uppercase"><button class="btn sec" type="button" id="prefill" title="Fill from their WebSwan Media Network profile">Fill</button></div></div>
+        <div class="f"><label for="providerName">Doctor / attorney name</label><input id="providerName" name="providerName" required placeholder="Dr. Tom Bernard"></div>
+        <div class="f"><label for="practiceName">Practice / firm name</label><input id="practiceName" name="practiceName" required placeholder="Bernard Family Chiropractic"></div>
+        <div class="f"><label for="officePhone">Office phone</label><input id="officePhone" name="officePhone" inputmode="tel" placeholder="(510) 555-0123"></div>
+        <div class="f"><label for="notifyEmail">Email for call updates <span class="hint">(theirs, never Tania's)</span></label><input id="notifyEmail" name="notifyEmail" type="email" required placeholder="frontdesk@practice.com"></div>
+        <div class="f full"><label for="hours">Hours of operation</label><textarea id="hours" name="hours" rows="2" placeholder="Mon–Fri 8 AM–5 PM, Sat 9 AM–12 PM, closed Sunday"></textarea></div>
+
+        <div class="sec-h">Jennifer's line</div>
+        <div class="f"><label for="jennLine">Jennifer's number for this client <span class="hint">(Twilio, imported to Cartesia)</span></label><input id="jennLine" name="jennLine" inputmode="tel" placeholder="+1 510 555 0199"></div>
+        <div class="f"><label for="minutesIncluded">Included minutes / month</label><input id="minutesIncluded" name="minutesIncluded" inputmode="numeric" placeholder="400"></div>
+        <div class="f full"><label for="greeting">Greeting <span class="hint">(optional; default: "Thank you for calling [practice], this is Jennifer…")</span></label><input id="greeting" name="greeting" placeholder="Thank you for calling Bernard Family Chiropractic, this is Jennifer. This call may be recorded. How can I help you?"></div>
+
+        <div class="sec-h">Practice details (full plans)</div>
+        <div class="f full" data-full><label for="address">Address</label><input id="address" name="address" placeholder="3425 Market St, Emeryville, CA 94608"></div>
+        <div class="f" data-full><label for="website">Website URL</label><input id="website" name="website" type="url" placeholder="https://"></div>
+        <div class="f" data-full><label for="yearsInBusiness">Years in business</label><input id="yearsInBusiness" name="yearsInBusiness" placeholder="Since 2009 (15+ years)"></div>
+        <div class="f full" data-full><label for="specialties">Specialties</label><textarea id="specialties" name="specialties" rows="2" placeholder="Sports injuries, prenatal chiropractic, spinal decompression"></textarea></div>
+        <div class="f" data-full><label for="reviews">Reviews</label><input id="reviews" name="reviews" placeholder="4.9 stars, 212 Google reviews"></div>
+        <div class="f" data-full><label for="cashPay">Cash / self-pay</label><input id="cashPay" name="cashPay" placeholder="Yes, cash and card accepted"></div>
+        <div class="f full" data-full><label for="insurance">Insurance accepted</label><textarea id="insurance" name="insurance" rows="2" placeholder="Aetna, Blue Shield, Medicare…"></textarea></div>
+        <div class="f full" data-full><label for="consultation">Consultations</label><input id="consultation" name="consultation" placeholder="Free 15-minute consultation for new patients"></div>
+
+        <div class="sec-h">Jennifer's script for this office</div>
+        <div class="f full"><label for="script">Office prompt &amp; script <span class="hint">(up to 6,000 words: approved FAQs, booking rules, what to say and not say)</span></label>
+          <textarea id="script" name="script" placeholder="Example:&#10;- New patients: offer the first available evaluation, 45 minutes.&#10;- Parking: free lot behind the building.&#10;- Never quote prices; say the office will confirm."></textarea>
+          <div class="count" id="words">0 / 6,000 words</div></div>
+        <div class="f full"><label for="notes">Internal notes <span class="hint">(Tania only; Jennifer never sees this)</span></label><textarea id="notes" name="notes" rows="2"></textarea></div>
+      </div>
+      <div class="row">
+        <button class="btn" type="submit" id="save">Save client</button>
+        <button class="btn sec" type="button" id="preview">Preview what Jennifer sees</button>
+        <span style="flex:1"></span>
+        <button class="btn danger" type="button" id="del" hidden>Delete client</button>
+      </div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+      <pre id="pv" hidden></pre>
+    </form>
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
+const auth = getAuth(app);
+const API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
+const FS = 'https://firestore.googleapis.com/v1/projects/webswan-marketing/databases/(default)/documents';
+const FS_KEY = 'AIzaSyAqhqUzWqpS7YunkODJU_udTBG3pjsJegQ';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let user = null, clients = [], current = '';
+const PLAN_INFO = {
+  basic299: '<b>Appointment setter only.</b> Jennifer gets the name, practice, office phone, hours, greeting and your script. Everything else is greyed out and never sent to her. Other questions go to the office: "Let me take your name and number so they can call you back."',
+  wsmn149_299: '<b>Full receptionist.</b> Jennifer answers from every filled-in field and the script, and pushes for the appointment.',
+  full499: '<b>Full receptionist.</b> Jennifer answers from every filled-in field and the script, and pushes for the appointment.'
+};
+async function api(body) {
+  const t = user && await user.getIdToken(); if (!t) throw new Error('Please sign in again.');
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d;
+}
+function say(t, ok) { const m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); }
+function words() { const n = $('script').value.split(/\s+/).filter(Boolean).length; const w = $('words'); w.textContent = n.toLocaleString() + ' / 6,000 words'; w.classList.toggle('over', n > 6000); return n; }
+function applyPlan() {
+  const p = $('plan').value, full = p === 'wsmn149_299' || p === 'full499';
+  $('planbox').innerHTML = PLAN_INFO[p] || 'Pick a plan to see what Jennifer will be allowed to say.';
+  document.querySelectorAll('[data-full]').forEach(el => { el.classList.toggle('idle', p === 'basic299'); el.querySelectorAll('input,textarea,button').forEach(i => { i.disabled = p === 'basic299'; }); });
+}
+function drawList() {
+  const q = $('search').value.trim().toLowerCase();
+  const rows = clients.filter(c => !q || [c.providerName, c.practiceName, c.jennLine, c.providerCode, c.notifyEmail].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => String(a.practiceName).localeCompare(String(b.practiceName)));
+  $('cnt').textContent = '(' + clients.length + ')';
+  $('list').innerHTML = rows.map(c => `<button type="button" class="cl${c.id === current ? ' on' : ''}" data-id="${esc(c.id)}"><b>${esc(c.practiceName)}</b><small>${esc(c.providerName)}${c.jennLine ? ' · ' + esc(c.jennLine) : ' · no line yet'}</small><br>
+    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? 'Paused' : ({ basic299: '$299 basic', wsmn149_299: '$149 + $299', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
+    || '<p style="color:var(--muted);margin:0">No clients yet. Click "+ New client".</p>';
+}
+function fill(c) {
+  current = c ? c.id : '';
+  const f = $('form'); f.reset();
+  if (c) Object.entries(c).forEach(([k, v]) => { const el = f.elements[k]; if (el) el.value = String(v); });
+  $('fh').textContent = c ? c.practiceName : 'New client';
+  $('del').hidden = !c; $('pv').hidden = true; $('msg').textContent = '';
+  applyPlan(); words(); drawList();
+}
+$('list').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { fill(clients.find(c => c.id === b.dataset.id)); $('form').scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+$('new').addEventListener('click', () => fill(null));
+$('search').addEventListener('input', drawList);
+$('plan').addEventListener('change', applyPlan);
+$('script').addEventListener('input', words);
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (words() > 6000) return say('The script is over 6,000 words.', false);
+  const f = $('form'), c = {};
+  [...f.elements].forEach(el => { if (el.name) c[el.name] = el.value; });
+  c.active = c.active !== 'false';
+  $('save').disabled = true;
+  try { const d = await api({ action: 'client_set', client: c }); clients = d.clients; fill(d.client); say('Saved. Jennifer will use this the next time ' + (d.client.jennLine || 'its line') + ' rings.', true); }
+  catch (err) { say(err.message, false); } finally { $('save').disabled = false; }
+});
+$('del').addEventListener('click', async () => {
+  const c = clients.find(x => x.id === current); if (!c) return;
+  if (!confirm('Delete ' + c.practiceName + "? Jennifer will stop answering as this office. This can't be undone.")) return;
+  try { const d = await api({ action: 'client_delete', id: c.id }); clients = d.clients; fill(null); say('Deleted.', true); } catch (err) { say(err.message, false); }
+});
+$('preview').addEventListener('click', async () => {
+  if (!current) return say('Save the client first.', false);
+  try { const d = await api({ action: 'client_preview', id: current }); $('pv').textContent = d.text; $('pv').hidden = false; say('This is exactly what Jennifer receives when this line rings.', true); }
+  catch (err) { say(err.message, false); }
+});
+$('prefill').addEventListener('click', async () => {
+  const code = $('providerCode').value.trim().toUpperCase(); if (!/^[A-Z]{2}-\d{4}[A-Z]{2}$/.test(code)) return say('Type a code like CA-0045TB first.', false);
+  try {
+    const r = await fetch(FS + ':runQuery?key=' + FS_KEY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'providers' }], where: { fieldFilter: { field: { fieldPath: 'code' }, op: 'EQUAL', value: { stringValue: code } } }, limit: 1 } }) });
+    const row = (await r.json()).find(x => x.document); if (!row) return say('No live WSMN profile has the code ' + code + '.', false);
+    const v = k => { const x = row.document.fields[k]; return !x ? '' : 'stringValue' in x ? x.stringValue : 'arrayValue' in x ? (x.arrayValue.values || []).map(y => y.stringValue).join(', ') : 'booleanValue' in x ? x.booleanValue : 'integerValue' in x ? x.integerValue : 'doubleValue' in x ? x.doubleValue : ''; };
+    const set = (id, val) => { if (val !== '' && val != null && !$(id).value) $(id).value = val; };
+    set('providerName', v('name')); set('practiceName', v('practice') || v('name')); set('officePhone', v('phone')); set('type', v('type') || 'doctor');
+    set('address', [v('address'), v('city'), v('state'), v('zip')].filter(Boolean).join(', ')); set('website', v('website')); set('specialties', v('specialties'));
+    set('yearsInBusiness', v('yearsLicensed') ? v('yearsLicensed') + ' years licensed' : ''); set('reviews', v('reviewRating') ? v('reviewRating') + ' stars' + (v('reviewCount') ? ', ' + v('reviewCount') + ' reviews' : '') + (v('reviewSource') ? ' on ' + v('reviewSource') : '') : '');
+    set('insurance', v('insurance')); set('consultation', v('freeConsult') === true ? 'Free consultation' : '');
+    say('Filled from the WSMN profile. Check everything, add their email, hours and Jennifer\'s line, then save.', true);
+  } catch (err) { say('Could not read the WSMN profile: ' + err.message, false); }
+});
+async function load() {
+  try { const d = await api({ action: 'client_list' }); clients = d.clients || []; $('gate').hidden = true; $('app').hidden = false; fill(null); }
+  catch (err) { $('app').hidden = true; $('gate').hidden = false; $('gateMsg').textContent = err.message; }
+}
+$('signin').addEventListener('click', async () => {
+  const gp = new GoogleAuthProvider(); gp.setCustomParameters({ prompt: 'select_account' });
+  try { await signInWithPopup(auth, gp); } catch (e) { if (/popup-blocked|operation-not-supported/.test(e.code || '')) return signInWithRedirect(auth, gp); $('gateMsg').textContent = 'Sign-in didn’t work: ' + (e.code || e.message); }
+});
+getRedirectResult(auth).catch(() => {});
+onAuthStateChanged(auth, u => { user = u; $('who').textContent = u ? u.email : ''; if (u) load(); else { $('app').hidden = true; $('gate').hidden = false; } });
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@ export default async (req) => {
   const url0 = new URL(req.url);
   let b0 = {};
   if (req.method === "POST") { try { b0 = await req.clone().json(); } catch (e) { b0 = {}; } }
+  if ((b0.action || url0.searchParams.get("action")) === "client") return text(await clientInfo(store, b0.called_number || url0.searchParams.get("called_number") || ""));
   if ((b0.action || url0.searchParams.get("action")) === "provider") return text(await providerLookup(b0.provider_name || url0.searchParams.get("provider_name") || "", b0.provider_id || url0.searchParams.get("provider_id") || "", b0.provider_code || url0.searchParams.get("provider_code") || ""));
 
   const cal = sanitizeCal(await store.get("calendar", { type: "json" }));
@@ -142,4 +143,41 @@ function formatProviders(list) {
   ].filter(Boolean).join("\n");
   return (list.length > 1 ? "More than one match. Confirm with the caller which one they mean:\n\n" : "") + list.map(one).join("\n\n") +
     "\n\nShare only what is listed here. Never discuss symptoms, medical conditions, injuries or legal case details, and never give medical or legal advice. If something isn't listed (like exact office hours), say the office will confirm."
+}
+
+// ---------- Jennifer Kennedy: the office profile for the line that was dialed ----------
+// Matched ONLY by the number the caller dialed (system__called_number), so Jennifer can never load another practice.
+// Plan rules are enforced here: on the $299 basic plan she receives name, practice, phone, hours, greeting and script only.
+async function clientInfo(store, called) {
+  let d = String(called || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d;
+  const num = /^1\d{10}$/.test(d) ? "+" + d : "";
+  if (!num) return "No office is connected to this call. Say: \"Thank you for calling, this is Jennifer.\" Take the caller's name, number and message, and say the office will call them back.";
+  const list = (await store.get("clients", { type: "json" })) || [];
+  const c = list.find((x) => x.jennLine === num && x.active !== false);
+  if (!c) return "This line isn't connected to an active office yet. Say: \"Thank you for calling, this is Jennifer.\" Take the caller's name, number and message, and say the office will call them back.";
+  const full = c.plan === "wsmn149_299" || c.plan === "full499";
+  const L = [
+    "OFFICE YOU ARE ANSWERING FOR (use only this; never mention any other practice):",
+    `Provider: ${c.providerName} (${c.type === "attorney" ? "attorney" : "doctor"})`,
+    `Practice: ${c.practiceName}`,
+    c.officePhone && `Office phone: ${c.officePhone}`,
+    c.hours && `Hours of operation: ${c.hours}`,
+    `Greeting to use: ${c.greeting || `Thank you for calling ${c.practiceName}, this is Jennifer. This call may be recorded. How can I help you today?`}`
+  ];
+  if (full) L.push(
+    c.address && `Address: ${c.address}`,
+    c.website && `Website: ${c.website}`,
+    c.specialties && `Specialties: ${c.specialties}`,
+    c.yearsInBusiness && `In business: ${c.yearsInBusiness}`,
+    c.reviews && `Reviews: ${c.reviews}`,
+    c.insurance && `Insurance accepted: ${c.insurance}`,
+    c.cashPay && `Cash / self-pay: ${c.cashPay}`,
+    c.consultation && `Consultations: ${c.consultation}`
+  );
+  L.push(full
+    ? "YOUR ROLE: Answer questions using only the details above and the office script below, and push for an appointment."
+    : "YOUR ROLE: You are the appointment setter only. You may give the practice name, phone and hours, book or request an appointment, and take a message. For any other question, say: \"The office will be happy to answer that. Let me take your name and number so they can call you back.\"");
+  if (c.script) L.push("OFFICE SCRIPT AND INSTRUCTIONS:\n" + c.script);
+  L.push("Never give medical or legal advice, never discuss symptoms or case details, and follow your emergency protocol.");
+  return L.filter(Boolean).join("\n");
 }
