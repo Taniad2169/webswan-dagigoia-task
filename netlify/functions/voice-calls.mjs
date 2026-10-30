@@ -263,7 +263,7 @@ export default async (req) => {
             provider_code: { type: "string", description: "The provider code if you were given one, like CA-0045TB (2 letters, dash, 4 digits, 2 letters). Otherwise leave empty." },
             provider_id: { type: "string", description: "The provider_id from your call details or from an earlier lookup, if you have one. Otherwise leave empty." }
           } }, authentication: auth } } }
-      ,{ key: "client", body: { type: "webhook", name: "get_office_info", description: "Load the office you are answering for on this call: its name, greeting, hours, and the only details you may share. Call it at the very start of every call to a practice's own line.", pre_tool_speech: "none", execution_mode: "immediate", response_timeout_secs: 10,
+      ,{ key: "client", body: { type: "webhook", name: "get_office_info", description: "Load the office you are answering for on this call: its name, greeting, hours, and the only details you may share. Call it at the very start of every call to a practice's own line.", pre_tool_speech: "off", execution_mode: "immediate", response_timeout_secs: 10,
           api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
             action: { type: "string", constant_value: "client" },
             called_number: { type: "string", dynamic_variable: "system__called_number" }
