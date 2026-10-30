@@ -289,6 +289,62 @@ export default async (req) => {
     return reply(200, { ok: true, removed: had, key }, origin);
   }
 
+  // ---------- change one agent's voice (keeps every other audio setting) ----------
+  if (b.action === "agent_voice") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
+    if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
+    if (!/^[\w-]{8,80}$/.test(String(b.voiceId || ""))) return reply(400, { error: "Pick a voice first." }, origin);
+    try {
+      const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+      const audio = JSON.parse(JSON.stringify((d.config || (d.agent && d.agent.config) || {}).audio || {}));
+      audio.output = Object.assign({}, audio.output || {}, { voice_id: String(b.voiceId) });
+      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { audio }, version_description: "Voice changed from WebSwan Voice Studio" });
+      return reply(200, { ok: true, agent: name, voiceId: String(b.voiceId) }, origin);
+    } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+  // ---------- launch readiness: test everything that can be tested without placing a call ----------
+  if (b.action === "preflight") {
+    const checks = [];
+    const add = (name, ok, detail) => checks.push({ name, ok: !!ok, detail: String(detail || "") });
+    add("Cartesia key", hasKey, hasKey ? "set" : "missing");
+    add("Caller-ID numbers", nums.length > 0, nums.length + " in CARTESIA_FROM_NUMBER_IDS (need 4 for outbound)");
+    add("Live calling switch", liveOn(), liveOn() ? "on" : "off (set VOICE_CALLING_ENABLED=on on launch day)");
+    const savedTools = (await store.get("tool-ids", { type: "json" })) || {};
+    const voices = {};
+    for (const a of AGENTS) {
+      const id = agentId(a);
+      if (!id) { add("Agent: " + a, false, "not linked"); continue; }
+      try {
+        const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+        const c = d.config || (d.agent && d.agent.config) || {};
+        const have = new Set((c.tools || []).map((t) => t.id || t));
+        const want = RECEPTIONISTS.includes(a) ? ["provider"] : ["slots", "book"];
+        const missing = want.filter((k) => !savedTools[k] || !have.has(savedTools[k]));
+        const v = (c.audio && c.audio.output && c.audio.output.voice_id) || "";
+        voices[a] = v;
+        add("Agent: " + a, !missing.length && (c.instructions || "").length > 200, (d.name || id) + (missing.length ? " · missing tools: " + missing.join(", ") : " · tools OK") + " · voice " + (v ? v.slice(0, 8) : "none"));
+      } catch (e) { add("Agent: " + a, false, e.message); }
+    }
+    const dup = Object.entries(voices).filter(([a, v]) => v && Object.entries(voices).some(([b2, w]) => b2 !== a && w === v)).map(([a]) => a);
+    add("Each agent has her/his own voice", !dup.length, dup.length ? "shared by: " + dup.join(", ") : "all different");
+    const toolSecret = await store.get("tool-secret");
+    async function tool(body) {
+      const r = await fetch(TOOLS_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + toolSecret }, body: JSON.stringify(body) });
+      return { ok: r.ok, text: (await r.text()).slice(0, 300) };
+    }
+    if (!toolSecret) add("Jennifer directory lookup", false, "tools not set up (run agent setup)");
+    else {
+      const code = clean(b.testCode, 12), nm = clean(b.testName, 80) || "Colbert";
+      try { const t = await tool({ action: "provider", provider_name: nm }); add("Jennifer lookup by name (" + nm + ")", t.ok && /Name:/.test(t.text), t.text.split("\n")[0]); } catch (e) { add("Jennifer lookup by name", false, e.message); }
+      if (code) { try { const t = await tool({ action: "provider", provider_code: code }); add("Jennifer lookup by code (" + code + ")", t.ok && /Name:/.test(t.text), t.text.split("\n")[0]); } catch (e) { add("Jennifer lookup by code", false, e.message); } }
+      try { const r = await fetch(TOOLS_URL + "?action=slots&state=CA", { headers: { Authorization: "Bearer " + toolSecret } }); const t = await r.text(); add("Booking tool: Tania's open times", r.ok && /slot_id/.test(t), t.split("\n").slice(0, 2).join(" ").slice(0, 160)); } catch (e) { add("Booking tool", false, e.message); }
+    }
+    const q = (await store.get("queue", { type: "json" })) || {};
+    add("Auto-dial queue", true, (q.paused ? "paused" : "running") + " · " + ((q.leads || []).filter((l) => l.status === "queued").length) + " queued");
+    return reply(200, { ready: checks.every((c) => c.ok), checks }, origin);
+  }
+
   // ---------- update one agent's instructions (system prompt) in Cartesia ----------
   if (b.action === "agent_prompt") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
