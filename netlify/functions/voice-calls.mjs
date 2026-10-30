@@ -248,10 +248,11 @@ export default async (req) => {
             call_id: { type: "string", dynamic_variable: "system__conversation_id" },
             lead_phone: { type: "string", dynamic_variable: "system__called_number" }
           }, required: ["slot_id"] }, authentication: auth } } }
-      ,{ key: "provider", body: { type: "webhook", name: "lookup_provider", description: "Look up a doctor or attorney in the WebSwan Media Network directory: specialty, location, phone, languages, insurance, whether they take new patients or clients. Use it as soon as you know which provider the call is about.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 15,
+      ,{ key: "provider", body: { type: "webhook", name: "lookup_provider", description: "Look up a doctor or attorney in the WebSwan Media Network directory: specialty, location, phone, languages, insurance, whether they take new patients or clients. Use it as soon as you know which provider the call is about, by provider code if you have one, otherwise by name.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 15,
           api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
             action: { type: "string", constant_value: "provider" },
             provider_name: { type: "string", description: "The doctor's or attorney's name, or the practice name, as the caller said it." },
+            provider_code: { type: "string", description: "The provider code if you were given one, like CA-0045TB (2 letters, dash, 4 digits, 2 letters). Otherwise leave empty." },
             provider_id: { type: "string", description: "The provider_id from your call details or from an earlier lookup, if you have one. Otherwise leave empty." }
           } }, authentication: auth } } }
     ];
