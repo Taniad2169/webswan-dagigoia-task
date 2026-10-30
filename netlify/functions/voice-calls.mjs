@@ -279,6 +279,15 @@ export default async (req) => {
     return reply(200, report, origin);
   }
 
+  // ---------- forget a deleted agent's ID (e.g. after deleting it in Cartesia to free a slot) ----------
+  if (b.action === "agent_unlink") {
+    const key = String(b.key || "").toLowerCase();
+    if (!/^[a-z]+(_(es|pt))?$/.test(key) || !AGENTS.includes(key.split("_")[0])) return reply(400, { error: "Unknown agent." }, origin);
+    if (process.env["CARTESIA_AGENT_" + key.toUpperCase()]) return reply(409, { error: "This agent is set in Netlify (CARTESIA_AGENT_" + key.toUpperCase() + "). Remove that variable there and redeploy." }, origin);
+    const had = !!EXTRA_IDS[key]; delete EXTRA_IDS[key]; await store.setJSON("agent-ids", EXTRA_IDS);
+    return reply(200, { ok: true, removed: had, key }, origin);
+  }
+
   // ---------- update one agent's instructions (system prompt) in Cartesia ----------
   if (b.action === "agent_prompt") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
