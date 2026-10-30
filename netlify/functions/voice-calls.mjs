@@ -17,7 +17,9 @@ import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scrip
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek"];
+const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer"];
+// Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
+const RECEPTIONISTS = ["jennifer"];
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
@@ -71,7 +73,7 @@ const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toU
 // Languages: an agent's English version is its base name; other languages are separate Cartesia agents
 // saved as name_es (Latin American Spanish) and name_pt (Brazilian Portuguese).
 const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
-const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"] };
+const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
 // The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
 const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
@@ -246,6 +248,12 @@ export default async (req) => {
             call_id: { type: "string", dynamic_variable: "system__conversation_id" },
             lead_phone: { type: "string", dynamic_variable: "system__called_number" }
           }, required: ["slot_id"] }, authentication: auth } } }
+      ,{ key: "provider", body: { type: "webhook", name: "lookup_provider", description: "Look up a doctor or attorney in the WebSwan Media Network directory: specialty, location, phone, languages, insurance, whether they take new patients or clients. Use it as soon as you know which provider the call is about.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 15,
+          api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
+            action: { type: "string", constant_value: "provider" },
+            provider_name: { type: "string", description: "The doctor's or attorney's name, or the practice name, as the caller said it." },
+            provider_id: { type: "string", description: "The provider_id from your call details or from an earlier lookup, if you have one. Otherwise leave empty." }
+          } }, authentication: auth } } }
     ];
     const saved = (await store.get("tool-ids", { type: "json" })) || {};
     const tries = async (method, path, body) => { try { return await cartesia(method, path, V_READ, body); } catch (e) { if (/not found|404/i.test(e.message)) return await cartesia(method, "/v1" + path, V_READ, body); throw e; } };
@@ -262,7 +270,7 @@ export default async (req) => {
       const id = agentId(a); if (!id) continue;
       try {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
-          tools: Object.values(saved).filter(Boolean).map((x) => ({ id: x })),
+          tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? k === "provider" : k !== "provider")).map(([, x]) => ({ id: x })),
           system_tools: { end_call: {}, send_dtmf: {}, voicemail_detection: {} }
         } });
         report.agents[a] = "connected";

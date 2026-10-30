@@ -21,6 +21,11 @@ export default async (req) => {
   const given = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!secret || !sameSecret(given, secret)) return text("Not allowed.", 401);
 
+  const url0 = new URL(req.url);
+  let b0 = {};
+  if (req.method === "POST") { try { b0 = await req.clone().json(); } catch (e) { b0 = {}; } }
+  if ((b0.action || url0.searchParams.get("action")) === "provider") return text(await providerLookup(b0.provider_name || url0.searchParams.get("provider_name") || "", b0.provider_id || url0.searchParams.get("provider_id") || ""));
+
   const cal = sanitizeCal(await store.get("calendar", { type: "json" }));
   const calSecret = await store.get("cal-secret");
   const url = new URL(req.url);
@@ -67,3 +72,64 @@ export default async (req) => {
 
   return text("Unknown action.", 400);
 };
+
+// ---------- Jennifer: look up a doctor or attorney in the WebSwan Media Network directory ----------
+// Reads only ACTIVE public listings from Firestore (project webswan-marketing), the same data anyone sees on
+// ads.webswanmedianetwork.com. Never returns the provider's private email.
+const FS = "https://firestore.googleapis.com/v1/projects/webswan-marketing/databases/(default)/documents";
+const FS_KEY = "AIzaSyAqhqUzWqpS7YunkODJU_udTBG3pjsJegQ"; // public web key (same as the site); access is limited by Firestore rules
+function fsVal(v) {
+  if (!v) return "";
+  if ("stringValue" in v) return v.stringValue;
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return v.doubleValue;
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(fsVal);
+  return "";
+}
+function fsDoc(d) { const o = { id: String(d.name || "").split("/").pop() }; for (const [k, v] of Object.entries(d.fields || {})) o[k] = fsVal(v); return o; }
+const norm2 = (s) => String(s || "").toLowerCase().replace(/\b(dr|doctor|attorney|atty|esq|md|do|dds|dc)\b\.?/g, " ").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+async function providerLookup(name, id) {
+  try {
+    let list = [];
+    if (id && /^[\w-]{4,60}$/.test(id)) {
+      const r = await fetch(FS + "/providers/" + encodeURIComponent(id) + "?key=" + FS_KEY);
+      if (r.ok) list = [fsDoc(await r.json())];
+    } else {
+      const r = await fetch(FS + ":runQuery?key=" + FS_KEY, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "providers" }], where: { fieldFilter: { field: { fieldPath: "active" }, op: "EQUAL", value: { booleanValue: true } } }, limit: 500 } }) });
+      if (!r.ok) throw new Error("directory " + r.status);
+      list = (await r.json()).filter((x) => x.document).map((x) => fsDoc(x.document));
+      const want = norm2(name);
+      if (!want) return "Ask the caller which doctor or attorney they are calling about, then look them up again with that name.";
+      const words = want.split(" ").filter((w) => w.length > 1);
+      list = list.map((p) => { const hay = norm2([p.name, p.practice].join(" ")); return { p, score: words.filter((w) => hay.includes(w)).length }; })
+        .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map((x) => x.p);
+    }
+    list = list.filter((p) => p && p.active !== false);
+    if (!list.length) return "That provider isn't listed in the WebSwan Media Network directory. Don't guess any details. Take the caller's name, number and reason for calling, and say the office will follow up.";
+    const one = (p) => [
+      `Name: ${p.name}${p.credentials ? ", " + p.credentials : ""} (${p.type === "attorney" ? "attorney" : "doctor"})`,
+      p.practice && `Practice or firm: ${p.practice}`,
+      Array.isArray(p.specialties) && p.specialties.length && `Specialties: ${p.specialties.join(", ")}`,
+      (p.address || p.city) && `Location: ${[p.address, p.city, p.state, p.zip].filter(Boolean).join(", ")}`,
+      p.serviceAreas && `Also serves: ${p.serviceAreas}`,
+      p.phone && `Office phone: ${p.phone}`,
+      p.languages && `Languages: ${p.languages}`,
+      p.insurance && `Insurance or fees: ${p.insurance}`,
+      p.accepting === false ? "Not accepting new patients or clients right now." : "Accepting new patients or clients.",
+      p.telehealth && "Offers telehealth or virtual visits.",
+      p.freeConsult && "Offers a free consultation.",
+      p.eveningWeekend && "Has evening or weekend hours.",
+      p.officeHours && `Office hours: ${p.officeHours}`,
+      p.yearsLicensed && `Years licensed: ${p.yearsLicensed}`,
+      p.website && `Website: ${p.website}`,
+      p.bio && `About: ${String(p.bio).slice(0, 500)}`,
+      `provider_id: ${p.id}`
+    ].filter(Boolean).join("\n");
+    return (list.length > 1 ? "More than one match. Confirm with the caller which one they mean:\n\n" : "") + list.map(one).join("\n\n") +
+      "\n\nOnly share what is listed here. Never give medical or legal advice. If something isn't listed (like exact office hours), say the office will confirm.";
+  } catch (e) {
+    return "The directory can't be reached right now. Don't guess any details. Take the caller's name, number and reason for calling, and say the office will follow up.";
+  }
+}
