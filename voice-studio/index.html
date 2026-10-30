@@ -860,9 +860,10 @@ function checkImport() {
     `<p style="margin-top:0">${dupes.length ? `${dupes.length} already in Voice Studio will be skipped. ` : ''}Website scan findings come along, so SDR AI can mention real issues.</p>
     <div class="script" style="max-height:200px">${fresh.slice(0, 12).map(x => `<div>• <b>${esc(x.business || x.name)}</b>${x.state ? ' · ' + esc(toStateCode(x.state) || x.state) : ''}${x.findings && x.findings.length ? ' · <span class="muted">' + esc(x.findings[0]) + '</span>' : ''}</div>`).join('')}${fresh.length > 12 ? `<div class="muted">+ ${fresh.length - 12} more</div>` : ''}</div>
     <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="landline" value="1" checked style="width:auto;margin-top:3px"> <span>These are <b>business office lines</b> from business listings (needed for AI-voice calls). Leave unchecked if you're not sure; you can set it per lead.</span></label>
-    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="plan" value="1" checked style="width:auto;margin-top:3px"> <span>Start the SDR AI follow-up plan for them today</span></label>`,
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="plan" value="1" checked style="width:auto;margin-top:3px"> <span>Start the SDR AI follow-up plan for them today</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" name="route" value="1" checked style="width:auto;margin-top:3px"> <span>Put them in the <b>auto-dial queue</b> right away: doctors → <b>Monica</b>, lawyers → <b>George</b>. The queue doesn't start until you press Start.</span></label>`,
     v => {
-      const now = Date.now();
+      const now = Date.now(), added = [];
       fresh.forEach(x => {
         const l = { id: uid(), created: now, name: x.name || '', business: x.business || '', phone: x.phone, email: x.email || '', state: toStateCode(x.state),
           lineType: v.landline ? 'Business landline' : 'Unknown', consent: 'None', status: lpStatus(x.status),
@@ -878,8 +879,15 @@ function checkImport() {
         if (x.ads && x.ads.length) l.mem.push({ id: uid(), cat: 'Fact', text: 'Runs paid ads: ' + x.ads.join(', ') + (x.ppc ? ' (PPC)' : ''), src: 'Lead Prospector scan', at: now });
         if (l.status === 'Do not call') voiceApi({ action: 'dnc', add: true, phone: l.phone }).catch(() => {});
         else if (v.plan && l.status !== 'Appointment requested') l.seq = { start: todayISO(), done: {} };
-        state.leads.push(l);
+        state.leads.push(l); added.push({ l, x });
       });
+      if (v.route) {
+        const send = added.filter(({ l }) => l.status !== 'Do not call' && l.status !== 'Appointment requested' && stateCode(l.state))
+          .map(({ l, x }) => ({ l, agent: /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? 'monica' : '' })).filter(o => o.agent);
+        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: 'selling', task: '', findings: findingsOf(l), campaign: agent === 'george' ? 'Prospector: lawyers (compliance)' : 'Prospector: doctors (compliance)' })) })
+          .then(q => { dialQ = q; const g = send.filter(o => o.agent === 'george').length; toast(`🤖 In the auto-dial queue: ${send.length - g} for Monica, ${g} for George${q.paused ? '. The queue is paused, press Start when you’re ready.' : '.'}`); if (page === 'Campaigns') render(); })
+          .catch(e => toast('Imported, but couldn’t add to the auto-dial queue: ' + e.message));
+      }
       toast(`🎙 ${fresh.length} lead${fresh.length > 1 ? 's' : ''} imported from Lead Prospector${dupes.length ? ` (${dupes.length} duplicate${dupes.length > 1 ? 's' : ''} skipped)` : ''}.`);
       page = v.plan ? 'SDR AI' : 'Leads'; if (state.sdr) { state.sdr.lead = ''; state.sdr.tab = 'Today'; }
     });
