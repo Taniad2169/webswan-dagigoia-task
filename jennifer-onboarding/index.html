@@ -60,11 +60,14 @@ textarea{min-height:84px;resize:vertical}#script{min-height:220px}
   <form id="form" autocomplete="off" novalidate hidden>
     <div class="card">
       <h2>1. Plan</h2><p class="sub">This decides what Jennifer is allowed to say.</p>
-      <div class="plans" role="radiogroup" aria-label="Plan">
-        <label class="plan"><input type="radio" name="plan" value="basic299"><b>$299 Partial</b><span>Standalone. Appointment setter only: name, practice, phone, hours.</span></label>
-        <label class="plan"><input type="radio" name="plan" value="wsmn149_299"><b>$149 WSMN + $299</b><span>Full receptionist + WebSwan Media Network listing.</span></label>
-        <label class="plan"><input type="radio" name="plan" value="full499"><b>$499 Full Service</b><span>Standalone full receptionist.</span></label>
-      </div>
+      <div class="f" style="max-width:420px"><label for="plan">Plan <span class="req">*</span></label>
+        <select id="plan" name="plan" required>
+          <option value="">Choose a plan…</option>
+          <option value="full499">$499 Standalone: full virtual receptionist</option>
+          <option value="basic299">$299 Standalone: appointment setting only</option>
+          <option value="wsmn149_299">$149 / $299: WSMN listing + full virtual receptionist</option>
+        </select></div>
+      <p id="planInfo" class="sub" style="margin:10px 0 0"></p>
     </div>
 
     <div class="card">
@@ -127,9 +130,10 @@ let user = null;
 const show = which => { ['gate', 'done', 'form'].forEach(id => { $(id).hidden = id !== which; }); };
 function say(t, ok) { $('msg').textContent = t; $('msg').className = 'msg ' + (ok ? 'ok' : 'bad'); }
 function words() { const n = $('script').value.split(/\s+/).filter(Boolean).length; $('words').textContent = n.toLocaleString() + ' / 6,000 words'; $('words').classList.toggle('over', n > 6000); return n; }
-function plan() { const r = document.querySelector('input[name=plan]:checked'); return r ? r.value : ''; }
-function applyPlan() { const basic = plan() === 'basic299'; document.querySelectorAll('[data-full]').forEach(el => { el.classList.toggle('idle', basic); el.querySelectorAll('input,textarea,select').forEach(i => { i.disabled = basic; }); }); }
-document.querySelectorAll('input[name=plan]').forEach(r => r.addEventListener('change', applyPlan));
+function plan() { return $('plan').value; }
+function applyPlan() { const p = plan(), basic = p === 'basic299';
+  $('planInfo').innerHTML = !p ? 'Pick a plan to unlock the right fields.' : basic ? '<b>Appointment setting only.</b> Jennifer gets name, practice, phone, hours and the script. Full-plan fields stay greyed out until they upgrade.' : '<b>Full virtual receptionist.</b> All fields are open: website, specialties, reviews, insurance, cash pay, consultations.'; document.querySelectorAll('[data-full]').forEach(el => { el.classList.toggle('idle', basic); el.querySelectorAll('input,textarea,select').forEach(i => { i.disabled = basic; }); }); }
+$('plan').addEventListener('change', applyPlan);
 $('script').addEventListener('input', words);
 $('form').addEventListener('reset', () => setTimeout(() => { applyPlan(); words(); say('', true); }, 0));
 $('form').addEventListener('submit', async e => {
