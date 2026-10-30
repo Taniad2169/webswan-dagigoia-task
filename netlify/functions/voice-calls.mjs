@@ -348,7 +348,9 @@ export default async (req) => {
       const r = await fetch(TOOLS_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + toolSecret }, body: JSON.stringify({ action: "client", called_number: c.jennLine }) });
       return reply(200, { text: await r.text() }, origin);
     }
-    return reply(200, { clients: list, plans: CLIENT_PLANS }, origin);
+    const usage = (await store.get("jk-usage", { type: "json" })) || {}, mo = new Date().toISOString().slice(0, 7);
+    const callLog = ((await store.get("jk-log", { type: "json" })) || []).slice(0, 100);
+    return reply(200, { clients: list.map((c) => Object.assign({}, c, { minutesThisMonth: usage[c.id + ":" + mo] || 0 })), plans: CLIENT_PLANS, callLog }, origin);
   }
 
   // ---------- Jennifer Reid (WSMN Central) requests from Rachel ----------

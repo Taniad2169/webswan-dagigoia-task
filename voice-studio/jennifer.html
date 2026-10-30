@@ -69,6 +69,9 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
     <div class="row" style="margin:0 0 12px;justify-content:space-between"><h2 id="lh" style="margin:0">Clients <span id="cnt" style="color:var(--muted);font-weight:400"></span></h2><button class="btn" id="new" type="button">+ New client</button></div>
     <input id="search" type="search" placeholder="Search name, practice, line, code…" aria-label="Search clients" style="margin-bottom:10px">
     <div id="list"></div>
+    <h2 style="margin:22px 0 8px">📞 Jennifer's recent calls <span id="jcnt" style="color:var(--muted);font-weight:400"></span></h2>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px">Each call is emailed to that client's own address within about 5 minutes.</p>
+    <div id="jcalls" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto;margin-bottom:6px"></div>
     <h2 style="margin:22px 0 8px">✉️ WSMN $69 lead emails <span id="ccnt" style="color:var(--muted);font-weight:400"></span></h2>
     <p style="font-size:12px;color:var(--muted);margin:0 0 8px">From Rachel's matches: requests emailed to $69 Found + Leads offices.</p>
     <div id="central" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto"></div>
@@ -174,7 +177,7 @@ function drawList() {
     .sort((a, b) => String(a.practiceName).localeCompare(String(b.practiceName)));
   $('cnt').textContent = '(' + clients.length + ')';
   $('list').innerHTML = rows.map(c => `<button type="button" class="cl${c.id === current ? ' on' : ''}" data-id="${esc(c.id)}"><b>${esc(c.practiceName)}</b><small>${esc(c.providerName)}${c.jennLine ? ' · ' + esc(c.jennLine) : ' · no line yet'}</small><br>
-    <span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? (c.source === 'onboarding' && !c.jennLine ? '🆕 New onboarding' : 'Paused') : ({ basic299: '$299 basic', wsmn69_399: '$69 + $399', wsmn149_299: '$69 + $399', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
+    ${c.minutesThisMonth ? '<span class="pill">' + c.minutesThisMonth + (c.minutesIncluded ? ' / ' + esc(c.minutesIncluded) : '') + ' min this month</span> ' : ''}<span class="pill${c.active === false ? ' off' : ''}">${c.active === false ? (c.source === 'onboarding' && !c.jennLine ? '🆕 New onboarding' : 'Paused') : ({ basic299: '$299 basic', wsmn69_399: '$69 + $399', wsmn149_299: '$69 + $399', full499: '$499 full' }[c.plan] || c.plan)}</span>${c.providerCode ? ' <span class="pill">' + esc(c.providerCode) + '</span>' : ''}</button>`).join('')
     || '<p style="color:var(--muted);margin:0">No clients yet. Click "+ New client".</p>';
 }
 function fill(c) {
@@ -234,7 +237,9 @@ async function loadCentral() {
   } catch (err) { $('central').innerHTML = '<small style="color:var(--bad)">' + esc(err.message) + '</small>'; }
 }
 async function load() {
-  try { const d = await api({ action: 'client_list' }); clients = d.clients || []; $('gate').hidden = true; $('app').hidden = false; fill(null); loadCentral(); }
+  try { const d = await api({ action: 'client_list' }); clients = d.clients || []; const L = d.callLog || []; $('jcnt').textContent = '(' + L.length + ')';
+    $('jcalls').innerHTML = L.map(x => `<div class="cl" style="cursor:default"><b>${esc(x.practice)}</b><small>${esc(x.caller || 'unknown caller')} · ${x.mins} min · ${new Date(x.at).toLocaleString()}</small><br><span class="pill${x.emailed ? '' : ' off'}">${x.emailed ? '✅ Emailed to client' : '⚠️ Email not sent'}</span>${x.note ? ' <small style="color:var(--bad)">' + esc(x.note) + '</small>' : ''}</div>`).join('') || '<p style="color:var(--muted);margin:0;font-size:13px">No calls yet.</p>';
+    $('gate').hidden = true; $('app').hidden = false; fill(null); loadCentral(); }
   catch (err) { $('app').hidden = true; $('gate').hidden = false; $('gateMsg').textContent = err.message; }
 }
 $('signin').addEventListener('click', async () => {
