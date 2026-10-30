@@ -3,7 +3,7 @@
 //   kind "lead" -> $69 Leads provider: saved for the practice's lead email
 // Only accepts requests from the WSMN sites, requires consent, checks the provider's plan, and rate-limits.
 import crypto from "node:crypto";
-import { store, e164, openNow, placeCentralCall } from "../lib/central.mjs";
+import { store, e164, openNow, placeCentralCall, emailPractice } from "../lib/central.mjs";
 
 const ORIGINS = ["https://ads.webswanmedianetwork.com", "https://find.webswanmedianetwork.com", "https://www.webswanmedianetwork.com"];
 const FS = "https://firestore.googleapis.com/v1/projects/webswan-marketing/databases/(default)/documents";
@@ -49,6 +49,9 @@ export default async (req) => {
     if (r.ok) { rec.status = "called"; rec.callId = r.callId; rec.calledAt = Date.now(); message = "Thank you! Jennifer is calling you now."; }
     else rec.note = r.why;
   }
+  const m = await emailPractice(s, rec, fsv(f.email));
+  rec.emailed = m.ok; if (!m.ok) rec.note = [rec.note, "email: " + m.why].filter(Boolean).join(" · ");
+  if (kind === "lead" && m.ok) rec.status = "emailed";
   list.unshift(rec);
   await s.setJSON("central", list.slice(0, 3000));
   return reply(200, { ok: true, message }, o);

@@ -113,7 +113,7 @@ export function busyWindow(cal, now = new Date()) {
 
 // Apps Script code Tania pastes into script.google.com (secret filled in for her)
 export function scriptCode(secret) {
-  return `// WebSwan Calendar Bridge: lets Rebecca check Tania's free times and book 10-minute onboardings.
+  return `// WebSwan Calendar Bridge: lets the agents check Tania's free times, book onboardings, and email practices (Jennifer's lead and call notices).
 // Paste into script.google.com > New project, then Deploy > New deployment > Web app
 // (Execute as: Me, Who has access: Anyone). Copy the Web app URL into Voice Studio.
 const SECRET = '${secret}';
@@ -141,11 +141,16 @@ function doPost(e) {
       ev.addPopupReminder(10);
       return out({ ok: true, id: ev.getId() });
     }
+    if (b.action === 'mail') {
+      if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(String(b.to || ''))) return out({ error: 'bad recipient' });
+      MailApp.sendEmail({ to: b.to, subject: String(b.subject || '').slice(0, 200), htmlBody: String(b.html || '').slice(0, 20000), name: String(b.fromName || 'WebSwan Media Network').slice(0, 80), replyTo: b.replyTo || undefined });
+      return out({ ok: true });
+    }
     return out({ error: 'unknown action' });
   } catch (err) { return out({ error: String(err && err.message || err) }); }
 }
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 // Run this once from the editor (select setup, press Run) to approve calendar access.
-function setup() { CalendarApp.getDefaultCalendar().getName(); UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); }
+function setup() { CalendarApp.getDefaultCalendar().getName(); UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); MailApp.getRemainingDailyQuota(); }
 `;
 }

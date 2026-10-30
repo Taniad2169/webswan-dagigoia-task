@@ -227,9 +227,9 @@ async function loadCentral() {
   try {
     const d = await api({ action: 'central_list' }), L = d.requests || [];
     $('ccnt').textContent = '(' + L.length + ')';
-    const st = { queued: '⏳ Waiting for business hours', called: '📞 Called', new: '✉️ New lead', skipped: '⛔ Skipped', expired: '⌛ Expired' };
+    const st = { queued: '⏳ Waiting for business hours', called: '📞 Called', new: '✉️ Lead saved (email not sent)', emailed: '✅ Emailed to practice', skipped: '⛔ Skipped', expired: '⌛ Expired' };
     $('central').innerHTML = L.map(r => `<div class="cl" style="cursor:default"><b>${esc(r.name)} → ${esc(r.providerName)}</b><small>${esc(r.phone)}${r.email ? ' · ' + esc(r.email) : ''}${r.bestTime ? ' · best: ' + esc(r.bestTime) : ''}<br>${esc(r.providerCode || '')} · ${new Date(r.at).toLocaleString()}</small><br>
-      <span class="pill${r.status === 'skipped' || r.status === 'expired' ? ' off' : ''}">${r.kind === 'call' ? '$149 call' : '$69 lead'} · ${st[r.status] || esc(r.status)}</span>${r.note ? ' <small style="color:var(--bad)">' + esc(r.note) + '</small>' : ''}</div>`).join('') || '<p style="color:var(--muted);margin:0;font-size:13px">No requests yet.</p>';
+      <span class="pill${r.status === 'skipped' || r.status === 'expired' ? ' off' : ''}">${r.kind === 'call' ? '$149 call' : '$69 lead'} · ${st[r.status] || esc(r.status)}</span>${r.kind === 'call' ? (r.emailed ? ' <span class="pill">✅ practice emailed</span>' : '') : ''}${r.note ? ' <small style="color:var(--bad)">' + esc(r.note) + '</small>' : ''}</div>`).join('') || '<p style="color:var(--muted);margin:0;font-size:13px">No requests yet.</p>';
   } catch (err) { $('central').innerHTML = '<small style="color:var(--bad)">' + esc(err.message) + '</small>'; }
 }
 async function load() {
