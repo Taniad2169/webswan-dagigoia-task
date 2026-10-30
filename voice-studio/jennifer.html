@@ -69,6 +69,9 @@ pre{white-space:pre-wrap;background:#f6fafd;border:1px solid var(--line);border-
     <div class="row" style="margin:0 0 12px;justify-content:space-between"><h2 id="lh" style="margin:0">Clients <span id="cnt" style="color:var(--muted);font-weight:400"></span></h2><button class="btn" id="new" type="button">+ New client</button></div>
     <input id="search" type="search" placeholder="Search name, practice, line, code…" aria-label="Search clients" style="margin-bottom:10px">
     <div id="list"></div>
+    <h2 style="margin:22px 0 8px">📞 Jennifer Reid requests <span id="ccnt" style="color:var(--muted);font-weight:400"></span></h2>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px">From Rachel's matches: $149 call-backs and $69 office leads.</p>
+    <div id="central" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto"></div>
   </section>
 
   <section class="card" aria-labelledby="fh">
@@ -220,8 +223,17 @@ $('prefill').addEventListener('click', async () => {
     say('Filled from the WSMN profile. Check everything, add their email, hours and Jennifer\'s line, then save.', true);
   } catch (err) { say('Could not read the WSMN profile: ' + err.message, false); }
 });
+async function loadCentral() {
+  try {
+    const d = await api({ action: 'central_list' }), L = d.requests || [];
+    $('ccnt').textContent = '(' + L.length + ')';
+    const st = { queued: '⏳ Waiting for business hours', called: '📞 Called', new: '✉️ New lead', skipped: '⛔ Skipped', expired: '⌛ Expired' };
+    $('central').innerHTML = L.map(r => `<div class="cl" style="cursor:default"><b>${esc(r.name)} → ${esc(r.providerName)}</b><small>${esc(r.phone)}${r.email ? ' · ' + esc(r.email) : ''}${r.bestTime ? ' · best: ' + esc(r.bestTime) : ''}<br>${esc(r.providerCode || '')} · ${new Date(r.at).toLocaleString()}</small><br>
+      <span class="pill${r.status === 'skipped' || r.status === 'expired' ? ' off' : ''}">${r.kind === 'call' ? '$149 call' : '$69 lead'} · ${st[r.status] || esc(r.status)}</span>${r.note ? ' <small style="color:var(--bad)">' + esc(r.note) + '</small>' : ''}</div>`).join('') || '<p style="color:var(--muted);margin:0;font-size:13px">No requests yet.</p>';
+  } catch (err) { $('central').innerHTML = '<small style="color:var(--bad)">' + esc(err.message) + '</small>'; }
+}
 async function load() {
-  try { const d = await api({ action: 'client_list' }); clients = d.clients || []; $('gate').hidden = true; $('app').hidden = false; fill(null); }
+  try { const d = await api({ action: 'client_list' }); clients = d.clients || []; $('gate').hidden = true; $('app').hidden = false; fill(null); loadCentral(); }
   catch (err) { $('app').hidden = true; $('gate').hidden = false; $('gateMsg').textContent = err.message; }
 }
 $('signin').addEventListener('click', async () => {

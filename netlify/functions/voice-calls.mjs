@@ -350,6 +350,12 @@ export default async (req) => {
     return reply(200, { clients: list, plans: CLIENT_PLANS }, origin);
   }
 
+  // ---------- Jennifer Reid (WSMN Central) requests from Rachel ----------
+  if (b.action === "central_list") {
+    const list = (await store.get("central", { type: "json" })) || [];
+    return reply(200, { requests: list.slice(0, 200).map(({ ip, ...r }) => r) }, origin);
+  }
+
   // ---------- change one agent's voice (keeps every other audio setting) ----------
   if (b.action === "agent_voice") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
