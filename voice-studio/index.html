@@ -1346,13 +1346,14 @@ function renderTeam(c) {
   const head = !window.cloudUser ? `<div class="note">Sign in with Google at the top to wake up your AI team.</div>`
     : !S ? `<div class="note">Checking your AI team…</div>`
     : S.error ? `<div class="note">${esc(S.error)} <button class="btn outline small" onclick="teamRefresh()">Try again</button></div>`
-    : `<div class="row" style="flex-wrap:wrap;gap:8px">${pill(S.claude, 'Claude · sales manager')}${pill(S.deepseek, 'DeepSeek · research')}${pill(S.brave, 'Brave · search')}${pill(S.gpt, 'ChatGPT · 2nd opinion')}<span class="muted">This month: <b>$${(S.spend && S.spend.usd || 0).toFixed(2)}</b> of $${(S.cap || 10).toFixed(2)} cap</span></div>`;
-  const tabs = ['Research', 'Emails', 'Coach', 'Report'];
-  c.innerHTML = `<div class="banner"><div><h2>★ Your AI sales team</h2><p>DeepSeek finds practices and our scanner checks their websites. Claude, your sales manager, writes the emails and coaches Rebecca, Monica and George from their real calls. ChatGPT can double-check. You approve everything.</p></div></div>
+    : `<div class="row" style="flex-wrap:wrap;gap:8px">${pill(S.claude, 'Claude · sales manager')}${pill(S.deepseek, 'DeepSeek · research')}${pill(S.brave, 'Brave · search')}${pill(S.gpt, 'ChatGPT · 2nd opinion')}${pill(S.jimmy, 'Jimmy (Gemini) · market intel')}<span class="muted">This month: <b>$${(S.spend && S.spend.usd || 0).toFixed(2)}</b> of $${(S.cap || 10).toFixed(2)} cap</span></div>`;
+  const tabs = ['Research', 'Emails', 'Coach', 'Report', 'Jimmy'];
+  const tabLabel = { Jimmy: '🔭 Jimmy · Market Intel' };
+  c.innerHTML = `<div class="banner"><div><h2>★ Your AI sales team</h2><p>DeepSeek finds practices and our scanner checks their websites. Claude, your sales manager, writes the emails and coaches Rebecca, Monica and George from their real calls. ChatGPT can double-check. Jimmy (Gemini) is your market intelligence researcher: prospects, competitors and revenue opportunities. You approve everything.</p></div></div>
   <div class="card section">${head}<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" style="width:auto" ${T.second ? 'checked' : ''} onchange="teamSet('second', this.checked)"> Ask ChatGPT for a second opinion (a little slower, about a tenth of a cent more)</label></div>
-  <div class="toolbar section">${tabs.map(t => `<button class="btn ${T.tab === t ? '' : 'secondary'}" onclick="teamSet('tab','${t}')">${t}${t === 'Emails' && T.drafts.filter(d => !d.sent).length ? ' (' + T.drafts.filter(d => !d.sent).length + ')' : ''}</button>`).join('')}</div>
+  <div class="toolbar section">${tabs.map(t => `<button class="btn ${T.tab === t ? '' : 'secondary'}" onclick="teamSet('tab','${t}')">${tabLabel[t] || t}${t === 'Emails' && T.drafts.filter(d => !d.sent).length ? ' (' + T.drafts.filter(d => !d.sent).length + ')' : ''}</button>`).join('')}</div>
   <div id="teamBody"></div>`;
-  ({ Research: teamResearchView, Emails: teamEmailsView, Coach: teamCoachView, Report: teamReportView }[T.tab] || teamResearchView)($('teamBody'));
+  ({ Research: teamResearchView, Emails: teamEmailsView, Coach: teamCoachView, Report: teamReportView, Jimmy: jimmyView }[T.tab] || teamResearchView)($('teamBody'));
 }
 
 /* ----- Research ----- */
@@ -1500,6 +1501,49 @@ async function teamReport() {
   try { const d = await teamApi({ action: 'report', stats: teamStats() }); T.report = { ...(d.report || {}), at: Date.now() }; save(); }
   catch (e) { toast(e.message); }
   teamBusy = ''; render(); teamRefresh();
+}
+
+/* ----- Jimmy (Gemini): Market Intelligence & Revenue Research. Research and reports only. ----- */
+let jimmyReports = null, jimmyBusy = '';
+const JIMMY_JOBS = [
+  { task: 'prospects', icon: '🎯', title: 'Prospect research', when: 'Click when you need new doctors or attorneys to call or email.', what: 'Jimmy finds real independent practices (5+ years when possible) with website gaps: no cookie banner, accessibility problems, outdated or slow sites, weak visibility. He lists the website, phone, decision-maker and email only when he can verify them.', fields: [['niche', 'Who (example: chiropractors, family law attorneys)'], ['area', 'Where (example: Miami FL, Brooklyn NY)']] },
+  { task: 'competitors', icon: '🕵️', title: 'Competitor watch', when: 'Click when you want to know what other agencies sell and charge.', what: 'Jimmy studies 3 competitors: their services, published prices, sales message, what they do with AI, and where WebSwan can win.', fields: [['focus', 'Which market (example: AI receptionists for dentists)'], ['names', 'Specific competitors (optional)']] },
+  { task: 'opportunities', icon: '💡', title: 'Revenue opportunities', when: 'Click when you are deciding what to sell or push next.', what: 'Jimmy ranks money opportunities for Digital Solutions, Media Network, Brazilian PWAs and e-cards, practice marketing and receptionist services, with evidence and a confidence level.', fields: [['focus', 'Anything to focus on (optional)']] },
+  { task: 'weekly', icon: '📊', title: 'Weekly revenue report', when: 'Click once a week (Monday morning is perfect) for the full picture.', what: 'New prospects, high-priority leads, 3 competitor updates, published pricing, opportunities and the top 5 actions to consider.', fields: [['area', 'Market (optional, example: NY and FL)']] },
+];
+async function jimmyLoad() { try { jimmyReports = (await teamApi({ action: 'jimmy_list' })).reports || []; } catch (e) { jimmyReports = []; toast(e.message); } if (T.tab === 'Jimmy') render(); }
+async function jimmyRun(task) {
+  const b = { action: 'jimmy', task };
+  document.querySelectorAll('[data-jimmy="' + task + '"]').forEach(i => { b[i.dataset.k] = i.value.trim(); T['jimmy_' + task + '_' + i.dataset.k] = i.value.trim(); });
+  jimmyBusy = task; save(); render(); toast('Jimmy is researching… this can take a minute.');
+  try { const d = await teamApi(b); jimmyReports = [d.report].concat(jimmyReports || []); T.jimmyOpen = d.report.id; save(); toast('Jimmy’s report is ready.'); }
+  catch (e) { toast(e.message); }
+  jimmyBusy = ''; render(); teamRefresh();
+}
+function jimmyVal(v) { return v == null ? '' : typeof v === 'object' ? Object.entries(v).map(([k, x]) => `<b>${esc(k.replace(/_/g, ' '))}:</b> ${esc(Array.isArray(x) ? x.join(', ') : typeof x === 'object' ? JSON.stringify(x) : String(x))}`).join('<br>') : esc(String(v)); }
+function jimmyReportHtml(r) {
+  const o = r.out || {}, parts = [];
+  for (const [k, v] of Object.entries(o)) {
+    const label = esc(k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()));
+    if (Array.isArray(v)) parts.push(`<p><b>${label}</b></p>${v.length && typeof v[0] === 'object' ? v.map(x => `<div class="card" style="margin:8px 0;padding:12px">${jimmyVal(x)}</div>`).join('') : `<ol>${v.map(x => `<li>${esc(String(x))}</li>`).join('')}</ol>`}`);
+    else parts.push(`<p><b>${label}:</b> ${jimmyVal(v)}</p>`);
+  }
+  const src = (r.sources || []).length ? `<details><summary>Sources Jimmy used (${r.sources.length})</summary><ul>${r.sources.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title || x.url)}</a></li>`).join('')}</ul></details>` : '<p class="muted">No sources were returned. Treat this report with care.</p>';
+  return parts.join('') + src;
+}
+function jimmyView(el) {
+  if (jimmyReports === null && window.cloudUser) { jimmyReports = []; jimmyLoad(); }
+  const S = teamStatus || {};
+  const jobs = JIMMY_JOBS.map(j => `<div class="card" style="margin:0"><h3 style="margin-top:0">${j.icon} ${esc(j.title)}</h3><p style="margin:4px 0"><b>${esc(j.when)}</b></p><p class="muted" style="margin:4px 0 10px">${esc(j.what)}</p>
+    ${j.fields.map(([k, l]) => `<label>${esc(l)}<input data-jimmy="${j.task}" data-k="${k}" value="${esc(T['jimmy_' + j.task + '_' + k] || '')}"></label>`).join('')}
+    <button class="btn" style="margin-top:10px" onclick="jimmyRun('${j.task}')" ${jimmyBusy || !S.jimmy ? 'disabled' : ''}>${jimmyBusy === j.task ? 'Jimmy is researching…' : j.icon + ' ' + esc(j.title)}</button></div>`).join('');
+  const list = (jimmyReports || []).map(r => { const j = JIMMY_JOBS.find(x => x.task === r.task) || { icon: '📄', title: r.task }; const open = T.jimmyOpen === r.id;
+    return `<div class="card" style="margin:8px 0"><div class="row"><b>${j.icon} ${esc(j.title)}</b><small class="muted">${esc(fmtDate(r.at))}${r.input && (r.input.niche || r.input.area || r.input.focus) ? ' · ' + esc([r.input.niche, r.input.area, r.input.focus].filter(Boolean).join(' · ')) : ''}</small><button class="btn outline small" onclick="teamSet('jimmyOpen', ${open ? "''" : "'" + r.id + "'"})">${open ? 'Close' : 'Open'}</button></div>${open ? jimmyReportHtml(r) : ''}</div>`; }).join('');
+  el.innerHTML = `<div class="card"><h2>🔭 Jimmy · Market Intelligence &amp; Revenue Research</h2>
+    <p>Jimmy (Google Gemini with live Google Search) <b>researches and reports only</b>. He can't call, email, change scripts or prices, or contact anyone. You, Claude and ChatGPT decide what to do with his findings.</p>
+    ${S.jimmy ? '' : '<div class="note">Jimmy isn’t connected yet: add <b>GEMINI_API_KEY</b> in Netlify (webswan-lead-prospector → Environment variables), then redeploy.</div>'}</div>
+  <div class="grid section" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">${jobs}</div>
+  <div class="card section"><h2>Jimmy’s reports</h2>${list || '<p class="muted">No reports yet. Pick a job above.</p>'}</div>`;
 }
 window.addEventListener('load', () => { if (page === 'AI Team') render(); });
 </script>
