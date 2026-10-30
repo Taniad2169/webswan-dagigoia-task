@@ -137,6 +137,7 @@ function formatProviders(list) {
     p.eveningWeekend && "Has evening or weekend hours.",
     p.yearsLicensed && `Years licensed: ${p.yearsLicensed}`,
     p.reviewRating && `Reviews: ${p.reviewRating} stars${p.reviewCount ? " from " + p.reviewCount + " reviews" : ""}${p.reviewSource ? " on " + p.reviewSource : ""}`,
+    p.portalUrl && `Secure patient/client portal: ${p.portalUrl}. For forms, history or any personal details, tell them to use the portal button on the practice's WebSwan Media Network profile or the practice website. Never take those details yourself.`,
     p.bookingUrl && `Online booking page: ${p.bookingUrl} (you may tell them they can also book online on the practice's website)`,
     p.website && `Website: ${p.website}`,
     p.bio && `About: ${String(p.bio).slice(0, 500)}`,
