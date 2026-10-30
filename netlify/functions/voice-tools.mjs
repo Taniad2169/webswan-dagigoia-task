@@ -137,6 +137,7 @@ function formatProviders(list) {
     p.eveningWeekend && "Has evening or weekend hours.",
     p.yearsLicensed && `Years licensed: ${p.yearsLicensed}`,
     p.reviewRating && `Reviews: ${p.reviewRating} stars${p.reviewCount ? " from " + p.reviewCount + " reviews" : ""}${p.reviewSource ? " on " + p.reviewSource : ""}`,
+    p.bookingUrl && `Online booking page: ${p.bookingUrl} (you may tell them they can also book online on the practice's website)`,
     p.website && `Website: ${p.website}`,
     p.bio && `About: ${String(p.bio).slice(0, 500)}`,
     `provider_id: ${p.id}`
