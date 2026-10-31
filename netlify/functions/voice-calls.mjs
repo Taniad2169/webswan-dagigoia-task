@@ -18,6 +18,14 @@ const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
 const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer"];
+// Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
+const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
+const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13476467086";
+function rachelTransfers(agent) {
+  const comp = { destination: { type: "phone", phone_number: RACHEL_COMPLIANCE }, condition: "The person has questions about website compliance, ADA, privacy, HIPAA, the audit findings or the risk, and agrees to be transferred to Rachel, WebSwan Digital Solutions' compliance coordinator." };
+  const ads = { destination: { type: "phone", phone_number: RACHEL_ADVERTISING }, condition: "The person wants more information about WebSwan Media Network, advertising, visibility or being added to the directory, and agrees to be transferred to Rachel, the advertising coordinator." };
+  return { monica: [comp], george: [comp, ads], rebecca: [ads], alek: [comp, ads] }[agent] || null;
+}
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
 const RECEPTIONISTS = ["jennifer"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
@@ -287,7 +295,7 @@ export default async (req) => {
       try {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? (k === "provider" || k === "client") : (k !== "provider" && k !== "client"))).map(([, x]) => ({ id: x })),
-          system_tools: { end_call: {}, send_dtmf: {}, voicemail_detection: {} }
+          system_tools: Object.assign({ end_call: {}, send_dtmf: {}, voicemail_detection: {} }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
         report.agents[a] = "connected";
       } catch (e) { report.agents[a] = "error: " + e.message; }
