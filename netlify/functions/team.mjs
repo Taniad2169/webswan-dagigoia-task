@@ -2,7 +2,8 @@
 // Linda's website legal review, Eva's Gmail drafts (with the audit PDF attached) and briefings on demand.
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, webSearch, fmtResults } from "../lib/team.mjs";
-import { JOBS, scriptCall } from "../lib/team-jobs.mjs";
+import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore } from "../lib/team-jobs.mjs";
+import { c360Ready, accounts as c360Accounts, brandMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
 
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, n);
@@ -89,6 +90,53 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       const r = await scriptCall({ action: "reply_draft", threadId: clean(b.threadId, 100), text: clean(b.text, 30000) });
       return reply(200, { ok: true, draftId: r.draftId }, origin);
     }
+    // ---------- Tatiana + Content360 ----------
+    if (b.action === "c360_status") {
+      let accts = [], err = "";
+      if (c360Ready()) { try { accts = await c360Accounts(); } catch (e) { err = e.message; } }
+      return reply(200, { ready: c360Ready(), error: err, accounts: accts, map: await brandMap(), brands: BRANDS, month: targetMonth() }, origin);
+    }
+    if (b.action === "c360_map") {
+      const map = {}; for (const [k, v] of Object.entries(b.map || {})) if (BRANDS.includes(v)) map[clean(k, 40)] = v;
+      await teamStore().setJSON("c360-brands", map);
+      return reply(200, { map }, origin);
+    }
+    const month = /^\d{4}-\d{2}$/.test(String(b.month || "")) ? b.month : targetMonth();
+    if (b.action === "plan_get") return reply(200, { plan: await getPlan(month) }, origin);
+    if (b.action === "plan_make") { await startJobs(["tatiana_month:" + month]); return reply(200, { ok: true }, origin); }
+    if (b.action === "plan_save") {
+      const plan = await getPlan(month);
+      for (const ch of (Array.isArray(b.changes) ? b.changes : []).slice(0, 300)) {
+        const it = plan.items.find((x) => x.id === ch.id); if (!it || it.status === "scheduled") continue;
+        if (typeof ch.text === "string") it.text = clean(ch.text, 12000);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(ch.date || "")) it.date = ch.date;
+        if (/^([01]\d|2[0-3]):[0-5]\d$/.test(ch.time || "")) it.time = ch.time;
+        if (["draft", "approved", "skip"].includes(ch.status)) it.status = ch.status;
+      }
+      plan.items.sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time));
+      await savePlan(plan);
+      if (b.push) await startJobs(["c360_push:" + month]);
+      return reply(200, { plan }, origin);
+    }
+    // Videos arrive in pieces (Netlify accepts ~6 MB per request), then the background worker sends them to Content360.
+    if (b.action === "video_chunk") {
+      const id = clean(b.id, 40).replace(/[^\w-]/g, ""), i = Number(b.index), total = Number(b.total);
+      if (!id || !(i >= 0) || !(total >= 1) || total > 120 || i >= total) return reply(400, { error: "Bad video piece." }, origin);
+      const data = String(b.data || ""); if (data.length > 5_600_000) return reply(413, { error: "Piece too large." }, origin);
+      const buf = Buffer.from(data, "base64");
+      await videoStore().set(id + "-" + i, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+      if (i === total - 1) {
+        const m = b.meta || {};
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date || "") || !/^([01]\d|2[0-3]):[0-5]\d$/.test(m.time || "")) return reply(400, { error: "Pick the date and time." }, origin);
+        const list = (await teamStore().get("videos", { type: "json" })) || [];
+        list.push({ id, name: clean(m.name, 120), type: clean(m.type, 40), size: Number(m.size) || 0, chunks: total, title: clean(m.title, 120), caption: clean(m.caption, 2200), brand: BRANDS.includes(m.brand) ? m.brand : BRANDS[0], accountIds: (Array.isArray(m.accountIds) ? m.accountIds : []).map((x) => clean(x, 40)).slice(0, 12), date: m.date, time: m.time, status: "queued", at: new Date().toISOString() });
+        await teamStore().setJSON("videos", list.slice(-300));
+        await startJobs(["c360_videos"]);
+      }
+      return reply(200, { ok: true }, origin);
+    }
+    if (b.action === "video_list") return reply(200, { videos: ((await teamStore().get("videos", { type: "json" })) || []).slice(-40).reverse() }, origin);
+
     // Run a scheduled job right now (for testing or when Tania wants it early).
     if (b.action === "run") {
       if (!JOBS[b.job]) return reply(400, { error: "Unknown job." }, origin);

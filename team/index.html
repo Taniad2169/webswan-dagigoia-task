@@ -53,6 +53,11 @@
   .compose { display: flex; gap: 10px; padding: 12px 18px; background: #fff; border-top: 1px solid var(--line); }
   .compose textarea { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: none; height: 54px; }
   .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 18px 0; }
+  .panel.tall { max-height: 62vh; overflow: auto; }
+  .pi { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 8px 0; }
+  .pi textarea { font: inherit; font-size: 14px; }
+  .chip { display: inline-block; font-size: 12px; border-radius: 99px; padding: 2px 8px; background: #eef5fc; color: #0b4f8a; margin-right: 4px; }
+  .chip.ok { background: #e6f6ec; color: #17693a; } .chip.bad { background: #fde8e8; color: #9b1c1c; }
   .panel label { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 2px; }
   .panel input, .panel textarea, .panel select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
@@ -161,7 +166,7 @@ function drawMsgs() {
 }
 const TOOLS = {
   eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["⚙️ Settings", () => settingsPanel()]],
-  tatiana: [["📱 This week's social content", () => run("tatiana_weekly")], ["📝 Blogs + Google posts", () => run("tatiana_blogs")]],
+  tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 Quick posts for this week", () => run("tatiana_weekly")]],
   linda: [["🔎 Review a website", () => lindaPanel()]],
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
@@ -206,6 +211,74 @@ function draftPanel(d) {
     try { await api({ action: "eva_draft", provider: $("prov").value, to: $("dTo").value.trim(), practice: $("dPr").value.trim(), state: $("dSt").value.trim(), findings: $("dNote").value.trim(), website: d.website || "", contact: d.contact || "", phone: d.phone || "", pdfBase64: d.pdfBase64 || "", filename: d.filename || "" });
       pendingDraft = null; toast("Draft saved in Gmail ✅"); openAgent("eva"); }
     catch (e) { toast(e.message); $("dGo").disabled = false; $("dGo").textContent = "Create Gmail draft"; }
+  };
+}
+/* ---------- Tatiana Lambert + Content360 ---------- */
+let C3 = null, PLAN = null;
+async function c360Load() { try { C3 = await api({ action: "c360_status" }); } catch (e) { C3 = { ready: false, error: e.message, accounts: [], map: {}, brands: ["The WebSwan", "WebSwan Digital Solutions", "WebSwan Media Network"] }; } return C3; }
+const notReady = () => `<p class="hint">Content360 isn't connected yet. In Content360 open <b>Profile → Access tokens</b>, create one named "Voice Studio", and add it in Netlify (webswan-billing) as <b>CONTENT360_API_KEY</b>.${C3 && C3.error ? "<br>⚠️ " + esc(C3.error) : ""}</p>`;
+async function c360Panel() {
+  $("extra").innerHTML = '<div class="panel"><p class="hint">Loading your Content360 accounts…</p></div>';
+  await c360Load();
+  if (!C3.ready || C3.error) { $("extra").innerHTML = `<div class="panel"><b>🔗 Content360 accounts</b>${notReady()}</div>`; return; }
+  $("extra").innerHTML = `<div class="panel"><b>🔗 Which brand is each account?</b><p class="hint">Tatiana posts each brand's content only to that brand's accounts.</p>
+    ${C3.accounts.map((a) => `<div class="row" style="align-items:center"><div>${esc(a.name)} <span class="chip">${esc(a.provider.replace("_", " "))}</span> <small class="hint">@${esc(a.username)}</small></div><div><select data-acc="${esc(a.id)}"><option value="">Not used by Tatiana</option>${C3.brands.map((b) => `<option ${C3.map[a.id] === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></div></div>`).join("")}
+    <p style="margin:10px 0 0"><button class="btn pri" id="mSave">Save</button></p></div>`;
+  $("mSave").onclick = async () => { const map = {}; document.querySelectorAll("[data-acc]").forEach((s) => { if (s.value) map[s.dataset.acc] = s.value; }); try { await api({ action: "c360_map", map }); toast("Saved"); $("extra").innerHTML = ""; } catch (e) { toast(e.message); } };
+}
+async function planPanel(month) {
+  $("extra").innerHTML = '<div class="panel"><p class="hint">Loading the month plan…</p></div>';
+  try { if (!C3) await c360Load(); PLAN = (await api({ action: "plan_get", month: month || (C3 && C3.month) })).plan; } catch (e) { $("extra").innerHTML = ""; return toast(e.message); }
+  const st = { draft: ["Draft", ""], approved: ["Approved", "ok"], scheduled: ["✅ Scheduled in Content360", "ok"], "c360-draft": ["Draft in Content360", ""], error: ["⚠️ Problem", "bad"], skip: ["Skipped", ""] };
+  const kinds = { social: "📱 Social", gbp: "📍 Google Business", blog: "📝 Blog" };
+  const items = PLAN.items || [];
+  $("extra").innerHTML = `<div class="panel tall"><div class="row" style="align-items:end"><div><b>📅 Content plan</b><br><input type="month" id="pMonth" value="${esc(PLAN.month)}"></div><div style="text-align:right"><button class="btn" id="pMake">${items.length ? "♻️ Rewrite this month" : "✨ Have Tatiana write this month"}</button></div></div>
+    ${C3 && !C3.ready ? notReady() : ""}
+    ${items.length ? `<p class="hint">Edit anything, tick ✅ Approve, then send. Social posts go to Facebook and LinkedIn of each brand; Instagram, TikTok and YouTube need a photo or video (use 🎬 Schedule a video). Blogs and Google updates stay here for you.</p>
+    <p><button class="btn" id="pAll">✅ Approve all drafts</button> <button class="btn" id="pSave">Save changes</button> <button class="btn pri" id="pPush">🚀 Save & send approved to Content360</button></p>
+    ${items.map((it) => `<div class="pi" data-id="${esc(it.id)}"><div class="row" style="align-items:center"><div><span class="chip">${esc(it.brand)}</span><span class="chip">${kinds[it.kind] || esc(it.kind)}</span><span class="chip ${st[it.status] ? st[it.status][1] : ""}">${esc(st[it.status] ? st[it.status][0] : it.status)}</span></div>
+      <div style="display:flex;gap:6px;justify-content:flex-end"><input type="date" class="pD" value="${esc(it.date)}" style="width:auto"><input type="time" class="pT" value="${esc(it.time)}" style="width:auto"></div></div>
+      ${it.title ? `<b>${esc(it.title)}</b>` : ""}<textarea class="pX" rows="${it.kind === "blog" ? 8 : 4}" ${it.status === "scheduled" ? "disabled" : ""}>${esc(it.text)}</textarea>
+      <label style="display:inline-flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" class="pA" ${["approved", "scheduled"].includes(it.status) ? "checked" : ""} ${it.status === "scheduled" ? "disabled" : ""} style="width:auto"> Approve</label> <button class="btn pCopy" type="button">Copy</button>${it.note ? ` <small class="hint">${esc(it.note)}</small>` : ""}</div>`).join("")}` : `<p class="hint">No plan for this month yet. Tatiana writes 3 posts a week for each brand, 2 Google Business updates and 2 blog articles per brand. It takes a few minutes.</p>`}</div>`;
+  $("pMonth").onchange = () => planPanel($("pMonth").value);
+  $("pMake").onclick = async () => { if (items.length && !confirm("Rewrite the whole month? Your edits on drafts will be replaced (scheduled posts stay in Content360).")) return; try { await api({ action: "plan_make", month: $("pMonth").value }); toast("Tatiana is writing the month. It shows up in her chat in a few minutes."); $("extra").innerHTML = ""; setTimeout(() => openAgent("tatiana"), 240000); } catch (e) { toast(e.message); } };
+  if (!items.length) return;
+  const changes = () => [...document.querySelectorAll(".pi")].map((d) => { const it = items.find((x) => x.id === d.dataset.id); const ap = d.querySelector(".pA").checked; return { id: d.dataset.id, text: d.querySelector(".pX").value, date: d.querySelector(".pD").value, time: d.querySelector(".pT").value, status: it.status === "scheduled" ? undefined : ap ? "approved" : (it.status === "approved" ? "draft" : undefined) }; });
+  document.querySelectorAll(".pCopy").forEach((b) => b.onclick = () => navigator.clipboard.writeText(b.closest(".pi").querySelector(".pX").value).then(() => toast("Copied")));
+  $("pAll").onclick = () => document.querySelectorAll(".pA:not(:disabled)").forEach((c) => c.checked = true);
+  $("pSave").onclick = async () => { try { PLAN = (await api({ action: "plan_save", month: PLAN.month, changes: changes() })).plan; toast("Saved"); } catch (e) { toast(e.message); } };
+  $("pPush").onclick = async () => { if (!C3 || !C3.ready) return toast("Connect Content360 first (see the note above)."); try { await api({ action: "plan_save", month: PLAN.month, changes: changes(), push: true }); toast("Sending approved posts to Content360… Tatiana reports back in her chat."); setTimeout(() => planPanel(PLAN.month), 60000); } catch (e) { toast(e.message); } };
+}
+async function videoPanel() {
+  $("extra").innerHTML = '<div class="panel"><p class="hint">Loading…</p></div>';
+  await c360Load(); let vids = []; try { vids = (await api({ action: "video_list" })).videos || []; } catch {}
+  const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  $("extra").innerHTML = `<div class="panel tall"><b>🎬 Schedule one of your videos</b> <span class="hint">No approval needed. It goes to Content360 for the date you pick.</span>${!C3.ready || C3.error ? notReady() : ""}
+    <label>Video file</label><input type="file" id="vF" accept="video/*">
+    <div class="row"><div><label>Title (YouTube needs one)</label><input id="vTi" maxlength="95"></div><div><label>Brand</label><select id="vB">${C3.brands.map((b) => `<option>${esc(b)}</option>`).join("")}</select></div></div>
+    <label>Caption (leave empty and Tatiana writes it)</label><textarea id="vC" rows="3"></textarea>
+    <div class="row"><div><label>Date</label><input type="date" id="vD" value="${tomorrow}"></div><div><label>Time (Pacific)</label><input type="time" id="vT" value="12:00"></div></div>
+    <label>Post it on</label><div id="vA">${C3.accounts.map((a) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px;color:var(--ink)"><input type="checkbox" value="${esc(a.id)}" style="width:auto" ${C3.map[a.id] === C3.brands[0] ? "checked" : ""}> ${esc(a.name)} (${esc(a.provider.replace("_", " "))})</label>`).join("") || '<span class="hint">Your Content360 accounts show here once it\'s connected.</span>'}</div>
+    <p style="margin:10px 0 0"><button class="btn pri" id="vGo">Upload & schedule</button> <span id="vP" class="hint"></span></p>
+    ${vids.length ? `<p style="margin:12px 0 4px"><b>Recent videos</b></p>${vids.map((v) => `<div class="hint">🎬 ${esc(v.title || v.name)} · ${esc(v.date)} ${esc(v.time)} · <span class="chip ${v.status === "scheduled" ? "ok" : v.status === "error" ? "bad" : ""}">${esc(v.status)}</span> ${esc(v.note || "")}</div>`).join("")}` : ""}</div>`;
+  $("vGo").onclick = async () => {
+    const f = $("vF").files[0]; if (!f) return toast("Pick a video file");
+    const accountIds = [...document.querySelectorAll("#vA input:checked")].map((x) => x.value);
+    if (!accountIds.length) return toast("Tick at least one account");
+    if (f.size > 450 * 1024 * 1024) return toast("That video is over 450 MB. Please export a smaller version.");
+    const CH = 4 * 1024 * 1024, total = Math.ceil(f.size / CH), id = "v" + Date.now().toString(36);
+    const meta = { name: f.name, type: f.type, size: f.size, title: $("vTi").value.trim(), caption: $("vC").value.trim(), brand: $("vB").value, accountIds, date: $("vD").value, time: $("vT").value };
+    if (!meta.date || !meta.time) return toast("Pick the date and time");
+    $("vGo").disabled = true;
+    try {
+      for (let i = 0; i < total; i++) {
+        const buf = await f.slice(i * CH, Math.min(f.size, (i + 1) * CH)).arrayBuffer();
+        let bin = ""; const u8 = new Uint8Array(buf); for (let k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(k, k + 0x8000));
+        await api({ action: "video_chunk", id, index: i, total, data: btoa(bin), meta: i === total - 1 ? meta : undefined });
+        $("vP").textContent = "Uploading " + Math.round((i + 1) / total * 100) + "%";
+      }
+      toast("Uploaded ✅ Tatiana is sending it to Content360."); setTimeout(videoPanel, 1500);
+    } catch (e) { toast(e.message); $("vGo").disabled = false; $("vP").textContent = ""; }
   };
 }
 $("form").onsubmit = (e) => { e.preventDefault(); const t = $("txt").value.trim(); if (!t) return; $("txt").value = ""; ask(t); };

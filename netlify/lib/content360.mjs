@@ -1,0 +1,72 @@
+// Content360 (built on Mixpost) bridge for Tatiana Lambert: list Tania's connected accounts,
+// upload videos, and create scheduled posts. Netlify env: CONTENT360_API_KEY (Content360 > Profile > Access tokens),
+// optional CONTENT360_WORKSPACE (defaults to Tania's workspace).
+import { teamStore } from "./team.mjs";
+
+const BASE = "https://app.content360.io/os/api/";
+const WS = () => process.env.CONTENT360_WORKSPACE || "833f16e6-79e5-4227-99f4-3be567ffca8a";
+export const c360Ready = () => !!process.env.CONTENT360_API_KEY;
+
+// Text-only posts can only go to these networks; Instagram, TikTok and YouTube need a photo or video.
+export const TEXT_OK = ["facebook_page", "facebook_group", "linkedin", "linkedin_page", "twitter", "threads", "bluesky", "mastodon"];
+export const BRANDS = ["The WebSwan", "WebSwan Digital Solutions", "WebSwan Media Network"];
+
+export async function c360(method, path, body, isForm) {
+  if (!c360Ready()) throw new Error("Content360 isn't connected yet: add CONTENT360_API_KEY in Netlify.");
+  const headers = { Authorization: "Bearer " + process.env.CONTENT360_API_KEY, Accept: "application/json" };
+  if (body && !isForm) headers["Content-Type"] = "application/json";
+  const r = await fetch(BASE + WS() + path, { method, headers, body: body ? (isForm ? body : JSON.stringify(body)) : undefined });
+  const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch { j = { message: t.slice(0, 200) }; }
+  if (!r.ok) {
+    const errs = j.errors ? " " + Object.values(j.errors).flat().join(" ") : "";
+    throw new Error(("Content360 " + r.status + ": " + (j.message || "error") + errs).slice(0, 400));
+  }
+  return j;
+}
+
+export async function accounts() {
+  const j = await c360("GET", "/accounts");
+  return (j.data || j || []).map((a) => ({ id: a.id, name: a.name, username: a.username || "", provider: a.provider, uuid: a.uuid || "" }));
+}
+
+// Upload a file (Blob) to the Content360 media library. Returns the media id.
+export async function uploadMedia(blob, filename) {
+  const fd = new FormData();
+  fd.append("file", blob, filename);
+  const j = await c360("POST", "/media", fd, true);
+  const m = j.data || j;
+  if (!m || m.id == null) throw new Error("Content360 didn't return a media id.");
+  return m.id;
+}
+
+// Per-network options Content360 needs for videos (YouTube title, TikTok privacy, Instagram/Facebook reel).
+function optionsFor(provs, title, isVideo) {
+  const o = {};
+  if (provs.includes("youtube")) o.youtube = { title: String(title || "").slice(0, 95) || "The WebSwan", status: "public" };
+  if (provs.includes("tiktok")) o.tiktok = { privacy_level: "PUBLIC_TO_EVERYONE", allow_comments: true, allow_duet: false, allow_stitch: false, content_disclosure: false, brand_organic_toggle: false, brand_content_toggle: false };
+  if (isVideo && provs.includes("instagram_direct")) o.instagram = { type: "reel" };
+  if (isVideo && provs.includes("instagram")) o.instagram = { type: "reel" };
+  if (isVideo && provs.includes("facebook_page")) o.facebook_page = { type: "reel" };
+  return o;
+}
+
+// Create one post in Content360 for the given accounts on date "YYYY-MM-DD" at time "HH:MM" Pacific.
+// If Content360 refuses to schedule it, it's saved as a draft there so Tania can finish it in Content360.
+export async function createPost({ accountIds, providers, text, mediaIds = [], date, time, title, isVideo }) {
+  const html = String(text || "").split(/\n{2,}/).map((p) => "<div>" + p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") + "</div>").join("");
+  const body = (schedule) => ({
+    schedule, schedule_now: false, queue: false, date, time, timezone: "America/Los_Angeles",
+    accounts: accountIds, tags: [],
+    versions: [{ account_id: 0, is_original: true, content: [{ body: html, media: mediaIds, url: "" }], options: optionsFor(providers, title, isVideo) }]
+  });
+  try {
+    const j = await c360("POST", "/posts", body(true));
+    return { id: (j.data || j).uuid || (j.data || j).id, scheduled: true };
+  } catch (e) {
+    const j = await c360("POST", "/posts", body(false));
+    return { id: (j.data || j).uuid || (j.data || j).id, scheduled: false, why: e.message };
+  }
+}
+
+// Which Content360 accounts belong to which brand (Tania sets this once in Tatiana's panel).
+export async function brandMap() { return (await teamStore().get("c360-brands", { type: "json" })) || {}; }

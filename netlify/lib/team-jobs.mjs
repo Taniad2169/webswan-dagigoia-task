@@ -4,6 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
+import { accounts as c360Accounts, uploadMedia, createPost, brandMap, TEXT_OK, BRANDS } from "./content360.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -86,14 +87,107 @@ ${(await siteText()).slice(0, 9000)}`;
   }
 }
 
+// ---------- Tatiana Lambert: a full month of content, pushed to Content360 after Tania approves ----------
+const pad2 = (n) => String(n).padStart(2, "0");
+export function targetMonth(now = new Date()) {
+  const [y, m, d] = now.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).split("-").map(Number);
+  return d >= 20 ? (m === 12 ? `${y + 1}-01` : `${y}-${pad2(m + 1)}`) : `${y}-${pad2(m)}`;
+}
+// Mon/Wed/Fri dates of the month (from tomorrow if it's the current month), with rotating posting times.
+function postingSlots(month) {
+  const [y, m] = month.split("-").map(Number), out = [], today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const times = ["09:30", "12:00", "17:30"];
+  for (let d = 1; d <= 31; d++) {
+    const dt = new Date(Date.UTC(y, m - 1, d, 12)); if (dt.getUTCMonth() !== m - 1) break;
+    const iso = `${y}-${pad2(m)}-${pad2(d)}`; if (iso <= today) continue;
+    if ([1, 3, 5].includes(dt.getUTCDay())) out.push({ date: iso, time: times[out.length % 3] });
+  }
+  return out;
+}
+const planKey = (month) => "content-plan-" + month;
+export async function getPlan(month) { return (await teamStore().get(planKey(month), { type: "json" })) || { month, items: [] }; }
+export async function savePlan(plan) { await teamStore().setJSON(planKey(plan.month), plan); }
+const jsonArray = (t) => { const m = String(t || "").match(/\[[\s\S]*\]/); try { return JSON.parse(m ? m[0] : t); } catch { return []; } };
+
+export async function tatianaMonth(month) {
+  const s = await getSettings(); month = month || targetMonth();
+  const slots = postingSlots(month), sites = (await siteText()).slice(0, 9000), plan = { month, createdAt: new Date().toISOString(), items: [] };
+  const monthName = new Date(month + "-15T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  for (const brand of BRANDS) {
+    const ask = `Plan ${monthName} social media posts for ${brand}. Write exactly ${slots.length} posts (one for each posting day, in order) and 2 Google Business Profile updates.
+Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Suitable for Facebook and LinkedIn as text posts.
+Reply with JSON only: {"posts": ["post 1 text", ...], "gbp": ["update 1", "update 2"]}
+CURRENT WEBSITE TEXT (data):\n${sites}`;
+    const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
+    let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
+    const posts = Array.isArray(j.posts) ? j.posts : jsonArray(ans.text);
+    slots.forEach((sl, i) => { if (posts[i]) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, text: String(posts[i]).slice(0, 3000), status: "draft" }); });
+    (j.gbp || []).slice(0, 2).forEach((t, i) => { const sl = slots[Math.min(slots.length - 1, i ? Math.floor(slots.length * 0.6) : 1)] || slots[0]; if (sl) plan.items.push({ id: brand.slice(0, 3) + "-g" + i, brand, kind: "gbp", date: sl.date, time: "10:00", text: String(t).slice(0, 1500), status: "draft" }); });
+    for (const half of [0, 1]) {
+      const sl = slots[half ? Math.floor(slots.length / 2) : 0]; if (!sl) continue;
+      const b = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write one SEO blog article (700 to 900 words) for ${brand} to publish in ${monthName}${half ? " (second half of the month, different topic)" : ""}. Start with the title on the first line as "# Title". Use H2 subheadings, plain language, and end with a call to action.\nCURRENT WEBSITE TEXT (data):\n${sites.slice(0, 5000)}` }], 3500);
+      const title = (b.text.match(/^#\s+(.+)$/m) || [])[1] || brand + " blog";
+      plan.items.push({ id: brand.slice(0, 3) + "-b" + half, brand, kind: "blog", date: sl.date, time: "09:00", title: title.slice(0, 160), text: b.text.slice(0, 12000), status: "draft" });
+    }
+  }
+  plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  await savePlan(plan);
+  const n = (k) => plan.items.filter((x) => x.kind === k).length;
+  await addMessages("tatiana", [{ role: "agent", kind: "month", text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates**\n- **${n("blog")} blog articles**\n\nOpen **📅 Month plan** above to read, edit and approve. Approved posts go to Content360 on their dates.` }]);
+}
+
+// Push every approved social post of the month to Content360 as a scheduled post.
+export async function c360Push(month) {
+  month = month || targetMonth();
+  const plan = await getPlan(month), map = await brandMap(), accts = await c360Accounts();
+  let ok = 0, drafts = 0, skipped = 0;
+  for (const it of plan.items) {
+    if (it.status !== "approved") continue;
+    if (it.kind === "blog") { it.note = "Blog: copy it into your website (Content360 doesn't publish blogs)."; skipped++; continue; }
+    if (it.kind === "gbp") { it.note = "Google Business posts go out through Zernio once it's connected."; skipped++; continue; }
+    const targets = accts.filter((a) => map[a.id] === it.brand && TEXT_OK.includes(a.provider));
+    if (!targets.length) { it.status = "error"; it.note = "No Facebook or LinkedIn account is linked to " + it.brand + " in Content360 yet."; continue; }
+    try {
+      const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: it.text, date: it.date, time: it.time, title: it.text.slice(0, 80) });
+      it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled in Content360" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++;
+    } catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
+  }
+  await savePlan(plan);
+  await addMessages("tatiana", [{ role: "agent", kind: "push", text: `## ✅ Sent to Content360\n- ${ok} posts scheduled${drafts ? `\n- ${drafts} saved as drafts in Content360 (open them there to finish)` : ""}${skipped ? `\n- ${skipped} blogs / Google updates kept here for you` : ""}${plan.items.some((x) => x.status === "error") ? "\n- ⚠️ Some posts had a problem: see 📅 Month plan" : ""}` }]);
+}
+
+// Tania's own videos: uploaded in chunks from the AI Office, then sent to Content360 on her dates. No approval needed.
+export const videoStore = () => getStore({ name: "team-videos", consistency: "strong" });
+export async function c360Videos() {
+  const st = teamStore(), list = (await st.get("videos", { type: "json" })) || [], vs = videoStore(), s = await getSettings(), accts = await c360Accounts();
+  for (const v of list) {
+    if (v.status !== "queued") continue;
+    v.status = "uploading"; await st.setJSON("videos", list);
+    try {
+      const parts = [];
+      for (let i = 0; i < v.chunks; i++) { const b = await vs.get(v.id + "-" + i, { type: "arrayBuffer" }); if (!b) throw new Error("A piece of the video is missing; please upload it again."); parts.push(b); }
+      const mediaId = await uploadMedia(new Blob(parts, { type: v.type || "video/mp4" }), v.name || "video.mp4");
+      let caption = v.caption;
+      if (!caption) caption = (await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write a short social media caption (under 60 words, with a call to action and 4 hashtags) for Tania's video "${v.title || v.name}" for ${v.brand}. Reply with the caption only.` }], 400)).text.trim();
+      const targets = accts.filter((a) => (v.accountIds || []).map(String).includes(String(a.id)));
+      if (!targets.length) throw new Error("Pick at least one account for this video.");
+      const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: caption, mediaIds: [mediaId], date: v.date, time: v.time, title: v.title || caption.slice(0, 80), isVideo: true });
+      v.c360Id = r.id; v.caption = caption; v.status = r.scheduled ? "scheduled" : "c360-draft"; v.note = r.scheduled ? "" : "Saved as a draft in Content360: " + (r.why || "");
+      for (let i = 0; i < v.chunks; i++) await vs.delete(v.id + "-" + i).catch(() => {});
+    } catch (e) { v.status = "error"; v.note = String(e.message).slice(0, 300); }
+    await st.setJSON("videos", list);
+    await addMessages("tatiana", [{ role: "agent", kind: "video", text: v.status === "scheduled" ? `🎬 **${v.title || v.name}** is scheduled in Content360 for ${v.date} at ${v.time}.` : `🎬 **${v.title || v.name}**: ${v.note}` }]);
+  }
+}
+
 // Which jobs are due right now (called once a day, around 7am Pacific).
 export function dueJobs(now = new Date()) {
   const wd = now.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/Los_Angeles" });
   const day = Number(now.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/Los_Angeles" }));
   const jobs = ["eva_daily"];
-  if (wd === "Mon") jobs.push("eva_monday", "tatiana_weekly");
-  if (day === 1 || day === 15) jobs.push("tatiana_blogs");
+  if (wd === "Mon") jobs.push("eva_monday");
+  if (day === 25) jobs.push("tatiana_month");
   return jobs;
 }
-export const JOBS = { eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs };
+export const JOBS = { eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_month: (m) => tatianaMonth(m), c360_push: (m) => c360Push(m), c360_videos: c360Videos };
 export { ptHour };

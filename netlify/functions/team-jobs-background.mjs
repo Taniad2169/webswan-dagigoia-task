@@ -7,9 +7,11 @@ export default async (req) => {
   const key = await teamStore().get("job-key");
   if (!key || req.headers.get("x-job-key") !== key) return new Response("no", { status: 403 });
   let b = {}; try { b = await req.json(); } catch {}
-  for (const name of (Array.isArray(b.jobs) ? b.jobs : []).filter((j) => JOBS[j])) {
-    try { await JOBS[name](); }
-    catch (e) { await addMessages(name.startsWith("tatiana") ? "tatiana" : "eva", [{ role: "agent", kind: "error", text: `⚠️ I couldn't finish **${name.replace("_", " ")}**: ${String(e.message || e).slice(0, 300)}` }]); }
+  // A job can carry one argument after a colon, e.g. "c360_push:2026-12".
+  for (const job of (Array.isArray(b.jobs) ? b.jobs : []).filter((j) => JOBS[String(j).split(":")[0]])) {
+    const [name, arg] = String(job).split(":");
+    try { await JOBS[name](/^\d{4}-\d{2}$/.test(arg || "") ? arg : undefined); }
+    catch (e) { await addMessages(/^(tatiana|c360)/.test(name) ? "tatiana" : "eva", [{ role: "agent", kind: "error", text: `⚠️ I couldn't finish **${name.replace("_", " ")}**: ${String(e.message || e).slice(0, 300)}` }]); }
   }
   return new Response("ok");
 };
