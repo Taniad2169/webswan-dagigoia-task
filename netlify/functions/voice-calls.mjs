@@ -207,15 +207,17 @@ export default async (req) => {
   }
 
   if (b.action === "queue_get" || b.action === "queue_set") {
-    const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "11:00", end: "12:00", tz: "America/New_York", agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
+    const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "08:00", end: "09:00", start2: "13:00", end2: "14:00", tz: "America/Los_Angeles", perWindow: 25, agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
     if (b.action === "queue_set") {
       const s = b.settings;
       if (s) {
         const days = (Array.isArray(s.days) ? s.days : []).filter((d) => ["mon", "tue", "wed", "thu", "fri"].includes(d));
         const hm = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || "")) ? String(v) : null;
-        const start = hm(s.start), end = hm(s.end);
+        const start = hm(s.start), end = hm(s.end), start2 = hm(s.start2), end2 = hm(s.end2);
         if (!start || !end || end <= start) return reply(400, { error: "Pick a start and end time (end after start)." }, origin);
-        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1)) };
+        if ((start2 || end2) && (!start2 || !end2 || end2 <= start2 || (start2 < end && end2 > start))) return reply(400, { error: "The second window needs a start and end, and can't overlap the first." }, origin);
+        const tz = ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"].includes(s.tz) ? s.tz : "America/New_York";
+        q.settings = { days, start, end, start2: start2 || "", end2: end2 || "", tz, perWindow: Math.max(0, Math.min(300, parseInt(s.perWindow, 10) || 0)), agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1)) };
       }
       if (typeof b.paused === "boolean") q.paused = b.paused;
       if (b.clear === "all") q.leads = [];

@@ -1209,10 +1209,14 @@ function dialCard() {
   const ags = ['rebecca', 'george', 'monica', 'alek', 'tatiana'];
   const recent = (dialQ.leads || []).filter(l => l.status !== 'queued').slice(-8).reverse();
   return `<div class="card section"><div class="row"><h2>🤖 Auto-dialer</h2><span class="chip ${dialQ.paused ? 'warn' : ready ? 'ok' : 'warn'}">${dialQ.paused ? '⏸ Paused' : ready ? '▶ On' : 'Waiting for Cartesia setup'}</span></div>
-    <p style="margin-top:0">Netlify dials the queue by itself, one lead at a time, only inside this schedule and only during business hours in each lead’s own time zone. Do Not Call numbers, numbers already called today and leads outside hours are skipped automatically. It works even when this page is closed.</p>
+    <p style="margin-top:0">Netlify dials the queue by itself, only inside these windows and only during business hours in each lead’s own time zone. Campaigns dial <b>at the same time</b>: the pace applies to each campaign separately (Media Network = Rebecca, Compliance = Monica + George). Do Not Call numbers, numbers already called today and leads outside hours are skipped automatically. It works even when this page is closed.</p>
     <div class="formgrid"><div><label>Days</label><div class="toolbar">${DIAL_DAYS.map(([v, l]) => `<label style="display:inline-flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" class="dialDay" value="${v}" ${(s.days || []).includes(v) ? 'checked' : ''}> ${l}</label>`).join('')}</div></div>
-    <div><label for="dialStart">Start (Eastern Time)</label><input id="dialStart" type="time" value="${esc(s.start || '11:00')}"></div>
-    <div><label for="dialEnd">End (Eastern Time)</label><input id="dialEnd" type="time" value="${esc(s.end || '12:00')}"></div>
+    <div><label for="dialTz">Time zone for the windows</label><select id="dialTz">${[['America/Los_Angeles', 'Pacific (my time)'], ['America/Denver', 'Mountain'], ['America/Chicago', 'Central'], ['America/New_York', 'Eastern']].map(([v, t]) => `<option value="${v}" ${(s.tz || 'America/New_York') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div><label for="dialStart">Window 1: start</label><input id="dialStart" type="time" value="${esc(s.start || '08:00')}"></div>
+    <div><label for="dialEnd">Window 1: end</label><input id="dialEnd" type="time" value="${esc(s.end || '09:00')}"></div>
+    <div><label for="dialStart2">Window 2: start (optional)</label><input id="dialStart2" type="time" value="${esc(s.start2 || '')}"></div>
+    <div><label for="dialEnd2">Window 2: end</label><input id="dialEnd2" type="time" value="${esc(s.end2 || '')}"></div>
+    <div><label for="dialPerWin">Calls per campaign, per window</label><input id="dialPerWin" type="number" min="0" max="300" value="${esc(String(s.perWindow ?? 25))}"><small class="muted">0 = no limit. Media Network (Rebecca) and Compliance (Monica + George) each get this many.</small></div>
     <div><label for="dialAgent">Default agent</label><select id="dialAgent">${ags.map(a => `<option value="${a}" ${s.agent === a ? 'selected' : ''}>${a[0].toUpperCase() + a.slice(1)}</option>`).join('')}</select></div>
     <div><label for="dialPace">Pace</label><select id="dialPace">${[[0.5, '1 call every 2 minutes (saves minutes)'], [1, '1 call per minute'], [2, '2 calls per minute'], [3, '3 calls per minute'], [4, '4 calls per minute'], [5, '5 calls per minute (about 300 an hour)']].map(([n, t]) => `<option value="${n}" ${Number(s.perMinute || 1) === n ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
     <div class="toolbar section"><button class="btn" onclick="dialSave()">Save schedule</button>${dialQ.paused ? `<button class="btn green" onclick="dialPause(false)" ${state.sdr && state.sdr.paused ? 'disabled title="Resume outreach in SDR AI first"' : ''}>▶ Start auto-dialing</button>` : `<button class="btn danger" onclick="dialPause(true)">⏸ Pause</button>`}<button class="btn outline" onclick="dialRefresh()">↻ Refresh</button><button class="btn outline" onclick="dialClear('done')" ${k.called || k.skipped || k.error ? '' : 'disabled'}>Clear finished</button><button class="btn danger" onclick="dialClear('all')" ${(dialQ.leads || []).length ? '' : 'disabled'}>Empty queue</button></div>
@@ -1223,7 +1227,7 @@ function dialCard() {
 async function dialSave() {
   const days = [...document.querySelectorAll('.dialDay:checked')].map(x => x.value);
   if (!days.length) return toast('Pick at least one day.');
-  try { dialQ = await voiceApi({ action: 'queue_set', settings: { days, start: $('dialStart').value, end: $('dialEnd').value, agent: $('dialAgent').value, perMinute: $('dialPace').value } }); render(); toast('Auto-dial schedule saved.'); }
+  try { dialQ = await voiceApi({ action: 'queue_set', settings: { days, tz: $('dialTz').value, start: $('dialStart').value, end: $('dialEnd').value, start2: $('dialStart2').value, end2: $('dialEnd2').value, perWindow: $('dialPerWin').value, agent: $('dialAgent').value, perMinute: $('dialPace').value } }); render(); toast('Auto-dial schedule saved.'); }
   catch (e) { toast('Couldn’t save: ' + e.message); }
 }
 async function dialPause(v) {

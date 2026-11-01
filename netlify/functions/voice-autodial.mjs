@@ -8,9 +8,9 @@
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { getStore } from "@netlify/blobs";
 
-// Runs only Tue, Wed and Thu, 15:00-16:59 UTC (covers 11 AM-12 PM Eastern in both summer and winter time).
-// The schedule in Voice Studio narrows it to the exact hour; outside these times the dialer doesn't even wake up.
-export const config = { schedule: "* 15-16 * * 2-4" };
+// Wakes every minute 12:00-01:59 UTC, Tue-Fri UTC (= Tue-Thu, 8 AM to 6 PM Eastern / 5 AM to 6 PM Pacific, summer or winter).
+// The schedule saved in Voice Studio (up to two windows, in Tania's chosen time zone) narrows it to the exact hours.
+export const config = { schedule: "* 12-23,0-1 * * 2-5" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
@@ -69,8 +69,10 @@ export default async () => {
   const s = q.settings || {};
   const tz = s.tz || "America/New_York", now = clock(tz);
   if (!(s.days || []).includes(now.day)) return new Response("not a dialing day");
-  const a = toMins(s.start), b = toMins(s.end);
-  if (a < 0 || b <= a || now.mins < a || now.mins >= b) return new Response("outside window");
+  // Up to two dialing windows a day (for example 8-9 AM and 1-2 PM).
+  const wins = [[toMins(s.start), toMins(s.end)], [toMins(s.start2), toMins(s.end2)]];
+  const win = wins.findIndex(([a, b]) => a >= 0 && b > a && now.mins >= a && now.mins < b);
+  if (win < 0) return new Response("outside window");
 
   const day = today(), countsKey = "count-" + day, dialedKey = "dialed-" + day;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
@@ -79,11 +81,19 @@ export default async () => {
   // pace 0.5 = one call every 2 minutes: rest on odd minutes
   if (Number(s.perMinute) === 0.5 && now.mins % 2 === 1) return new Response("resting (1 call every 2 minutes)");
   const perRun = Number(s.perMinute) === 0.5 ? 1 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1));
+  // Campaigns dial AT THE SAME TIME: the pace applies to each campaign line separately
+  // (Media Network = Rebecca, Compliance = Monica + George, Alek on his own), and each line has its own limit per window.
+  const line = (a) => a === "rebecca" ? "media" : (a === "monica" || a === "george") ? "compliance" : a || "other";
+  const winKey = "win-" + day, winCounts = (await store.get(winKey, { type: "json" })) || {};
+  const perWin = Number(s.perWindow) || 0, placedBy = {};
   let placed = 0;
 
   for (const lead of q.leads) {
-    if (placed >= perRun) break;
     if (lead.status !== "queued") continue;
+    const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
+    if ((placedBy[ln] || 0) >= perRun) continue;
+    if (perWin && (winCounts[wk] || 0) >= perWin) continue; // this campaign is done for this window
+    if (Object.keys(placedBy).length && placed >= perRun * 4) break;
     const to = e164(lead.phone);
     if (!to) { lead.status = "skipped"; lead.note = "invalid number"; continue; }
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
@@ -110,11 +120,11 @@ export default async () => {
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
-      if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++;
+      if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++; placedBy[ln] = (placedBy[ln] || 0) + 1; winCounts[wk] = (winCounts[wk] || 0) + 1;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }
   }
   q.lastRun = Date.now();
   await store.setJSON("queue", q);
-  if (placed) { await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed); }
+  if (placed) { await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed); await store.setJSON(winKey, winCounts); }
   return new Response("placed " + placed);
 };

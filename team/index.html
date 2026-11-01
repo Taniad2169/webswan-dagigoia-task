@@ -101,7 +101,7 @@
 const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
 const ORDER = ["eva", "tatiana", "linda", "rachel"];
-const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, tatiana: { name: "Tatiana", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, rachel: { name: "Rachel", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } };
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } };
 let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini (Jimmy)", claude: "Claude" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
 let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
