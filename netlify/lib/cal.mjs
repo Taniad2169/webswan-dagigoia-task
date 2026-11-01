@@ -146,7 +146,7 @@ function doPost(e) {
       MailApp.sendEmail({ to: b.to, subject: String(b.subject || '').slice(0, 200), htmlBody: String(b.html || '').slice(0, 20000), name: String(b.fromName || 'WebSwan Media Network').slice(0, 80), replyTo: b.replyTo || undefined });
       return out({ ok: true });
     }
-    // ---- Eva (executive assistant): read the inbox, see today's agenda, save drafts. Never sends or deletes. ----
+    // ---- Eva (executive assistant): read the inbox, see today's agenda, save drafts. Never sends; moves to Trash only what Tania ticks. ----
     if (b.action === 'inbox') {
       var threads = GmailApp.search(String(b.query || 'in:inbox newer_than:1d'), 0, Math.min(Number(b.max) || 60, 100));
       return out({ emails: threads.map(function (t) { var m = t.getMessages(); var last = m[m.length - 1];
@@ -165,6 +165,12 @@ function doPost(e) {
       if (b.pdfBase64) opt.attachments = [Utilities.newBlob(Utilities.base64Decode(b.pdfBase64), 'application/pdf', String(b.filename || 'Website-Audit-Report.pdf').slice(0, 120))];
       var d = GmailApp.createDraft(b.to, String(b.subject || '').slice(0, 200), String(b.text || '').slice(0, 30000), opt);
       return out({ ok: true, draftId: d.getId() });
+    }
+    // Tania's "Clean up" button: moves the threads she ticked to Trash (Gmail keeps Trash for 30 days). Never empties Trash.
+    if (b.action === 'trash') {
+      var ids = (b.ids || []).slice(0, 300), moved = 0;
+      ids.forEach(function (id) { try { var tt = GmailApp.getThreadById(String(id)); if (tt) { tt.moveToTrash(); moved++; } } catch (e) {} });
+      return out({ ok: true, moved: moved });
     }
     if (b.action === 'reply_draft') {
       var th = GmailApp.getThreadById(String(b.threadId || ''));

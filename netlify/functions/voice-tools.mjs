@@ -5,6 +5,7 @@
 // (saved in Netlify Blobs, never in code). Nothing here can read or change anything else.
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
+import { emailPractice, e164 } from "../lib/central.mjs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, slotAllowed, busyWindow, tzFor } from "../lib/cal.mjs";
 
 const text = (s, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
@@ -26,6 +27,8 @@ export default async (req) => {
   if (req.method === "POST") { try { b0 = await req.clone().json(); } catch (e) { b0 = {}; } }
   if ((b0.action || url0.searchParams.get("action")) === "client") return text(await clientInfo(store, b0.called_number || url0.searchParams.get("called_number") || ""));
   if ((b0.action || url0.searchParams.get("action")) === "provider") return text(await providerLookup(b0.provider_name || url0.searchParams.get("provider_name") || "", b0.provider_id || url0.searchParams.get("provider_id") || "", b0.provider_code || url0.searchParams.get("provider_code") || ""));
+
+  if ((b0.action || url0.searchParams.get("action")) === "wsmn_request") return text(await wsmnRequest(store, b0));
 
   const cal = sanitizeCal(await store.get("calendar", { type: "json" }));
   const calSecret = await store.get("cal-secret");
@@ -182,4 +185,29 @@ async function clientInfo(store, called) {
   if (c.script) L.push("OFFICE SCRIPT AND INSTRUCTIONS:\n" + c.script);
   L.push("Never give medical or legal advice, never discuss symptoms or case details, and follow your emergency protocol.");
   return L.filter(Boolean).join("\n");
+}
+
+// ---------- Rachel Bennett (phone): a caller wants a WebSwan Media Network doctor or attorney to contact them ----------
+// Same path as the website: Jennifer Reid emails that practice the caller's request (name, phone, email, best time).
+// The caller must agree to share their details. No medical or legal details are taken.
+async function wsmnRequest(store, b) {
+  const id = clean(b.provider_id, 60), name = clean(b.caller_name, 80), email = clean(b.caller_email, 120).toLowerCase();
+  const phone = e164(b.caller_phone || b.system__caller_number || "");
+  if (b.consent !== true && String(b.consent).toLowerCase() !== "true") return "First ask: 'May I share your name and number with the office so they can contact you?' Only call this again if they say yes, with consent true.";
+  if (!/^[\w-]{4,60}$/.test(id)) return "Look the doctor or attorney up first (provider lookup), then use the provider_id it gives you.";
+  if (!name || !phone) return "Get the caller's full name and best phone number (repeat it back), then try again.";
+  try {
+    const r = await fetch(FS + "/providers/" + encodeURIComponent(id) + "?key=" + FS_KEY);
+    if (!r.ok) return "That provider isn't in the directory. Take the caller's name and number and say Tania's office will follow up.";
+    const p = fsDoc(await r.json());
+    if (p.active === false) return "That provider isn't listed right now. Take the caller's name and number and say Tania's office will follow up.";
+    const list = (await store.get("central", { type: "json" })) || [];
+    if (list.some((x) => x.phone === phone && x.providerId === id && x.at > Date.now() - 864e5)) return "This request was already sent today. Tell the caller the office has it and will contact them soon.";
+    const rec = { id: "cr_" + crypto.randomBytes(6).toString("hex"), at: Date.now(), kind: "lead", status: "new", source: "rachel-phone", providerId: id, providerCode: p.code || "", providerName: p.name || p.practice || "", providerState: p.state || "",
+      name, phone, email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "", bestTime: clean(b.best_time, 80), state: p.state || "", city: "", consent: { at: Date.now(), text: "Agreed by phone (Rachel) to share contact details with the office." }, callId: clean(b.call_id, 80) };
+    const m = await emailPractice(store, rec, p.email);
+    rec.emailed = m.ok; rec.status = m.ok ? "emailed" : "new"; if (!m.ok) rec.note = "email: " + m.why;
+    list.unshift(rec); await store.setJSON("central", list.slice(0, 3000));
+    return m.ok ? `Done. ${rec.providerName}'s office has the request and will contact ${name}. Tell the caller that, thank them, and end warmly.` : `Saved. Tania's office will make sure ${rec.providerName}'s office gets it. Tell the caller the office will contact them soon.`;
+  } catch (e) { return "The directory can't be reached right now. Take the caller's name and number and say Tania's office will follow up."; }
 }
