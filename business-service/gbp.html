@@ -13,7 +13,7 @@
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
   const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
   const auth = getAuth(app);
-  const OWNERS = ["multimediasite23@gmail.com", "taniadomingue373@gmail.com"];
+  const OWNERS = ["multimediasite23@gmail.com", "thewebswann@gmail.com", "taniadomingue373@gmail.com"];
   window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), signOut: () => signOut(auth), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
   onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
 </script>
@@ -62,12 +62,13 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
         <div id="list"><p class="muted">Loading…</p></div></section>
       <section class="card"><h2>Google tools</h2>
         <div class="quick" style="flex-direction:column">
-          <a class="btn" href="https://business.google.com/locations" target="_blank" rel="noopener noreferrer">Open my Business Profiles ↗</a>
+          <a class="btn" href="https://business.google.com/locations?authuser=multimediasite23%40gmail.com" target="_blank" rel="noopener noreferrer">Client profiles (multimediasite23) ↗</a>
+          <a class="btn" href="https://business.google.com/locations?authuser=thewebswann%40gmail.com" target="_blank" rel="noopener noreferrer" style="background:#1182f0">My WebSwan profiles (thewebswann) ↗</a>
           <a class="btn ghost" href="https://business.google.com/create" target="_blank" rel="noopener noreferrer">Create a new profile ↗</a>
           <a class="btn ghost" href="https://support.google.com/business/answer/2911778" target="_blank" rel="noopener noreferrer">Request access to a claimed profile ↗</a>
           <a class="btn ghost" href="https://support.google.com/business/answer/3038177" target="_blank" rel="noopener noreferrer">Google's profile guidelines ↗</a>
         </div>
-        <p class="muted">Sign in to Google with your WebSwan account. Each client adds that account as a <b>Manager</b> on their profile.</p>
+        <p class="muted">Two Google accounts: <b>multimediasite23</b> for client profiles (each client adds it as a <b>Manager</b>), and <b>thewebswann</b> for The WebSwan family. You can sign in to this page with either one.</p>
       </section>
     </div>
     <div>
