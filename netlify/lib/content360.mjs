@@ -94,4 +94,5 @@ export function suggestedMap(accts) {
   }
   return m;
 }
-export const servesBrand = (map, acct, brand) => (map[acct.id] || []).includes(brand);
+// Disconnected accounts (red dot in Content360) are skipped so one dead login never blocks a post.
+export const servesBrand = (map, acct, brand) => acct.authorized !== false && (map[acct.id] || []).includes(brand);
