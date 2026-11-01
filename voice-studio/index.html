@@ -102,8 +102,8 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catc
 save();
 
 let page = 'Overview';
-const pages = ['Overview', 'SDR AI', 'AI Team', 'Leads', 'Agents', 'Campaigns', 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
-const icons = ['◫', '✦', '★', '♙', '◉', '◷', '🎙', '☎', '📋', '⚙'];
+const pages = ['Overview', 'SDR AI', 'AI Team', 'Leads', 'Agents', 'Campaigns', "Alek's calendar", 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
+const icons = ['◫', '✦', '★', '♙', '◉', '◷', '📅', '🎙', '☎', '📋', '⚙'];
 const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
 const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
 const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
@@ -181,10 +181,10 @@ function stopSpeech() { if (canSpeak) synth.cancel(); document.body.classList.re
 function nav(p) { stopSpeech(); if (p === 'SDR AI' && state.sdr) state.sdr.lead = ''; page = p; render(); $('content').focus({ preventScroll: true }); window.scrollTo(0, 0); }
 function render() {
   const cbN = typeof callbackList === 'function' ? callbackList().length : 0;
-  $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav('${p}')">${icons[i]} &nbsp; ${p}${p === 'Tania call-back' && cbN ? ` <span class="pill ok" style="margin-left:6px;padding:1px 8px">${cbN}</span>` : ''}</button>`).join('');
+  $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav(&quot;${p}&quot;)">${icons[i]} &nbsp; ${p}${p === 'Tania call-back' && cbN ? ` <span class="pill ok" style="margin-left:6px;padding:1px 8px">${cbN}</span>` : ''}</button>`).join('');
   $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
   const c = $('content');
-  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'AI Team': cc => (typeof renderTeam === 'function' ? renderTeam(cc) : (cc.innerHTML = '<div class="card empty">Loading your AI team…</div>')), 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
+  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'AI Team': cc => (typeof renderTeam === 'function' ? renderTeam(cc) : (cc.innerHTML = '<div class="card empty">Loading your AI team…</div>')), 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, "Alek's calendar": cc => (typeof renderAlekCal === 'function' ? renderAlekCal(cc) : (cc.innerHTML = '<div class="card empty">Loading…</div>')), 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
 }
 
 function renderOverview(c) {
@@ -903,6 +903,33 @@ window.addEventListener('hashchange', checkImport);
    The Cartesia key stays in Netlify. This page only sends your Google sign-in token. */
 const VOICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
 let liveStatus = null, liveTimer = null;
+// ---------- Alek's callback calendar: "call me back in 2 weeks" → Alek calls at that date and time with your script ----------
+let cbList = null;
+async function renderAlekCal(c) {
+  if (!cbList) { c.innerHTML = '<div class="card empty">Loading Alek\'s calendar…</div>'; try { cbList = (await voiceApi({ action: 'callback_list' })).callbacks || []; } catch (e) { cbList = []; toast(e.message); } }
+  const soon = new Date(Date.now() + 864e5); soon.setHours(10, 0, 0, 0);
+  const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+  const rows = cbList.filter(x => x.status !== 'cancelled').map(x => `<div class="listitem row"><div><strong>${esc(new Date(x.callAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))} · ${esc(x.name || x.business || x.phone)}</strong><small>${esc(x.subject)} · ${esc(x.phone)} (${esc(x.lineType)}) · ${esc(x.state)} · <b>${esc(x.status)}</b>${x.note ? ' · ' + esc(x.note) : ''}</small></div>${x.status === 'scheduled' ? `<button class="btn secondary" onclick="cbCancel('${x.id}')">Cancel</button>` : ''}</div>`).join('');
+  c.innerHTML = `<div class="card"><h3 style="margin-top:0">📅 Schedule a callback for Alek</h3>
+  <p class="muted" style="margin-top:0">When someone tells you "call me back in 2 weeks," tell them your virtual assistant Alek will call, then add it here. Alek calls at that time (8 AM to 8 PM their time), says the call is recorded, and follows your script.</p>
+  <div class="grid two"><label>Name<input id="cbName" placeholder="Dr. Smith"></label><label>Practice / business<input id="cbBiz"></label>
+  <label>Phone<input id="cbPhone" placeholder="(305) 555-0100"></label><label>State<input id="cbState" maxlength="2" placeholder="FL"></label>
+  <label>Line<select id="cbLine"><option value="landline">Office landline</option><option value="cell">Cell phone</option></select></label><label>Language<select id="cbLang"><option value="en">English</option><option value="es">Spanish</option><option value="pt">Brazilian Portuguese</option></select></label>
+  <label>Date and time (your time)<input id="cbAt" type="datetime-local" value="${local(soon)}"></label><label>Subject<input id="cbSubj" placeholder="Follow up on the audit review"></label></div>
+  <label>What Alek should say (script / instructions)<textarea id="cbScript" rows="4" placeholder="Remind Dr. Smith he asked us to call back about the website audit. Ask for the best day for a 10-minute audit review with Tania."></textarea></label>
+  <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" id="cbConsent" style="width:auto;margin-top:3px"> <span>They asked to be called back (required for cell phones).</span></label>
+  <div class="toolbar"><button class="btn" onclick="cbAdd()">📅 Add to Alek's calendar</button></div></div>
+  <div class="card"><h3 style="margin-top:0">Upcoming and recent callbacks</h3>${rows || '<p class="muted">No callbacks yet.</p>'}</div>`;
+}
+async function cbAdd() {
+  const g = (id) => ($(id).value || '').trim();
+  if ($('cbLine').value === 'cell' && !$('cbConsent').checked) return toast('For a cell phone, check that they asked to be called back.');
+  try {
+    cbList = (await voiceApi({ action: 'callback_add', callback: { name: g('cbName'), business: g('cbBiz'), phone: g('cbPhone'), state: g('cbState').toUpperCase(), lineType: $('cbLine').value, lang: $('cbLang').value, callAt: new Date($('cbAt').value).toISOString(), subject: g('cbSubj'), script: g('cbScript'), consent: $('cbConsent').checked } })).callbacks || [];
+    toast('Added to Alek\'s calendar.'); render();
+  } catch (e) { toast(e.message); }
+}
+async function cbCancel(id) { try { cbList = (await voiceApi({ action: 'callback_cancel', id })).callbacks || []; render(); } catch (e) { toast(e.message); } }
 async function voiceApi(body) {
   if (!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
   const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');

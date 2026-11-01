@@ -187,6 +187,25 @@ export default async (req) => {
   }
 
   // ---------- auto-dial queue (dialed every minute by voice-autodial) ----------
+  // ---------- Alek's callback calendar ----------
+  if (b.action === "callback_list" || b.action === "callback_add" || b.action === "callback_cancel") {
+    let list = (await store.get("callbacks", { type: "json" })) || [];
+    if (b.action === "callback_add") {
+      const c = b.callback || {};
+      const phone = e164(c.phone), when = Date.parse(c.callAt), st = clean(c.state, 2).toUpperCase();
+      if (!phone) return reply(400, { error: "Add a valid US phone number." }, origin);
+      if (!(when > Date.now() - 6e4)) return reply(400, { error: "Pick a date and time in the future." }, origin);
+      if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the person's state (for their local time)." }, origin);
+      if (String(c.script || "").trim().length < 10) return reply(400, { error: "Write what Alek should say (at least a sentence)." }, origin);
+      list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
+        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
+      list = list.slice(-500);
+      await store.setJSON("callbacks", list);
+    }
+    if (b.action === "callback_cancel") { const x = list.find((c) => c.id === b.id); if (x && x.status === "scheduled") { x.status = "cancelled"; await store.setJSON("callbacks", list); } }
+    return reply(200, { callbacks: list.slice().sort((x, y) => Date.parse(x.callAt) - Date.parse(y.callAt)) }, origin);
+  }
+
   if (b.action === "queue_get" || b.action === "queue_set") {
     const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "11:00", end: "12:00", tz: "America/New_York", agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
     if (b.action === "queue_set") {
