@@ -144,6 +144,12 @@ export async function addMessages(agent, msgs) {
   await s.setJSON("chat-" + agent, h.slice(-500));
   return h.slice(-500);
 }
+// Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
+// Claude is more careful with legal reasoning, so Linda defaults to it (falls back to DeepSeek if no Claude key).
+export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "claude", rachel: "deepseek" };
 export async function getSettings() {
-  return Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(239) 667-0151", advertisingPhone: "(347) 646-7086" }, (await teamStore().get("settings", { type: "json" })) || {});
+  const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(239) 667-0151", advertisingPhone: "(347) 646-7086" }, (await teamStore().get("settings", { type: "json" })) || {});
+  s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
+  return s;
 }
+export const brainFor = (s, agent) => (s.brains && s.brains[agent]) || s.provider || "deepseek";

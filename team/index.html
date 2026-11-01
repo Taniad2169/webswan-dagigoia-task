@@ -137,7 +137,7 @@ function drawList() {
   document.querySelectorAll("[data-a]").forEach((b) => b.onclick = () => openAgent(b.dataset.a));
 }
 function drawProviders() {
-  $("prov").innerHTML = Object.entries(S.providers).map(([k, v]) => `<option value="${k}" ${k === S.settings.provider ? "selected" : ""} ${S.ready[k] === false ? "disabled" : ""}>${esc(v)}${S.ready[k] === false ? " (not connected)" : ""}</option>`).join("");
+  $("prov").innerHTML = Object.entries(S.providers).map(([k, v]) => `<option value="${k}" ${k === ((S.settings.brains || {})[cur] || S.settings.provider) ? "selected" : ""} ${S.ready[k] === false ? "disabled" : ""}>${esc(v)}${S.ready[k] === false ? " (not connected)" : ""}</option>`).join("");
 }
 let openDays = {}, findQ = "";
 function drawMsgs() {
@@ -166,7 +166,7 @@ const TOOLS = {
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
 async function openAgent(k) {
-  cur = k; findQ = ""; const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
+  cur = k; findQ = ""; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
   $("tools").innerHTML = (TOOLS[k] || []).map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = TOOLS[k][b.dataset.t][1]);
@@ -210,7 +210,7 @@ function draftPanel(d) {
 }
 $("form").onsubmit = (e) => { e.preventDefault(); const t = $("txt").value.trim(); if (!t) return; $("txt").value = ""; ask(t); };
 $("txt").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } });
-$("prov").onchange = () => api({ action: "settings", provider: $("prov").value }).then((r) => S.settings = r.settings).catch(() => {});
+$("prov").onchange = () => api({ action: "settings", agent: cur, provider: $("prov").value }).then((r) => { S.settings = r.settings; toast(((S.agents || FALLBACK)[cur] || {}).name + " now thinks with " + S.providers[$("prov").value]); }).catch(() => {});
 
 // The Lead Prospector's audit report hands Eva the PDF (window.postMessage) so she can draft the email with it attached.
 window.addEventListener("message", (e) => {

@@ -28,8 +28,11 @@ function clock(tz, d = new Date()) {
 const toMins = (s) => { const m = String(s || "").match(/^(\d{1,2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : -1; };
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
-const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
-const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 80));
+// Campaign caller IDs. Rachel's line (CARTESIA_ALEK_NUMBER_ID: Rachel answers it, Alek calls out on it) stays out of the
+// campaign rotation so it never gets flagged as spam and is always free for inbound calls.
+const ALEK_NUM = () => String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim();
+const numberIds = () => { const all = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean), out = all.filter((id) => id !== ALEK_NUM()); return out.length ? out : all; };
 let EXTRA_IDS = {};
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 async function cart(method, path, body) {
@@ -75,7 +78,7 @@ export default async () => {
   const counts = (await store.get(countsKey, { type: "json" })) || {};
   // pace 0.5 = one call every 2 minutes: rest on odd minutes
   if (Number(s.perMinute) === 0.5 && now.mins % 2 === 1) return new Response("resting (1 call every 2 minutes)");
-  const perRun = Number(s.perMinute) === 0.5 ? 1 : Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1));
+  const perRun = Number(s.perMinute) === 0.5 ? 1 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1));
   let placed = 0;
 
   for (const lead of q.leads) {
@@ -90,7 +93,7 @@ export default async () => {
     if (!aid) continue; // agent not connected yet; stays in the queue
     if (name === "alek" && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
     const floating = name === "alek" && lead.mode === "floating" && String(lead.task || "").length >= 10;
-    const pick = numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
+    const pick = floating && ALEK_NUM() ? { id: ALEK_NUM() } : numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
     if (!pick) break; // every number hit today's cap
     try {
       const r = await fetch(API + "/agents/calls", {
@@ -107,7 +110,7 @@ export default async () => {
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
-      counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++;
+      if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }
   }
   q.lastRun = Date.now();

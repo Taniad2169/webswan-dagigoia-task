@@ -9,7 +9,7 @@
 //   CARTESIA_FROM_NUMBER_IDS  comma-separated Cartesia phone-number IDs (up to 5 on the Startup plan)
 //   CARTESIA_AGENT_GEORGE     Cartesia agent ID for George  (also _REBECCA, _MONICA, _ALEK, _TATIANA)
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
-//   VOICE_DAILY_CAP           optional: max calls per number per day (default 60)
+//   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
@@ -116,7 +116,7 @@ const LANG_RULE = {
   pt: "LANGUAGE (HIGHEST PRIORITY): Speak only in Brazilian Portuguese (português do Brasil), never European Portuguese. If the person clearly prefers English, switch to English politely."
 };
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
-const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 60));
+const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP, 10) || 80));
 function e164(p) {
   let d = String(p || "").replace(/\D/g, "");
   if (d.length === 10) d = "1" + d;
@@ -215,7 +215,7 @@ export default async (req) => {
         const hm = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || "")) ? String(v) : null;
         const start = hm(s.start), end = hm(s.end);
         if (!start || !end || end <= start) return reply(400, { error: "Pick a start and end time (end after start)." }, origin);
-        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(3, parseInt(s.perMinute, 10) || 1)) };
+        q.settings = { days, start, end, tz: "America/New_York", agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1)) };
       }
       if (typeof b.paused === "boolean") q.paused = b.paused;
       if (b.clear === "all") q.leads = [];
@@ -476,7 +476,8 @@ export default async (req) => {
     const dialed = (await store.get(dialedKey, { type: "json" })) || [];
     if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
     const counts = (await store.get(countsKey, { type: "json" })) || {};
-    const pick = nums.map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
+    const alekNum = String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim(), camp = nums.filter((id) => id !== alekNum);
+    const pick = name === "alek" && alekNum ? { id: alekNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
     if (!pick) return reply(429, { error: `Every number reached today's cap of ${cap()} calls. Try again tomorrow.` }, origin);
 
     const metadata = { leadId: clean(b.leadId, 60), lead: clean(b.leadName, 120), business: clean(b.business, 160), campaign: clean(b.campaign, 120), by: email };
