@@ -56,10 +56,10 @@ function optionsFor(provs, title, isVideo) {
 
 // Create one post in Content360 for the given accounts on date "YYYY-MM-DD" at time "HH:MM" Pacific.
 // If Content360 refuses to schedule it, it's saved as a draft there so Tania can finish it in Content360.
-export async function createPost({ accountIds, providers, text, mediaIds = [], date, time, title, isVideo }) {
+export async function createPost({ accountIds, providers, text, mediaIds = [], date, time, title, isVideo, now }) {
   const html = String(text || "").split(/\n{2,}/).map((p) => "<div>" + p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") + "</div>").join("");
   const body = (schedule) => ({
-    schedule, schedule_now: false, queue: false, date, time, timezone: "America/Los_Angeles",
+    schedule: now ? false : schedule, schedule_now: !!(now && schedule), queue: false, date, time, timezone: "America/Los_Angeles",
     accounts: accountIds, tags: [],
     versions: [{ account_id: 0, is_original: true, content: [{ body: html, media: mediaIds, url: "" }], options: optionsFor(providers, title, isVideo) }]
   });

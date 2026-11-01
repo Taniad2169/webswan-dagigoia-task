@@ -83,6 +83,18 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
         <p class="err" id="aiErr" role="alert"></p>
         <div class="ai-out" id="aiOut" aria-live="polite"></div>
         <p class="muted">Review every draft before posting. Never post fake reviews.</p>
+        <button class="btn ghost sm" id="aiUse" type="button">Use this text in "Post to Google" ↓</button>
+      </section>
+      <section class="card" id="postCard">
+        <h2>📤 Post to Google</h2>
+        <p class="muted">Posts straight to your Google Business Profiles through Content360. No need to open Google's page.</p>
+        <div class="f"><label>Profiles</label><div id="gAccts" class="muted">Loading your Google profiles…</div></div>
+        <div class="f"><label for="gText">Update or blog summary (up to 1,500 characters)</label><textarea id="gText" maxlength="1500" style="min-height:140px"></textarea><small class="muted" id="gCount">0 / 1500</small></div>
+        <div class="f"><label for="gImg">Photo (optional, JPG or PNG)</label><input type="file" id="gImg" accept="image/png,image/jpeg"></div>
+        <div class="grid2"><div class="f"><label for="gWhen">When</label><select id="gWhen"><option value="now">Post now</option><option value="schedule">Schedule</option></select></div>
+          <div class="f" id="gWhenBox" hidden><label>Date and time (Pacific)</label><div class="grid2"><input type="date" id="gDate"><input type="time" id="gTime" value="10:00"></div></div></div>
+        <button class="btn" id="gPost" type="button">Post to Google</button>
+        <p class="err" id="gErr" role="alert"></p><p class="okmsg" id="gOk" aria-live="polite"></p>
       </section>
     </div>
   </div>
@@ -177,10 +189,32 @@ input,select,textarea{border:1px solid #bcd0e0;border-radius:10px;padding:9px 11
     finally{ $("aiBtn").disabled=false; }
   };
   $("aiCopy").onclick=function(){ copy($("aiOut").textContent,$("aiCopy")); };
+  // ---------- Post to Google (through Content360) ----------
+  var gLoaded=false;
+  async function loadG(){ if(gLoaded) return; gLoaded=true;
+    try{ var j=await call("gbp-post",{action:"accounts"}); var a=j.accounts||[];
+      $("gAccts").innerHTML=a.length?a.map(function(x){return '<label style="display:flex;gap:8px;align-items:center;font-weight:400;color:var(--ink)"><input type="checkbox" class="gAcc" value="'+esc(x.id)+'" style="width:18px;min-height:0"> '+esc(x.name)+(x.authorized===false?' <span class="pill warn">reconnect in Content360</span>':'')+'</label>';}).join(""):'No Google profiles in Content360 yet. Add them in Content360 → Accounts → Add account → Google My Business.';
+    }catch(e){ gLoaded=false; $("gAccts").textContent=e.message; } }
+  $("aiUse").onclick=function(){ $("gText").value=$("aiOut").textContent.slice(0,1500); $("gText").dispatchEvent(new Event("input")); $("postCard").scrollIntoView({behavior:"smooth"}); };
+  $("gText").addEventListener("input",function(){ $("gCount").textContent=$("gText").value.length+" / 1500"; });
+  $("gWhen").onchange=function(){ $("gWhenBox").hidden=$("gWhen").value!=="schedule"; if(!$("gDate").value) $("gDate").value=new Date(Date.now()+864e5).toLocaleDateString("en-CA",{timeZone:"America/Los_Angeles"}); };
+  $("gPost").onclick=async function(){
+    $("gErr").textContent=""; $("gOk").textContent="";
+    var ids=[].slice.call(document.querySelectorAll(".gAcc:checked")).map(function(c){return c.value;});
+    if(!ids.length){ $("gErr").textContent="Tick at least one profile."; return; }
+    var img="", f=$("gImg").files[0];
+    if(f){ if(f.size>4*1024*1024){ $("gErr").textContent="Please use a photo under 4 MB."; return; } img=await new Promise(function(res){ var r=new FileReader(); r.onload=function(){res(String(r.result));}; r.readAsDataURL(f); }); }
+    $("gPost").disabled=true; $("gPost").textContent="Posting…";
+    try{ var j=await call("gbp-post",{action:"post",accountIds:ids,text:$("gText").value,image:img,when:$("gWhen").value,date:$("gDate").value,time:$("gTime").value});
+      $("gOk").textContent=j.scheduled?(j.now?"✅ Posted to Google.":"✅ Scheduled."):"Saved as a draft in Content360 (open it there to finish). "+(j.note||"");
+      if(j.scheduled){ $("gText").value=""; $("gImg").value=""; $("gCount").textContent="0 / 1500"; } }
+    catch(e){ $("gErr").textContent=e.message; }
+    $("gPost").disabled=false; $("gPost").textContent="Post to Google";
+  };
 
   function doSignIn(){ window._auth.signIn().catch(function(){ $("gateMsg").textContent="Sign-in didn't finish. Try again."; }); }
   $("gateBtn").onclick=doSignIn; var signed=false; $("authBtn").onclick=function(){ if(signed) window._auth.signOut(); else doSignIn(); };
-  window.addEventListener("auth",function(ev){ signed=!!ev.detail.user; $("authBtn").textContent=signed?"Sign out":"Sign in"; $("app").hidden=!ev.detail.ok; $("gate").hidden=ev.detail.ok; if(ev.detail.user&&!ev.detail.ok) $("gateMsg").textContent="This account doesn't have access."; if(ev.detail.ok) load(); });
+  window.addEventListener("auth",function(ev){ signed=!!ev.detail.user; $("authBtn").textContent=signed?"Sign out":"Sign in"; $("app").hidden=!ev.detail.ok; $("gate").hidden=ev.detail.ok; if(ev.detail.user&&!ev.detail.ok) $("gateMsg").textContent="This account doesn't have access."; if(ev.detail.ok){ load(); loadG(); } });
 })();
 </script>
 </body>
