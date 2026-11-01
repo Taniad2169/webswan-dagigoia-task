@@ -11,6 +11,8 @@ export const c360Ready = () => !!process.env.CONTENT360_API_KEY;
 export const TEXT_OK = ["facebook_page", "facebook_group", "linkedin", "linkedin_page", "twitter", "threads", "bluesky", "mastodon"];
 // Posts with a picture can also go to Instagram (TikTok and YouTube are for videos only).
 export const IMAGE_OK = [...TEXT_OK, "instagram", "instagram_direct", "pinterest"];
+// Google Business Profile ("Google My Business" in Content360) gets the Google updates and blog summaries, not the social posts.
+export const isGBP = (provider) => /google|gmb|gbp|business_profile/i.test(String(provider || ""));
 export const BRANDS = ["The WebSwan", "WebSwan Digital Solutions", "WebSwan Media Network"];
 
 export async function c360(method, path, body, isForm) {
@@ -83,7 +85,8 @@ export function suggestedMap(accts) {
   const m = {};
   for (const a of accts) {
     const n = (a.name + " " + a.username).toLowerCase();
-    if (a.provider === "facebook_page" && /media network|essence/.test(n)) m[a.id] = [BRANDS[2]];
+    if (isGBP(a.provider)) m[a.id] = [/media network/.test(n) ? BRANDS[2] : /digital solutions/.test(n) ? BRANDS[1] : BRANDS[0]];
+    else if (a.provider === "facebook_page" && /media network|essence/.test(n)) m[a.id] = [BRANDS[2]];
     else if (a.provider === "facebook_page" && /webswan/.test(n)) m[a.id] = [BRANDS[0], BRANDS[1]];
     else if (/instagram/.test(a.provider) && /the_webswan/.test(n)) m[a.id] = [...BRANDS];
     else if (a.provider === "tiktok" && /taniadomngue/.test(n)) m[a.id] = [...BRANDS];

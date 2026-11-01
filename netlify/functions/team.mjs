@@ -140,7 +140,8 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       else { try { const accts = await c360Accounts(); out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: true });
         for (const a of accts) out.push({ group: "Social", name: `${a.name} · ${a.provider.replace("_", " ")}`, ok: a.authorized, fix: a.authorized ? "" : "Reconnect it in Content360 → Accounts." }); }
         catch (e) { out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: false, fix: e.message }); } }
-      out.push({ group: "Social", name: "Google Business Profile (via Zernio)", ok: !!process.env.ZERNIO_API_KEY, fix: "Create a free Zernio account, connect your Google Business profiles, add ZERNIO_API_KEY in Netlify." });
+      let gbpOk = false; if (c360Ready()) { try { gbpOk = (await c360Accounts()).some((a) => /google|gmb|gbp|business_profile/i.test(a.provider)); } catch {} }
+      out.push({ group: "Social", name: "Google Business Profile (in Content360)", ok: gbpOk, fix: "In Content360 → Accounts → Add account → Google My Business." });
       const r = providerReady(); for (const [k, v] of Object.entries(PROVIDERS)) out.push({ group: "AI brains", name: v.label, ok: r[k], fix: r[k] ? "" : "Add " + v.env + " in Netlify (optional)." });
       out.push({ group: "AI brains", name: "Web search (Eva's Monday briefing, Linda)", ok: !!process.env.BRAVE_API_KEY, fix: "Add BRAVE_API_KEY in Netlify." });
       const ph = !!process.env.CARTESIA_API_KEY;

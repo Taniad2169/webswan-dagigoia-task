@@ -4,7 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
-import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
+import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -150,7 +150,14 @@ export async function c360Push(month) {
   for (const it of plan.items) {
     if (it.status !== "approved") continue;
     if (it.kind === "blog") { it.note = "Blog: copy it into your website (Content360 doesn't publish blogs)."; skipped++; continue; }
-    if (it.kind === "gbp") { it.note = "Google Business posts go out through Zernio once it's connected."; skipped++; continue; }
+    if (it.kind === "gbp") {
+      const g = accts.filter((a) => isGBP(a.provider) && servesBrand(map, a, it.brand));
+      if (!g.length) { it.note = "Connect " + it.brand + "'s Google Business Profile in Content360 (Add account → Google My Business), then tick it for this brand."; skipped++; continue; }
+      try { const r = await createPost({ accountIds: g.map((a) => a.id), providers: g.map((a) => a.provider), text: it.text, date: it.date, time: it.time, title: it.title || it.text.slice(0, 80) });
+        it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled on Google Business" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++; }
+      catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
+      continue;
+    }
     // Posts with a picture (Tatiana's branded card or Tania's own photo) also go to Instagram.
     const pic = it.image ? await vs.get("img-" + month + "-" + it.id, { type: "arrayBuffer" }) : null;
     const targets = accts.filter((a) => servesBrand(map, a, it.brand) && (pic ? IMAGE_OK : TEXT_OK).includes(a.provider));
