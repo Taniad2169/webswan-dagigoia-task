@@ -114,16 +114,15 @@ export async function tatianaMonth(month) {
   const slots = postingSlots(month), sites = (await siteText()).slice(0, 9000), plan = { month, createdAt: new Date().toISOString(), items: [] };
   const monthName = new Date(month + "-15T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric" });
   for (const brand of BRANDS) {
-    const ask = `Plan ${monthName} social media posts for ${brand}. Write exactly ${slots.length} posts (one for each posting day, in order) and 2 Google Business Profile updates.
+    const ask = `Plan ${monthName} social media posts for ${brand}. Write exactly ${slots.length} posts (one for each posting day, in order).
 Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its branded picture.
-Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...], "gbp": ["update 1", "update 2"]}
+Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...]}
 CURRENT WEBSITE TEXT (data):\n${sites}`;
     const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
     let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
     const posts = Array.isArray(j.posts) ? j.posts : jsonArray(ans.text);
     slots.forEach((sl, i) => { const p = posts[i]; if (!p) return; const text = typeof p === "string" ? p : p.text, headline = typeof p === "string" ? "" : p.headline;
       if (text) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), text: String(text).slice(0, 3000), status: "draft" }); });
-    (j.gbp || []).slice(0, 2).forEach((t, i) => { const sl = slots[Math.min(slots.length - 1, i ? Math.floor(slots.length * 0.6) : 1)] || slots[0]; if (sl) plan.items.push({ id: brand.slice(0, 3) + "-g" + i, brand, kind: "gbp", date: sl.date, time: "10:00", text: String(t).slice(0, 1500), status: "draft" }); });
     for (const half of [0, 1]) {
       const sl = slots[half ? Math.floor(slots.length / 2) : 0]; if (!sl) continue;
       const b = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write one SEO blog article (700 to 900 words) for ${brand} to publish in ${monthName}${half ? " (second half of the month, different topic)" : ""}. Start with the title on the first line as "# Title". Use H2 subheadings, plain language, and end with a call to action.\nCURRENT WEBSITE TEXT (data):\n${sites.slice(0, 5000)}` }], 3500);
@@ -137,7 +136,7 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   await savePlan(plan);
   const n = (k) => plan.items.filter((x) => x.kind === k).length;
-  await addMessages("tatiana", [{ role: "agent", kind: "month", text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates**\n- **${n("blog")} blog articles**\n\nOpen **📅 Month plan** above to read, edit and approve. Approved posts go to Content360 on their dates.` }]);
+  await addMessages("tatiana", [{ role: "agent", kind: "month", text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates** (twice a month per brand, from the blogs)\n- **${n("blog")} blog articles**\n\nOpen **📅 Month plan** above to read, edit and approve. Approved posts go to Content360 on their dates.` }]);
 }
 
 // Push every approved social post of the month to Content360 as a scheduled post.
