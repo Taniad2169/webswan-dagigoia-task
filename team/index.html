@@ -80,7 +80,7 @@
   <aside>
     <div class="brand"><div class="logo">WS</div><div><b>WebSwan AI Office</b><small>Your team, your rules</small></div></div>
     <div class="list" id="list"></div>
-    <div class="foot">Callers (Monica, George, Rebecca, Alek, Jennifer) are in <a href="../voice-studio/">Voice Studio</a>.<br><a href="#" onclick="_auth.signOut();return false">Sign out</a></div>
+    <div class="foot"><button class="btn" style="width:100%;margin-bottom:8px" onclick="connPanel()">🔌 Connections check</button>Callers (Monica, George, Rebecca, Alek, Rachel) are in <a href="../voice-studio/">Voice Studio</a>.<br><a href="#" onclick="_auth.signOut();return false">Sign out</a></div>
   </aside>
   <main>
     <div class="top"><button class="btn back" onclick="showList()">←</button><img id="tImg" alt=""><div class="who"><b id="tName"></b><small id="tRole"></small></div><span class="sp"></span>
@@ -221,10 +221,38 @@ async function c360Panel() {
   $("extra").innerHTML = '<div class="panel"><p class="hint">Loading your Content360 accounts…</p></div>';
   await c360Load();
   if (!C3.ready || C3.error) { $("extra").innerHTML = `<div class="panel"><b>🔗 Content360 accounts</b>${notReady()}</div>`; return; }
-  $("extra").innerHTML = `<div class="panel"><b>🔗 Which brand is each account?</b><p class="hint">Tatiana posts each brand's content only to that brand's accounts.</p>
-    ${C3.accounts.map((a) => `<div class="row" style="align-items:center"><div>${esc(a.name)} <span class="chip">${esc(a.provider.replace("_", " "))}</span> <small class="hint">@${esc(a.username)}</small></div><div><select data-acc="${esc(a.id)}"><option value="">Not used by Tatiana</option>${C3.brands.map((b) => `<option ${C3.map[a.id] === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></div></div>`).join("")}
+  $("extra").innerHTML = `<div class="panel tall"><b>🔗 Which brands does each account post for?</b><p class="hint">${C3.suggested ? "I pre-filled your setup: The WebSwan Facebook page posts for The WebSwan + Digital Solutions, the Media Network Facebook page for Media Network, and Instagram the_webswan, LinkedIn and TikTok @taniadomngue for all three. Change anything and save." : "Tatiana posts each brand's content only to the accounts ticked for it."}</p>
+    ${C3.accounts.map((a) => `<div class="pi"><b>${esc(a.name)}</b> <span class="chip">${esc(a.provider.replace("_", " "))}</span> <small class="hint">@${esc(a.username)}</small>${a.authorized === false ? ' <span class="chip bad">Needs reconnecting in Content360</span>' : ""}
+      <div>${C3.brands.map((b) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px;color:var(--ink)"><input type="checkbox" style="width:auto" data-acc="${esc(a.id)}" value="${esc(b)}" ${(C3.map[a.id] || []).includes(b) ? "checked" : ""}> ${esc(b)}</label>`).join("")}</div></div>`).join("")}
     <p style="margin:10px 0 0"><button class="btn pri" id="mSave">Save</button></p></div>`;
-  $("mSave").onclick = async () => { const map = {}; document.querySelectorAll("[data-acc]").forEach((s) => { if (s.value) map[s.dataset.acc] = s.value; }); try { await api({ action: "c360_map", map }); toast("Saved"); $("extra").innerHTML = ""; } catch (e) { toast(e.message); } };
+  $("mSave").onclick = async () => { const map = {}; document.querySelectorAll("[data-acc]:checked").forEach((c) => { (map[c.dataset.acc] = map[c.dataset.acc] || []).push(c.value); }); try { await api({ action: "c360_map", map }); C3.map = map; C3.suggested = false; toast("Saved"); $("extra").innerHTML = ""; } catch (e) { toast(e.message); } };
+}
+// Tatiana's branded picture for a post: 1080x1080, WebSwan blues, the post's headline, brand name and website.
+const BRAND_SITE = { "The WebSwan": "thewebswan.com", "WebSwan Digital Solutions": "webswandigitalsolutions.com", "WebSwan Media Network": "webswanmedianetwork.com" };
+let LOGO = null;
+function logoImg() { if (LOGO) return LOGO; LOGO = new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "../rachel-bot/ws-logo.png"; }); return LOGO; }
+async function cardCanvas(it) {
+  const c = document.createElement("canvas"); c.width = c.height = 1080; const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 1080, 1080); g.addColorStop(0, "#1182f0"); g.addColorStop(1, "#339cde"); x.fillStyle = g; x.fillRect(0, 0, 1080, 1080);
+  x.fillStyle = "rgba(147,229,250,.18)"; x.beginPath(); x.arc(980, 120, 260, 0, 7); x.fill(); x.beginPath(); x.arc(80, 1010, 200, 0, 7); x.fill();
+  x.strokeStyle = "#6ca1d4"; x.lineWidth = 14; x.strokeRect(40, 40, 1000, 1000);
+  x.fillStyle = "#fff"; x.font = "700 34px system-ui, Segoe UI, Arial"; x.fillText(String(it.brand).toUpperCase(), 100, 150);
+  x.fillStyle = "#93e5fa"; x.fillRect(100, 175, 120, 8);
+  const words = String(it.headline || it.text.split(/[.!?\n]/)[0]).replace(/[#*]/g, "").trim().split(/\s+/); let size = 92, lines;
+  do { x.font = `800 ${size}px system-ui, Segoe UI, Arial`; lines = []; let line = ""; for (const w of words) { const t = line ? line + " " + w : w; if (x.measureText(t).width > 860 && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); size -= 6; } while (lines.length * size * 1.18 > 560 && size > 40);
+  x.fillStyle = "#fff"; let y = 330; for (const l of lines) { x.fillText(l, 100, y); y += (size + 6) * 1.18; }
+  const logo = await logoImg(); if (logo) { const h = 110, w = logo.width * h / logo.height; x.drawImage(logo, 100, 880, w, h); }
+  x.font = "600 34px system-ui, Segoe UI, Arial"; x.fillStyle = "#fff"; x.textAlign = "right"; x.fillText(BRAND_SITE[it.brand] || "thewebswan.com", 980, 950);
+  return c;
+}
+const toB64 = (c) => new Promise((res) => c.toBlob((b) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); }, "image/png"));
+async function connPanel() {
+  $("extra").innerHTML = '<div class="panel"><p class="hint">Checking every connection…</p></div>';
+  document.querySelector(".app").classList.add("chat");
+  let r; try { r = await api({ action: "connections" }); } catch (e) { $("extra").innerHTML = `<div class="panel"><b>🔌 Connections</b><p class="hint">⚠️ ${esc(e.message)}</p></div>`; return; }
+  const groups = [...new Set(r.checks.map((c) => c.group))];
+  $("extra").innerHTML = `<div class="panel tall"><b>🔌 Connections check</b> <span class="hint">Green = working. Red = what to do.</span>${groups.map((g) => `<p style="margin:10px 0 4px"><b>${esc(g)}</b></p>${r.checks.filter((c) => c.group === g).map((c) => `<div class="hint">${c.ok ? "🟢" : "🔴"} <span style="color:var(--ink)">${esc(c.name)}</span>${c.ok ? "" : " · " + esc(c.fix || "")}</div>`).join("")}`).join("")}
+    <p class="hint" style="margin-top:10px">Logins and "Allow" buttons (Google, Content360, Facebook, LinkedIn, TikTok) are always done by you.</p></div>`;
 }
 async function planPanel(month) {
   $("extra").innerHTML = '<div class="panel"><p class="hint">Loading the month plan…</p></div>';
@@ -234,20 +262,35 @@ async function planPanel(month) {
   const items = PLAN.items || [];
   $("extra").innerHTML = `<div class="panel tall"><div class="row" style="align-items:end"><div><b>📅 Content plan</b><br><input type="month" id="pMonth" value="${esc(PLAN.month)}"></div><div style="text-align:right"><button class="btn" id="pMake">${items.length ? "♻️ Rewrite this month" : "✨ Have Tatiana write this month"}</button></div></div>
     ${C3 && !C3.ready ? notReady() : ""}
-    ${items.length ? `<p class="hint">Edit anything, tick ✅ Approve, then send. Social posts go to Facebook and LinkedIn of each brand; Instagram, TikTok and YouTube need a photo or video (use 🎬 Schedule a video). Blogs and Google updates stay here for you.</p>
+    ${items.length ? `<p class="hint">Edit anything, tick ✅ Approve, then send. Each social post gets a branded picture, so it goes to Facebook, Instagram and LinkedIn. Videos go through 🎬 Schedule a video (TikTok, YouTube, Reels). Blogs: copy them into your website; their Google Business version goes out with the Google updates.</p>
     <p><button class="btn" id="pAll">✅ Approve all drafts</button> <button class="btn" id="pSave">Save changes</button> <button class="btn pri" id="pPush">🚀 Save & send approved to Content360</button></p>
     ${items.map((it) => `<div class="pi" data-id="${esc(it.id)}"><div class="row" style="align-items:center"><div><span class="chip">${esc(it.brand)}</span><span class="chip">${kinds[it.kind] || esc(it.kind)}</span><span class="chip ${st[it.status] ? st[it.status][1] : ""}">${esc(st[it.status] ? st[it.status][0] : it.status)}</span></div>
       <div style="display:flex;gap:6px;justify-content:flex-end"><input type="date" class="pD" value="${esc(it.date)}" style="width:auto"><input type="time" class="pT" value="${esc(it.time)}" style="width:auto"></div></div>
+      ${it.kind === "social" ? `<div style="display:flex;gap:10px;align-items:center;margin:6px 0"><canvas class="pC" width="1080" height="1080" style="width:96px;height:96px;border-radius:8px;border:1px solid var(--line)"></canvas><div><input class="pH" value="${esc(it.headline || "")}" placeholder="Headline on the picture" ${it.status === "scheduled" ? "disabled" : ""}><small class="hint">${it.image === "own" ? "📷 Your photo is attached." : "🖼 Branded picture (made when you send). Or use your own:"}</small> <input type="file" class="pF" accept="image/png,image/jpeg" style="width:auto" ${it.status === "scheduled" ? "disabled" : ""}></div></div>` : ""}
       ${it.title ? `<b>${esc(it.title)}</b>` : ""}<textarea class="pX" rows="${it.kind === "blog" ? 8 : 4}" ${it.status === "scheduled" ? "disabled" : ""}>${esc(it.text)}</textarea>
       <label style="display:inline-flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" class="pA" ${["approved", "scheduled"].includes(it.status) ? "checked" : ""} ${it.status === "scheduled" ? "disabled" : ""} style="width:auto"> Approve</label> <button class="btn pCopy" type="button">Copy</button>${it.note ? ` <small class="hint">${esc(it.note)}</small>` : ""}</div>`).join("")}` : `<p class="hint">No plan for this month yet. Tatiana writes 3 posts a week for each brand, 2 Google Business updates and 2 blog articles per brand. It takes a few minutes.</p>`}</div>`;
   $("pMonth").onchange = () => planPanel($("pMonth").value);
   $("pMake").onclick = async () => { if (items.length && !confirm("Rewrite the whole month? Your edits on drafts will be replaced (scheduled posts stay in Content360).")) return; try { await api({ action: "plan_make", month: $("pMonth").value }); toast("Tatiana is writing the month. It shows up in her chat in a few minutes."); $("extra").innerHTML = ""; setTimeout(() => openAgent("tatiana"), 240000); } catch (e) { toast(e.message); } };
   if (!items.length) return;
-  const changes = () => [...document.querySelectorAll(".pi")].map((d) => { const it = items.find((x) => x.id === d.dataset.id); const ap = d.querySelector(".pA").checked; return { id: d.dataset.id, text: d.querySelector(".pX").value, date: d.querySelector(".pD").value, time: d.querySelector(".pT").value, status: it.status === "scheduled" ? undefined : ap ? "approved" : (it.status === "approved" ? "draft" : undefined) }; });
+  const changes = () => [...document.querySelectorAll(".pi")].map((d) => { const it = items.find((x) => x.id === d.dataset.id); const ap = d.querySelector(".pA").checked; const h = d.querySelector(".pH"); return { id: d.dataset.id, headline: h ? h.value : undefined, text: d.querySelector(".pX").value, date: d.querySelector(".pD").value, time: d.querySelector(".pT").value, status: it.status === "scheduled" ? undefined : ap ? "approved" : (it.status === "approved" ? "draft" : undefined) }; });
+  document.querySelectorAll(".pi").forEach(async (d) => { const cv = d.querySelector(".pC"); if (!cv) return; const it = items.find((x) => x.id === d.dataset.id);
+    const draw = async () => { const src = await cardCanvas(Object.assign({}, it, { headline: d.querySelector(".pH").value || it.headline })); cv.getContext("2d").drawImage(src, 0, 0); };
+    if (it.image !== "own") { await draw(); d.querySelector(".pH").oninput = () => { clearTimeout(cv._t); cv._t = setTimeout(draw, 300); }; }
+    d.querySelector(".pF").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 4 * 1024 * 1024) return toast("Please use a picture under 4 MB.");
+      const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(f); });
+      try { await api({ action: "plan_image", month: PLAN.month, id: it.id, data, own: true }); it.image = "own"; const im = new Image(); im.onload = () => cv.getContext("2d").drawImage(im, 0, 0, 1080, 1080); im.src = data; toast("Your photo is attached ✅"); } catch (err) { toast(err.message); } };
+  });
   document.querySelectorAll(".pCopy").forEach((b) => b.onclick = () => navigator.clipboard.writeText(b.closest(".pi").querySelector(".pX").value).then(() => toast("Copied")));
   $("pAll").onclick = () => document.querySelectorAll(".pA:not(:disabled)").forEach((c) => c.checked = true);
   $("pSave").onclick = async () => { try { PLAN = (await api({ action: "plan_save", month: PLAN.month, changes: changes() })).plan; toast("Saved"); } catch (e) { toast(e.message); } };
-  $("pPush").onclick = async () => { if (!C3 || !C3.ready) return toast("Connect Content360 first (see the note above)."); try { await api({ action: "plan_save", month: PLAN.month, changes: changes(), push: true }); toast("Sending approved posts to Content360… Tatiana reports back in her chat."); setTimeout(() => planPanel(PLAN.month), 60000); } catch (e) { toast(e.message); } };
+  $("pPush").onclick = async () => { if (!C3 || !C3.ready) return toast("Connect Content360 first (see the note above).");
+    $("pPush").disabled = true;
+    try {
+      const ch = changes(); await api({ action: "plan_save", month: PLAN.month, changes: ch });
+      // Make the branded pictures for approved social posts that don't have one yet.
+      const todo = ch.filter((c) => c.status === "approved").map((c) => items.find((x) => x.id === c.id)).filter((it) => it && it.kind === "social" && it.image !== "own");
+      let n = 0; for (const it of todo) { const d = document.querySelector(`.pi[data-id="${CSS.escape(it.id)}"]`); const cv = await cardCanvas(Object.assign({}, it, { headline: (d && d.querySelector(".pH").value) || it.headline })); await api({ action: "plan_image", month: PLAN.month, id: it.id, data: await toB64(cv) }); it.image = "card"; $("pPush").textContent = `Making pictures ${++n}/${todo.length}…`; }
+      await api({ action: "plan_save", month: PLAN.month, changes: [], push: true }); toast("Sending approved posts to Content360… Tatiana reports back in her chat."); setTimeout(() => planPanel(PLAN.month), 60000); } catch (e) { toast(e.message); $("pPush").disabled = false; $("pPush").textContent = "🚀 Save & send approved to Content360"; } };
 }
 async function videoPanel() {
   $("extra").innerHTML = '<div class="panel"><p class="hint">Loading…</p></div>';
@@ -258,9 +301,10 @@ async function videoPanel() {
     <div class="row"><div><label>Title (YouTube needs one)</label><input id="vTi" maxlength="95"></div><div><label>Brand</label><select id="vB">${C3.brands.map((b) => `<option>${esc(b)}</option>`).join("")}</select></div></div>
     <label>Caption (leave empty and Tatiana writes it)</label><textarea id="vC" rows="3"></textarea>
     <div class="row"><div><label>Date</label><input type="date" id="vD" value="${tomorrow}"></div><div><label>Time (Pacific)</label><input type="time" id="vT" value="12:00"></div></div>
-    <label>Post it on</label><div id="vA">${C3.accounts.map((a) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px;color:var(--ink)"><input type="checkbox" value="${esc(a.id)}" style="width:auto" ${C3.map[a.id] === C3.brands[0] ? "checked" : ""}> ${esc(a.name)} (${esc(a.provider.replace("_", " "))})</label>`).join("") || '<span class="hint">Your Content360 accounts show here once it\'s connected.</span>'}</div>
+    <label>Post it on</label><div id="vA">${C3.accounts.map((a) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px;color:var(--ink)"><input type="checkbox" value="${esc(a.id)}" style="width:auto" ${(C3.map[a.id] || []).includes(C3.brands[0]) ? "checked" : ""} data-brands="${esc((C3.map[a.id] || []).join("|"))}"> ${esc(a.name)} (${esc(a.provider.replace("_", " "))})</label>`).join("") || '<span class="hint">Your Content360 accounts show here once it\'s connected.</span>'}</div>
     <p style="margin:10px 0 0"><button class="btn pri" id="vGo">Upload & schedule</button> <span id="vP" class="hint"></span></p>
     ${vids.length ? `<p style="margin:12px 0 4px"><b>Recent videos</b></p>${vids.map((v) => `<div class="hint">🎬 ${esc(v.title || v.name)} · ${esc(v.date)} ${esc(v.time)} · <span class="chip ${v.status === "scheduled" ? "ok" : v.status === "error" ? "bad" : ""}">${esc(v.status)}</span> ${esc(v.note || "")}</div>`).join("")}` : ""}</div>`;
+  $("vB").onchange = () => document.querySelectorAll("#vA input").forEach((c) => c.checked = c.dataset.brands.split("|").includes($("vB").value));
   $("vGo").onclick = async () => {
     const f = $("vF").files[0]; if (!f) return toast("Pick a video file");
     const accountIds = [...document.querySelectorAll("#vA input:checked")].map((x) => x.value);

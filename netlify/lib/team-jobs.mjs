@@ -4,7 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
-import { accounts as c360Accounts, uploadMedia, createPost, brandMap, TEXT_OK, BRANDS } from "./content360.mjs";
+import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -115,19 +115,23 @@ export async function tatianaMonth(month) {
   const monthName = new Date(month + "-15T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric" });
   for (const brand of BRANDS) {
     const ask = `Plan ${monthName} social media posts for ${brand}. Write exactly ${slots.length} posts (one for each posting day, in order) and 2 Google Business Profile updates.
-Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Suitable for Facebook and LinkedIn as text posts.
-Reply with JSON only: {"posts": ["post 1 text", ...], "gbp": ["update 1", "update 2"]}
+Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its branded picture.
+Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...], "gbp": ["update 1", "update 2"]}
 CURRENT WEBSITE TEXT (data):\n${sites}`;
     const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
     let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
     const posts = Array.isArray(j.posts) ? j.posts : jsonArray(ans.text);
-    slots.forEach((sl, i) => { if (posts[i]) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, text: String(posts[i]).slice(0, 3000), status: "draft" }); });
+    slots.forEach((sl, i) => { const p = posts[i]; if (!p) return; const text = typeof p === "string" ? p : p.text, headline = typeof p === "string" ? "" : p.headline;
+      if (text) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), text: String(text).slice(0, 3000), status: "draft" }); });
     (j.gbp || []).slice(0, 2).forEach((t, i) => { const sl = slots[Math.min(slots.length - 1, i ? Math.floor(slots.length * 0.6) : 1)] || slots[0]; if (sl) plan.items.push({ id: brand.slice(0, 3) + "-g" + i, brand, kind: "gbp", date: sl.date, time: "10:00", text: String(t).slice(0, 1500), status: "draft" }); });
     for (const half of [0, 1]) {
       const sl = slots[half ? Math.floor(slots.length / 2) : 0]; if (!sl) continue;
       const b = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write one SEO blog article (700 to 900 words) for ${brand} to publish in ${monthName}${half ? " (second half of the month, different topic)" : ""}. Start with the title on the first line as "# Title". Use H2 subheadings, plain language, and end with a call to action.\nCURRENT WEBSITE TEXT (data):\n${sites.slice(0, 5000)}` }], 3500);
       const title = (b.text.match(/^#\s+(.+)$/m) || [])[1] || brand + " blog";
       plan.items.push({ id: brand.slice(0, 3) + "-b" + half, brand, kind: "blog", date: sl.date, time: "09:00", title: title.slice(0, 160), text: b.text.slice(0, 12000), status: "draft" });
+      // The same blog as a Google Business Profile update (Google allows up to 1,500 characters).
+      const g = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Turn this blog into a Google Business Profile update for ${brand}: under 1,200 characters, plain text, no hashtags, end with "Read the full article on our website." Reply with the update only.\n\n${b.text.slice(0, 6000)}` }], 700);
+      plan.items.push({ id: brand.slice(0, 3) + "-bg" + half, brand, kind: "gbp", date: sl.date, time: "10:30", title: "Blog on Google: " + title.slice(0, 120), text: g.text.trim().slice(0, 1450), status: "draft" });
     }
   }
   plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -139,16 +143,21 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
 // Push every approved social post of the month to Content360 as a scheduled post.
 export async function c360Push(month) {
   month = month || targetMonth();
-  const plan = await getPlan(month), map = await brandMap(), accts = await c360Accounts();
+  const plan = await getPlan(month), accts = await c360Accounts(); let map = await brandMap();
+  if (!Object.keys(map).length) map = suggestedMap(accts);
+  const vs = videoStore();
   let ok = 0, drafts = 0, skipped = 0;
   for (const it of plan.items) {
     if (it.status !== "approved") continue;
     if (it.kind === "blog") { it.note = "Blog: copy it into your website (Content360 doesn't publish blogs)."; skipped++; continue; }
     if (it.kind === "gbp") { it.note = "Google Business posts go out through Zernio once it's connected."; skipped++; continue; }
-    const targets = accts.filter((a) => map[a.id] === it.brand && TEXT_OK.includes(a.provider));
-    if (!targets.length) { it.status = "error"; it.note = "No Facebook or LinkedIn account is linked to " + it.brand + " in Content360 yet."; continue; }
+    // Posts with a picture (Tatiana's branded card or Tania's own photo) also go to Instagram.
+    const pic = it.image ? await vs.get("img-" + month + "-" + it.id, { type: "arrayBuffer" }) : null;
+    const targets = accts.filter((a) => servesBrand(map, a, it.brand) && (pic ? IMAGE_OK : TEXT_OK).includes(a.provider));
+    if (!targets.length) { it.status = "error"; it.note = "No account is set for " + it.brand + " in Content360 yet (🔗 Content360 accounts)."; continue; }
     try {
-      const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: it.text, date: it.date, time: it.time, title: it.text.slice(0, 80) });
+      const mediaIds = pic ? [await uploadMedia(new Blob([pic], { type: "image/png" }), it.id + ".png")] : [];
+      const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: it.text, mediaIds, date: it.date, time: it.time, title: it.headline || it.text.slice(0, 80) });
       it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled in Content360" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++;
     } catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
   }
@@ -170,6 +179,7 @@ export async function c360Videos() {
       let caption = v.caption;
       if (!caption) caption = (await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write a short social media caption (under 60 words, with a call to action and 4 hashtags) for Tania's video "${v.title || v.name}" for ${v.brand}. Reply with the caption only.` }], 400)).text.trim();
       const targets = accts.filter((a) => (v.accountIds || []).map(String).includes(String(a.id)));
+      // YouTube and TikTok need a video; the rest take it as a reel/video post.
       if (!targets.length) throw new Error("Pick at least one account for this video.");
       const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: caption, mediaIds: [mediaId], date: v.date, time: v.time, title: v.title || caption.slice(0, 80), isVideo: true });
       v.c360Id = r.id; v.caption = caption; v.status = r.scheduled ? "scheduled" : "c360-draft"; v.note = r.scheduled ? "" : "Saved as a draft in Content360: " + (r.why || "");

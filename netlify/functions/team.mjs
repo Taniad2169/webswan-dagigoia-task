@@ -1,9 +1,10 @@
 // WebSwan AI Office API (owner only): chat with Eva, Tatiana, Linda and Rachel's desk,
 // Linda's website legal review, Eva's Gmail drafts (with the audit PDF attached) and briefings on demand.
+import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, webSearch, fmtResults } from "../lib/team.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore } from "../lib/team-jobs.mjs";
-import { c360Ready, accounts as c360Accounts, brandMap, BRANDS } from "../lib/content360.mjs";
+import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
 
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, n);
@@ -94,10 +95,11 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
     if (b.action === "c360_status") {
       let accts = [], err = "";
       if (c360Ready()) { try { accts = await c360Accounts(); } catch (e) { err = e.message; } }
-      return reply(200, { ready: c360Ready(), error: err, accounts: accts, map: await brandMap(), brands: BRANDS, month: targetMonth() }, origin);
+      let map = await brandMap(); const suggested = !Object.keys(map).length; if (suggested) map = suggestedMap(accts);
+      return reply(200, { ready: c360Ready(), error: err, accounts: accts, map, suggested, brands: BRANDS, month: targetMonth() }, origin);
     }
     if (b.action === "c360_map") {
-      const map = {}; for (const [k, v] of Object.entries(b.map || {})) if (BRANDS.includes(v)) map[clean(k, 40)] = v;
+      const map = {}; for (const [k, v] of Object.entries(b.map || {})) { const list = (Array.isArray(v) ? v : [v]).filter((x) => BRANDS.includes(x)); if (list.length) map[clean(k, 40)] = list; }
       await teamStore().setJSON("c360-brands", map);
       return reply(200, { map }, origin);
     }
@@ -109,6 +111,7 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       for (const ch of (Array.isArray(b.changes) ? b.changes : []).slice(0, 300)) {
         const it = plan.items.find((x) => x.id === ch.id); if (!it || it.status === "scheduled") continue;
         if (typeof ch.text === "string") it.text = clean(ch.text, 12000);
+        if (typeof ch.headline === "string") { const h = clean(ch.headline, 90); if (h !== (it.headline || "") && it.image === "card") it.image = ""; it.headline = h; }
         if (/^\d{4}-\d{2}-\d{2}$/.test(ch.date || "")) it.date = ch.date;
         if (/^([01]\d|2[0-3]):[0-5]\d$/.test(ch.time || "")) it.time = ch.time;
         if (["draft", "approved", "skip"].includes(ch.status)) it.status = ch.status;
@@ -117,6 +120,35 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       await savePlan(plan);
       if (b.push) await startJobs(["c360_push:" + month]);
       return reply(200, { plan }, origin);
+    }
+    // The branded picture for a post (Tatiana's card made in the browser, or Tania's own photo).
+    if (b.action === "plan_image") {
+      const plan = await getPlan(month), it = plan.items.find((x) => x.id === b.id);
+      if (!it || it.status === "scheduled") return reply(400, { error: "That post can't take a picture now." }, origin);
+      const data = String(b.data || "").replace(/^data:[^,]+,/, ""); if (!data || data.length > 5_600_000) return reply(413, { error: "Picture too large (max about 4 MB)." }, origin);
+      const buf = Buffer.from(data, "base64");
+      await videoStore().set("img-" + month + "-" + it.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+      it.image = b.own ? "own" : "card"; await savePlan(plan);
+      return reply(200, { ok: true, image: it.image }, origin);
+    }
+    // One screen that shows what's connected: Gmail + Calendar, Content360 + each social account, AI brains, search, phone agents.
+    if (b.action === "connections") {
+      const out = [];
+      try { await scriptCall({ action: "agenda", from: new Date().toISOString(), to: new Date(Date.now() + 36e5).toISOString() }); out.push({ group: "Google", name: "Gmail + Google Calendar (Eva, Alek's callbacks)", ok: true }); }
+      catch (e) { out.push({ group: "Google", name: "Gmail + Google Calendar (Eva, Alek's callbacks)", ok: false, fix: e.message }); }
+      if (!c360Ready()) out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: false, fix: "Add CONTENT360_API_KEY in Netlify." });
+      else { try { const accts = await c360Accounts(); out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: true });
+        for (const a of accts) out.push({ group: "Social", name: `${a.name} · ${a.provider.replace("_", " ")}`, ok: a.authorized, fix: a.authorized ? "" : "Reconnect it in Content360 → Accounts." }); }
+        catch (e) { out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: false, fix: e.message }); } }
+      out.push({ group: "Social", name: "Google Business Profile (via Zernio)", ok: !!process.env.ZERNIO_API_KEY, fix: "Create a free Zernio account, connect your Google Business profiles, add ZERNIO_API_KEY in Netlify." });
+      const r = providerReady(); for (const [k, v] of Object.entries(PROVIDERS)) out.push({ group: "AI brains", name: v.label, ok: r[k], fix: r[k] ? "" : "Add " + v.env + " in Netlify (optional)." });
+      out.push({ group: "AI brains", name: "Web search (Eva's Monday briefing, Linda)", ok: !!process.env.BRAVE_API_KEY, fix: "Add BRAVE_API_KEY in Netlify." });
+      const ph = !!process.env.CARTESIA_API_KEY;
+      out.push({ group: "Phone agents", name: "Cartesia (Monica, George, Rebecca, Alek, Rachel)", ok: ph, fix: ph ? "" : "Add CARTESIA_API_KEY in Netlify." });
+      const ids = (await getStore({ name: "voice-studio", consistency: "strong" }).get("agent-ids", { type: "json" }).catch(() => null)) || {};
+      for (const n of ["monica", "george", "rebecca", "alek"]) out.push({ group: "Phone agents", name: n[0].toUpperCase() + n.slice(1), ok: !!(process.env["CARTESIA_AGENT_" + n.toUpperCase()] || ids[n]), fix: "Link the agent in Voice Studio." });
+      out.push({ group: "Phone agents", name: "Live calling switch", ok: String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on", fix: "Set VOICE_CALLING_ENABLED = on in Netlify when you're ready to call." });
+      return reply(200, { checks: out }, origin);
     }
     // Videos arrive in pieces (Netlify accepts ~6 MB per request), then the background worker sends them to Content360.
     if (b.action === "video_chunk") {

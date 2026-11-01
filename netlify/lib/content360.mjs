@@ -9,6 +9,8 @@ export const c360Ready = () => !!process.env.CONTENT360_API_KEY;
 
 // Text-only posts can only go to these networks; Instagram, TikTok and YouTube need a photo or video.
 export const TEXT_OK = ["facebook_page", "facebook_group", "linkedin", "linkedin_page", "twitter", "threads", "bluesky", "mastodon"];
+// Posts with a picture can also go to Instagram (TikTok and YouTube are for videos only).
+export const IMAGE_OK = [...TEXT_OK, "instagram", "instagram_direct", "pinterest"];
 export const BRANDS = ["The WebSwan", "WebSwan Digital Solutions", "WebSwan Media Network"];
 
 export async function c360(method, path, body, isForm) {
@@ -26,7 +28,7 @@ export async function c360(method, path, body, isForm) {
 
 export async function accounts() {
   const j = await c360("GET", "/accounts");
-  return (j.data || j || []).map((a) => ({ id: a.id, name: a.name, username: a.username || "", provider: a.provider, uuid: a.uuid || "" }));
+  return (j.data || j || []).map((a) => ({ id: a.id, name: a.name, username: a.username || "", provider: a.provider, uuid: a.uuid || "", authorized: a.authorized !== false }));
 }
 
 // Upload a file (Blob) to the Content360 media library. Returns the media id.
@@ -68,5 +70,25 @@ export async function createPost({ accountIds, providers, text, mediaIds = [], d
   }
 }
 
-// Which Content360 accounts belong to which brand (Tania sets this once in Tatiana's panel).
-export async function brandMap() { return (await teamStore().get("c360-brands", { type: "json" })) || {}; }
+// Which brands each Content360 account posts for (one account can serve several brands, e.g. Instagram the_webswan posts for all 3).
+export async function brandMap() {
+  const m = (await teamStore().get("c360-brands", { type: "json" })) || {};
+  for (const k of Object.keys(m)) m[k] = (Array.isArray(m[k]) ? m[k] : [m[k]]).filter((b) => BRANDS.includes(b));
+  return m;
+}
+// Tania's setup (Oct 31, 2026), used until she saves her own choices:
+// The WebSwan Facebook page posts for The WebSwan + Digital Solutions; the Media Network Facebook page for Media Network;
+// Instagram the_webswan, LinkedIn and TikTok @taniadomngue for all three.
+export function suggestedMap(accts) {
+  const m = {};
+  for (const a of accts) {
+    const n = (a.name + " " + a.username).toLowerCase();
+    if (a.provider === "facebook_page" && /media network|essence/.test(n)) m[a.id] = [BRANDS[2]];
+    else if (a.provider === "facebook_page" && /webswan/.test(n)) m[a.id] = [BRANDS[0], BRANDS[1]];
+    else if (/instagram/.test(a.provider) && /the_webswan/.test(n)) m[a.id] = [...BRANDS];
+    else if (a.provider === "tiktok" && /taniadomngue/.test(n)) m[a.id] = [...BRANDS];
+    else if (/linkedin/.test(a.provider)) m[a.id] = [...BRANDS];
+  }
+  return m;
+}
+export const servesBrand = (map, acct, brand) => (map[acct.id] || []).includes(brand);
