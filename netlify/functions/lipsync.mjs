@@ -68,6 +68,11 @@ const hedra = (path, init = {}) => fetch("https://api.hedra.com" + path, { ...in
 const cart = (path, init = {}) => fetch(CARTESIA + path, { ...init, headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": CARTESIA_VERSION, ...(init.headers || {}) } });
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 const isFalUrl = (u) => /^https:\/\/([a-z0-9-]+\.)*fal\.(media|ai|run)\//i.test(String(u || ""));
+async function library(store) { // Tania's voice library: her clones first, then voices she saved
+  const mine = ((await store.get("my-voices", { type: "json" })) || []).map((v) => ({ ...v, clone: true }));
+  const saved = (await store.get("voice-library", { type: "json" })) || [];
+  return [...mine, ...saved];
+}
 const falVideoUrl = (out) => out?.video?.url || out?.output?.video?.url || "";
 
 async function falSubmit(model, input) {
@@ -100,14 +105,38 @@ export default async (req) => {
     }
 
     // ---------- voices (Cartesia) ----------
-    if (b.action === "voices_list") {
+    if (b.action === "voices_list") { // browse Cartesia voices: gender + language, accent filtered by keywords
       if (!process.env.CARTESIA_API_KEY) return reply(503, { error: "Add CARTESIA_API_KEY in Netlify." }, origin);
       const lang = Object.keys(LOCALES).includes(b.language) ? b.language : "en";
-      const r = await cart(`/voices?limit=100&language=${lang}&gender=feminine`);
-      const j = await r.json().catch(() => ({}));
-      const list = (Array.isArray(j) ? j : j.data || []).filter((v) => !v.language || v.language === lang)
-        .map((v) => ({ id: v.id, name: v.name, description: clean(v.description, 120) }));
-      return reply(200, { voices: list, myVoices: (await store.get("my-voices", { type: "json" })) || [] }, origin);
+      const gender = ["feminine", "masculine"].includes(b.gender) ? "&gender=" + b.gender : "";
+      const words = String(b.accent || "").toLowerCase().split("|").map((w) => w.trim()).filter(Boolean);
+      let all = [], cursor = "";
+      for (let page = 0; page < 5; page++) {
+        const r = await cart(`/voices?limit=100&language=${lang}${gender}${cursor ? "&starting_after=" + encodeURIComponent(cursor) : ""}`);
+        const j = await r.json().catch(() => ({}));
+        const list = Array.isArray(j) ? j : j.data || [];
+        all = all.concat(list);
+        if (!j.has_more || !list.length) break;
+        cursor = list[list.length - 1].id;
+      }
+      let voices = all.filter((v) => !v.language || v.language === lang)
+        .map((v) => ({ id: v.id, name: v.name, description: clean(v.description, 160), gender: v.gender || "" }));
+      if (words.length) voices = voices.filter((v) => words.some((w) => (v.name + " " + v.description).toLowerCase().includes(w)));
+      return reply(200, { voices: voices.slice(0, 60), library: await library(store) }, origin);
+    }
+    if (b.action === "library") return reply(200, { library: await library(store) }, origin);
+    if (b.action === "library_add") {
+      if (!/^[\w-]{8,80}$/.test(String(b.id || ""))) return reply(400, { error: "Bad voice." }, origin);
+      const lib = (await store.get("voice-library", { type: "json" })) || [];
+      if (!lib.some((v) => v.id === b.id)) lib.push({ id: b.id, name: clean(b.name, 60), tag: clean(b.tag, 60), language: clean(b.language, 5) || "en", at: Date.now() });
+      await store.setJSON("voice-library", lib.slice(-40));
+      return reply(200, { library: await library(store) }, origin);
+    }
+    if (b.action === "library_remove") {
+      const id = String(b.id || "");
+      await store.setJSON("voice-library", ((await store.get("voice-library", { type: "json" })) || []).filter((v) => v.id !== id));
+      await store.setJSON("my-voices", ((await store.get("my-voices", { type: "json" })) || []).filter((v) => v.id !== id));
+      return reply(200, { library: await library(store) }, origin);
     }
     if (b.action === "voice_clone") {
       if (!process.env.CARTESIA_API_KEY) return reply(503, { error: "Add CARTESIA_API_KEY in Netlify." }, origin);
@@ -122,9 +151,9 @@ export default async (req) => {
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.id) return reply(502, { error: "Cartesia couldn't clone the voice (" + r.status + "): " + clean(j.message || j.error, 160) }, origin);
       const mine = (await store.get("my-voices", { type: "json" })) || [];
-      mine.unshift({ id: j.id, name: j.name || b.name, at: Date.now() });
+      mine.unshift({ id: j.id, name: j.name || b.name, tag: clean(b.tag, 60) || "My voice", language: "en", at: Date.now() });
       await store.setJSON("my-voices", mine.slice(0, 10));
-      return reply(200, { id: j.id, myVoices: mine.slice(0, 10) }, origin);
+      return reply(200, { id: j.id, library: await library(store) }, origin);
     }
     if (b.action === "tts") {
       if (!process.env.CARTESIA_API_KEY) return reply(503, { error: "Add CARTESIA_API_KEY in Netlify." }, origin);
