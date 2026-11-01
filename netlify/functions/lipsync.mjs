@@ -15,6 +15,7 @@
 //   LIPSYNC_DAILY_USD  optional daily cap in dollars (default 5)
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
+import { askAI } from "../lib/team.mjs";
 
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
@@ -102,6 +103,34 @@ export default async (req) => {
     if (b.action === "status_check") {
       return reply(200, { fal: !!process.env.FAL_KEY, hedra: !!process.env.HEDRA_API_KEY, cartesia: !!process.env.CARTESIA_API_KEY,
         spentToday: +spent.toFixed(2), dailyCap: capUsd, myVoices: (await store.get("my-voices", { type: "json" })) || [] }, origin);
+    }
+
+    // ---------- scripts: idea -> scenes, and translation (DeepSeek, the team brain) ----------
+    if (b.action === "write_script" || b.action === "translate") {
+      const jsonOut = (t) => { const m = String(t || "").match(/[\[{][\s\S]*[\]}]/); return m ? JSON.parse(m[0]) : null; };
+      if (b.action === "translate") {
+        const texts = (Array.isArray(b.texts) ? b.texts : []).slice(0, 30).map((x) => clean(x, 600));
+        const lang = { pt: "Brazilian Portuguese", fr: "French", es: "Latin American Spanish", en: "American English", ht: "Haitian Creole (Kreyòl ayisyen)" }[b.language] || "Brazilian Portuguese";
+        const r = await askAI("deepseek", `You translate short marketing video captions for Tania's companies (The WebSwan, WebSwan Digital Solutions, WebSwan Media Network). Translate into natural, warm ${lang} that a native speaker would say out loud. Keep brand names, phone numbers and website addresses unchanged. Keep each line about the same length. Reply with ONLY a JSON array of strings, same order and count as the input.`,
+          [{ role: "user", content: JSON.stringify(texts) }], 2000);
+        const out = jsonOut(r.text);
+        if (!Array.isArray(out) || out.length !== texts.length) return reply(502, { error: "The translation came back incomplete. Try again." }, origin);
+        return reply(200, { texts: out.map((x) => clean(x, 600)) }, origin);
+      }
+      const idea = clean(b.idea, 1500);
+      if (!idea) return reply(400, { error: "Write your idea first." }, origin);
+      const secs = Math.min(180, Math.max(10, parseInt(b.seconds, 10) || 30));
+      const brand = clean(b.brand, 60) || "The WebSwan";
+      const lang = { pt: "Brazilian Portuguese", fr: "French", es: "Latin American Spanish", ht: "Haitian Creole" }[b.language] || "American English";
+      const system = `You write short social media video scripts for Tania, founder of The WebSwan family: The WebSwan (custom websites, SBPA phone apps, software), WebSwan Digital Solutions (website compliance audits for doctors and attorneys: ADA, cookie consent, HIPAA forms, bar rules; complimentary audits; 24/7 virtual receptionist), WebSwan Media Network (advertising and a private directory, like a private Yelp, only for doctors and attorneys; patients or clients can leave reviews; when someone wants to reach a practice, the office gets their information by email).
+Rules: say "Tania" only (never a last name); never quote prices; never promise legal outcomes or say a site is or isn't compliant; no medical or legal advice; warm, confident, plain words; short sentences that are easy to say out loud; end with a clear call to action.
+Write in ${lang}. The video is for ${brand} and lasts about ${secs} seconds (about 2.5 spoken words per second in total).
+Split it into scenes of 1 to 2 short sentences each. For each scene also write "action": what Tania is doing on camera (for example "smiling at the camera in her office", "walking toward the camera, hand gestures", "sitting at her desk, pointing to her laptop").
+Reply with ONLY JSON: {"title": "...", "scenes": [{"text": "...", "action": "..."}]}`;
+      const r = await askAI("deepseek", system, [{ role: "user", content: idea }], 2500);
+      let out; try { out = jsonOut(r.text); } catch { out = null; }
+      if (!out || !Array.isArray(out.scenes) || !out.scenes.length) return reply(502, { error: "The script didn't come back right. Try again." }, origin);
+      return reply(200, { title: clean(out.title, 100), scenes: out.scenes.slice(0, 20).map((x) => ({ text: clean(x.text, 400), action: clean(x.action, 200) })) }, origin);
     }
 
     // ---------- voices (Cartesia) ----------
