@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan AI Office</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root { --blue: #1182f0; --soft: #6ca1d4; --ink: #1d2733; --muted: #6b7684; --line: #e6ebf2; --bg: #f6f8fb; --side: #fff; --me: #e9f3fe; --red: #d32f2f; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 15px/1.55 "Segoe UI", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  .app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
+  aside { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .brand b { font-size: 17px; } .brand small { color: var(--muted); display: block; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--blue); color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .list { overflow-y: auto; flex: 1; padding: 8px; }
+  .agent { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; font: inherit; color: inherit; }
+  .agent:hover, .agent.on { background: #eef4fb; }
+  .agent img { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; }
+  .agent .role { font-weight: 800; font-size: 17px; letter-spacing: .2px; }
+  .agent .prev { color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+  .agent .when { color: var(--muted); font-size: 12px; align-self: start; padding-top: 4px; }
+  .foot { padding: 12px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .foot a { color: var(--blue); }
+  main { display: flex; flex-direction: column; min-height: 0; }
+  .top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .top img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .top .who b { font-size: 17px; display: block; } .top .who small { color: var(--muted); }
+  .top .sp { flex: 1; }
+  select, input, textarea, button { font: inherit; }
+  .top select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  .btn { border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: 7px 12px; cursor: pointer; font-weight: 600; color: var(--ink); }
+  .btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px; background: #fbfcfe; border-bottom: 1px solid var(--line); }
+  .msgs { flex: 1; overflow-y: auto; padding: 18px 22px 30px; }
+  .day { margin: 26px 0 10px; font-size: 22px; font-weight: 800; color: var(--red); border-bottom: 2px solid #f3c7c7; padding-bottom: 4px; }
+  .day.today { color: var(--blue); border-color: #cfe3fb; }
+  .m { max-width: 900px; margin: 10px 0; }
+  .m .meta { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .m .body { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; overflow-wrap: anywhere; }
+  .m.me { margin-left: auto; max-width: 720px; } .m.me .body { background: var(--me); border-color: #d6e7fb; }
+  .m .body h1 { font-size: 22px; margin: 4px 0 8px; } .m .body h2 { font-size: 19px; margin: 14px 0 6px; } .m .body h3 { font-size: 16.5px; margin: 12px 0 4px; }
+  .m .body p { margin: 6px 0; } .m .body ul { margin: 6px 0 6px 20px; padding: 0; }
+  .m .body a { color: #0b5cad; }
+  .m .copy { font-size: 12px; color: var(--blue); background: none; border: 0; cursor: pointer; padding: 2px 0; }
+  .compose { display: flex; gap: 10px; padding: 12px 18px; background: #fff; border-top: 1px solid var(--line); }
+  .compose textarea { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: none; height: 54px; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 18px 0; }
+  .panel label { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 2px; }
+  .panel input, .panel textarea, .panel select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .gate { max-width: 420px; margin: 18vh auto; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px; text-align: center; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0b2f57; color: #fff; padding: 10px 16px; border-radius: 10px; display: none; z-index: 9; }
+  .back { display: none; }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .app.chat aside { display: none; } .app:not(.chat) main { display: none; }
+    .back { display: inline-block; }
+  }
+</style>
+</head>
+<body>
+<div id="gate" class="gate"><div class="logo" style="margin:0 auto 10px;width:48px;height:48px;border-radius:12px;background:#1182f0;color:#fff;display:grid;place-items:center;font-weight:800">WS</div>
+  <h2 style="margin:6px 0">WebSwan AI Office</h2><p class="hint">Eva, Tatiana, Linda and Rachel. Sign in with your WebSwan Google account.</p>
+  <button class="btn pri" onclick="_auth.signIn()">Sign in with Google</button><p id="gateMsg" class="hint"></p></div>
+<div id="app" class="app" hidden>
+  <aside>
+    <div class="brand"><div class="logo">WS</div><div><b>WebSwan AI Office</b><small>Your team, your rules</small></div></div>
+    <div class="list" id="list"></div>
+    <div class="foot">Callers (Monica, George, Rebecca, Alek, Jennifer) are in <a href="../voice-studio/">Voice Studio</a>.<br><a href="#" onclick="_auth.signOut();return false">Sign out</a></div>
+  </aside>
+  <main>
+    <div class="top"><button class="btn back" onclick="showList()">←</button><img id="tImg" alt=""><div class="who"><b id="tName"></b><small id="tRole"></small></div><span class="sp"></span>
+      <label class="hint" for="prov">Brain</label><select id="prov"></select></div>
+    <div class="tools" id="tools"></div>
+    <div id="extra"></div>
+    <div class="msgs" id="msgs"></div>
+    <form class="compose" id="form"><textarea id="txt" placeholder="Message…"></textarea><button class="btn pri" id="send">Send</button></form>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
+  const auth = getAuth(app);
+  window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), signOut: () => signOut(auth), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
+  onAuthStateChanged(auth, (u) => window.dispatchEvent(new CustomEvent("auth", { detail: { user: u, ok: !!u && OWNERS.includes((u.email || "").toLowerCase()) } })));
+</script>
+<script>
+const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
+const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
+const ORDER = ["eva", "tatiana", "linda", "rachel"];
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, tatiana: { name: "Tatiana", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, rachel: { name: "Rachel", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } };
+let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini (Jimmy)", claude: "Claude" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
+let cur = "eva", msgs = [], pendingDraft = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const toast = (t) => { const e = $("toast"); e.textContent = t; e.style.display = "block"; clearTimeout(e._t); e._t = setTimeout(() => e.style.display = "none", 3800); };
+async function api(body) {
+  const tok = await window._auth.token();
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+// Markdown → safe HTML (marked + DOMPurify from cdnjs; a small built-in fallback if they can't load).
+function miniMd(t) {
+  const inline = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>").replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2">$1</a>').replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
+  let h = "", list = false;
+  for (const line of String(t || "").split("\n")) {
+    const m = line.match(/^(#{1,3})\s+(.*)/), li = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)/);
+    if (li) { if (!list) { h += "<ul>"; list = true; } h += "<li>" + inline(li[1]) + "</li>"; continue; }
+    if (list) { h += "</ul>"; list = false; }
+    if (m) h += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; else if (line.trim()) h += "<p>" + inline(line) + "</p>";
+  }
+  return h + (list ? "</ul>" : "");
+}
+const md = (t) => (window.marked && window.DOMPurify ? DOMPurify.sanitize(marked.parse(String(t || ""))) : miniMd(t)).replace(/<a /g, '<a target="_blank" rel="noopener" ');
+const dayKey = (iso) => new Date(iso).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+const timeOf = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+function when(iso) { if (!iso) return ""; const d = new Date(iso); return d.toDateString() === new Date().toDateString() ? timeOf(iso) : d.toLocaleDateString("en-US", { day: "2-digit", month: "short" }); }
+
+function drawList() {
+  $("list").innerHTML = ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k], l = S.last[k];
+    return `<button class="agent ${k === cur ? "on" : ""}" data-a="${k}"><img src="${esc(a.photo)}" alt=""><div><div class="role">${esc(a.role)}</div><div class="prev">${esc(a.name)}: ${esc(l ? l.text.replace(/[#*]/g, "") : "Ready when you are")}</div></div><div class="when">${esc(l ? when(l.at) : "")}</div></button>`; }).join("");
+  document.querySelectorAll("[data-a]").forEach((b) => b.onclick = () => openAgent(b.dataset.a));
+}
+function drawProviders() {
+  $("prov").innerHTML = Object.entries(S.providers).map(([k, v]) => `<option value="${k}" ${k === S.settings.provider ? "selected" : ""} ${S.ready[k] === false ? "disabled" : ""}>${esc(v)}${S.ready[k] === false ? " (not connected)" : ""}</option>`).join("");
+}
+function drawMsgs() {
+  let last = "", today = dayKey(new Date().toISOString()), h = "";
+  for (const m of msgs) {
+    const d = dayKey(m.at);
+    if (d !== last) { h += `<div class="day ${d === today ? "today" : ""}">${esc(d)}</div>`; last = d; }
+    h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button>` : ""}</div>`;
+  }
+  $("msgs").innerHTML = h || `<p class="hint">No messages yet. Say hi to ${esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)}.</p>`;
+  $("msgs").querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => { const m = msgs.find((x) => x.id === b.dataset.copy); if (m) navigator.clipboard.writeText(m.text).then(() => toast("Copied")); });
+  $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+const TOOLS = {
+  eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["⚙️ Settings", () => settingsPanel()]],
+  tatiana: [["📱 This week's social content", () => run("tatiana_weekly")], ["📝 Blogs + Google posts", () => run("tatiana_blogs")]],
+  linda: [["🔎 Review a website", () => lindaPanel()]],
+  rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
+};
+async function openAgent(k) {
+  cur = k; const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
+  $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
+  $("tools").innerHTML = (TOOLS[k] || []).map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
+  $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = TOOLS[k][b.dataset.t][1]);
+  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", linda: "Paste a website or ask about a law, disclaimer or script wording…", rachel: "Tell me how Rachel should answer…" }[k];
+  document.querySelector(".app").classList.add("chat"); drawList();
+  $("msgs").innerHTML = '<p class="hint">Loading…</p>';
+  try { msgs = (await api({ action: "history", agent: k })).messages || []; } catch (e) { msgs = []; toast(e.message); }
+  drawMsgs(); if (k === "eva" && pendingDraft) draftPanel(pendingDraft);
+}
+function showList() { document.querySelector(".app").classList.remove("chat"); }
+async function ask(text) {
+  $("send").disabled = true; msgs.push({ id: "tmp", role: "user", text, at: new Date().toISOString() }); msgs.push({ id: "tmp2", role: "agent", text: "_Thinking…_", at: new Date().toISOString() }); drawMsgs();
+  try { const r = await api({ action: "chat", agent: cur, text, provider: $("prov").value }); msgs = msgs.filter((m) => !m.id.startsWith("tmp")).concat(r.messages); S.last[cur] = { at: r.messages[1].at, text: r.messages[1].text.slice(0, 140) }; }
+  catch (e) { msgs = msgs.filter((m) => m.id !== "tmp2"); toast(e.message); }
+  $("send").disabled = false; drawMsgs(); drawList();
+}
+async function run(job) { try { await api({ action: "run", job }); toast("Started. It shows up here in a minute or two; refresh this chat then."); setTimeout(() => openAgent(cur), 90000); } catch (e) { toast(e.message); } }
+function lindaPanel() {
+  $("extra").innerHTML = `<div class="panel"><div class="row"><div><label>Website</label><input id="lUrl" placeholder="example.com"></div><div><label>Business type</label><input id="lInd" placeholder="mortgage, real estate, doctor, MCA…"></div><div><label>State</label><input id="lSt" placeholder="FL"></div></div><p style="margin:10px 0 0"><button class="btn pri" id="lGo">Review it</button> <span class="hint">Linda reads the site and its privacy, disclaimer and terms pages, then writes a report with sources.</span></p></div>`;
+  $("lGo").onclick = () => { const u = $("lUrl").value.trim(); if (!u) return toast("Add the website"); ask(`Please review ${u} for a ${$("lInd").value.trim() || "business"} in ${$("lSt").value.trim() || "(state unknown)"}. Check the privacy policy, required disclaimers and license displays, intake forms, cookie consent and accessibility, and write the full report.`); $("extra").innerHTML = ""; };
+}
+function settingsPanel() {
+  const s = S.settings;
+  $("extra").innerHTML = `<div class="panel"><label>Your 3 competitors (for the Monday briefing)</label><div class="row">${[0, 1, 2].map((i) => `<input id="c${i}" value="${esc(s.competitors[i] || "")}" placeholder="Name or website">`).join("")}</div>
+  <div class="row"><div><label>Compliance phone (in emails)</label><input id="cp" value="${esc(s.compliancePhone || "")}"></div><div><label>Advertising phone</label><input id="ap" value="${esc(s.advertisingPhone || "")}"></div></div>
+  <p style="margin:10px 0 0"><button class="btn pri" id="sSave">Save</button></p></div>`;
+  $("sSave").onclick = async () => { try { S.settings = (await api({ action: "settings", competitors: [0, 1, 2].map((i) => $("c" + i).value), compliancePhone: $("cp").value, advertisingPhone: $("ap").value })).settings; toast("Saved"); $("extra").innerHTML = ""; } catch (e) { toast(e.message); } };
+}
+function draftPanel(d) {
+  d = d || {};
+  $("extra").innerHTML = `<div class="panel"><b>✉️ Email draft for Gmail</b>${d.pdfBase64 ? ` <span class="hint">· 📎 ${esc(d.filename)} attached</span>` : ""}
+  <div class="row"><div><label>To</label><input id="dTo" value="${esc(d.to || "")}" placeholder="office@practice.com"></div><div><label>Practice</label><input id="dPr" value="${esc(d.practice || "")}"></div><div><label>State</label><input id="dSt" value="${esc(d.state || "")}"></div></div>
+  <label>What to include (Eva writes the email; leave empty for a standard audit email)</label><textarea id="dNote" rows="3">${esc(d.findings ? "Key findings: " + d.findings : "")}</textarea>
+  <p style="margin:10px 0 0"><button class="btn pri" id="dGo">Create Gmail draft</button> <span class="hint">It waits in your Drafts. Nothing is sent.</span></p></div>`;
+  $("dGo").onclick = async () => {
+    $("dGo").disabled = true; $("dGo").textContent = "Writing…";
+    try { await api({ action: "eva_draft", provider: $("prov").value, to: $("dTo").value.trim(), practice: $("dPr").value.trim(), state: $("dSt").value.trim(), findings: $("dNote").value.trim(), website: d.website || "", contact: d.contact || "", phone: d.phone || "", pdfBase64: d.pdfBase64 || "", filename: d.filename || "" });
+      pendingDraft = null; toast("Draft saved in Gmail ✅"); openAgent("eva"); }
+    catch (e) { toast(e.message); $("dGo").disabled = false; $("dGo").textContent = "Create Gmail draft"; }
+  };
+}
+$("form").onsubmit = (e) => { e.preventDefault(); const t = $("txt").value.trim(); if (!t) return; $("txt").value = ""; ask(t); };
+$("txt").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } });
+$("prov").onchange = () => api({ action: "settings", provider: $("prov").value }).then((r) => S.settings = r.settings).catch(() => {});
+
+// The Lead Prospector's audit report hands Eva the PDF (window.postMessage) so she can draft the email with it attached.
+window.addEventListener("message", (e) => {
+  if (e.origin !== PROSPECTOR || !e.data || e.data.type !== "eva-draft") return;
+  pendingDraft = e.data.draft; toast("Audit report received. Eva is ready to draft the email.");
+  if (!$("app").hidden) openAgent("eva");
+});
+if (location.hash === "#draft" && window.opener) window.opener.postMessage({ type: "eva-ready" }, PROSPECTOR);
+
+window.addEventListener("auth", async (e) => {
+  const { user, ok } = e.detail;
+  if (!ok) { $("gate").hidden = false; $("app").hidden = true; $("gateMsg").textContent = user ? "This account isn't allowed. Use thewebswann@gmail.com." : ""; return; }
+  $("gate").hidden = true; $("app").hidden = false;
+  try { const st = await api({ action: "status" }); S = Object.assign(S, st); } catch (err) { toast(err.message); }
+  drawProviders(); drawList(); openAgent(location.hash === "#draft" || pendingDraft ? "eva" : (ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "eva"));
+});
+</script>
+</body>
+</html>

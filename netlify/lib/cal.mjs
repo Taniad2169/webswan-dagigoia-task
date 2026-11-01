@@ -146,11 +146,37 @@ function doPost(e) {
       MailApp.sendEmail({ to: b.to, subject: String(b.subject || '').slice(0, 200), htmlBody: String(b.html || '').slice(0, 20000), name: String(b.fromName || 'WebSwan Media Network').slice(0, 80), replyTo: b.replyTo || undefined });
       return out({ ok: true });
     }
+    // ---- Eva (executive assistant): read the inbox, see today's agenda, save drafts. Never sends or deletes. ----
+    if (b.action === 'inbox') {
+      var threads = GmailApp.search(String(b.query || 'in:inbox newer_than:1d'), 0, Math.min(Number(b.max) || 60, 100));
+      return out({ emails: threads.map(function (t) { var m = t.getMessages(); var last = m[m.length - 1];
+        return { threadId: t.getId(), from: last.getFrom(), to: last.getTo(), subject: t.getFirstMessageSubject(), date: last.getDate().toISOString(), unread: t.isUnread(), count: m.length, snippet: last.getPlainBody().replace(/\s+/g, ' ').slice(0, 700) }; }) });
+    }
+    if (b.action === 'agenda') {
+      var from = new Date(b.from || Date.now()), to = new Date(b.to || (Date.now() + 86400000));
+      var evs = CalendarApp.getDefaultCalendar().getEvents(from, to).map(function (ev) { return { title: ev.getTitle(), start: ev.getStartTime().toISOString(), end: ev.getEndTime().toISOString(), where: ev.getLocation(), notes: String(ev.getDescription() || '').slice(0, 400) }; });
+      var tasks = [];
+      try { (Tasks.Tasklists.list().items || []).forEach(function (l) { (Tasks.Tasks.list(l.id, { showCompleted: false }).items || []).forEach(function (x) { tasks.push({ list: l.title, title: x.title, due: x.due || '', notes: String(x.notes || '').slice(0, 300) }); }); }); } catch (x) {}
+      return out({ events: evs, tasks: tasks });
+    }
+    if (b.action === 'draft') {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.to || ''))) return out({ error: 'bad recipient' });
+      var opt = { htmlBody: String(b.html || '').slice(0, 30000), name: String(b.fromName || 'Tania | WebSwan').slice(0, 80) };
+      if (b.pdfBase64) opt.attachments = [Utilities.newBlob(Utilities.base64Decode(b.pdfBase64), 'application/pdf', String(b.filename || 'Website-Audit-Report.pdf').slice(0, 120))];
+      var d = GmailApp.createDraft(b.to, String(b.subject || '').slice(0, 200), String(b.text || '').slice(0, 30000), opt);
+      return out({ ok: true, draftId: d.getId() });
+    }
+    if (b.action === 'reply_draft') {
+      var th = GmailApp.getThreadById(String(b.threadId || ''));
+      if (!th) return out({ error: 'thread not found' });
+      var msgs = th.getMessages(); var dr = msgs[msgs.length - 1].createDraftReply(String(b.text || '').slice(0, 30000), { htmlBody: String(b.html || '').slice(0, 30000) });
+      return out({ ok: true, draftId: dr.getId() });
+    }
     return out({ error: 'unknown action' });
   } catch (err) { return out({ error: String(err && err.message || err) }); }
 }
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 // Run this once from the editor (select setup, press Run) to approve calendar access.
-function setup() { CalendarApp.getDefaultCalendar().getName(); UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); MailApp.getRemainingDailyQuota(); }
+function setup() { CalendarApp.getDefaultCalendar().getName(); UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); MailApp.getRemainingDailyQuota(); GmailApp.getInboxUnreadCount(); }\n// Optional, for Eva to read Google Tasks: in the editor click Services (+), add 'Google Tasks API', then run setup again.
 `;
 }
