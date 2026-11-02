@@ -39,6 +39,24 @@ const CLIENT_PLANS = {
 const CLIENT_FIELDS = { type: 12, providerName: 160, practiceName: 200, address: 300, officePhone: 30, notifyEmail: 160, jennLine: 30, hours: 1000, greeting: 400,
   website: 300, specialties: 1000, yearsInBusiness: 60, reviews: 300, insurance: 1000, cashPay: 300, consultation: 300, providerCode: 12, script: 45000, notes: 2000, minutesIncluded: 8,
   contactName: 160, contactPhone: 30, startDate: 20, baaSigned: 20, source: 30 };
+// Added to every agent's instructions by "agent setup" (replaced, never duplicated, when it changes).
+const PHONE_RULES_START = "### PHONE MENU, HUMAN AND VOICEMAIL RULES (WebSwan)";
+const PHONE_RULES_END = "### END PHONE RULES";
+const PHONE_RULES = `${PHONE_RULES_START}
+These rules come before everything else in your script.
+1. PHONE MENUS. If a recording answers with options ("press 1 for appointments, press 2 for billing..."), NEVER say the number out loud. Use the send_dtmf tool to press the key on the keypad. Pick the option for the front desk, reception, the operator, new patients or new clients, or "all other questions". If there is no good option, press 0. If the menu asks for an extension or "dial by name", press 0. If it says "stay on the line", do nothing and wait.
+2. STAY SILENT UNTIL A HUMAN SPEAKS. After you press a key, or while you hear hold music, a recording, "your call is important to us" or "please hold", say nothing. Do not start your greeting or pitch to a recording. Wait for a live person to say hello.
+3. HOW TO TELL A HUMAN FROM A RECORDING. A recording sounds scripted and polished, lists options or office hours, keeps going when you speak, and never answers you. A human says hello or the office name, pauses for you, reacts to what you say, and may say "who's calling?" or "how can I help you?". If you are not sure, wait two seconds and say only "Hello?". A human answers; a recording keeps playing.
+4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
+5. LONG HOLD. If you have been on hold or in menus for about 2 minutes with no live person, use end_call.
+6. "ARE YOU A ROBOT?" If someone asks whether you are a robot or AI, answer honestly and warmly in one sentence ("Yes, I'm an AI assistant calling for Tania at WebSwan.") and continue politely. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
+${PHONE_RULES_END}`;
+function withPhoneRules(ins) {
+  const text = String(ins || "");
+  const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
+  const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
+  return base ? PHONE_RULES + "\n\n" + base : "";
+}
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
@@ -343,11 +361,15 @@ export default async (req) => {
     for (const a of AGENTS.flatMap((n) => (ALLOWED_LANGS[n] || ["en"]).map((l) => agentKey(n, l)))) {
       const id = agentId(a); if (!id) continue;
       try {
+        // keypad + human/voicemail rules at the top of the agent's instructions
+        let ins = "";
+        try { const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); ins = withPhoneRules(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || ""); } catch (e) {}
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
+          ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? (k === "provider" || k === "client") : (k !== "provider" && k !== "client"))).map(([, x]) => ({ id: x })),
           system_tools: Object.assign({ end_call: {}, send_dtmf: {}, voicemail_detection: {} }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
-        report.agents[a] = "connected";
+        report.agents[a] = ins.length > 200 ? "connected · phone-menu & voicemail rules on" : "connected (rules not added: no script found)";
       } catch (e) { report.agents[a] = "error: " + e.message; }
     }
     return reply(200, report, origin);
@@ -477,7 +499,7 @@ export default async (req) => {
   if (b.action === "agent_prompt") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
     if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
-    const ins = String(b.instructions || "").trim();
+    const ins = withPhoneRules(String(b.instructions || "").trim());
     if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
     try {
       await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins }, version_description: "Updated from WebSwan Voice Studio" });
