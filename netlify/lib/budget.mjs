@@ -17,8 +17,8 @@ export const BUDGET_DEFAULTS = {
   phoneRate: 0.014,    // Cartesia-provided phone number
   llmRate: 0,          // free for UI-created agents for now; set it if Cartesia starts charging
   warn1Usd: 37,        // about 500 minutes at $0.074
-  warn2Usd: 44.4,      // about 600 minutes
-  stopUsd: 48.1,       // about 650 minutes: no new calls past this line
+  warn2Usd: 42,        // about 570 minutes
+  stopUsd: 45,         // about 610 minutes: no new calls past this line ($4 safety reserve under $49)
   roundUp: true,       // bill each call as whole minutes (safer); switch off if Cartesia bills by the second
   cycleDay: 1          // day of the month the Cartesia billing cycle starts
 };
