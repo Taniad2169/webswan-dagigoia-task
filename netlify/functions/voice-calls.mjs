@@ -13,6 +13,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
+import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAgentIds, sanitizeBudget } from "../lib/budget.mjs";
 
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
@@ -174,8 +175,36 @@ export default async (req) => {
       agents: AGENTS.filter((a) => agentId(a)),
       languages: Object.fromEntries(AGENTS.filter((a) => agentId(a)).map((a) => [a, (ALLOWED_LANGS[a] || ["en"]).filter((l) => callAgentId(a, l))])),
       allowedLanguages: ALLOWED_LANGS,
-      callsToday: Object.values(counts).reduce((s, n) => s + n, 0)
+      callsToday: Object.values(counts).reduce((s, n) => s + n, 0),
+      budget: budgetSummary(await loadBudget(store))
     }, origin);
+  }
+
+  // ---------- monthly call budget: live usage, settings and Tania's override ----------
+  if (b.action === "usage" || b.action === "usage_set" || b.action === "usage_override") {
+    if (b.action === "usage_set" && b.settings) await store.setJSON("budget-settings", sanitizeBudget(b.settings));
+    if (b.action === "usage_override") {
+      const usd = Math.round(Number(b.usd) * 100) / 100;
+      if (!(usd > 0 && usd <= 500)) return reply(400, { error: "Enter an amount between $1 and $500." }, origin);
+      if (String(b.confirm || "").trim().toUpperCase() !== "APPROVE") return reply(400, { error: "Type APPROVE to confirm the extra spending." }, origin);
+      const B0 = await loadBudget(store);
+      B0.ledger.overrides = (B0.ledger.overrides || []).concat([{ usd, by: email, at: new Date().toISOString(), note: clean(b.note, 160) }]);
+      await store.setJSON("usage-" + B0.ledger.cycle, B0.ledger);
+    }
+    let sync = null;
+    if (b.sync !== false) { try { sync = await budgetSync(store, await allAgentIds(store)); } catch (e) { sync = { ok: false, why: e.message }; } }
+    const B = await loadBudget(store);
+    // which AI model each live agent runs on (read from Cartesia, so it is always current)
+    const models = {};
+    if (b.models && hasKey) for (const a of AGENTS) {
+      const id = agentId(a); if (!id) continue;
+      try {
+        const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+        const m = (d.config || (d.agent && d.agent.config) || {}).model;
+        models[a] = !m ? "Cartesia default" : typeof m === "string" ? m : clean(m.name || m.id || m.model || JSON.stringify(m), 120);
+      } catch (e) { models[a] = "couldn't read: " + clean(e.message, 80); }
+    }
+    return reply(200, { settings: B.settings, summary: budgetSummary(B), sync, models }, origin);
   }
 
   // ---------- Do Not Call list (server side, shared by every device) ----------
@@ -219,7 +248,7 @@ export default async (req) => {
         const tz = ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"].includes(s.tz) ? s.tz : "America/New_York";
         q.settings = { days, start, end, start2: start2 || "", end2: end2 || "", tz, perWindow: Math.max(0, Math.min(300, parseInt(s.perWindow, 10) || 0)), agent: AGENTS.includes(String(s.agent || "").toLowerCase()) ? String(s.agent).toLowerCase() : "rebecca", perMinute: Number(s.perMinute) === 0.5 ? 0.5 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1)) };
       }
-      if (typeof b.paused === "boolean") q.paused = b.paused;
+      if (typeof b.paused === "boolean") { q.paused = b.paused; if (!b.paused) delete q.pauseReason; }
       if (b.clear === "all") q.leads = [];
       if (b.clear === "done") q.leads = q.leads.filter((l) => l.status === "queued");
       if (Array.isArray(b.add)) {
@@ -236,7 +265,7 @@ export default async (req) => {
       await store.setJSON("queue", q);
     }
     const n = (k) => q.leads.filter((l) => l.status === k).length;
-    return reply(200, { settings: q.settings, paused: !!q.paused, lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
+    return reply(200, { settings: q.settings, paused: !!q.paused, pauseReason: q.pauseReason || "", lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
       leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, lang: l.lang || "en", status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
   }
 
@@ -482,6 +511,9 @@ export default async (req) => {
     const pick = name === "alek" && alekNum ? { id: alekNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
     if (!pick) return reply(429, { error: `Every number reached today's cap of ${cap()} calls. Try again tomorrow.` }, origin);
 
+    const gate = await budgetGate(store, 1, 6);
+    if (!gate.ok) return reply(402, { error: gate.why, budget: gate.summary }, origin);
+
     const metadata = { leadId: clean(b.leadId, 60), lead: clean(b.leadName, 120), business: clean(b.business, 160), campaign: clean(b.campaign, 120), by: email };
     let data;
     try {
@@ -495,6 +527,7 @@ export default async (req) => {
     if (!r0.agent_call_id) return reply(502, { error: "Cartesia didn't start the call: " + clean(r0.error && (r0.error.message || r0.error) || "unknown", 200) }, origin);
     counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
     await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
+    await budgetRecord(store, { id: r0.agent_call_id, agent: name, by: email, maxMin: 6 });
     return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name, lang }, origin);
   }
 

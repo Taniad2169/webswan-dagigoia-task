@@ -191,7 +191,9 @@ function renderOverview(c) {
   const eligible = state.leads.filter(l => eligibility(l).ok).length;
   const callableNow = state.leads.filter(l => eligibility(l).ok && localInfo(l).ok).length;
   const appts = state.calls.filter(x => x.outcome === 'Appointment requested').length;
-  c.innerHTML = `<div class="banner"><div><h2>Welcome to your voice studio, Tania.</h2><p>Bring your leads, agents and campaigns together, then rehearse every call with your AI team before the phone service goes live.</p></div><button class="btn" onclick="nav('Practice call')">Start a practice call →</button></div>
+  let BG = null; try { BG = liveStatus && liveStatus.budget; } catch (e) {}
+  const usd = n => '$' + Number(n || 0).toFixed(2);
+  c.innerHTML = `${BG && BG.level !== 'ok' ? `<div class="note warn section" role="status">💰 <b>Call budget:</b> ${usd(BG.committedUsd)} of ${usd(BG.stopAt)} used${BG.level === 'stopped' ? '. New calls are paused.' : ' (about ' + BG.minutesLeft + ' min left).'} <a href="#" onclick="nav('Usage & setup');return false">See budget →</a></div>` : ''}<div class="banner"><div><h2>Welcome to your voice studio, Tania.</h2><p>Bring your leads, agents and campaigns together, then rehearse every call with your AI team before the phone service goes live.</p></div><button class="btn" onclick="nav('Practice call')">Start a practice call →</button></div>
   <div class="grid">
     <div class="card stat"><span>YOUR LEADS</span><strong>${state.leads.length}</strong><span>${eligible} eligible for AI calls</span></div>
     <div class="card stat"><span>YOUR AGENTS</span><strong>${state.agents.length}</strong><span>Agent profiles</span></div>
@@ -417,7 +419,7 @@ function renderCalls(c) {
 /* ---------- setup ---------- */
 function renderSetup(c) {
   if (!liveStatus && window.cloudUser) setTimeout(() => liveRefresh(true), 50);
-  c.innerHTML = `<div class="two section"><div class="card"><h2>Connections</h2>
+  c.innerHTML = `${budgetCard()}<div class="two section"><div class="card"><h2>Connections</h2>
     ${liveRows()}
     <div class="listitem row"><strong>Cloud sync (your private Firebase)</strong><span class="pill" id="cloudRow">${window.cloudUser ? 'On · ' + esc(window.cloudUser) : 'Off · sign in at the top'}</span></div>
     <div class="listitem row"><strong>SDR AI brain (Gemini)</strong><span class="pill ${brainOn() ? 'ok' : ''}">${brainOn() ? 'Online' : 'Loading…'}</span></div>
@@ -956,6 +958,62 @@ function liveRows() {
     <div class="listitem row"><strong>Live calling switch</strong>${pill(L.live, L.live ? 'On · ' + L.callsToday + ' calls today' : 'Off (practice only)')}</div>
     <div class="toolbar"><button class="btn outline small" onclick="liveRefresh()">↻ Check again</button></div>`;
 }
+
+/* ---------- monthly call budget ---------- */
+let budgetState = null;
+async function budgetLoad(quiet, extra) {
+  try { budgetState = await voiceApi(Object.assign({ action: 'usage', models: true }, extra || {})); }
+  catch (e) { budgetState = { error: e.message }; }
+  if (page === 'Usage & setup' || page === 'Overview') render(); else if (!quiet) toast(budgetState.error || 'Budget updated.');
+}
+const money = n => '$' + Number(n || 0).toFixed(2);
+function budgetBar(S) {
+  const w = v => Math.max(0, Math.min(100, v / S.stopAt * 100)), col = { ok: '#12a05c', warn1: '#f0a020', warn2: '#e0866b', stopped: '#c0392b' }[S.level];
+  return `<div style="position:relative;height:16px;background:#eaf2f6;border-radius:10px;overflow:hidden;margin:10px 0 4px" role="img" aria-label="${money(S.committedUsd)} of ${money(S.stopAt)} used">
+    <div style="position:absolute;inset:0 auto 0 0;width:${w(S.spentUsd)}%;background:${col}"></div>
+    <div style="position:absolute;top:0;bottom:0;left:${w(S.spentUsd)}%;width:${w(S.pendingUsd)}%;background:${col};opacity:.4"></div></div>`;
+}
+function budgetCard() {
+  if (!window.cloudUser) return `<div class="card section"><h2>💰 Monthly call budget</h2><p class="muted">Sign in at the top to see your call budget.</p></div>`;
+  if (!budgetState) { setTimeout(() => budgetLoad(true), 60); return `<div class="card section"><h2>💰 Monthly call budget</h2><p class="muted">Loading live usage from Cartesia…</p></div>`; }
+  if (budgetState.error) return `<div class="card section"><h2>💰 Monthly call budget</h2><p class="note warn">${esc(budgetState.error)}</p><button class="btn outline small" onclick="budgetLoad()">↻ Try again</button></div>`;
+  const S = budgetState.summary, st = budgetState.settings, k = S.counts, M = budgetState.models || {};
+  const label = { ok: ['ok', 'On budget'], warn1: ['warn', '⚠ Warning 1: about ' + S.warn1Min + ' min used'], warn2: ['warn', '⚠ Warning 2: about ' + S.warn2Min + ' min used'], stopped: ['bad', '⏸ New calls paused: stop line reached'] }[S.level];
+  const pct = k.placed ? Math.round(k.answered / k.placed * 100) : 0;
+  return `<div class="card section"><div class="row"><h2>💰 Monthly call budget</h2><span class="chip ${label[0]}">${esc(label[1])}</span></div>
+    <p style="margin:0"><b>${money(S.committedUsd)}</b> of <b>${money(S.stopAt)}</b> stop line · billing cycle from ${esc(S.cycle)} · ${S.rate.toFixed(3)} $/min</p>
+    ${budgetBar(S)}
+    <small class="muted">${S.minutes} min finished (${money(S.spentUsd)})${k.inProgress ? ` · ${k.inProgress} call${k.inProgress > 1 ? 's' : ''} in progress reserved at full length (${money(S.pendingUsd)})` : ''} · about <b>${S.minutesLeft} min</b> left · warnings at ~${S.warn1Min} and ~${S.warn2Min} min, stop at ~${S.stopMin} min</small>
+    <div class="grid section">
+      <div class="card stat"><span>CALLS PLACED</span><strong>${k.placed}</strong><span>${k.inbound} inbound too</span></div>
+      <div class="card stat"><span>ANSWERED</span><strong>${k.answered}</strong><span>${pct}% of calls placed</span></div>
+      <div class="card stat"><span>NO ANSWER / VOICEMAIL</span><strong>${k.unanswered} / ${k.voicemail}</strong><span>hung up, busy or machine</span></div>
+      <div class="card stat"><span>BOOKED</span><strong>${k.booked}</strong><span>${S.costPerBooked != null ? money(S.costPerBooked) + ' per appointment' : 'cost per appointment shows here'}</span></div></div>
+    ${Object.keys(M).length ? `<p style="margin-bottom:0"><b>AI model per agent:</b> ${Object.entries(M).map(([a, m]) => esc(a[0].toUpperCase() + a.slice(1)) + ': <code>' + esc(m) + '</code>').join(' · ')}</p>` : ''}
+    <details class="section"><summary>Budget settings (dollar-based)</summary><div class="formgrid">
+      ${[['budgetUsd', 'Monthly budget ($)'], ['stopUsd', 'Stop new calls at ($)'], ['warn1Usd', 'Warning 1 at ($)'], ['warn2Usd', 'Warning 2 at ($)'], ['agentRate', 'Agent rate ($/min)'], ['phoneRate', 'Phone number rate ($/min)'], ['llmRate', 'AI model rate ($/min, 0 while free)'], ['cycleDay', 'Billing cycle starts on day']].map(([f, l]) => `<div><label for="bg_${f}">${l}</label><input id="bg_${f}" type="number" step="${f === 'cycleDay' ? 1 : 0.001}" value="${esc(String(st[f]))}"></div>`).join('')}
+      <div><label style="display:flex;gap:8px;align-items:center;margin-top:28px"><input id="bg_roundUp" type="checkbox" style="width:auto" ${st.roundUp ? 'checked' : ''}> Count each call as whole minutes (safer)</label></div></div>
+      <div class="toolbar section"><button class="btn" onclick="budgetSave()">Save budget</button><button class="btn outline" onclick="budgetLoad()">↻ Refresh from Cartesia</button></div></details>
+    <details><summary>🔐 Approve extra spending this cycle (only you)</summary>
+      <p>Raises the stop line for this billing cycle only. It resets automatically next cycle. Then press ▶ Start auto-dialing again.</p>
+      <div class="formgrid"><div><label for="bgOvUsd">Extra amount ($)</label><input id="bgOvUsd" type="number" min="1" max="500" step="1" placeholder="16"></div>
+      <div><label for="bgOvNote">Reason</label><input id="bgOvNote" placeholder="Rebecca is booking well"></div>
+      <div><label for="bgOvConfirm">Type APPROVE</label><input id="bgOvConfirm" autocomplete="off"></div></div>
+      <div class="toolbar section"><button class="btn danger" onclick="budgetOverride()">Approve extra spending</button></div>
+      ${S.overrides.length ? S.overrides.map(o => `<div class="listitem row"><small>+${money(o.usd)} · ${esc(o.note || '')}</small><small class="muted">${esc(o.by)} · ${esc(fmtDate(o.at))}</small></div>`).join('') : ''}</details>
+    <p class="note">Every call is checked against this budget on the server, before it starts: the auto-dialer, practice-page calls, Alek's callbacks and Jennifer's booking calls. A call still in progress is counted at its full maximum length, so calls already running can't push you over. Cartesia's own prepaid balance is your second safety net.</p></div>`;
+}
+async function budgetSave() {
+  const v = id => $('bg_' + id).value, settings = { roundUp: $('bg_roundUp').checked };
+  ['budgetUsd', 'stopUsd', 'warn1Usd', 'warn2Usd', 'agentRate', 'phoneRate', 'llmRate', 'cycleDay'].forEach(f => settings[f] = Number(v(f)));
+  try { budgetState = await voiceApi({ action: 'usage_set', settings, sync: false, models: true }); render(); toast('Budget saved.'); } catch (e) { toast(e.message); }
+}
+async function budgetOverride() {
+  const usd = Number($('bgOvUsd').value), confirm = $('bgOvConfirm').value, note = $('bgOvNote').value;
+  if (!(usd > 0)) return toast('Enter the extra amount.');
+  if (!window.confirm('Allow ' + money(usd) + ' more in calls this billing cycle?')) return;
+  try { budgetState = await voiceApi({ action: 'usage_override', usd, confirm, note, models: true }); render(); toast('Approved: +' + money(usd) + ' this cycle.'); } catch (e) { toast(e.message); }
+}
 const OPT_OUT = /(do not call|don'?t call|stop calling|remove (me|us|this number)|take (me|us) off|not interested,? (thank|bye)|put (me|us) on (your|the) do not call)/i;
 function liveAgentsFor() { const on = (liveStatus && liveStatus.agents) || []; return state.agents.filter(a => on.includes(String(a.name || '').trim().toLowerCase())); }
 async function liveCall(leadId, prefer) {
@@ -1208,7 +1266,8 @@ function dialCard() {
   const ready = L && L.keySet && L.numbers && L.live;
   const ags = ['rebecca', 'george', 'monica', 'alek', 'tatiana'];
   const recent = (dialQ.leads || []).filter(l => l.status !== 'queued').slice(-8).reverse();
-  return `<div class="card section"><div class="row"><h2>🤖 Auto-dialer</h2><span class="chip ${dialQ.paused ? 'warn' : ready ? 'ok' : 'warn'}">${dialQ.paused ? '⏸ Paused' : ready ? '▶ On' : 'Waiting for Cartesia setup'}</span></div>
+  return `<div class="card section"><div class="row"><h2>🤖 Auto-dialer</h2><span class="chip ${dialQ.paused ? 'warn' : ready ? 'ok' : 'warn'}">${dialQ.paused ? (dialQ.pauseReason === 'budget' ? '⏸ Paused: budget reached' : '⏸ Paused') : ready ? '▶ On' : 'Waiting for Cartesia setup'}</span></div>
+    ${dialQ.pauseReason === 'budget' ? `<p class="note warn">The auto-dialer paused itself because this month's call budget hit the stop line. See 💰 Monthly call budget in <a href="#" onclick="nav('Usage & setup');return false">Usage & setup</a> to approve more, or wait for the next billing cycle.</p>` : ''}
     <p style="margin-top:0">Netlify dials the queue by itself, only inside these windows and only during business hours in each lead’s own time zone. Campaigns dial <b>at the same time</b>: the pace applies to each campaign separately (Media Network = Rebecca, Compliance = Monica + George). Do Not Call numbers, numbers already called today and leads outside hours are skipped automatically. It works even when this page is closed.</p>
     <div class="formgrid"><div><label>Days</label><div class="toolbar">${DIAL_DAYS.map(([v, l]) => `<label style="display:inline-flex;gap:4px;align-items:center;font-weight:400"><input type="checkbox" class="dialDay" value="${v}" ${(s.days || []).includes(v) ? 'checked' : ''}> ${l}</label>`).join('')}</div></div>
     <div><label for="dialTz">Time zone for the windows</label><select id="dialTz">${[['America/Los_Angeles', 'Pacific (my time)'], ['America/Denver', 'Mountain'], ['America/Chicago', 'Central'], ['America/New_York', 'Eastern']].map(([v, t]) => `<option value="${v}" ${(s.tz || 'America/New_York') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>

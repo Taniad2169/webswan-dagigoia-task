@@ -7,6 +7,7 @@
 //   - the number is valid, not on the Do Not Call list, not already called today, and the daily cap per number isn't reached
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { getStore } from "@netlify/blobs";
+import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
 // Wakes every minute 12:00-01:59 UTC, Tue-Fri UTC (= Tue-Thu, 8 AM to 6 PM Eastern / 5 AM to 6 PM Pacific, summer or winter).
 // The schedule saved in Voice Studio (up to two windows, in Tania's chosen time zone) narrows it to the exact hours.
@@ -74,6 +75,15 @@ export default async () => {
   const win = wins.findIndex(([a, b]) => a >= 0 && b > a && now.mins >= a && now.mins < b);
   if (win < 0) return new Response("outside window");
 
+  // Monthly budget: how many more 6-minute calls fit under the stop line (unfinished calls count at full length).
+  const gate = await budgetGate(store, 1, 6);
+  if (!gate.ok) {
+    q.paused = true; q.pauseReason = "budget"; q.lastRun = Date.now();
+    await store.setJSON("queue", q);
+    return new Response("paused: monthly budget reached");
+  }
+  let allowance = gate.allowance;
+
   const day = today(), countsKey = "count-" + day, dialedKey = "dialed-" + day;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
   const dialed = (await store.get(dialedKey, { type: "json" })) || [];
@@ -90,6 +100,7 @@ export default async () => {
 
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
+    if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
     const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
     if ((placedBy[ln] || 0) >= perRun) continue;
     if (perWin && (winCounts[wk] || 0) >= perWin) continue; // this campaign is done for this window
@@ -119,6 +130,7 @@ export default async () => {
       const d = await r.json().catch(() => ({}));
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
+      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 });
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
       if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++; placedBy[ln] = (placedBy[ln] || 0) + 1; winCounts[wk] = (winCounts[wk] || 0) + 1;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }

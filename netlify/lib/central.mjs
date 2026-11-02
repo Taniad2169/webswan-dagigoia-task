@@ -1,6 +1,7 @@
 // Jennifer Reid (WSMN Central): patient/client requests from Rachel, and placing Jennifer's booking calls.
 import { getStore } from "@netlify/blobs";
 import { STATE_TZ, sanitizeCal, callScript } from "./cal.mjs";
+import { budgetGate, budgetRecord } from "./budget.mjs";
 
 const API = "https://api.cartesia.ai";
 export const store = () => getStore({ name: "voice-studio", consistency: "strong" });
@@ -25,6 +26,8 @@ export async function placeCentralCall(s, req) {
   if (!agent || !from) return { ok: false, why: "Jennifer or her number isn't connected" };
   const dnc = (await s.get("dnc", { type: "json" })) || [];
   if (dnc.includes(req.phone)) return { ok: false, why: "Do Not Call", final: true };
+  const g = await budgetGate(s, 1, 6);
+  if (!g.ok) return { ok: false, why: "monthly call budget reached" };
   const r = await fetch(API + "/agents/calls", {
     method: "POST",
     headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": process.env.CARTESIA_VERSION || "2026-03-01", "Content-Type": "application/json" },
@@ -38,6 +41,7 @@ export async function placeCentralCall(s, req) {
   const d = await r.json().catch(() => ({}));
   const c0 = (d.calls || [])[0] || {};
   if (!r.ok || !c0.agent_call_id) return { ok: false, why: String(d.message || d.error || (c0.error && (c0.error.message || c0.error)) || "HTTP " + r.status).slice(0, 160) };
+  await budgetRecord(s, { id: c0.agent_call_id, agent: "jennifer", by: "rachel-central", maxMin: 6 });
   return { ok: true, callId: c0.agent_call_id };
 }
 

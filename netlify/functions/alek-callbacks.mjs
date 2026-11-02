@@ -3,6 +3,7 @@
 // Runs every 5 minutes on weekdays. Only calls 8 AM to 8 PM in the person's own time zone,
 // never on the Do Not Call list, and only when VOICE_CALLING_ENABLED is on.
 import { getStore } from "@netlify/blobs";
+import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
 
 export const config = { schedule: "*/5 13-23,0-3 * * 1-6" };
@@ -28,6 +29,8 @@ export default async () => {
     if (dnc.includes(to)) { c.status = "skipped"; c.note = "Do Not Call"; continue; }
     const tz = STATE_TZ[c.state] || "America/Los_Angeles", h = localHour(tz);
     if (h < 8 || h >= 20) continue; // waits for 8 AM their time
+    const g = await budgetGate(store, 1, 10);
+    if (!g.ok) { c.note = "waiting: monthly call budget reached"; continue; }
     const task = `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
     try {
       const r = await fetch(API + "/agents/calls", { method: "POST", headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
@@ -37,6 +40,7 @@ export default async () => {
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
+      await budgetRecord(store, { id: c0.agent_call_id, agent: "alek", by: "callback-calendar", maxMin: 10 });
       c.status = "called"; c.callId = c0.agent_call_id; c.calledAt = new Date().toISOString(); c.note = "";
     } catch (e) { c.status = "error"; c.note = String(e.message || e).slice(0, 160); }
   }
