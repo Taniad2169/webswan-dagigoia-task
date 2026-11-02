@@ -12,13 +12,13 @@ const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 
 // Rates are per minute. All stop/warning lines are in DOLLARS, so a price change only needs new rates here.
 export const BUDGET_DEFAULTS = {
-  budgetUsd: 49,       // Startup plan prepaid agent balance
-  agentRate: 0.06,     // Cartesia agent call duration
+  budgetUsd: 60,       // Tania's all-in monthly cap: $49 Startup plan (includes $49 prepaid agent usage) + up to $11 extra
+  agentRate: 0.03,     // Cartesia agent call duration (Nov 2026 price; was $0.06)
   phoneRate: 0.014,    // Cartesia-provided phone number
   llmRate: 0,          // free for UI-created agents for now; set it if Cartesia starts charging
-  warn1Usd: 37,        // about 500 minutes at $0.074
-  warn2Usd: 42,        // about 570 minutes
-  stopUsd: 45,         // about 610 minutes: no new calls past this line ($4 safety reserve under $49)
+  warn1Usd: 40,        // about 900 minutes at $0.044
+  warn2Usd: 45,        // about 1,020 minutes
+  stopUsd: 50,         // about 1,130 minutes: no new calls past this line (≈$10 cushion under $60 for AI-model charges)
   roundUp: true,       // bill each call as whole minutes (safer); switch off if Cartesia bills by the second
   cycleDay: 1          // day of the month the Cartesia billing cycle starts
 };
