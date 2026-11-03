@@ -36,7 +36,9 @@ function rachelTransfers(agent) {
 const RECEPTIONISTS = ["jennifer"];
 // Which webhook tools each agent gets. Rachel answers The WebSwan's own line: directory lookup + Tania's calendar.
 // Every calling agent gets Tania's calendar (check_availability reads her Google Calendar busy times; book_appointment re-checks before booking).
-const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slots", "book"] : a === "rachel" ? ["provider", "slots", "book"] : ["slots", "book"];
+// Receptionists answer calls that Voice Studio didn't start, so there are no dynamic variables (lead_state, lead_id):
+// they get the "In" versions of the calendar tools, which ask the model for those details instead.
+const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "bookIn"] : a === "rachel" ? ["provider", "slotsIn", "bookIn"] : ["slots", "book"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
@@ -347,6 +349,19 @@ export default async (req) => {
             lead_id: { type: "string", dynamic_variable: "lead_id" },
             call_id: { type: "string", dynamic_variable: "system__conversation_id" },
             lead_phone: { type: "string", dynamic_variable: "system__called_number" }
+          }, required: ["slot_id"] }, authentication: auth } } }
+      ,{ key: "slotsIn", body: { type: "webhook", name: "check_calendar", description: "Get Tania's open times for a 10-minute call. Use it as soon as the caller wants an appointment with Tania, before suggesting any day or time.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 20,
+          api_schema: { url: TOOLS_URL, method: "GET", query_params_schema: { properties: { action: { type: "string", constant_value: "slots" }, state: { type: "string", description: "The caller's US state as 2 letters (like NY or CA) if you know it; otherwise leave empty." } } }, authentication: auth } } }
+      ,{ key: "bookIn", body: { type: "webhook", name: "book_call", description: "Book the 10-minute call on Tania's calendar after the caller picks one of the times from check_calendar. Never book a time that did not come from check_calendar.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 25,
+          api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
+            action: { type: "string", constant_value: "book" },
+            slot_id: { type: "string", description: "The exact slot_id of the time they chose, copied from check_calendar." },
+            contact_name: { type: "string", description: "The caller's name." },
+            practice_name: { type: "string", description: "Name of the practice, law firm or business." },
+            email: { type: "string", description: "Best email for the calendar invitation, confirmed with them. Empty if they would not give one." },
+            lead_phone: { type: "string", description: "The caller's best phone number, confirmed with them." },
+            lead_state: { type: "string", description: "The caller's US state as 2 letters if known." },
+            notes: { type: "string", description: "What they want to talk about, in one or two sentences." }
           }, required: ["slot_id"] }, authentication: auth } } }
       ,{ key: "provider", body: { type: "webhook", name: "lookup_provider", description: "Look up a doctor or attorney in the WebSwan Media Network directory: specialty, location, phone, languages, insurance, whether they take new patients or clients. Use it as soon as you know which provider the call is about, by provider code if you have one, otherwise by name.", pre_tool_speech: "auto", execution_mode: "immediate", response_timeout_secs: 15,
           api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
