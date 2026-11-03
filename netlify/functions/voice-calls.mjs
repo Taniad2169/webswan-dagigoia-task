@@ -59,11 +59,17 @@ These rules come before everything else in your script.
 5. LONG HOLD. If you have been on hold or in menus for about 2 minutes with no live person, use end_call.
 6. "ARE YOU A ROBOT?" If someone asks whether you are a robot or AI, answer honestly and warmly in one sentence ("Yes, I'm an AI assistant calling for Tania at WebSwan.") and continue politely. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
 ${PHONE_RULES_END}`;
-function withPhoneRules(ins) {
+// Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
+const INBOUND_RULES = `${PHONE_RULES_START}
+You answer incoming calls and calls transferred to you. Speak first, right away, with your greeting; never wait in silence.
+If you are ever on hold or reach a recording, say nothing and wait; if no person speaks for about a minute, use end_call.
+If someone asks whether you are a robot or AI, answer honestly and warmly, then continue helping.
+${PHONE_RULES_END}`;
+function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
-  return base ? PHONE_RULES + "\n\n" + base : "";
+  return base ? (agent === "rachel" ? INBOUND_RULES : PHONE_RULES) + "\n\n" + base : "";
 }
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
@@ -371,7 +377,7 @@ export default async (req) => {
       try {
         // keypad + human/voicemail rules at the top of the agent's instructions
         let ins = "";
-        try { const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); ins = withPhoneRules(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || ""); } catch (e) {}
+        try { const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); ins = withPhoneRules(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || "", a.split("_")[0]); } catch (e) {}
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
@@ -507,7 +513,7 @@ export default async (req) => {
   if (b.action === "agent_prompt") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
     if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
-    const ins = withPhoneRules(String(b.instructions || "").trim());
+    const ins = withPhoneRules(String(b.instructions || "").trim(), name);
     if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
     try {
       await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins }, version_description: "Updated from WebSwan Voice Studio" });
