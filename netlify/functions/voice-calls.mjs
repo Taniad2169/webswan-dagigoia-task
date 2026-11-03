@@ -33,7 +33,8 @@ function rachelTransfers(agent) {
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
 const RECEPTIONISTS = ["jennifer"];
 // Which webhook tools each agent gets. Rachel answers The WebSwan's own line: directory lookup + Tania's calendar.
-const TOOLSET = (a) => a === "jennifer" ? ["provider", "client"] : a === "rachel" ? ["provider", "slots", "book"] : ["slots", "book"];
+// Every calling agent gets Tania's calendar (check_availability reads her Google Calendar busy times; book_appointment re-checks before booking).
+const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slots", "book"] : a === "rachel" ? ["provider", "slots", "book"] : ["slots", "book"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
