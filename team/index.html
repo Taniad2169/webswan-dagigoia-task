@@ -155,13 +155,14 @@ function drawMsgs() {
     const ok = cur + g.d, open = q || (ok in openDays ? openDays[ok] : (g.d === today || g.d === lastDay));
     h += `<div class="day ${g.d === today ? "today" : ""}" data-day="${esc(g.d)}" title="Click to open or close">${open ? "▾" : "▸"} ${esc(g.d)} <small>(${g.ms.length})</small></div>`;
     if (!open) continue;
-    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button>` : ""}</div>`;
+    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button><select class="copy" data-send="${esc(m.id)}" aria-label="Send this to another agent" style="margin-left:6px"><option value="">➡️ Send to…</option>${ORDER.filter((k) => k !== cur && k !== "rachel").map((k) => `<option value="${k}">${esc((((S.agents || FALLBACK)[k]) || FALLBACK[k]).name)}</option>`).join("")}</select>` : ""}</div>`;
   }
   if (!days.length) h += q ? `<p class="hint">Nothing matches "${esc(findQ)}".</p>` : `<p class="hint">No messages yet. Say hi to ${esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)}.</p>`;
   $("msgs").innerHTML = h;
   const fb = $("findBox"); fb.oninput = () => { findQ = fb.value; clearTimeout(fb._t); fb._t = setTimeout(() => { drawMsgs(); const n = $("findBox"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
   $("msgs").querySelectorAll("[data-day]").forEach((d) => d.onclick = () => { if (findQ) return; openDays[cur + d.dataset.day] = !d.textContent.startsWith("▾"); drawMsgs(); });
   $("msgs").querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => { const m = msgs.find((x) => x.id === b.dataset.copy); if (m) navigator.clipboard.writeText(m.text).then(() => toast("Copied")); });
+  $("msgs").querySelectorAll("[data-send]").forEach((sel) => sel.onchange = () => sendToAgent(sel.dataset.send, sel.value));
   if (!q) $("msgs").scrollTop = $("msgs").scrollHeight;
 }
 const TOOLS = {
@@ -170,6 +171,17 @@ const TOOLS = {
   linda: [["🔎 Review a website", () => lindaPanel()]],
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
+
+// Hand an answer to another lady (only when Tania picks one, so they never chat on their own).
+async function sendToAgent(id, to) {
+  if (!to) return; const m = msgs.find((x) => x.id === id); if (!m) return;
+  const fromA = (((S.agents || FALLBACK)[cur]) || FALLBACK[cur]), toA = (((S.agents || FALLBACK)[to]) || FALLBACK[to]);
+  const note = prompt(`What should ${toA.name} do with ${fromA.name}'s answer? (optional)`, to === "clara" ? "Please review the cost: APPROVE, WAIT or DECLINE." : to === "linda" ? "Please review any legal or compliance claims." : "");
+  if (note === null) { drawMsgs(); return; }
+  const text = `Handoff from ${fromA.name} (${fromA.role}), sent by Tania:\n\n${m.text}\n\nTania's note: ${note || "Please review and add your part."}`;
+  toast(`Sending to ${toA.name}…`);
+  await openAgent(to); await ask(text);
+}
 async function openAgent(k) {
   cur = k; findQ = ""; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
