@@ -124,7 +124,7 @@ export default async () => {
           agent_id: aid, from_number_id: pick.id,
           outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" },
             dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: floating ? lead.task : "none" } }],
-          ringing_timeout_seconds: 30, max_call_duration_minutes: 6
+          ringing_timeout_seconds: 30, max_call_duration_minutes: 10
         })
       });
       const d = await r.json().catch(() => ({}));

@@ -576,7 +576,7 @@ export default async (req) => {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
         outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_language: LANGS[lang], call_mode: name === "alek" ? MODES[mode] : "standard", task: name === "alek" && mode === "floating" ? task : "none" } }],
-        ringing_timeout_seconds: 30, max_call_duration_minutes: 6
+        ringing_timeout_seconds: 30, max_call_duration_minutes: 10
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
     const r0 = (data.calls || [])[0] || {};

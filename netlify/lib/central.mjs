@@ -35,7 +35,7 @@ export async function placeCentralCall(s, req) {
       agent_id: agent, from_number_id: from,
       outbound_calls: [{ to_number: req.phone, metadata: { centralId: req.id, providerCode: req.providerCode, by: "rachel-central" },
         dynamic_variables: { call_mode: "Mode 1: Jennifer Reid, WSMN Central", lead_name: req.name, provider_code: req.providerCode, provider_name: req.providerName, lead_state: req.state || "", best_time: req.bestTime || "not given", lead_id: req.id, business: req.providerName, findings: "none listed", lead_language: "English", task: "none" } }],
-      ringing_timeout_seconds: 30, max_call_duration_minutes: 6
+      ringing_timeout_seconds: 30, max_call_duration_minutes: 10
     })
   });
   const d = await r.json().catch(() => ({}));
