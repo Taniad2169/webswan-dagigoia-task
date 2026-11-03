@@ -18,17 +18,22 @@ import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAge
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer"];
+const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer", "rachel"];
 // Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
 const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
 const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13476467086";
 function rachelTransfers(agent) {
   const comp = { destination: { type: "phone", phone_number: RACHEL_COMPLIANCE }, condition: "The person has questions about website compliance, ADA, privacy, HIPAA, the audit findings or the risk, and agrees to be transferred to Rachel, WebSwan Digital Solutions' compliance coordinator." };
   const ads = { destination: { type: "phone", phone_number: RACHEL_ADVERTISING }, condition: "The person wants more information about WebSwan Media Network, advertising, visibility or being added to the directory, and agrees to be transferred to Rachel, the advertising coordinator." };
-  return { monica: [comp], george: [comp, ads], rebecca: [ads], alek: [comp, ads] }[agent] || null;
+  // Rachel (our own Cartesia receptionist) hands the caller to Tania when TANIA_TRANSFER_NUMBER is set
+  const tania = String(process.env.TANIA_TRANSFER_NUMBER || "").trim();
+  const toTania = tania ? [{ destination: { type: "phone", phone_number: tania }, condition: "The caller wants to speak with Tania, or asks something only Tania can answer, and agrees to be connected." }] : null;
+  return { monica: [comp], george: [comp, ads], rebecca: [ads], alek: [comp, ads], rachel: toTania }[agent] || null;
 }
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
 const RECEPTIONISTS = ["jennifer"];
+// Which webhook tools each agent gets. Rachel answers The WebSwan's own line: directory lookup + Tania's calendar.
+const TOOLSET = (a) => a === "jennifer" ? ["provider", "client"] : a === "rachel" ? ["provider", "slots", "book"] : ["slots", "book"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
@@ -366,7 +371,7 @@ export default async (req) => {
         try { const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); ins = withPhoneRules(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || ""); } catch (e) {}
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
-          tools: Object.entries(saved).filter(([k, x]) => x && (RECEPTIONISTS.includes(a.split("_")[0]) ? (k === "provider" || k === "client") : (k !== "provider" && k !== "client"))).map(([, x]) => ({ id: x })),
+          tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
           system_tools: Object.assign({ end_call: {}, send_dtmf: {}, voicemail_detection: {} }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
         report.agents[a] = ins.length > 200 ? "connected · phone-menu & voicemail rules on" : "connected (rules not added: no script found)";
@@ -469,7 +474,7 @@ export default async (req) => {
         const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
         const c = d.config || (d.agent && d.agent.config) || {};
         const have = new Set((c.tools || []).map((t) => t.id || t));
-        const want = RECEPTIONISTS.includes(a) ? ["provider", "client"] : ["slots", "book"];
+        const want = TOOLSET(a);
         const missing = want.filter((k) => !savedTools[k] || !have.has(savedTools[k]));
         const v = (c.audio && c.audio.output && c.audio.output.voice_id) || "";
         voices[a] = v;
