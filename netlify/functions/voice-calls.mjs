@@ -380,8 +380,12 @@ export default async (req) => {
     const tries = async (method, path, body) => { try { return await cartesia(method, path, V_READ, body); } catch (e) { if (/not found|404/i.test(e.message)) return await cartesia(method, "/v1" + path, V_READ, body); throw e; } };
     const report = { tools: {}, agents: {} };
     try {
+      // Reuse tools that already exist with the same name, so running setup again never makes duplicates.
+      let existing = [];
+      try { const l = await tries("GET", "/agents/tools"); existing = Array.isArray(l) ? l : (l.data || l.tools || []); } catch (e) {}
       for (const d of defs) {
-        if (saved[d.key]) { try { await tries("PATCH", "/agents/tools/" + saved[d.key], d.body); report.tools[d.body.name] = "updated"; continue; } catch (e) { delete saved[d.key]; } }
+        if (!saved[d.key]) { const same = existing.filter((x) => x && x.name === d.body.name).sort((x, y) => String(y.updated_at || y.created_at || "").localeCompare(String(x.updated_at || x.created_at || ""))); if (same[0] && same[0].id) saved[d.key] = same[0].id; }
+        if (saved[d.key]) { try { await tries("PATCH", "/agents/tools/" + saved[d.key], d.body); report.tools[d.body.name] = "updated"; continue; } catch (e) { report.toolErrors = (report.toolErrors || []).concat(d.body.name + ": " + String(e.message || e).slice(0, 120)); delete saved[d.key]; } }
         const t = await tries("POST", "/agents/tools", d.body);
         saved[d.key] = t.id || (t.tool && t.tool.id) || ""; report.tools[d.body.name] = saved[d.key] ? "created" : "created (no id returned)";
       }
