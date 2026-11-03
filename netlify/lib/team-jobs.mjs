@@ -35,6 +35,7 @@ export async function evaDaily() {
   await teamStore().setJSON("followups", fu);
   const ask = `Write Tania's morning briefing for ${ptDate()}. Start with "# ${ptDate()}".
 Sections in this order (skip a section only if it is empty): Today's schedule (appointments, calls, Zoom), Time to call (no reply 3 days after the audit email), Formspree submissions (every one), Leads who replied, Important emails (max 5), Service offers and collaborations (one line each), Tasks due.
+TIMES: every time in the calendar data is UTC. Always write times in Pacific time (Tania is in California), and add New York time in parentheses for East Coast appointments, e.g. "9:00 AM PT (12:00 PM ET)". Label each event "Today" or "Tomorrow" by its Pacific date; never put tomorrow's events under today.
 ${err ? "Note for Tania: " + err : ""}
 TIME TO CALL: ${JSON.stringify(due.map((f) => ({ practice: f.practice, email: f.to, phone: f.phone, state: f.state, emailedOn: f.at.slice(0, 10) })))}
 CALENDAR AND TASKS (data): ${JSON.stringify(agenda).slice(0, 8000)}
@@ -204,7 +205,7 @@ export function dueJobs(now = new Date()) {
   const wd = now.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/Los_Angeles" });
   const day = Number(now.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/Los_Angeles" }));
   const jobs = ["eva_daily"];
-  if (wd === "Mon") jobs.push("eva_monday");
+  if (wd === "Mon") jobs.push("eva_monday", "tatiana_weekly");
   if (day === 25) jobs.push("tatiana_month");
   return jobs;
 }
