@@ -7,8 +7,8 @@ export const teamStore = () => getStore({ name: "team", consistency: "strong" })
 
 const COMPANY = `About Tania's business (the WebSwan family, run by Tania, pronounced TAHN-yah):
 - The WebSwan (thewebswan.com): custom websites, SEO, landing pages, branding, the SBPA (Small Business Phone Application) and the digital business card (e-card). Free website demo, no obligation.
-- WebSwan Digital Solutions (webswandigitalsolutions.com): website compliance for doctors and attorneys: complimentary compliance audit (ADA accessibility, cookie consent and privacy, HIPAA-safe forms, tracking pixels, bar rules), fix plan, fixes and monitoring. Compliance questions go to the 239 line.
-- WebSwan Media Network (webswanmedianetwork.com, directory at ads.webswanmedianetwork.com): everything about being seen and getting leads: the curated advertising directory for qualified doctors and attorneys, the AI receptionist (Rachel, one-week free trial), the AI appointment setter, social media marketing and advertising. Advertising questions go to the 347 line.
+- WebSwan Digital Solutions (webswandigitalsolutions.com): website compliance for doctors and attorneys: complimentary compliance audit (ADA accessibility, cookie consent and privacy, HIPAA-safe forms, tracking pixels, bar rules), fix plan, fixes and monitoring. Rachel answers at (316) 248-6839.
+- WebSwan Media Network (webswanmedianetwork.com, directory at ads.webswanmedianetwork.com): everything about being seen and getting leads: the curated advertising directory for qualified doctors and attorneys, the AI receptionist (Rachel, one-week free trial), the AI appointment setter, social media marketing and advertising. Rachel answers at (316) 248-6839 for all three brands.
 - Routing: websites, phone app, e-card = The WebSwan. Compliance, ADA, HIPAA, cookies, privacy = Digital Solutions. Advertising, directory, receptionist, appointment setter, social media = Media Network.
 - Target clients: owner-run doctor and law practices (no hospitals, clinics, chains). Main states: New York, Florida, Texas, California, New Jersey, Illinois, Utah, Virginia, Connecticut, Georgia, Nevada, Washington DC, Arizona.
 - Address: 3425 Market Street, Emeryville, CA 94608. Tania's name only, never her last name, in anything sent to prospects.
@@ -200,7 +200,7 @@ export async function addMessages(agent, msgs) {
 // Claude is more careful with legal reasoning, so Linda defaults to it (falls back to DeepSeek if no Claude key).
 export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "gemini", clara: "chatgpt", rachel: "deepseek" };
 export async function getSettings() {
-  const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(239) 667-0151", advertisingPhone: "(347) 646-7086" }, (await teamStore().get("settings", { type: "json" })) || {});
+  const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
   return s;
 }
