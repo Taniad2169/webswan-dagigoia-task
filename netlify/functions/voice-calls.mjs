@@ -28,7 +28,9 @@ function rachelTransfers(agent) {
   // Rachel (our own Cartesia receptionist) hands the caller to Tania when TANIA_TRANSFER_NUMBER is set
   const tania = String(process.env.TANIA_TRANSFER_NUMBER || "").trim();
   const toTania = tania ? [{ destination: { type: "phone", phone_number: tania }, condition: "The caller wants to speak with Tania, or asks something only Tania can answer, and agrees to be connected." }] : null;
-  return { monica: [comp], george: [comp, ads], rebecca: [ads], alek: [comp, ads], rachel: toTania }[agent] || null;
+  // When both lines are the same (our own Rachel answers both), merge them into one transfer: Cartesia needs unique destinations.
+  const both = RACHEL_COMPLIANCE === RACHEL_ADVERTISING ? [{ destination: comp.destination, condition: "The person has questions about website compliance (ADA, privacy, HIPAA, the audit findings or the risk) or about WebSwan Media Network (advertising, visibility, the directory), and agrees to be transferred to Rachel." }] : [comp, ads];
+  return { monica: [comp], george: both, rebecca: [ads], alek: both, rachel: toTania }[agent] || null;
 }
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
 const RECEPTIONISTS = ["jennifer"];
