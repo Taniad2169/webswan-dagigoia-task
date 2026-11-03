@@ -1676,6 +1676,10 @@ window.addEventListener('load', () => { if (page === 'AI Team') render(); });
 </script>
 <script>
 /* ---------- call recordings + live Cartesia agents (create, coach into the live voice) ---------- */
+function stopRec(close) {
+  const a = document.getElementById('recAudio'); if (a) { a.pause(); a.currentTime = 0; }
+  if (close) { if (a) a.src = ''; const b = document.getElementById('recBar'); if (b) b.remove(); }
+}
 async function playRec(id) {
   const x = state.calls.find(k => k.id === id); if (!x || !x.live || !x.live.callId) return;
   toast('Loading the recording…');
@@ -1686,7 +1690,8 @@ async function playRec(id) {
     const url = URL.createObjectURL(await r.blob());
     let bar = $('recBar');
     if (!bar) { bar = document.createElement('div'); bar.id = 'recBar'; bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:50;background:var(--card,#fff);border:1px solid #cfd8e3;border-radius:14px;padding:10px 12px;box-shadow:0 8px 30px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center;flex-wrap:wrap'; document.body.appendChild(bar); }
-    bar.innerHTML = `<strong style="font-size:14px">▶ ${esc(x.leadName || 'Call')} · ${esc(x.agentName || '')}</strong><audio controls autoplay src="${url}" style="flex:1;min-width:220px"></audio><a class="btn secondary small" href="${url}" download="call-${esc(x.live.callId)}.wav">Save</a><button class="btn outline small" onclick="this.parentElement.remove()" aria-label="Close player">✕</button>`;
+    const prev = bar.querySelector('audio'); if (prev) { prev.pause(); prev.src = ''; }
+    bar.innerHTML = `<strong style="font-size:14px">▶ ${esc(x.leadName || 'Call')} · ${esc(x.agentName || '')}</strong><audio id="recAudio" controls autoplay src="${url}" style="flex:1;min-width:220px"></audio><button class="btn danger small" onclick="stopRec(false)">⏹ Stop</button><a class="btn secondary small" href="${url}" download="call-${esc(x.live.callId)}.wav">Save</a><button class="btn outline small" onclick="stopRec(true)" aria-label="Stop and close player">✕</button>`;
   } catch (e) { toast(e.message); }
 }
 
