@@ -105,8 +105,8 @@
 <script>
 const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
-const ORDER = ["eva", "tatiana", "linda", "rachel"];
-const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } };
+const ORDER = ["eva", "tatiana", "linda", "clara", "rachel"];
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } };
 let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini (Jimmy)", claude: "Claude" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
 let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
@@ -175,7 +175,7 @@ async function openAgent(k) {
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
   $("tools").innerHTML = (TOOLS[k] || []).map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = TOOLS[k][b.dataset.t][1]);
-  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", linda: "Paste a website or ask about a law, disclaimer or script wording…", rachel: "Tell me how Rachel should answer…" }[k];
+  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
   document.querySelector(".app").classList.add("chat"); drawList();
   $("msgs").innerHTML = '<p class="hint">Loading…</p>';
   try { msgs = (await api({ action: "history", agent: k })).messages || []; } catch (e) { msgs = []; toast(e.message); }
