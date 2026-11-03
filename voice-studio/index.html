@@ -1119,6 +1119,7 @@ function callFacts(x, lines, endReason, status) {
   else if (/^dial_failed$/.test(endReason)) f.result = 'Wrong number';
   else if (OPT_OUT.test(prospect)) f.result = 'Asked not to be called';
   else if (BOOKED.test(agent)) f.result = 'Appointment booked';
+  else if (/transferring you to rachel/i.test(agent)) f.result = 'Transferred to Rachel';
   else if (IVR.test(prospect) && !humanSpoke) f.result = 'Phone menu';
   else if (NOT_INT.test(prospect)) f.result = 'Not interested';
   else if (CALLBACK.test(prospect)) f.result = 'Call back later';
