@@ -563,7 +563,8 @@ export default async (req) => {
     if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
     const counts = (await store.get(countsKey, { type: "json" })) || {};
     const alekNum = String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim(), camp = nums.filter((id) => id !== alekNum);
-    const pick = name === "alek" && alekNum ? { id: alekNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
+    const chosen = String(b.fromNumberId || "").trim();
+    const pick = chosen && nums.includes(chosen) ? { id: chosen } : name === "alek" && alekNum ? { id: alekNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
     if (!pick) return reply(429, { error: `Every number reached today's cap of ${cap()} calls. Try again tomorrow.` }, origin);
 
     const gate = await budgetGate(store, 1, 6);
