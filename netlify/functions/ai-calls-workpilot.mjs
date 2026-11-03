@@ -1,3 +1,4 @@
+// v2 (Nov 3): needs WORKPILOT_FIREBASE_KEY on webswan-billing.
 // AI calls -> WorkPilot: every 15 minutes, every finished call by Rebecca, Monica, George, Alek (outbound)
 // and Rachel (inbound) becomes a row in WorkPilot's "From AI Calls (Voice Studio)" list (blue), with the agent's
 // name, the outcome (Hang up, Call back, Voicemail, Talked, Email captured, Appointment booked, Do not call),
