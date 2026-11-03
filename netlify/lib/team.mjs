@@ -127,12 +127,19 @@ export async function askAI(provider, system, messages, maxTokens = 3000) {
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "", provider: p };
   }
   if (p === "gemini") {
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, generationConfig: { maxOutputTokens: maxTokens },
-        contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
-    j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error("Gemini: " + ((j.error && j.error.message) || r.status));
+    // Google retires model names often: try the configured one, then the "latest" aliases.
+    const models = [process.env.GEMINI_MODEL, "gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"].filter((m, i, a) => m && a.indexOf(m) === i);
+    let lastErr = "";
+    for (const model of models) {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+          contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })) }) });
+      j = await r.json().catch(() => ({}));
+      if (r.ok) break;
+      lastErr = (j.error && j.error.message) || String(r.status);
+      if (!/not found|no longer available|not supported|unavailable/i.test(lastErr)) break;
+    }
+    if (!r.ok) throw new Error("Gemini: " + lastErr);
     const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
     return { text: parts.map((x) => x.text || "").join(""), provider: p };
   }
