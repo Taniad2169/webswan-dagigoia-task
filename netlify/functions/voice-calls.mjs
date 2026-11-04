@@ -702,6 +702,14 @@ export default async (req) => {
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
+  // ---------- read an agent's full config (no instructions text) to check speed settings ----------
+  if (b.action === "agent_raw") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    if (!id) return reply(400, { error: "Unknown agent." }, origin);
+    try { const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); const cfg = JSON.parse(JSON.stringify(d.config || (d.agent && d.agent.config) || {})); const len = String(cfg.instructions || "").length; delete cfg.instructions; return reply(200, { instructionsChars: len, config: cfg, top: Object.keys(d) }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
   // ---------- a few English voices to choose from (for a new agent) ----------
   if (b.action === "voices") {
     try {
