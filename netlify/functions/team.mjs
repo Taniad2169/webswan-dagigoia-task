@@ -196,7 +196,7 @@ export default async (req) => {
         } catch (e) { extra += "\n\n(Voice Studio call data isn't available right now.)"; }
       }
       // SDR AI listens to everyone's calls: recent transcripts for each phone agent.
-      if (agent === "sdr" && !b.roleplay) {
+      if (agent === "sdr" && !b.roleplay && /\b(calls?|called|transcripts?|hang|hung|voicemail|listen|review|today|yesterday|this morning|monica|george|rebecca|alek|rachel|agent|script|line|answer(ed)?|appointment|booked|email)\b/i.test(text)) {
         const parts = [];
         for (const [k, label] of [["monica", "MONICA"], ["george", "GEORGE"], ["rebecca", "REBECCA"], ["alek", "ALEK"], ["rachel", "RACHEL"]]) {
           try { const tr = await callTranscripts(k, /\b(all|every|today|yesterday|week|review|calls?)\b/i.test(text) ? 3 : 2); if (tr) parts.push("=== " + label + " ===\n" + tr.replace(/\bYOU:/g, label + ":")); } catch (e) {}

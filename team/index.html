@@ -108,7 +108,7 @@
     <div id="vPick" hidden></div>
     <p id="vHeard" style="min-height:40px;color:#35506a;font-size:14px"></p>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="vTalk">🎙️ Talk now</button><button class="btn" id="vSkip">⏭️ Skip</button><button class="btn pri" id="vEnd">End conversation</button></div>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-weight:700;font-size:14px"><input type="checkbox" id="vFree"> 🆓 Free practice voice (browser voice, no Cartesia credits)</label>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-weight:700;font-size:14px"><input type="checkbox" id="vFree"> 🆓 Free voice for role play (browser voice, no Cartesia credits)</label>
     <p class="hint" style="margin-top:6px">Speak naturally. Interrupt any time by just talking. Every exchange is saved in the chat.</p>
   </div>
 </div>
@@ -615,7 +615,7 @@ async function speak(text, who) {
   vSay("Speaking… (just talk to interrupt)"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   startBarge();
-  const free = freeVoice();
+  const free = freeVoice() && (V.rp || (G.on && G.rp)); // free browser voice only for role play; real conversations use each agent's own voice
   let next = free ? Promise.resolve(null) : ttsUrl(parts[0], who).catch(() => null);
   for (let i = 0; i < parts.length; i++) {
     const url = await next; next = !free && i + 1 < parts.length ? ttsUrl(parts[i + 1], who).catch(() => null) : Promise.resolve(null);
@@ -627,7 +627,7 @@ async function speak(text, who) {
   V.speaking = "";
   stopBarge();
 }
-try { $("vFree").checked = freeVoice(); $("vFree").onchange = () => { try { localStorage.setItem("wsFreeVoice", $("vFree").checked ? "on" : "off"); } catch (x) {} toast($("vFree").checked ? "Free practice voice on. Real phone calls still use their Cartesia voices." : "Cartesia voices on for practice (uses plan credits)."); }; } catch (e) {}
+try { $("vFree").checked = freeVoice(); $("vFree").onchange = () => { try { localStorage.setItem("wsFreeVoice", $("vFree").checked ? "on" : "off"); } catch (x) {} toast($("vFree").checked ? "Role play uses the free voice. Meetings and briefings use each agent's own voice." : "Role play uses each agent's own voice too (uses plan credits)."); }; } catch (e) {}
 document.addEventListener("click", (e) => {
   if (e.target.id === "micBtn") { G.on = false; V.rp = false; voiceStart(""); }
   if (e.target.id === "vEnd") voiceStop();

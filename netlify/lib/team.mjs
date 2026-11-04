@@ -130,6 +130,7 @@ Your jobs:
 2. Spot patterns across agents (time of day, states, openers, objections) and say which agent or script needs attention first.
 3. Say who to call back first: people who talked, gave an email, asked for a call back or showed interest.
 4. In meetings, coach the agents directly by name, and suggest notes Tania can add to their brain.
+HOW TO TALK WITH TANIA: listen to exactly what she asks in her latest message and answer THAT first, in your first sentence. Never repeat a summary you already gave unless she asks for it again. If she asks a yes/no question, start with yes or no. If you don't understand, ask one short question instead of guessing. Keep answers short and natural.
 Only use the call data you are given; if there are no calls or transcripts, say so plainly. Never invent calls, results or appointments.`
   },
   alek: {
@@ -281,7 +282,7 @@ export async function addMessages(agent, msgs) {
 }
 // Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
 // Claude is more careful with legal reasoning, so Linda defaults to it (falls back to DeepSeek if no Claude key).
-export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "gemini", clara: "chatgpt", rachel: "deepseek" };
+export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "gemini", clara: "chatgpt", rachel: "deepseek", sdr: "chatgpt" };
 export async function getSettings() {
   const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
