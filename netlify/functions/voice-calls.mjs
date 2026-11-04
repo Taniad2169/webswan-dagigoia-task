@@ -10,6 +10,7 @@
 //   CARTESIA_AGENT_GEORGE     Cartesia agent ID for George  (also _REBECCA, _MONICA, _ALEK, _TATIANA)
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
+import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
@@ -556,6 +557,13 @@ export default async (req) => {
     add("Auto-dial queue", true, (q.paused ? "paused" : "running") + " · " + ((q.leads || []).filter((l) => l.status === "queued").length) + " queued");
     return reply(200, { ready: checks.every((c) => c.ok), checks }, origin);
   }
+
+  // ---------- push finished AI calls into WorkPilot's blue list right now ----------
+  if (b.action === "wp_sync") {
+    try { return reply(200, await runWorkpilotSync(Math.min(24 * 14, Math.max(1, Number(b.hours) || 72))), origin); }
+    catch (e) { return reply(502, { error: String(e.message || e).slice(0, 300) }, origin); }
+  }
+  if (b.action === "wp_sync_status") return reply(200, (await store.get("wp-sync-status", { type: "json" }).catch(() => null)) || { never: true }, origin);
 
   // ---------- update one agent's instructions (system prompt) in Cartesia ----------
   if (b.action === "agent_prompt") {

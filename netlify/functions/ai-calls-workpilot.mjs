@@ -43,23 +43,27 @@ function outcome(c, said, booked) {
   return "Talked";
 }
 
-export default async () => {
+export default async () => new Response(JSON.stringify(await runWorkpilotSync()));
+
+// Also run on demand from Voice Studio ("Sync AI calls to WorkPilot now"), with the real error if it fails.
+export async function runWorkpilotSync(hours) {
   const key = process.env.WORKPILOT_FIREBASE_KEY, ck = process.env.CARTESIA_API_KEY;
-  if (!key || !ck) return new Response("not configured");
+  const s0 = getStore({ name: "voice-studio", consistency: "strong" });
+  if (!key || !ck) { const st = { at: new Date().toISOString(), ok: false, error: !key ? "WORKPILOT_FIREBASE_KEY is not set on webswan-billing in Netlify" : "CARTESIA_API_KEY is missing" }; await s0.setJSON("wp-sync-status", st); return st; }
   const s = getStore({ name: "voice-studio", consistency: "strong" });
   const ids = (await s.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const done = new Set((await s.get("wp-sync-done", { type: "json" }).catch(() => null)) || []);
   const q = (await s.get("queue", { type: "json" }).catch(() => null)) || { leads: [] };
   const byPhone = new Map(); for (const l of q.leads || []) if (l.phone) byPhone.set(digits(l.phone), l);
   const bookings = (await s.get("bookings", { type: "json" }).catch(() => null)) || [];
-  const since = new Date(Date.now() - 24 * 3600e3).toISOString();
-  let token = null, sent = 0, errors = 0;
+  const since = new Date(Date.now() - (hours || 24) * 3600e3).toISOString();
+  let token = null, sent = 0, errors = 0, lastErr = "";
   for (const [a, label] of AGENTS) {
     const aid = process.env["CARTESIA_AGENT_" + a.toUpperCase()] || ids[a];
     if (!aid) continue;
     const qs = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript", start_time_gte: since });
     const r = await fetch(API + "/agents/calls?" + qs, { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": V_READ } });
-    if (!r.ok) continue;
+    if (!r.ok) { lastErr = "Cartesia " + r.status + " for " + label; continue; }
     const calls = (await r.json()).data || [];
     for (const c of calls) {
       const id = c.id || c.agent_call_id;
@@ -107,10 +111,12 @@ export default async () => {
         if (!token) token = await idToken(key, s);
         const docId = "ai-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100);
         const w = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/leads?documentId=${docId}`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify({ fields }) });
-        if (w.ok || w.status === 409) { done.add(id); sent++; } else errors++;
-      } catch (e) { errors++; }
+        if (w.ok || w.status === 409) { done.add(id); sent++; } else { errors++; lastErr = "WorkPilot database " + w.status + ": " + (await w.text().catch(() => "")).slice(0, 200); }
+      } catch (e) { errors++; lastErr = String(e.message || e).slice(0, 200); }
     }
   }
   await s.setJSON("wp-sync-done", [...done].slice(-5000));
-  return new Response(`sent ${sent}, errors ${errors}`);
-};
+  const st = { at: new Date().toISOString(), ok: !errors, sent, errors, error: lastErr };
+  await s.setJSON("wp-sync-status", st);
+  return st;
+}
