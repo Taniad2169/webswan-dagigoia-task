@@ -559,6 +559,22 @@ export default async (req) => {
     return reply(200, { ready: checks.every((c) => c.ok), checks }, origin);
   }
 
+  // ---------- move queued leads from one caller to another (e.g. George's attorneys -> Alek for SwanDesk AI) ----------
+  if (b.action === "queue_reassign") {
+    const from = String(b.from || "").toLowerCase(), to = String(b.to || "").toLowerCase();
+    if (!AGENTS.includes(from) || !AGENTS.includes(to)) return reply(400, { error: "Pick two callers." }, origin);
+    const q = (await store.get("queue", { type: "json" })) || { leads: [] };
+    const task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
+    if (to === "alek" && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his script." }, origin);
+    let moved = 0;
+    for (const l of q.leads || []) {
+      if (l.status !== "queued" || String(l.agent || "").toLowerCase() !== from) continue;
+      l.agent = to; if (b.mode === "floating") { l.mode = "floating"; l.task = task; } if (b.campaign) l.campaign = String(b.campaign).slice(0, 120); moved++;
+    }
+    await store.setJSON("queue", q);
+    return reply(200, { moved }, origin);
+  }
+
   // ---------- SDR AI brain (Voice Studio): call reviews and script coaching, answered as JSON ----------
   // Runs here with the server's AI keys (Gemini first) instead of Firebase AI Logic in the browser.
   if (b.action === "sdr_brain") {
