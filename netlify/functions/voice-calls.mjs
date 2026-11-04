@@ -717,7 +717,7 @@ export default async (req) => {
         const t = (c.transcript || []).filter((x) => x.role !== "system" || x.log_metric);
         t.forEach((x) => { if (x.log_metric && x.log_metric.name === "llm_first_text_ms") llm.push(x.log_metric.value); if (x.tts_ttfb) ttfb.push(x.tts_ttfb * 1000); });
         const turns = t.filter((x) => x.role === "user" || x.role === "assistant");
-        const human = turns.find((x) => x.role === "user" && /how (can|may) i (help|assist)|speaking|this is|good (morning|afternoon)|hello|law (office|firm)|dental|chiropractic|office of/i.test(x.text || "") && !/press \d|para espa|if you know|leave a message|after the (tone|beep)|is not available/i.test(x.text || ""));
+        const human = turns.find((x) => x.role === "user" && /how (can|may) i (help|assist)|speaking|this is|good (morning|afternoon)|hello|law (office|firm)|dental|chiropractic|office of/i.test(x.text || "") && !/press \d|para espa|if you know|leave a message|after the (tone|beep)|is not available|thank you for calling|office hours|stay on the line|your call is|please hold|extension|recorded|monitored|is now closed|business hours|welcome to/i.test(x.text || ""));
         if (!human) continue; humanCalls++;
         let first = true;
         for (let i = turns.indexOf(human); i < turns.length; i++) { const u = turns[i]; if (u.role !== "user") continue; const a = turns.slice(i + 1).find((x) => x.role === "assistant" && String(x.text || "").trim()); if (!a) { if (first) { noGreeting++; per.push({ agent: n, callId: c.id, issue: "no greeting after a live person" }); } break; }
