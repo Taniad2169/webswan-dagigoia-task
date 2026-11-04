@@ -92,8 +92,9 @@ export default async () => {
   if (Number(s.perMinute) === 0.5 && now.mins % 2 === 1) return new Response("resting (1 call every 2 minutes)");
   const perRun = Number(s.perMinute) === 0.5 ? 1 : Math.max(1, Math.min(5, parseInt(s.perMinute, 10) || 1));
   // Campaigns dial AT THE SAME TIME: the pace applies to each campaign line separately
-  // (Media Network = Rebecca, Compliance = Monica + George, Alek on his own), and each line has its own limit per window.
-  const line = (a) => a === "rebecca" ? "media" : (a === "monica" || a === "george") ? "compliance" : a || "other";
+  // (Media Network = Rebecca, Compliance doctors = Monica, Compliance attorneys = George, Alek on his own), and each
+  // caller has her/his own limit per window (Tania, Nov 3: Monica and George each get their own 12).
+  const line = (a) => a === "rebecca" ? "media" : a || "other";
   const winKey = "win-" + day, winCounts = (await store.get(winKey, { type: "json" })) || {};
   const perWin = Number(s.perWindow) || 0, placedBy = {};
   let placed = 0;
