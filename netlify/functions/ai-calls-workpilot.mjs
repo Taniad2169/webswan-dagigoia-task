@@ -116,7 +116,7 @@ export async function runWorkpilotSync(hours) {
     }
   }
   await s.setJSON("wp-sync-done", [...done].slice(-5000));
-  const st = { at: new Date().toISOString(), ok: !errors, sent, errors, error: lastErr };
+  const st = { at: new Date().toISOString(), ok: !errors, sent, errors, error: lastErr, keyHint: key.slice(0, 10) + "… (" + key.length + " characters)" };
   await s.setJSON("wp-sync-status", st);
   return st;
 }
