@@ -704,6 +704,14 @@ export default async (req) => {
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
+  // ---------- what timing/event data Cartesia keeps for one call (field names and timestamps only) ----------
+  if (b.action === "call_raw") {
+    const id = clean(b.callId, 120); if (!/^[\w-]+$/.test(id)) return reply(400, { error: "Bad call id." }, origin);
+    try { const d = await cartesia("GET", "/agents/calls/" + encodeURIComponent(id), V_READ); const t = Array.isArray(d.transcript) ? d.transcript : [];
+      return reply(200, { keys: Object.keys(d), transcriptKeys: t[0] ? Object.keys(t[0]) : [], sample: t.slice(0, 6).map((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== "text"))), events: d.events ? (Array.isArray(d.events) ? d.events.slice(0, 20) : Object.keys(d.events)) : null }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
   // ---------- Cartesia's model catalog (speed and price per model) ----------
   if (b.action === "agent_models") {
     try { const d = await cartesia("GET", "/v1/agents/models", V_READ); return reply(200, { models: d.data || d.models || d }, origin); }

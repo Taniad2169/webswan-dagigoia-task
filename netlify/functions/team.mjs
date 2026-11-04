@@ -160,7 +160,11 @@ export default async (req) => {
       const text = clean(b.text, 12000).trim();
       if (!text) return reply(400, { error: "Type a message." }, origin);
       const s = await getSettings();
-      const past = (await history(agent)).slice(-14).map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: clean(m.text, 6000) }));
+      // Skip "Tania" lines that were really the agent's own voice picked up by the mic (they mostly repeat the answer just before them).
+      const wset = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 2);
+      const hist = await history(agent), kept = [];
+      hist.forEach((m, i) => { if (m.role === "user" && i && hist[i - 1].role !== "user") { const w = wset(m.text), prev = new Set(wset(hist[i - 1].text)); if (w.length && w.filter((x) => prev.has(x)).length / w.length >= 0.5) return; } kept.push(m); });
+      const past = kept.slice(-14).map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: clean(m.text, 6000) }));
       let extra = "";
       // Linda and Tatiana: if Tania pastes a website, read it before answering.
       const site = (agent === "linda" || agent === "tatiana") && (text.match(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/i) || [])[1];

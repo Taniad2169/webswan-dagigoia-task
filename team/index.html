@@ -590,8 +590,9 @@ async function ttsUrl(text, who) {
 function playUrl(url) { return new Promise((res) => { const a = new Audio(url); V.audio = a; a.onended = res; a.onerror = res; a.onpause = () => { if (V.interrupted) res(); }; a.play().catch(res); }); }
 // Free practice voice: the browser's own voice (costs nothing). Real phone calls always use each agent's Cartesia voice.
 const MALE = { george: 1, alek: 1 };
+const BROWSER_VOICE = { sdr: 1 }; // these agents always use the free browser voice
 function freeVoice() { try { return localStorage.getItem("wsFreeVoice") !== "off"; } catch (e) { return true; } }
-function browserSay(text, who) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const f = MALE[who || cur] ? vs.find((v) => /\bmale\b|david|guy|mark|daniel|alex|fred/i.test(v.name) && !/female/i.test(v.name)) : vs.find((v) => /female|samantha|zira|aria|jenny/i.test(v.name)); if (f) u.voice = f; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
+function browserSay(text, who) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const f = MALE[who || cur] ? (vs.find((v) => /natural|online/i.test(v.name) && /guy|andrew|brian|christopher|eric|davis/i.test(v.name)) || vs.find((v) => /\bmale\b|david|guy|mark|daniel|alex|fred/i.test(v.name) && !/female/i.test(v.name))) : (vs.find((v) => /natural|online/i.test(v.name) && /aria|jenny|ava|emma|michelle|sara/i.test(v.name)) || vs.find((v) => /^Google US English$/i.test(v.name)) || vs.find((v) => /female|samantha|zira|aria|jenny/i.test(v.name))); if (f) u.voice = f; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
 // Interrupt her by just talking: while she speaks, the mic keeps listening. Two or more words that aren't an echo of her own voice stop her and become your next turn.
 // The mic can hear the agent through the speakers. Anything that mostly repeats what the agent just said is her own voice, not Tania.
 function wordsOf(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 2); }
@@ -618,7 +619,7 @@ async function speak(text, who) {
   vSay("Speaking… (just talk to interrupt)"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   startBarge();
-  const free = freeVoice() && (V.rp || (G.on && G.rp)); // free browser voice only for role play; real conversations use each agent's own voice
+  const free = (freeVoice() && (V.rp || (G.on && G.rp))) || BROWSER_VOICE[who || cur]; // free browser voice for role play, and always for SDR (Tania's choice: no Cartesia cost for her)
   let next = free ? Promise.resolve(null) : ttsUrl(parts[0], who).catch(() => null);
   for (let i = 0; i < parts.length; i++) {
     const url = await next; next = !free && i + 1 < parts.length ? ttsUrl(parts[i + 1], who).catch(() => null) : Promise.resolve(null);
