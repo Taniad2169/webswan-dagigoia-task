@@ -107,7 +107,7 @@
     <h3 id="vName" style="margin:10px 0 2px"></h3><p id="vState" class="hint" style="margin:0 0 10px">Starting…</p>
     <div id="vPick" hidden></div>
     <p id="vHeard" style="min-height:40px;color:#35506a;font-size:14px"></p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="vTalk">🎙️ Talk now</button><button class="btn" id="vSkip">⏭️ Skip</button><button class="btn pri" id="vEnd">End conversation</button></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="vTalk">🎙️ Talk now</button><button class="btn" id="vSkip">✋ Stop</button><button class="btn pri" id="vEnd">End conversation</button></div>
     <div style="display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;font-size:13px;font-weight:700">
       <label><input type="checkbox" id="vPhones"> 🎧 I'm wearing headphones (I can interrupt)</label>
       <label><input type="checkbox" id="vEcho"> 🔁 Echo filter</label>
@@ -593,7 +593,7 @@ async function ttsUrl(text, who) {
 }
 function playUrl(url) { return new Promise((res) => { const a = new Audio(url); V.audio = a; a.onended = res; a.onerror = res; a.onpause = () => { if (V.interrupted) res(); }; a.play().catch(res); }); }
 // Free practice voice: the browser's own voice (costs nothing). Real phone calls always use each agent's Cartesia voice.
-const MALE = { george: 1, alek: 1 };
+const MALE = { george: 1, alek: 1, sdr: 1 };
 const BROWSER_VOICE = { sdr: 1 }; // these agents always use the free browser voice
 // Turn-taking: without headphones the mic stays OFF while the agent talks (the speakers would feed her own voice back).
 // With headphones, talking over her interrupts her. The echo filter can be switched off (rollback) from the voice window.
@@ -621,10 +621,13 @@ function startBarge() {
   r.onend = () => { if (V.barge !== r) return; V.barge = null; if (V.on && V.interrupted) { const said = (fin || heard).trim(); if (said) voiceTurn(said); else listen(); } };
   try { r.start(); } catch (e) {}
 }
+// ✋ Stop: ends her whole answer at once (not just the current sentence) and opens the mic for Tania.
+function stopTalking() { if (!V.speaking && !V.audio) return; V.interrupted = true; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); V.audio && V.audio.onended && V.audio.onended(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} V.speaking = ""; vSay("Stopped. Listening…"); if (V.on) setTimeout(listen, 250); }
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && V.on && V.speaking && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || "")) { e.preventDefault(); stopTalking(); } });
 function stopBarge() { const r = V.barge; if (r && !V.interrupted) { V.barge = null; try { r.abort(); } catch (e) {} } }
 async function speak(text, who) {
   V.lastAnswer = String(text || "");
-  vSay("Speaking… (just talk to interrupt)"); V.interrupted = false;
+  vSay(pref("wsPhones", false) ? "Speaking… (just talk to interrupt)" : "Speaking… tap ✋ Stop (or press Space) to interrupt"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   if (pref("wsPhones", false)) startBarge();
   const free = (freeVoice() && (V.rp || (G.on && G.rp))) || BROWSER_VOICE[who || cur]; // free browser voice for role play, and always for SDR (Tania's choice: no Cartesia cost for her)
@@ -645,7 +648,7 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "micBtn") { G.on = false; V.rp = false; voiceStart(""); }
   if (e.target.id === "vEnd") voiceStop();
   if (e.target.id === "vTalk") { V.interrupted = true; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} if (!V.on) V.on = true; listen(); }
-  if (e.target.id === "vSkip") { try { V.audio && V.audio.pause(); V.audio && V.audio.onended && V.audio.onended(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} }
+  if (e.target.id === "vSkip") stopTalking();
 });
 </script>
 </body>
