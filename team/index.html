@@ -491,7 +491,7 @@ async function groupTurn(text) {
     await speak(ans, k);
     if (V.interrupted || gen !== G.gen) return; // her new words become the next turn
   }
-  if (V.on && G.on && !V.interrupted && gen === G.gen) { vSay(G.rp ? "🎭 Your line. Say “end role play” when you're done." : "Your turn. Call someone by name, or ask everyone."); listen(); }
+  if (V.on && G.on && !V.interrupted && gen === G.gen) { vSay(G.rp ? "🎭 Your line. Say “end role play” when you're done." : "Your turn. Call someone by name, or ask everyone."); setTimeout(listen, 700); }
 }
 function vSay(t) { $("vState").textContent = t; }
 /* ---------- Role play + "add it to your brain" ---------- */
@@ -553,7 +553,7 @@ function listen() {
   let final = "";
   r.onresult = (e) => { let t = ""; for (const x of e.results) { t += x[0].transcript; if (x.isFinal) final = t; } $("vHeard").textContent = "You: " + t; };
   r.onerror = (e) => { if (e.error === "no-speech" && V.on) return listen(); if (e.error === "not-allowed") vSay("Allow the microphone for this page, then press Talk now."); };
-  r.onend = () => { if (!V.on) return; if (final.trim()) voiceTurn(final.trim()); else vSay("Press 🎙️ Talk now when you're ready."); };
+  r.onend = () => { if (!V.on) return; const f = final.trim(); if (f && isEcho(f)) { vSay("(I ignored my own voice.) Listening…"); return setTimeout(listen, 300); } if (f) voiceTurn(f); else vSay("Press 🎙️ Talk now when you're ready."); };
   vSay("Listening…"); try { r.start(); } catch (e) { vSay("Press 🎙️ Talk now."); }
 }
 async function voiceTurn(text) {
@@ -571,7 +571,7 @@ async function voiceTurn(text) {
   V.busy = false;
   if (!V.on) return;
   await speak(answer);
-  if (V.on && !V.interrupted) listen();
+  if (V.on && !V.interrupted) setTimeout(listen, 700); // let the speaker go quiet so the mic doesn't catch her voice
 }
 // Speak in short pieces: the first sentence starts playing while the next pieces are being prepared.
 function speechChunks(text) {
@@ -593,7 +593,9 @@ const MALE = { george: 1, alek: 1 };
 function freeVoice() { try { return localStorage.getItem("wsFreeVoice") !== "off"; } catch (e) { return true; } }
 function browserSay(text, who) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const f = MALE[who || cur] ? vs.find((v) => /\bmale\b|david|guy|mark|daniel|alex|fred/i.test(v.name) && !/female/i.test(v.name)) : vs.find((v) => /female|samantha|zira|aria|jenny/i.test(v.name)); if (f) u.voice = f; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
 // Interrupt her by just talking: while she speaks, the mic keeps listening. Two or more words that aren't an echo of her own voice stop her and become your next turn.
-function isEcho(t) { const w = t.toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter(Boolean); if (!w.length) return true; const said = (V.speaking || "").toLowerCase(); return w.filter((x) => said.includes(x)).length / w.length > 0.7; }
+// The mic can hear the agent through the speakers. Anything that mostly repeats what the agent just said is her own voice, not Tania.
+function wordsOf(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 2); }
+function isEcho(t) { const w = wordsOf(t); if (!w.length) return true; const said = new Set(wordsOf((V.lastAnswer || "") + " " + (V.speaking || ""))); return w.filter((x) => said.has(x)).length / w.length >= 0.5; }
 function startBarge() {
   if (!SR) return;
   try { V.barge && V.barge.abort(); } catch (e) {}
@@ -612,6 +614,7 @@ function startBarge() {
 }
 function stopBarge() { const r = V.barge; if (r && !V.interrupted) { V.barge = null; try { r.abort(); } catch (e) {} } }
 async function speak(text, who) {
+  V.lastAnswer = String(text || "");
   vSay("Speaking… (just talk to interrupt)"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   startBarge();

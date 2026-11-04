@@ -128,7 +128,7 @@ export default async (req) => {
       }
       if (!r.ok) return reply(502, { error: "Voice: " + lastErr }, origin);
       const audio = Buffer.from(await r.arrayBuffer()).toString("base64");
-      return reply(200, { audio, mime: "audio/mpeg" }, origin);
+      return reply(200, { audio, mime: "audio/mpeg", voiceId: vid, provider: "cartesia" }, origin);
     }
     if (b.action === "brain_list") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
