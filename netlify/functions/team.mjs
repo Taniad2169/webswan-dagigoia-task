@@ -312,8 +312,11 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
     // One screen that shows what's connected: Gmail + Calendar, Content360 + each social account, AI brains, search, phone agents.
     if (b.action === "connections") {
       const out = [];
-      try { await scriptCall({ action: "agenda", from: new Date().toISOString(), to: new Date(Date.now() + 36e5).toISOString() }); out.push({ group: "Google", name: "Gmail + Google Calendar (Eva, Alek's callbacks)", ok: true }); }
-      catch (e) { out.push({ group: "Google", name: "Gmail + Google Calendar (Eva, Alek's callbacks)", ok: false, fix: e.message }); }
+      // Calendar and Gmail are tested separately: Google lets a person allow one and not the other on the permission screen.
+      try { await scriptCall({ action: "agenda", from: new Date().toISOString(), to: new Date(Date.now() + 36e5).toISOString() }); out.push({ group: "Google", name: "Google Calendar (Eva, Alek's callbacks, bookings)", ok: true }); }
+      catch (e) { out.push({ group: "Google", name: "Google Calendar (Eva, Alek's callbacks, bookings)", ok: false, fix: e.message }); }
+      try { await scriptCall({ action: "inbox", query: "in:inbox newer_than:1d", max: 1 }); out.push({ group: "Google", name: "Gmail (Eva's inbox, drafts, clean-up)", ok: true }); }
+      catch (e) { out.push({ group: "Google", name: "Gmail (Eva's inbox, drafts, clean-up)", ok: false, fix: /permission|scope/i.test(e.message) ? "Gmail permission is missing. In the Apps Script editor run setup(), tick EVERY box on Google's permission screen (including Gmail), then Deploy, Manage deployments, Edit, New version, Deploy." : e.message }); }
       if (!c360Ready()) out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: false, fix: "Add CONTENT360_API_KEY in Netlify." });
       else { try { const accts = await c360Accounts(); out.push({ group: "Social", name: "Content360 (Tatiana posts here)", ok: true });
         for (const a of accts) out.push({ group: "Social", name: `${a.name} · ${a.provider.replace("_", " ")}`, ok: a.authorized, fix: a.authorized ? "" : "Reconnect it in Content360 → Accounts." }); }
