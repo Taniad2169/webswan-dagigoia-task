@@ -282,7 +282,7 @@ export async function addMessages(agent, msgs) {
 }
 // Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
 // Claude is more careful with legal reasoning, so Linda defaults to it (falls back to DeepSeek if no Claude key).
-export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "gemini", clara: "chatgpt", rachel: "deepseek", sdr: "chatgpt" };
+export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", linda: "deepseek", clara: "chatgpt", rachel: "deepseek", sdr: "chatgpt" };
 export async function getSettings() {
   const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
