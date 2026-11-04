@@ -70,6 +70,7 @@
     .app.chat aside { display: none; } .app:not(.chat) main { display: none; }
     .back { display: inline-block; }
   }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -80,7 +81,7 @@
   <aside>
     <div class="brand"><div class="logo">WS</div><div><b>WebSwan AI Office</b><small>Your team, your rules</small></div></div>
     <div class="list" id="list"></div>
-    <div class="foot"><a href="../voice-studio/" style="display:block;text-align:center;margin-bottom:8px;padding:12px;border-radius:10px;background:#1182f0;color:#fff;font-weight:800;text-decoration:none">📞 Calling agents (Voice Studio)</a><button class="btn" style="width:100%;margin-bottom:8px" onclick="connPanel()">🔌 Connections check</button>Callers (Monica, George, Rebecca, Alek, Rachel) are in <a href="../voice-studio/">Voice Studio</a>.<br><a href="#" onclick="_auth.signOut();return false">Sign out</a></div>
+    <div class="foot"><button class="btn pri" style="width:100%;margin-bottom:8px;padding:12px;font-weight:800" onclick="briefPicker()">🎙️ Voice briefing</button><a href="../voice-studio/" style="display:block;text-align:center;margin-bottom:8px;padding:12px;border-radius:10px;background:#1182f0;color:#fff;font-weight:800;text-decoration:none">📞 Calling agents (Voice Studio)</a><button class="btn" style="width:100%;margin-bottom:8px" onclick="connPanel()">🔌 Connections check</button>Callers (Monica, George, Rebecca, Alek, Rachel) are in <a href="../voice-studio/">Voice Studio</a>.<br><a href="#" onclick="_auth.signOut();return false">Sign out</a></div>
   </aside>
   <main>
     <div class="top"><button class="btn back" onclick="showList()">←</button><img id="tImg" alt=""><div class="who"><b id="tName"></b><small id="tRole"></small></div><span class="sp"></span>
@@ -88,10 +89,20 @@
     <div class="tools" id="tools"></div>
     <div id="extra"></div>
     <div class="msgs" id="msgs"></div>
-    <form class="compose" id="form"><textarea id="txt" placeholder="Message…"></textarea><button class="btn pri" id="send">Send</button></form>
+    <form class="compose" id="form"><button type="button" class="btn" id="micBtn" title="Talk with her (voice conversation)" aria-label="Start a voice conversation">🎙️</button><textarea id="txt" placeholder="Message…"></textarea><button class="btn pri" id="send">Send</button></form>
   </main>
 </div>
 <div class="toast" id="toast"></div>
+<div id="vOv" hidden style="position:fixed;inset:0;background:rgba(6,24,44,.82);z-index:50;display:grid;place-items:center;padding:16px">
+  <div style="background:#fff;border-radius:22px;max-width:420px;width:100%;padding:22px;text-align:center">
+    <img id="vImg" alt="" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:5px solid #93e5fa">
+    <h3 id="vName" style="margin:10px 0 2px"></h3><p id="vState" class="hint" style="margin:0 0 10px">Starting…</p>
+    <div id="vPick" hidden></div>
+    <p id="vHeard" style="min-height:40px;color:#35506a;font-size:14px"></p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="vTalk">🎙️ Talk now</button><button class="btn" id="vSkip">⏭️ Skip</button><button class="btn pri" id="vEnd">End conversation</button></div>
+    <p class="hint" style="margin-top:10px">Speak naturally. She answers out loud, then listens again. Every exchange is saved in her chat.</p>
+  </div>
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -369,6 +380,66 @@ window.addEventListener("auth", async (e) => {
   $("gate").hidden = true; $("app").hidden = false;
   try { const st = await api({ action: "status" }); S = Object.assign(S, st); } catch (err) { toast(err.message); }
   drawProviders(); drawList(); openAgent(location.hash === "#draft" || pendingDraft ? "eva" : (ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "eva"));
+});
+
+/* ---------- Voice office: talk with Eva, Clara, Tatiana, Linda or Rachel ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let V = { on: false, rec: null, audio: null, busy: false };
+const BRIEF = { eva: "Give me my briefing: today's priorities, my calendar and appointments, and anything urgent.", clara: "Give me my budget update: what I'm spending, what's coming up, and anything I should approve, wait on or cancel.", tatiana: "Give me my content update: what's planned this week and what needs my approval.", linda: "Give me a quick update on anything legal or compliance I should know about.", rachel: "Give me a summary of Rachel's recent calls and anything I need to follow up on." };
+function briefPicker() {
+  $("vOv").hidden = false; $("vImg").src = "img/eva.jpg"; $("vName").textContent = "Who do you want your briefing with?"; $("vState").textContent = "";
+  $("vPick").hidden = false;
+  $("vPick").innerHTML = ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k]; return `<button class="btn" style="margin:4px" data-vp="${k}">${esc(a.name.split(" ")[0])}</button>`; }).join("");
+  $("vPick").querySelectorAll("[data-vp]").forEach((b) => b.onclick = async () => { $("vPick").hidden = true; await openAgent(b.dataset.vp); voiceStart(BRIEF[b.dataset.vp]); });
+}
+function vSay(t) { $("vState").textContent = t; }
+async function voiceStart(first) {
+  const a = (S.agents || FALLBACK)[cur] || FALLBACK[cur];
+  $("vOv").hidden = false; $("vPick").hidden = true; $("vImg").src = a.photo; $("vName").textContent = a.name; $("vHeard").textContent = "";
+  V.on = true;
+  if (first) await voiceTurn(first); else listen();
+}
+function voiceStop() {
+  V.on = false; try { V.rec && V.rec.abort(); } catch (e) {} try { V.audio && V.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {}
+  $("vOv").hidden = true;
+}
+function listen() {
+  if (!V.on) return;
+  if (!SR) { vSay("Voice typing isn't supported in this browser. Use Chrome or Edge."); return; }
+  try { V.rec && V.rec.abort(); } catch (e) {}
+  const r = new SR(); V.rec = r; r.lang = "en-US"; r.interimResults = true; r.continuous = false;
+  let final = "";
+  r.onresult = (e) => { let t = ""; for (const x of e.results) { t += x[0].transcript; if (x.isFinal) final = t; } $("vHeard").textContent = "You: " + t; };
+  r.onerror = (e) => { if (e.error === "no-speech" && V.on) return listen(); if (e.error === "not-allowed") vSay("Allow the microphone for this page, then press Talk now."); };
+  r.onend = () => { if (!V.on) return; if (final.trim()) voiceTurn(final.trim()); else vSay("Press 🎙️ Talk now when you're ready."); };
+  vSay("Listening…"); try { r.start(); } catch (e) { vSay("Press 🎙️ Talk now."); }
+}
+async function voiceTurn(text) {
+  if (!V.on || V.busy) return; V.busy = true;
+  $("vHeard").textContent = "You: " + text; vSay("Thinking…");
+  msgs.push({ id: "tmp", role: "user", text, at: new Date().toISOString() }); drawMsgs();
+  let answer = "";
+  try { const r = await api({ action: "chat", agent: cur, text, provider: $("prov").value, voice: true }); msgs = msgs.filter((m) => !String(m.id).startsWith("tmp")).concat(r.messages); answer = r.messages[1].text; drawMsgs(); }
+  catch (e) { msgs = msgs.filter((m) => m.id !== "tmp"); vSay("Sorry: " + e.message); V.busy = false; return; }
+  V.busy = false;
+  if (!V.on) return;
+  await speak(answer);
+  if (V.on) listen();
+}
+async function speak(text) {
+  vSay("Speaking…");
+  try {
+    const r = await api({ action: "tts", agent: cur, text: text.slice(0, 2400) });
+    await new Promise((res) => { const a = new Audio("data:" + r.mime + ";base64," + r.audio); V.audio = a; a.onended = res; a.onerror = res; a.play().catch(res); });
+  } catch (e) {
+    await new Promise((res) => { const u = new SpeechSynthesisUtterance(text.replace(/[*_#`]/g, "")); const f = speechSynthesis.getVoices().find((v) => /en-US/.test(v.lang) && /female|samantha|zira|aria|jenny/i.test(v.name)); if (f) u.voice = f; u.onend = res; u.onerror = res; speechSynthesis.speak(u); });
+  }
+}
+document.addEventListener("click", (e) => {
+  if (e.target.id === "micBtn") voiceStart("");
+  if (e.target.id === "vEnd") voiceStop();
+  if (e.target.id === "vTalk") { try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} if (!V.on) V.on = true; listen(); }
+  if (e.target.id === "vSkip") { try { V.audio && V.audio.pause(); V.audio && V.audio.onended && V.audio.onended(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} }
 });
 </script>
 </body>
