@@ -108,7 +108,8 @@
     <div id="vPick" hidden></div>
     <p id="vHeard" style="min-height:40px;color:#35506a;font-size:14px"></p>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="vTalk">🎙️ Talk now</button><button class="btn" id="vSkip">⏭️ Skip</button><button class="btn pri" id="vEnd">End conversation</button></div>
-    <p class="hint" style="margin-top:10px">Speak naturally. Interrupt any time by just talking. Every exchange is saved in the chat.</p>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-weight:700;font-size:14px"><input type="checkbox" id="vFree"> 🆓 Free practice voice (browser voice, no Cartesia credits)</label>
+    <p class="hint" style="margin-top:6px">Speak naturally. Interrupt any time by just talking. Every exchange is saved in the chat.</p>
   </div>
 </div>
 
@@ -204,7 +205,7 @@ async function sendToAgent(id, to) {
 async function openAgent(k) {
   cur = k; findQ = ""; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
-  const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(RP_OPEN) }]]);
+  const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = tl[b.dataset.t][1]);
   $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
@@ -472,7 +473,7 @@ async function groupTurn(text) {
   } else if (RP_START.test(text)) {
     G.rp = n0[0] || G.last || G.members[0];
     $("vName").textContent = "🎭 Role play with " + first(G.rp);
-    steps.push([G.rp, "Tania wants to role play a real call with you now. She is the person who picks up. Start with your opening line.", { roleplay: true }]);
+    steps.push([G.rp, G.rp === "rachel" ? "Tania wants to role play now: she is calling you as a prospect. Answer the phone with your greeting." : "Tania wants to role play a real call with you now. She is the person who picks up. Start with your opening line.", { roleplay: true }]);
   }
   const p = steps.length ? { kind: "done" } : plan(text);
   if (p.kind === "done") {} else if (p.kind === "pair") {
@@ -495,6 +496,7 @@ async function groupTurn(text) {
 function vSay(t) { $("vState").textContent = t; }
 /* ---------- Role play + "add it to your brain" ---------- */
 const RP_OPEN = "Let's role play a real call. I'm the person who picks up the phone. Start now with your opening line.";
+const RP_RACHEL = "Let's role play. I'm calling you as a prospect. Answer the phone with your greeting now.";
 const RP_START = /\b(role[- ]?play|let'?s practice|practice (the|your|a|this) (call|script|pitch))\b/i;
 const RP_END = /\b(stop|end|finish|pause|done with|that'?s it for|cut|break) (the |this |our )?(role[- ]?play|practice|scene)\b|\bhow did (i|you|we) do\b|\bout of character\b/i;
 const BRAIN = /\b(add|put|save|write|keep|store) (that|this|it|these|those|the change|the changes|the adjustment)( change| changes| adjustment| line| part)? (to|in|into|on) (your|their|his|her|the|everyone'?s) (brains?|memory|script|notes)\b|\bremember (that|this) (from now on|for good|permanently|always)\b/i;
@@ -586,7 +588,10 @@ async function ttsUrl(text, who) {
   return URL.createObjectURL(new Blob([u8], { type: r.mime || "audio/mpeg" }));
 }
 function playUrl(url) { return new Promise((res) => { const a = new Audio(url); V.audio = a; a.onended = res; a.onerror = res; a.onpause = () => { if (V.interrupted) res(); }; a.play().catch(res); }); }
-function browserSay(text) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const f = speechSynthesis.getVoices().find((v) => /en-US/.test(v.lang) && /female|samantha|zira|aria|jenny/i.test(v.name)); if (f) u.voice = f; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
+// Free practice voice: the browser's own voice (costs nothing). Real phone calls always use each agent's Cartesia voice.
+const MALE = { george: 1, alek: 1 };
+function freeVoice() { try { return localStorage.getItem("wsFreeVoice") !== "off"; } catch (e) { return true; } }
+function browserSay(text, who) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const f = MALE[who || cur] ? vs.find((v) => /\bmale\b|david|guy|mark|daniel|alex|fred/i.test(v.name) && !/female/i.test(v.name)) : vs.find((v) => /female|samantha|zira|aria|jenny/i.test(v.name)); if (f) u.voice = f; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
 // Interrupt her by just talking: while she speaks, the mic keeps listening. Two or more words that aren't an echo of her own voice stop her and become your next turn.
 function isEcho(t) { const w = t.toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter(Boolean); if (!w.length) return true; const said = (V.speaking || "").toLowerCase(); return w.filter((x) => said.includes(x)).length / w.length > 0.7; }
 function startBarge() {
@@ -610,17 +615,19 @@ async function speak(text, who) {
   vSay("Speaking… (just talk to interrupt)"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   startBarge();
-  let next = ttsUrl(parts[0], who).catch(() => null);
+  const free = freeVoice();
+  let next = free ? Promise.resolve(null) : ttsUrl(parts[0], who).catch(() => null);
   for (let i = 0; i < parts.length; i++) {
-    const url = await next; next = i + 1 < parts.length ? ttsUrl(parts[i + 1], who).catch(() => null) : null;
+    const url = await next; next = !free && i + 1 < parts.length ? ttsUrl(parts[i + 1], who).catch(() => null) : Promise.resolve(null);
     if (!V.on || V.interrupted) break;
     V.speaking = parts[i];
-    if (url) { await playUrl(url); URL.revokeObjectURL(url); } else await browserSay(parts[i]);
+    if (url) { await playUrl(url); URL.revokeObjectURL(url); } else await browserSay(parts[i], who);
     if (!V.on || V.interrupted) break;
   }
   V.speaking = "";
   stopBarge();
 }
+try { $("vFree").checked = freeVoice(); $("vFree").onchange = () => { try { localStorage.setItem("wsFreeVoice", $("vFree").checked ? "on" : "off"); } catch (x) {} toast($("vFree").checked ? "Free practice voice on. Real phone calls still use their Cartesia voices." : "Cartesia voices on for practice (uses plan credits)."); }; } catch (e) {}
 document.addEventListener("click", (e) => {
   if (e.target.id === "micBtn") { G.on = false; V.rp = false; voiceStart(""); }
   if (e.target.id === "vEnd") voiceStop();
