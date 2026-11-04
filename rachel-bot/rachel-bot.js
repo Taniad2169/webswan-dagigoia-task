@@ -36,7 +36,7 @@
     '#rbt-launch .rbt-pic{width:46px;height:46px;border-radius:50%;border:2px solid #fff}',
     '#rbt-launch:hover{filter:brightness(1.08)}',
     '#rbt-launch:focus-visible,#rbt-panel button:focus-visible,#rbt-panel a:focus-visible,#rbt-panel input:focus-visible{outline:3px solid #ffbf47;outline-offset:2px}',
-    '#rbt-panel{position:fixed;left:20px;bottom:84px;z-index:2147483001;width:390px;max-width:calc(100vw - 32px);height:min(640px,calc(100vh - 110px));background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.35);display:flex;flex-direction:column;overflow:hidden;border:1px solid #d7e6ee;font:15px/1.5 Inter,Arial,Helvetica,sans-serif;color:#18364a;text-align:left}',
+    '#rbt-panel{position:fixed;left:20px;bottom:84px;z-index:2147483001;width:390px;max-width:calc(100vw - 32px);height:min(640px,calc(100vh - 110px));height:min(640px,calc(100dvh - 110px));background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.35);display:flex;flex-direction:column;overflow:hidden;border:1px solid #d7e6ee;font:15px/1.5 Inter,Arial,Helvetica,sans-serif;color:#18364a;text-align:left}',
     '#rbt-panel[hidden],#rbt-launch[hidden]{display:none}',
     '#rbt-panel *{box-sizing:border-box}',
     '.rbt-top{display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(120deg,' + DARK + ',' + COLOR + ');color:#fff}',
@@ -135,7 +135,7 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     '<div class="rbt-bar"><span>Rachel reads her answers out loud</span><button type="button" class="rbt-voice" aria-pressed="true"></button></div>' +
     '<div class="rbt-log" role="log" aria-live="polite"></div>' +
     '<div class="rbt-chips" aria-label="Suggested questions"></div>' +
-    '<form class="rbt-form" autocomplete="off"><label class="rbt-sr" for="rbt-q">Type your question</label><input id="rbt-q" maxlength="300" placeholder="Type your question…"><button type="submit">Send</button></form>' +
+    '<form class="rbt-form" autocomplete="off"><label class="rbt-sr" for="rbt-q">Type your question</label><input id="rbt-q" maxlength="300" placeholder="Type your question here…"><button type="submit">Send</button></form>' +
     '<div class="rbt-foot">' + (C.foot || 'General information only, not legal or medical advice. Please don’t share sensitive personal details here.') + '</div>';
   panel.querySelector('.rbt-tp').replaceWith(pic());
   var log = panel.querySelector('.rbt-log'), chips = panel.querySelector('.rbt-chips'), input = panel.querySelector('#rbt-q'), vbtn = panel.querySelector('.rbt-voice');
@@ -174,10 +174,12 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   function reply(yes) {
     pending = false; var r = log.querySelector('.rbt-yn'); if (r) r.remove();
     add(yes ? 'Yes, please' : 'No, thanks', true);
-    setTimeout(function () { if (yes) bookForm(); else add('No problem at all! I’m right here if you have more questions. 😊'); }, 300);
+    setTimeout(function () { if (yes) bookForm(); else add('Ok, no problem! 😊 Do you have any other questions?'); }, 300);
   }
-  function bookForm() {
-    add('Wonderful! Please fill out the form with your <b>name</b>, <b>business name</b>, <b>phone number</b>, a <b>subject</b> and a short <b>comment</b>, and Tania will reach out to set your appointment.');
+  var submitted = false;
+  function bookForm(intro) {
+    offered = true; pending = false;
+    add(intro || 'Wonderful! Please fill out the form with your <b>name</b>, <b>business name</b>, <b>phone number</b>, a <b>subject</b> and a short <b>comment</b>, and Tania will reach out to set your appointment.');
     var f = document.createElement('form'); f.className = 'rbt-book'; f.noValidate = true;
     var id = 'rbk' + Date.now();
     f.innerHTML =
@@ -200,7 +202,7 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
       var body = { name: v('name'), business: v('business'), phone: v('phone'), subject: v('subject'), comment: v('comment').slice(0, 400),
         source: 'Rachel chat · ' + (BK.brand || BRAND), page: location.href, _subject: 'Appointment request from Rachel chat (' + (BK.brand || BRAND) + '): ' + v('subject') };
       fetch(BK.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) })
-        .then(function (r) { if (!r.ok) throw new Error(r.status); f.remove(); add('Thank you, <b>' + esc(body.name) + '</b>! 🎉 Tania received your request and will reach out at <b>' + esc(body.phone) + '</b> to set your appointment.'); })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); submitted = true; f.remove(); add('Thank you, <b>' + esc(body.name) + '</b>! 🎉 Tania received your request and will reach out at <b>' + esc(body.phone) + '</b> to set your appointment.'); })
         .catch(function () { btn.disabled = false; btn.textContent = 'Send to Tania'; err.innerHTML = 'Sorry, that didn’t go through. Please try again, or call ' + (BK.phoneHtml || '<a href="tel:+13162486839">(316) 248-6839</a>') + '.'; });
     });
     log.appendChild(f); log.scrollTop = log.scrollHeight;
@@ -213,8 +215,14 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     if (BK && pending && /^(n|no|nope|not now|no thanks|no thank you|nao|não)\b/i.test(text)) { reply(false); return; }
     add(text, true);
     if (BK && !offered && BOOK_RX.test(text)) { setTimeout(offer, 300); return; }
-    var a = answer(text); answered++;
-    setTimeout(function () { add(a); if (BK && !offered && (answered >= (BK.after || 2) || a === FALLBACK)) setTimeout(offer, 900); }, 300);
+    var a = answer(text);
+    chips.style.display = 'none'; // more room to read and type once the conversation starts
+    if (BK && a === FALLBACK && !submitted && !log.querySelector('.rbt-book')) {
+      setTimeout(function () { bookForm('That’s a great question for Tania! I don’t have that answer, but if you fill out the form below with your <b>name</b>, <b>business name</b>, <b>phone number</b>, a <b>subject</b> and your <b>question</b>, Tania will reach out to you.'); }, 300);
+      return;
+    }
+    answered++;
+    setTimeout(function () { add(a); if (BK && !offered && answered >= (BK.after || 3)) setTimeout(offer, 900); }, 300);
   }
   (C.quick || []).forEach(function (q) { var b = document.createElement('button'); b.type = 'button'; b.textContent = q; b.addEventListener('click', function () { ask(q); }); chips.appendChild(b); });
   panel.querySelector('.rbt-form').addEventListener('submit', function (e) { e.preventDefault(); var v = input.value; input.value = ''; ask(v); });

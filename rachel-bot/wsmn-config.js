@@ -29,7 +29,7 @@
 })();
 
 /* Rachel offers an appointment with Tania, then a short form that emails Tania (Formspree). */
-if (window.RACHEL_CONFIG) window.RACHEL_CONFIG.booking = { endpoint: 'https://formspree.io/f/xgoajlpg', brand: 'WebSwan Media Network', after: 2 };
+if (window.RACHEL_CONFIG) window.RACHEL_CONFIG.booking = { endpoint: 'https://formspree.io/f/xgoajlpg', brand: 'WebSwan Media Network', after: 3 };
 
 /* Orange "Take me there" announcement banner */
 window.WS_PROMO = {"text": "Advertising works best with a great website. See The WebSwan Managed Website Program for doctors and attorneys.", "link": "https://www.thewebswan.com/pricing#managed-website-program", "cta": "Take me there"};
