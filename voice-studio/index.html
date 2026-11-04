@@ -914,7 +914,22 @@ async function renderAlekCal(c) {
   const soon = new Date(Date.now() + 864e5); soon.setHours(10, 0, 0, 0);
   const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   const rows = cbList.filter(x => x.status !== 'cancelled').map(x => `<div class="listitem row"><div><strong>${esc(new Date(x.callAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))} · ${esc(x.name || x.business || x.phone)}</strong><small>${esc(x.subject)} · ${esc(x.phone)} (${esc(x.lineType)}) · ${esc(x.state)} · <b>${esc(x.status)}</b>${x.note ? ' · ' + esc(x.note) : ''}</small></div>${x.status === 'scheduled' ? `<button class="btn secondary" onclick="cbCancel('${x.id}')">Cancel</button>` : ''}</div>`).join('');
-  c.innerHTML = `<div class="card"><h3 style="margin-top:0">📅 Schedule a callback for Alek</h3>
+  if (!rfData) { try { rfData = await voiceApi({ action: 'followup_list' }); } catch (e) { rfData = { followups: [], drafts: [], error: e.message }; } }
+  const rfRows = (rfData.followups || []).filter(x => x.status !== 'cancelled').slice(0, 30).map(x => `<div class="listitem row"><div><strong>${esc(x.name || x.business || x.phone)}</strong> <span class="pill">${x.kind === 'advertising' ? 'Advertising demo' : 'Compliance review'}</span><div class="muted">${esc(x.business || '')} · ${esc(x.phone)} · ${esc(x.state)} · ${x.status === 'scheduled' ? 'calls ' + esc(new Date(x.callAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ' or next business hours' : esc(x.status)}${x.note ? ' · ' + esc(x.note) : ''}</div></div>${x.status === 'scheduled' ? `<button class="btn outline small" onclick="rfCancel('${x.id}')">Cancel</button>` : ''}</div>`).join('');
+  const rfDrafts = (rfData.drafts || []).map(d => `<div class="listitem row"><div><strong>${esc(d.practice || d.to)}</strong><div class="muted">Report drafted by Eva ${esc(new Date(d.at).toLocaleDateString())} · ${esc(d.to)}${d.phone ? ' · ' + esc(d.phone) : ' · no phone yet'}${d.state ? ' · ' + esc(d.state) : ''}</div></div><div class="toolbar" style="margin:0"><button class="btn small" onclick="rfFromDraft(${d.index})">📞 Sent: Rachel calls in 2 days</button><button class="btn outline small" onclick="rfSkip(${d.index})">Not sent</button></div></div>`).join('');
+  const rfCard = `<div class="card"><h3 style="margin-top:0">📞 Rachel follow-ups (emailed, no appointment yet)</h3>
+  <p class="muted" style="margin-top:0">After you email a report or an offer, Rachel calls the business to set a 10 to 15 minute appointment with you: a <b>review</b> for compliance, a <b>demo</b> for advertising, social media, AI receptionist or appointment setter. She calls 9 AM to 5 PM their time, skips anyone who already booked or is on Do Not Call, and waits for a real person before speaking.</p>
+  ${rfData.error ? '<p class="muted">' + esc(rfData.error) + '</p>' : ''}
+  ${rfDrafts ? '<h4>Reports Eva drafted: did you send them?</h4>' + rfDrafts : ''}
+  <h4>Add a follow-up</h4>
+  <div class="grid two"><label>Type<select id="rfKind"><option value="compliance">Compliance (review appointment)</option><option value="advertising">Advertising / social media / receptionist / appointment setter (demo)</option></select></label><label>Name<input id="rfName" placeholder="Dr. Smith"></label>
+  <label>Practice / business<input id="rfBiz"></label><label>Phone<input id="rfPhone" placeholder="(305) 555-0100"></label>
+  <label>State<input id="rfState" maxlength="2" placeholder="FL"></label><label>Email (to skip if they book)<input id="rfEmail"></label>
+  <label>Website<input id="rfSite"></label><label>Call on (your time)<input id="rfAt" type="datetime-local" value="${local(new Date(Date.now() + 2 * 864e5))}"></label></div>
+  <label>What you emailed them (Rachel uses this)<input id="rfNote" placeholder="Emailed the ADA + cookie audit report with 3 findings"></label>
+  <div class="toolbar"><button class="btn" onclick="rfAdd()">📞 Add Rachel follow-up</button></div>
+  <h4>Scheduled and recent</h4>${rfRows || '<p class="muted">No follow-ups yet.</p>'}</div>`;
+  c.innerHTML = rfCard + `<div class="card"><h3 style="margin-top:0">📅 Schedule a callback for Alek</h3>
   <p class="muted" style="margin-top:0">When someone tells you "call me back in 2 weeks," tell them your virtual assistant Alek will call, then add it here. Alek calls at that time (8 AM to 8 PM their time), says the call is recorded, and follows your script.</p>
   <div class="grid two"><label>Name<input id="cbName" placeholder="Dr. Smith"></label><label>Practice / business<input id="cbBiz"></label>
   <label>Phone<input id="cbPhone" placeholder="(305) 555-0100"></label><label>State<input id="cbState" maxlength="2" placeholder="FL"></label>
@@ -925,6 +940,20 @@ async function renderAlekCal(c) {
   <div class="toolbar"><button class="btn" onclick="cbAdd()">📅 Add to Alek's calendar</button></div></div>
   <div class="card"><h3 style="margin-top:0">Upcoming and recent callbacks</h3>${rows || '<p class="muted">No callbacks yet.</p>'}</div>`;
 }
+let rfData = null;
+async function rfAdd() {
+  const g = (id) => ($(id).value || '').trim();
+  try { rfData = await voiceApi({ action: 'followup_add', followup: { kind: $('rfKind').value, name: g('rfName'), business: g('rfBiz'), phone: g('rfPhone'), state: g('rfState').toUpperCase(), email: g('rfEmail'), website: g('rfSite'), note: g('rfNote'), callAt: new Date($('rfAt').value).toISOString() } }); toast('Rachel will call them.'); render(); } catch (e) { toast(e.message); }
+}
+async function rfFromDraft(i) {
+  const d = (rfData.drafts || []).find(x => x.index === i); if (!d) return;
+  let phone = d.phone, state = d.state;
+  if (!phone) phone = prompt('Phone number for ' + (d.practice || d.to) + ':') || '';
+  if (!/^[A-Za-z]{2}$/.test(state || '')) state = (prompt('State (2 letters) for ' + (d.practice || d.to) + ':') || '').trim();
+  try { rfData = await voiceApi({ action: 'followup_add', followup: { kind: 'compliance', name: '', business: d.practice || '', email: d.to, phone, state: String(state).toUpperCase(), note: 'Tania emailed the website compliance audit report', callAt: new Date(Date.now() + 2 * 864e5).toISOString(), draftIndex: i } }); toast('Rachel will call in 2 days if they have not booked.'); render(); } catch (e) { toast(e.message); }
+}
+async function rfSkip(i) { try { rfData = await voiceApi({ action: 'followup_cancel', draftIndex: i }); render(); } catch (e) { toast(e.message); } }
+async function rfCancel(id) { try { rfData = await voiceApi({ action: 'followup_cancel', id }); render(); } catch (e) { toast(e.message); } }
 async function cbAdd() {
   const g = (id) => ($(id).value || '').trim();
   if ($('cbLine').value === 'cell' && !$('cbConsent').checked) return toast('For a cell phone, check that they asked to be called back.');

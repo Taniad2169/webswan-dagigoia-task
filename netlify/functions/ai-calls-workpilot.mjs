@@ -10,7 +10,7 @@ export const config = { schedule: "*/15 12-23,0-2 * * 1-6" };
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
-const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["rachel", "Rachel"]];
+const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
 const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 const pretty = (p) => { const d = digits(p); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
 

@@ -18,7 +18,7 @@ import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAge
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer", "rachel"];
+const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer", "rachel", "rachelout"];
 // Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
 const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
 const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13476467086";
@@ -38,7 +38,7 @@ const RECEPTIONISTS = ["jennifer"];
 // Every calling agent gets Tania's calendar (check_availability reads her Google Calendar busy times; book_appointment re-checks before booking).
 // Receptionists answer calls that Voice Studio didn't start, so there are no dynamic variables (lead_state, lead_id):
 // they get the "In" versions of the calendar tools, which ask the model for those details instead.
-const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "bookIn"] : a === "rachel" ? ["provider", "slotsIn", "bookIn"] : ["slots", "book"];
+const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "bookIn"] : a === "rachel" ? ["caller", "provider", "slotsIn", "bookIn"] : ["slots", "book"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
@@ -251,6 +251,30 @@ export default async (req) => {
 
   // ---------- auto-dial queue (dialed every minute by voice-autodial) ----------
   // ---------- Alek's callback calendar ----------
+  // ---------- Rachel follow-ups: report emailed, no appointment yet → Rachel calls to set the 10-15 minute appointment ----------
+  if (b.action === "followup_list" || b.action === "followup_add" || b.action === "followup_cancel") {
+    const team = getStore({ name: "team", consistency: "strong" });
+    let list = (await store.get("rachel-followups", { type: "json" })) || [];
+    let drafts = (await team.get("followups", { type: "json" })) || [];
+    if (b.action === "followup_add") {
+      const f = b.followup || {};
+      const phone = e164(f.phone), st = clean(f.state, 2).toUpperCase();
+      if (!phone) return reply(400, { error: "Add a valid US phone number." }, origin);
+      if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the state (2 letters) so Rachel calls in their business hours." }, origin);
+      const when = Date.parse(f.callAt) || Date.now();
+      list.push({ id: "rf_" + crypto.randomBytes(5).toString("hex"), kind: f.kind === "advertising" ? "advertising" : "compliance", name: clean(f.name, 120), business: clean(f.business, 160), email: clean(f.email, 160), website: clean(f.website, 200), phone, state: st,
+        note: clean(f.note, 600), callAt: new Date(Math.max(when, Date.now())).toISOString(), status: "scheduled", createdAt: new Date().toISOString() });
+      if (Number.isInteger(f.draftIndex) && drafts[f.draftIndex]) { drafts[f.draftIndex].done = true; drafts[f.draftIndex].rachel = true; await team.setJSON("followups", drafts); }
+      list = list.slice(-500); await store.setJSON("rachel-followups", list);
+    }
+    if (b.action === "followup_cancel") {
+      if (b.id) { const x = list.find((c) => c.id === b.id); if (x && x.status === "scheduled") { x.status = "cancelled"; await store.setJSON("rachel-followups", list); } }
+      if (Number.isInteger(b.draftIndex) && drafts[b.draftIndex]) { drafts[b.draftIndex].done = true; await team.setJSON("followups", drafts); }
+    }
+    const pending = drafts.map((d, i) => Object.assign({ index: i }, d)).filter((d) => !d.done).slice(-40);
+    return reply(200, { followups: list.slice().sort((x, y) => Date.parse(y.callAt) - Date.parse(x.callAt)).slice(0, 120), drafts: pending }, origin);
+  }
+
   if (b.action === "callback_list" || b.action === "callback_add" || b.action === "callback_cancel") {
     let list = (await store.get("callbacks", { type: "json" })) || [];
     if (b.action === "callback_add") {
@@ -369,6 +393,11 @@ export default async (req) => {
             provider_name: { type: "string", description: "The doctor's or attorney's name, or the practice name, as the caller said it." },
             provider_code: { type: "string", description: "The provider code if you were given one, like CA-0045TB (2 letters, dash, 4 digits, 2 letters). Otherwise leave empty." },
             provider_id: { type: "string", description: "The provider_id from your call details or from an earlier lookup, if you have one. Otherwise leave empty." }
+          } }, authentication: auth } } }
+      ,{ key: "caller", body: { type: "webhook", name: "identify_caller", description: "Find out who is calling and why: whether Monica, George, Rebecca or Alek just transferred this person to you (and about compliance or advertising), with their name and business. Call it at the very start of every call, before your greeting.", pre_tool_speech: "off", execution_mode: "immediate", response_timeout_secs: 8,
+          api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
+            action: { type: "string", constant_value: "caller" },
+            caller_id: { type: "string", dynamic_variable: "system__caller_id" }
           } }, authentication: auth } } }
       ,{ key: "client", body: { type: "webhook", name: "get_office_info", description: "Load the office you are answering for on this call: its name, greeting, hours, and the only details you may share. Call it at the very start of every call to a practice's own line.", pre_tool_speech: "off", execution_mode: "immediate", response_timeout_secs: 10,
           api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {

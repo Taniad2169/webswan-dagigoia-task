@@ -29,6 +29,7 @@ export default async (req) => {
   if ((b0.action || url0.searchParams.get("action")) === "provider") return text(await providerLookup(b0.provider_name || url0.searchParams.get("provider_name") || "", b0.provider_id || url0.searchParams.get("provider_id") || "", b0.provider_code || url0.searchParams.get("provider_code") || ""));
 
   if ((b0.action || url0.searchParams.get("action")) === "wsmn_request") return text(await wsmnRequest(store, b0));
+  if ((b0.action || url0.searchParams.get("action")) === "caller") return text(await callerBrief(store, b0.caller_id || url0.searchParams.get("caller_id") || ""));
 
   const cal = sanitizeCal(await store.get("calendar", { type: "json" }));
   const calSecret = await store.get("cal-secret");
@@ -190,6 +191,56 @@ async function clientInfo(store, called) {
 // ---------- Rachel Bennett (phone): a caller wants a WebSwan Media Network doctor or attorney to contact them ----------
 // Same path as the website: Jennifer Reid emails that practice the caller's request (name, phone, email, best time).
 // The caller must agree to share their details. No medical or legal details are taken.
+
+// Rachel's heads-up: who is calling and why. Works for transfers from Monica, George, Rebecca or Alek
+// (looks at their calls from the last few minutes) and for people they called earlier who call back.
+const OUR_LINES = ["6812936217", "2512946344", "9783818982", "3162486839"];
+const AGENT_TOPIC = { monica: ["Monica", "website compliance (ADA, privacy, HIPAA) for a medical practice"], george: ["George", "website compliance (ADA, privacy, attorney advertising rules) for a law firm"], rebecca: ["Rebecca", "WebSwan Media Network advertising"], alek: ["Alek", "WebSwan follow-up"] };
+async function callerBrief(store, callerRaw) {
+  const d10 = (x) => String(x || "").replace(/\D/g, "").slice(-10);
+  const caller = d10(callerRaw);
+  const ck = process.env.CARTESIA_API_KEY;
+  const ids = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
+  const q = (await store.get("queue", { type: "json" }).catch(() => null)) || { leads: [] };
+  const lead = caller && (q.leads || []).find((l) => d10(l.phone) === caller);
+  let best = null;
+  if (ck) {
+    const since = new Date(Date.now() - 4 * 3600e3).toISOString();
+    for (const a of Object.keys(AGENT_TOPIC)) {
+      const aid = process.env["CARTESIA_AGENT_" + a.toUpperCase()] || ids[a];
+      if (!aid) continue;
+      try {
+        const r = await fetch("https://api.cartesia.ai/agents/calls?" + new URLSearchParams({ agent_id: aid, limit: "40", start_time_gte: since }), { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": process.env.CARTESIA_READ_VERSION || "2026-08-14" } });
+        if (!r.ok) continue;
+        for (const c of ((await r.json()).data || [])) {
+          const tp = c.telephony_params || {}, to = d10(tp.to || c.to);
+          const t = new Date(c.end_time || c.start_time || 0).getTime();
+          const live = !c.end_time;
+          const matchLead = caller && to === caller;
+          const transfer = /transfer/i.test(String(c.end_reason || c.status || "")) || (live && (Date.now() - t) < 15 * 60e3);
+          const fresh = Date.now() - t < 5 * 60e3;
+          const score = (matchLead ? 3 : 0) + (transfer && fresh ? 2 : 0) + (fresh ? 1 : 0);
+          if (score >= 2 && (!best || score > best.score || (score === best.score && t > best.t))) best = { a, c, t, score, to };
+        }
+      } catch (e) { /* ignore */ }
+    }
+  }
+  if (!best && !lead) return OUR_LINES.includes(caller) ? "This looks like a transfer from one of our calling agents, but the details aren't available. Greet warmly, say you'll be happy to help, and ask what they'd like to know about the report or the advertising." : "Regular caller: no recent call from our agents. Greet normally.";
+  const L = best ? (q.leads || []).find((l) => d10(l.phone) === best.to) || lead || {} : lead;
+  const md = (best && best.c.metadata) || {};
+  const [who, topic] = best ? AGENT_TOPIC[best.a] : ["one of our agents", String(L.campaign || "")];
+  const kind = /media|advert|rebecca/i.test((best ? best.a : "") + " " + (L.campaign || "")) ? "advertising" : "compliance";
+  const name = L.name || md.lead || "", biz = L.business || md.business || "";
+  const findings = String(L.findings || "").slice(0, 500);
+  return [
+    `HEADS-UP: this is ${best && best.score >= 4 ? "a transfer" : "most likely a transfer or call-back"} from ${who} (${topic}).`,
+    name && `Person: ${name}`, biz && `Business: ${biz}`, findings && `What ${who} told them about: ${findings}`,
+    kind === "compliance"
+      ? `Greet like this: "Hi${name ? " " + name.split(" ")[0] : ""}, this is Rachel. ${who} told me you have a few questions about the website compliance report${biz ? " for " + biz : ""}. How can I help?" Then answer, and book a 10 to 15 minute review appointment with Tania.`
+      : `Greet like this: "Hi${name ? " " + name.split(" ")[0] : ""}, this is Rachel. ${who} told me you'd like to hear more about getting ${biz || "your practice"} in front of more patients and clients. How can I help?" Then answer, and book a 10 to 15 minute demo with Tania.`
+  ].filter(Boolean).join("\n");
+}
+
 async function wsmnRequest(store, b) {
   const id = clean(b.provider_id, 60), name = clean(b.caller_name, 80), email = clean(b.caller_email, 120).toLowerCase();
   const phone = e164(b.caller_phone || b.system__caller_number || "");

@@ -87,6 +87,7 @@ Your jobs:
 4. Pricing and profitability: direct costs, margins, break-even and sustainable prices for websites, the SBPA app, Media Network, SwanDesk AI; suggest usage limits and overage policies for services with variable costs.
 5. Alerts: renewals coming up, usage near a cap, a purchase bigger than available funds, an unprofitable service, a cheaper alternative, an unexpected charge, a purchase that should wait.
 Every spending decision ends with exactly one recommendation: APPROVE (justified, affordable, aligned with priorities), WAIT (useful but defer until revenue or need justifies it; say until when or what milestone), or DECLINE (unnecessary, too risky, redundant or not worth it). Use this format: CLARA — BUDGET DECISION REPORT: Proposed purchase, Requested by, Business purpose, One-time cost, Monthly recurring cost, Variable or hidden costs, Current budget availability, Estimated financial impact, Alternatives, ROI or break-even, Recommendation (APPROVE / WAIT / DECLINE), Reason, CEO approval status.
+6. Market and competitor research: you can read web pages and search the live web. When Tania pastes links, the page text is given to you; when she asks about pricing a service, a pricing model, competitors or "what others charge", live search results and competitor pages are given to you. For pricing questions, always compare at least 3 real competitors that use the pricing model she is asking about (for example setup fee plus monthly, flat yearly, per-audit, per-page): name, website, exact published price, what is included, who they sell to, and any sign it works for them (reviews, years in business, case studies, testimonials). Then say whether others are doing it, what the market rate is, where WebSwan's price sits (below, at or above market), and recommend a price with your reasoning (cost, margin, value, positioning). Cite the link for every competitor fact. If the research doesn't show a price, say "not published" instead of guessing.
 Critical rules: your recommendation is not permission to spend. Nothing is bought until Tania explicitly approves. Never invent prices or balances; if you don't have live numbers, say so and ask for them, or say "Jimmy should check this" and what to look up. Prefer prepaid, pay-per-use and spending caps over open-ended billing, and flag anything that bills automatically without a limit. "Wait" is a good answer when money isn't coming in from it yet.`
   },
   rachel: {
@@ -165,6 +166,47 @@ export async function webSearch(q, count = 6, freshness = "") {
   } catch { return []; }
 }
 export const fmtResults = (label, rs) => `### ${label}\n` + (rs.length ? rs.map((x) => `- ${x.title} (${x.url}): ${x.snippet}`).join("\n") : "- (no search results available)");
+
+// Read one web page as plain text (for Clara's research: pricing pages, competitor pages, any link Tania pastes).
+export async function readPage(raw, max = 7000) {
+  let url = String(raw || "").trim().replace(/[).,;]+$/, "");
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; WebSwanResearch/1.0)" } });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const h = (await r.text()).slice(0, 800000);
+    const title = ((h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "").replace(/\s+/g, " ").trim();
+    const txt = h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#36;|&dollar;/g, "$").replace(/\s+/g, " ").trim();
+    return { url: r.url || url, title, text: txt.slice(0, max) };
+  } finally { clearTimeout(t); }
+}
+// Live web research with sources: Brave search when BRAVE_API_KEY is set, otherwise Gemini with Google Search grounding.
+export async function researchWeb(question) {
+  const rs = await webSearch(question, 6);
+  if (rs.length) {
+    const pages = [];
+    for (const x of rs.slice(0, 3)) { try { pages.push(await readPage(x.url, 4000)); } catch (e) { /* skip */ } }
+    return fmtResults("Search results", rs) + (pages.length ? "\n\nPAGES READ:\n" + pages.map((p) => `--- ${p.title} (${p.url})\n${p.text}`).join("\n") : "");
+  }
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return "";
+  const models = [process.env.GEMINI_MODEL, "gemini-flash-latest", "gemini-2.5-flash"].filter((m, i, a) => m && a.indexOf(m) === i);
+  for (const model of models) {
+    try {
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 14000);
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools: [{ google_search: {} }], contents: [{ role: "user", parts: [{ text: "Research this on the live web and answer with facts only (company names, exact published prices, pricing model, what is included, and any reviews or results you can find). List the URL for every fact.\n\n" + question }] }] }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { if (/not found|no longer|not supported|unavailable/i.test((j.error && j.error.message) || "")) continue; return ""; }
+      const c = (j.candidates || [])[0] || {};
+      const text = ((c.content && c.content.parts) || []).map((x) => x.text || "").join("");
+      const src = ((c.groundingMetadata && c.groundingMetadata.groundingChunks) || []).map((g) => g.web && `- ${g.web.title || ""} (${g.web.uri})`).filter(Boolean);
+      return "### Live web research (Google Search)\n" + text + (src.length ? "\nSources:\n" + src.slice(0, 12).join("\n") : "");
+    } catch (e) { if (e && e.name === "AbortError") return ""; }
+  }
+  return "";
+}
 
 // Read a website as plain text (homepage + its privacy / disclaimer / terms / accessibility / contact pages).
 export async function readSite(raw) {
