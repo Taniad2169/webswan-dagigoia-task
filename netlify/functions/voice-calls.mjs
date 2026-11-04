@@ -702,6 +702,21 @@ export default async (req) => {
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
+  // ---------- Cartesia's model catalog (speed and price per model) ----------
+  if (b.action === "agent_models") {
+    try { const d = await cartesia("GET", "/v1/agents/models", V_READ); return reply(200, { models: d.data || d.models || d }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+  // ---------- switch the speaking brain (LLM) for phone agents ----------
+  if (b.action === "agent_model_set") {
+    const model = String(b.model || "").slice(0, 80), names = (Array.isArray(b.agents) ? b.agents : []).map((x) => String(x).toLowerCase()).filter((x) => AGENTS.includes(x));
+    if (!/^[a-z0-9.\-_:\/]+$/i.test(model) || !names.length) return reply(400, { error: "Pick a model and agents." }, origin);
+    const done = [];
+    for (const n of names) for (const k of [n, n + "_es", n + "_pt"]) { const id = agentId(k); if (!id) continue;
+      try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { model: { id: model, fallback_strategy: { type: "auto" } } } }); done.push(k); } catch (e) { done.push(k + ": " + e.message.slice(0, 80)); } }
+    return reply(200, { done }, origin);
+  }
+
   // ---------- read an agent's full config (no instructions text) to check speed settings ----------
   if (b.action === "agent_raw") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
