@@ -22,6 +22,10 @@ export async function evaDaily() {
   let emails = [], agenda = { events: [], tasks: [] }, err = "";
   try { emails = (await scriptCall({ action: "inbox", query: "in:inbox newer_than:1d", max: 80 })).emails || []; } catch (e) { err += "Gmail: " + e.message + " "; }
   try { const now = new Date(); agenda = await scriptCall({ action: "agenda", from: now.toISOString(), to: new Date(now.getTime() + 36 * 3600e3).toISOString() }); } catch (e) { err += "Calendar: " + e.message; }
+  // Convert every calendar time to Pacific (and Eastern) before Eva sees it, so the briefing never shows UTC.
+  const fmtPT = (v) => { const d = new Date(v); if (isNaN(d)) return v; const pt = d.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); const et = d.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }); return pt + " PT (" + et + " ET)"; };
+  const toPT = (x) => Array.isArray(x) ? x.map(toPT) : x && typeof x === "object" ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) ? fmtPT(v) : toPT(v)])) : x;
+  agenda = toPT(agenda);
   // 3-day follow-ups after audit emails with no reply.
   const fu = (await teamStore().get("followups", { type: "json" })) || [];
   const due = [];
@@ -35,7 +39,7 @@ export async function evaDaily() {
   await teamStore().setJSON("followups", fu);
   const ask = `Write Tania's morning briefing for ${ptDate()}. Start with "# ${ptDate()}".
 Sections in this order (skip a section only if it is empty): Today's schedule (appointments, calls, Zoom), Time to call (no reply 3 days after the audit email), Formspree submissions (every one), Leads who replied, Important emails (max 5), Service offers and collaborations (one line each), Tasks due.
-TIMES: every time in the calendar data is UTC. Always write times in Pacific time (Tania is in California), and add New York time in parentheses for East Coast appointments, e.g. "9:00 AM PT (12:00 PM ET)". Label each event "Today" or "Tomorrow" by its Pacific date; never put tomorrow's events under today.
+TIMES: the calendar times below are already in Pacific time with Eastern time in parentheses; copy them exactly and never write UTC. Always write times in Pacific time (Tania is in California), and add New York time in parentheses for East Coast appointments, e.g. "9:00 AM PT (12:00 PM ET)". Label each event "Today" or "Tomorrow" by its Pacific date; never put tomorrow's events under today.
 ${err ? "Note for Tania: " + err : ""}
 TIME TO CALL: ${JSON.stringify(due.map((f) => ({ practice: f.practice, email: f.to, phone: f.phone, state: f.state, emailedOn: f.at.slice(0, 10) })))}
 CALENDAR AND TASKS (data): ${JSON.stringify(agenda).slice(0, 8000)}
