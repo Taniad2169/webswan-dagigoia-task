@@ -421,9 +421,27 @@ function renderCalls(c) {
 }
 
 /* ---------- setup ---------- */
+async function qualityReport() {
+  const out = $('qOut'); out.innerHTML = '<p class="muted">Reading the calls… (about 20 seconds)</p>';
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0); const noon = new Date(d0); noon.setHours(12);
+  const r = $('qRange').value, body = { action: 'latency_report' };
+  if (r === 'today') body.since = d0.getTime(); if (r === 'morning') { body.since = d0.getTime(); body.until = noon.getTime(); } if (r === 'afternoon') body.since = noon.getTime(); if (r === 'week') body.since = Date.now() - 7 * 864e5;
+  try {
+    const q = await voiceApi(body), sec = (ms) => ms == null ? '–' : (ms / 1000).toFixed(1) + ' s';
+    const g = q.greeting || {};
+    out.innerHTML = `<div class="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0">
+      <div class="card"><b>${q.calls}</b><br><small>calls placed</small></div><div class="card"><b>${q.callsWithLivePerson}</b><br><small>reached a live person</small></div>
+      <div class="card"><b>${sec(g.p50)}</b><br><small>typical greeting (P50)</small></div><div class="card"><b>${sec(g.p95)}</b><br><small>slow end (P95)</small></div>
+      <div class="card"><b>${g.over3s || 0} of ${g.n || 0}</b><br><small>greetings over 3 s</small></div><div class="card"><b>${q.interruptedGreeting}</b><br><small>interrupted greetings</small></div>
+      <div class="card"><b>${q.noGreeting}</b><br><small>live person, no greeting</small></div><div class="card"><b>${sec((q.llmFirstText || {}).p50)} / ${sec((q.ttsFirstAudio || {}).p50)}</b><br><small>model / voice start (P50)</small></div></div>
+      ${(q.slowOrMissed || []).length ? '<p><b>Calls to listen to:</b></p><ul>' + q.slowOrMissed.map((x) => '<li>' + esc(x.agent) + ': ' + esc(x.issue) + ' <small class="muted">(' + esc(x.callId) + ')</small></li>').join('') + '</ul>' : '<p>No slow or missed greetings. 🎉</p>'}`;
+  } catch (e) { out.innerHTML = '<p>⚠️ ' + esc(e.message) + '</p>'; }
+}
 function renderSetup(c) {
   if (!liveStatus && window.cloudUser) setTimeout(() => liveRefresh(true), 50);
-  c.innerHTML = `${budgetCard()}<div class="two section"><div class="card"><h2>Connections</h2>
+  c.innerHTML = `${budgetCard()}<div class="card section" id="qualityCard"><h2>📊 Call quality</h2><p class="muted">From Cartesia's own timing on every call: how fast the agents greet a live person, interrupted greetings, missed greetings. Greeting = the person finishes speaking → the agent's voice starts.</p>
+    <div class="actions" style="justify-content:flex-start"><select id="qRange"><option value="today">Today</option><option value="morning">This morning (before noon PT)</option><option value="afternoon">This afternoon (after noon PT)</option><option value="week">Last 7 days</option></select><button class="btn small" onclick="qualityReport()">Run report</button></div><div id="qOut"></div></div>
+  <div class="two section"><div class="card"><h2>Connections</h2>
     ${liveRows()}
     <div class="listitem row"><strong>Cloud sync (your private Firebase)</strong><span class="pill" id="cloudRow">${window.cloudUser ? 'On · ' + esc(window.cloudUser) : 'Off · sign in at the top'}</span></div>
     <div class="listitem row"><strong>SDR AI brain (Gemini)</strong><span class="pill ${brainOn() ? 'ok' : ''}">${brainOn() ? 'Online' : 'Loading…'}</span></div>
