@@ -704,6 +704,31 @@ export default async (req) => {
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
+  // ---------- call quality report from Cartesia's own per-turn timings ----------
+  // greeting latency = end of the first person turn -> start of the agent's first audio; reply latency = the same for later turns.
+  if (b.action === "latency_report") {
+    const since = new Date(Number(b.since) || Date.now() - 6 * 3600e3).toISOString(), until = b.until ? new Date(Number(b.until)).toISOString() : "";
+    const names = (Array.isArray(b.agents) && b.agents.length ? b.agents : ["monica", "george", "rebecca", "alek", "rachelout"]).filter((x) => AGENTS.includes(x));
+    const greet = [], reply_ = [], llm = [], ttfb = [], per = []; let calls = 0, humanCalls = 0, noGreeting = 0, interruptedGreeting = 0;
+    for (const n of names) { const aid = agentId(n); if (!aid) continue;
+      let list = []; try { const q = new URLSearchParams({ agent_id: aid, limit: "100", start_time_gte: since }); list = ((await cartesia("GET", "/agents/calls?" + q, V_READ)).data || []).filter((c) => !until || String(c.start_time || "") < until); } catch (e) { continue; }
+      for (const c0 of list) { calls++;
+        let c; try { c = await cartesia("GET", "/agents/calls/" + encodeURIComponent(c0.id), V_READ); } catch (e) { continue; }
+        const t = (c.transcript || []).filter((x) => x.role !== "system" || x.log_metric);
+        t.forEach((x) => { if (x.log_metric && x.log_metric.name === "llm_first_text_ms") llm.push(x.log_metric.value); if (x.tts_ttfb) ttfb.push(x.tts_ttfb * 1000); });
+        const turns = t.filter((x) => x.role === "user" || x.role === "assistant");
+        const human = turns.find((x) => x.role === "user" && /how (can|may) i (help|assist)|speaking|this is|good (morning|afternoon)|hello|law (office|firm)|dental|chiropractic|office of/i.test(x.text || "") && !/press \d|para espa|if you know|leave a message|after the (tone|beep)|is not available/i.test(x.text || ""));
+        if (!human) continue; humanCalls++;
+        let first = true;
+        for (let i = turns.indexOf(human); i < turns.length; i++) { const u = turns[i]; if (u.role !== "user") continue; const a = turns.slice(i + 1).find((x) => x.role === "assistant" && String(x.text || "").trim()); if (!a) { if (first) { noGreeting++; per.push({ agent: n, callId: c.id, issue: "no greeting after a live person" }); } break; }
+          const gap = (a.start_timestamp - u.end_timestamp) * 1000; if (gap < -500 || gap > 60000) { first = false; continue; }
+          (first ? greet : reply_).push(gap); if (first) { if (a.was_interrupted) interruptedGreeting++; if (gap > 3000) per.push({ agent: n, callId: c.id, issue: "greeting " + Math.round(gap) + " ms after the person finished" }); }
+          first = false; }
+      } }
+    const st = (arr) => { const v = arr.slice().sort((x, y) => x - y); const q = (p) => v.length ? Math.round(v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))]) : null; return { n: v.length, p50: q(0.5), p95: q(0.95), max: v.length ? Math.round(v[v.length - 1]) : null, over3s: v.filter((x) => x > 3000).length }; };
+    return reply(200, { since, calls, callsWithLivePerson: humanCalls, greeting: st(greet), replies: st(reply_), llmFirstText: st(llm), ttsFirstAudio: st(ttfb), noGreeting, interruptedGreeting, slowOrMissed: per.slice(0, 30) }, origin);
+  }
+
   // ---------- what timing/event data Cartesia keeps for one call (field names and timestamps only) ----------
   if (b.action === "call_raw") {
     const id = clean(b.callId, 120); if (!/^[\w-]+$/.test(id)) return reply(400, { error: "Bad call id." }, origin);
