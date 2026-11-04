@@ -11,6 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
+import { askAI } from "../lib/team.mjs";
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
@@ -556,6 +557,24 @@ export default async (req) => {
     const q = (await store.get("queue", { type: "json" })) || {};
     add("Auto-dial queue", true, (q.paused ? "paused" : "running") + " · " + ((q.leads || []).filter((l) => l.status === "queued").length) + " queued");
     return reply(200, { ready: checks.every((c) => c.ok), checks }, origin);
+  }
+
+  // ---------- SDR AI brain (Voice Studio): call reviews and script coaching, answered as JSON ----------
+  // Runs here with the server's AI keys (Gemini first) instead of Firebase AI Logic in the browser.
+  if (b.action === "sdr_brain") {
+    const system = String(b.system || "").slice(0, 6000), task = String(b.task || "").slice(0, 8000);
+    const data = JSON.stringify(b.data == null ? {} : b.data).slice(0, 30000);
+    if (!task) return reply(400, { error: "Nothing to ask." }, origin);
+    let lastErr = "";
+    for (const prov of ["gemini", "deepseek", "chatgpt"]) {
+      try {
+        const r = await askAI(prov, system + "\nAlways answer with valid JSON only, no markdown.", [{ role: "user", content: task + "\n\nDATA:\n" + data }], 3000);
+        const txt = String(r.text || "").replace(/^\s*```(json)?/i, "").replace(/```\s*$/, "").trim();
+        const i = txt.indexOf("{"), j = txt.lastIndexOf("}");
+        return reply(200, { result: JSON.parse(i >= 0 ? txt.slice(i, j + 1) : txt), provider: r.provider }, origin);
+      } catch (e) { lastErr = String(e.message || e).slice(0, 200); }
+    }
+    return reply(502, { error: "The SDR brain couldn't answer: " + lastErr }, origin);
   }
 
   // ---------- push finished AI calls into WorkPilot's blue list right now ----------

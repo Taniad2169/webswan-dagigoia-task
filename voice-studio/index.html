@@ -1394,6 +1394,8 @@ House rules: the agent must say it is an AI assistant and who it calls for in th
 Never include phone numbers, emails or personal data in your output. Always answer with valid JSON only.`;
 async function ask(task, data) {
   let err;
+  // Server first (Netlify, your own AI keys): Firebase AI Logic in the browser is blocked by App Check.
+  try { if (typeof window.voiceApi === 'function') { const r = await window.voiceApi({ action: 'sdr_brain', system: RULES, task, data }); if (r && r.result) return r.result; } } catch (e) { err = e; }
   for (const m of MODELS) {
     try {
       const model = getGenerativeModel(ai, { model: m, systemInstruction: RULES, generationConfig: { responseMimeType: 'application/json', temperature: 0.4 } });
