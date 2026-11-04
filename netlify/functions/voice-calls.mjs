@@ -59,6 +59,8 @@ These rules come before everything else in your script.
 1. PHONE MENUS. If a recording answers with options ("press 1 for appointments, press 2 for billing..."), NEVER say the number out loud. Use the send_dtmf tool to press the key on the keypad. Pick the option for the front desk, reception, the operator, new patients or new clients, or "all other questions". If there is no good option, press 0. If the menu asks for an extension or "dial by name", press 0. If it says "stay on the line", do nothing and wait.
 2. STAY SILENT UNTIL A HUMAN SPEAKS. After you press a key, or while you hear hold music, a recording, "your call is important to us" or "please hold", say nothing. Do not start your greeting or pitch to a recording. Wait for a live person to say hello.
 3. HOW TO TELL A HUMAN FROM A RECORDING. A recording sounds scripted and polished, lists options or office hours, keeps going when you speak, and never answers you. A human says hello or the office name, pauses for you, reacts to what you say, and may say "who's calling?" or "how can I help you?". If you are not sure, say only "Hello?" right away. A human answers; a recording keeps playing.
+3c. NEVER NARRATE. When you stay silent (rings, menus, hold, recordings), output nothing at all. Never say what you are doing, like "I'm waiting on hold" or "staying silent".
+3d. ONE BREATH GREETING. Say your whole greeting in one sentence without stopping after "Hi" ("Hi, this is [name], how are you today?").
 3b. ANSWER A LIVE PERSON IMMEDIATELY. The moment a live person finishes their greeting ("Law office of...", "How can I help you?", "Hello?"), start your greeting at once, with no pause. Never make a person say "Hello?" twice: if they say "Hello?", answer right away with your greeting.
 4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
 5. LONG HOLD. If you have been on hold or in menus for about 90 seconds with no live person, use end_call.
@@ -713,7 +715,9 @@ export default async (req) => {
     if (!/^[a-z0-9.\-_:\/]+$/i.test(model) || !names.length) return reply(400, { error: "Pick a model and agents." }, origin);
     const done = [];
     for (const n of names) for (const k of [n, n + "_es", n + "_pt"]) { const id = agentId(k); if (!id) continue;
-      try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { model: { id: model, fallback_strategy: { type: "auto" } } } }); done.push(k); } catch (e) { done.push(k + ": " + e.message.slice(0, 80)); } }
+      const cfg = { model: { id: model, fallback_strategy: { type: "auto" } } };
+      if (b.turn) cfg.turn = { inactivity_check_in_secs: Math.max(3, Math.min(20, Number(b.turn.checkIn) || 8)), inactivity_end_call_secs: Math.max(30, Math.min(600, Number(b.turn.endCall) || 240)) };
+      try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: cfg }); done.push(k); } catch (e) { done.push(k + ": " + e.message.slice(0, 80)); } }
     return reply(200, { done }, origin);
   }
 
