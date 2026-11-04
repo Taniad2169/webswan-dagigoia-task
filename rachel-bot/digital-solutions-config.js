@@ -40,6 +40,9 @@
   };
 })();
 
+/* Rachel offers an appointment with Tania, then a short form that emails Tania (Formspree). */
+if (window.RACHEL_CONFIG) window.RACHEL_CONFIG.booking = { endpoint: 'https://formspree.io/f/xgoajlpg', brand: 'WebSwan Digital Solutions', after: 2 };
+
 /* Orange "Take me there" announcement banner */
 window.WS_PROMO = {"text": "Need a new website that's built with ADA and cookie compliance from day one? See The WebSwan Managed Website Program.", "link": "https://taniad2169.github.io/webswan-pricing/#managedWebsite", "cta": "Take me there"};
 (function () { var s = document.createElement('script'); s.src = 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/promo-banner.js'; s.defer = true; document.head.appendChild(s); })();

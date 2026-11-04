@@ -62,7 +62,9 @@
     '.rbt-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}',
     '@media(max-width:600px){#rbt-launch .rbt-lbl{display:none}#rbt-launch{padding:5px}#rbt-panel{left:8px;right:8px;width:auto;bottom:80px}}',
     '@media(max-height:720px){.rbt-hero .rbt-pic{width:120px;height:120px}.rbt-top .rbt-pic{width:42px;height:42px}}',
-    C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
+        '.rbt-yn{display:flex;gap:8px;margin-top:8px}.rbt-yn button{flex:1;border:0;border-radius:999px;padding:9px 10px;font-weight:700;cursor:pointer;background:' + COLOR + ';color:#fff}.rbt-yn button+button{background:#fff;color:' + DARK + ';border:2px solid ' + COLOR + '}',
+    '.rbt-book{background:#f4f9ff;border:1px solid #c9dcef;border-radius:14px;padding:12px;margin:6px 0;display:flex;flex-direction:column;gap:4px;font-size:14px;color:#0a1e2f}.rbt-book label{font-weight:700;margin-top:4px;display:flex;justify-content:space-between}.rbt-book input,.rbt-book textarea{width:100%;box-sizing:border-box;border:1px solid #a9c4dd;border-radius:10px;padding:8px;font:inherit;background:#fff;color:#0a1e2f}.rbt-book textarea{resize:vertical}.rbt-book button{margin-top:8px;border:0;border-radius:999px;padding:10px;font-weight:800;cursor:pointer;background:' + COLOR + ';color:#fff}.rbt-book button:disabled{opacity:.6}.rbt-note{margin:4px 0 0;font-size:12px;color:#35506a}.rbt-err{margin:4px 0 0;color:#b00020;font-weight:700;font-size:13px}.rbt-count{font-weight:400;color:#35506a}',
+C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     C.hide ? C.hide + '{display:none!important}' : ''
   ].join('\n');
   var st = document.createElement('style'); st.id = 'rbt-style'; st.textContent = css; document.head.appendChild(st);
@@ -153,7 +155,67 @@
     }
     log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
   }
-  function ask(text) { text = String(text || '').trim(); if (!text) return; add(text, true); var a = answer(text); setTimeout(function () { add(a); }, 300); }
+  /* ---------- "Would you like to schedule an appointment with Tania?" ---------- */
+  // Turned on per site with C.booking = { endpoint, after, brand }. Rachel offers once (after a few questions,
+  // or right away when someone asks to book), then shows a short form that goes to Tania by email.
+  var BK = C.booking || null, answered = 0, offered = false, pending = false;
+  var BOOK_RX = /\b(appointment|schedule|book|booking|meet|meeting|call me|talk to tania|speak (to|with) tania|consultation|demo)\b/i;
+  function offer() {
+    if (!BK || offered) return; offered = true; pending = true;
+    var d = add('Would you like to schedule an appointment with Tania?');
+    var row = document.createElement('div'); row.className = 'rbt-yn';
+    [['Yes, please', true], ['No, thanks', false]].forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = o[0];
+      b.addEventListener('click', function () { row.remove(); reply(o[1]); });
+      row.appendChild(b);
+    });
+    d.appendChild(row); log.scrollTop = log.scrollHeight;
+  }
+  function reply(yes) {
+    pending = false; var r = log.querySelector('.rbt-yn'); if (r) r.remove();
+    add(yes ? 'Yes, please' : 'No, thanks', true);
+    setTimeout(function () { if (yes) bookForm(); else add('No problem at all! I’m right here if you have more questions. 😊'); }, 300);
+  }
+  function bookForm() {
+    add('Wonderful! Please fill out the form with your <b>name</b>, <b>business name</b>, <b>phone number</b>, a <b>subject</b> and a short <b>comment</b>, and Tania will reach out to set your appointment.');
+    var f = document.createElement('form'); f.className = 'rbt-book'; f.noValidate = true;
+    var id = 'rbk' + Date.now();
+    f.innerHTML =
+      '<label for="' + id + 'n">Your name</label><input id="' + id + 'n" name="name" required maxlength="80" autocomplete="name">' +
+      '<label for="' + id + 'b">Business name</label><input id="' + id + 'b" name="business" required maxlength="120" autocomplete="organization">' +
+      '<label for="' + id + 'p">Phone number</label><input id="' + id + 'p" name="phone" type="tel" required maxlength="25" autocomplete="tel">' +
+      '<label for="' + id + 's">Subject</label><input id="' + id + 's" name="subject" required maxlength="100">' +
+      '<label for="' + id + 'c">Comment <span class="rbt-count" aria-live="polite">0/400</span></label><textarea id="' + id + 'c" name="comment" rows="3" maxlength="400"></textarea>' +
+      '<p class="rbt-note">Please don’t include medical, patient or case details.</p>' +
+      '<button type="submit">Send to Tania</button><p class="rbt-err" role="alert"></p>';
+    var ta = f.querySelector('textarea'), cnt = f.querySelector('.rbt-count'), err = f.querySelector('.rbt-err');
+    ta.addEventListener('input', function () { cnt.textContent = ta.value.length + '/400'; });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = function (n) { return (f.elements[n].value || '').trim(); };
+      var miss = ['name', 'business', 'phone', 'subject'].filter(function (n) { return !v(n); });
+      if (miss.length) { err.textContent = 'Please fill in: ' + miss.join(', ') + '.'; f.elements[miss[0]].focus(); return; }
+      if (v('phone').replace(/\D/g, '').length < 10) { err.textContent = 'Please enter a full phone number with area code.'; f.elements.phone.focus(); return; }
+      var btn = f.querySelector('button'); btn.disabled = true; btn.textContent = 'Sending…'; err.textContent = '';
+      var body = { name: v('name'), business: v('business'), phone: v('phone'), subject: v('subject'), comment: v('comment').slice(0, 400),
+        source: 'Rachel chat · ' + (BK.brand || BRAND), page: location.href, _subject: 'Appointment request from Rachel chat (' + (BK.brand || BRAND) + '): ' + v('subject') };
+      fetch(BK.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); f.remove(); add('Thank you, <b>' + esc(body.name) + '</b>! 🎉 Tania received your request and will reach out at <b>' + esc(body.phone) + '</b> to set your appointment.'); })
+        .catch(function () { btn.disabled = false; btn.textContent = 'Send to Tania'; err.innerHTML = 'Sorry, that didn’t go through. Please try again, or call ' + (BK.phoneHtml || '<a href="tel:+13162486839">(316) 248-6839</a>') + '.'; });
+    });
+    log.appendChild(f); log.scrollTop = log.scrollHeight;
+    setTimeout(function () { f.elements.name.focus(); }, 80);
+  }
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function ask(text) {
+    text = String(text || '').trim(); if (!text) return;
+    if (BK && pending && /^(y|yes|yeah|yep|sure|ok|okay|please|yes please|si|sí|sim)\b/i.test(text)) { var r0 = log.querySelector('.rbt-yn'); if (r0) r0.remove(); pending = false; add(text, true); setTimeout(bookForm, 300); return; }
+    if (BK && pending && /^(n|no|nope|not now|no thanks|no thank you|nao|não)\b/i.test(text)) { reply(false); return; }
+    add(text, true);
+    if (BK && !offered && BOOK_RX.test(text)) { setTimeout(offer, 300); return; }
+    var a = answer(text); answered++;
+    setTimeout(function () { add(a); if (BK && !offered && (answered >= (BK.after || 2) || a === FALLBACK)) setTimeout(offer, 900); }, 300);
+  }
   (C.quick || []).forEach(function (q) { var b = document.createElement('button'); b.type = 'button'; b.textContent = q; b.addEventListener('click', function () { ask(q); }); chips.appendChild(b); });
   panel.querySelector('.rbt-form').addEventListener('submit', function (e) { e.preventDefault(); var v = input.value; input.value = ''; ask(v); });
   log.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('a[href^="#"]'); if (a) close(); });
