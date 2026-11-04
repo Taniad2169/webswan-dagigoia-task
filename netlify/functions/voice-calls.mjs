@@ -142,10 +142,10 @@ async function alekLanguage(id, lang, store) {
   const isPt = String(cur.primary || "").startsWith("pt");
   if (lang === "pt" && !isPt) {
     await store.setJSON("alek-lang", cur);
-    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: { primary: "pt-BR", additional: [] } }, version_description: "Alek: Brazilian Portuguese call" });
+    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: { primary: "pt-BR", additional: [] } } });
   } else if (lang !== "pt" && isPt) {
     const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG;
-    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig }, version_description: "Alek: back to English and Spanish" });
+    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig } });
   }
 }
 const MODES = { selling: "Selling: phone application (PWA) and digital e-card", floating: "Floating: follow Tania's task below" };
@@ -513,7 +513,7 @@ export default async (req) => {
       const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
       const audio = JSON.parse(JSON.stringify((d.config || (d.agent && d.agent.config) || {}).audio || {}));
       audio.output = Object.assign({}, audio.output || {}, { voice_id: String(b.voiceId) });
-      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { audio }, version_description: "Voice changed from WebSwan Voice Studio" });
+      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { audio } });
       return reply(200, { ok: true, agent: name, voiceId: String(b.voiceId) }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
@@ -619,7 +619,7 @@ export default async (req) => {
     const ins = withPhoneRules(String(b.instructions || "").trim(), name);
     if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
     try {
-      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins }, version_description: "Updated from WebSwan Voice Studio" });
+      await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } });
       return reply(200, { ok: true, agent: name, chars: ins.length }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }

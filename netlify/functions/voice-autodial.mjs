@@ -46,8 +46,8 @@ async function alekLanguage(id, lang, store) {
   const d = await cart("GET", "/v1/agents/" + encodeURIComponent(id));
   const cur = (d.config || (d.agent && d.agent.config) || {}).language || {};
   const isPt = String(cur.primary || "").startsWith("pt");
-  if (lang === "pt" && !isPt) { await store.setJSON("alek-lang", cur); await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: { primary: "pt-BR", additional: [] } }, version_description: "Alek: Brazilian Portuguese call" }); }
-  else if (lang !== "pt" && isPt) { const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG; await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig }, version_description: "Alek: back to English and Spanish" }); }
+  if (lang === "pt" && !isPt) { await store.setJSON("alek-lang", cur); await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: { primary: "pt-BR", additional: [] } } }); }
+  else if (lang !== "pt" && isPt) { const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG; await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig } }); }
 }
 const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
 function e164(p) {

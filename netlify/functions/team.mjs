@@ -41,7 +41,7 @@ async function syncPhone(name, notes) {
       const a = ins.indexOf(NOTES_START), z = ins.indexOf(NOTES_END);
       const base = (a >= 0 && z > a ? ins.slice(0, a) + ins.slice(z + NOTES_END.length) : ins).trim();
       if (!base) { errors.push("empty script"); continue; }
-      await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { instructions: block ? base + "\n\n" + block : base }, version_description: "Coaching notes from the AI Office" });
+      await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { instructions: block ? base + "\n\n" + block : base } });
       updated++;
     } catch (e) { errors.push(e.message); }
   }
