@@ -47,7 +47,7 @@ export default async () => new Response(JSON.stringify(await runWorkpilotSync())
 
 // Also run on demand from Voice Studio ("Sync AI calls to WorkPilot now"), with the real error if it fails.
 export async function runWorkpilotSync(hours) {
-  const key = process.env.WORKPILOT_FIREBASE_KEY, ck = process.env.CARTESIA_API_KEY;
+  const key = String(process.env.WORKPILOT_FIREBASE_KEY || "").trim().replace(/^["']|["']$/g, ""), ck = process.env.CARTESIA_API_KEY;
   const s0 = getStore({ name: "voice-studio", consistency: "strong" });
   if (!key || !ck) { const st = { at: new Date().toISOString(), ok: false, error: !key ? "WORKPILOT_FIREBASE_KEY is not set on webswan-billing in Netlify" : "CARTESIA_API_KEY is missing" }; await s0.setJSON("wp-sync-status", st); return st; }
   const s = getStore({ name: "voice-studio", consistency: "strong" });
