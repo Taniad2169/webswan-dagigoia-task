@@ -566,14 +566,25 @@ export default async (req) => {
     const data = JSON.stringify(b.data == null ? {} : b.data).slice(0, 30000);
     if (!task) return reply(400, { error: "Nothing to ask." }, origin);
     let lastErr = "";
-    for (const prov of ["gemini", "deepseek", "chatgpt"]) {
-      try {
-        const r = await askAI(prov, system + "\nAlways answer with valid JSON only, no markdown.", [{ role: "user", content: task + "\n\nDATA:\n" + data }], 3000);
-        const txt = String(r.text || "").replace(/^\s*```(json)?/i, "").replace(/```\s*$/, "").trim();
-        const i = txt.indexOf("{"), j = txt.lastIndexOf("}");
-        return reply(200, { result: JSON.parse(i >= 0 ? txt.slice(i, j + 1) : txt), provider: r.provider }, origin);
-      } catch (e) { lastErr = String(e.message || e).slice(0, 200); }
+    const parse = (t) => { const txt = String(t || "").replace(/^\s*```(json)?/i, "").replace(/```\s*$/, "").trim(); const i = txt.indexOf("{"), j = txt.lastIndexOf("}"); return JSON.parse(i >= 0 ? txt.slice(i, j + 1) : txt); };
+    // Fast path (must finish inside Netlify's ~10 s limit): Gemini Flash-Lite, no thinking, JSON mode.
+    if (process.env.GEMINI_API_KEY) {
+      for (const model of ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-flash-latest"]) {
+        try {
+          const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY), { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: task + "\n\nDATA:\n" + data }] }],
+              generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 2000, thinkingConfig: { thinkingBudget: 0 } } }) });
+          clearTimeout(tm);
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) { lastErr = "Gemini " + model + ": " + ((j.error && j.error.message) || r.status); continue; }
+          const t = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((x) => x.text || "").join("");
+          return reply(200, { result: parse(t), provider: "gemini" }, origin);
+        } catch (e) { lastErr = String(e.name === "AbortError" ? "Gemini took too long" : e.message || e).slice(0, 200); }
+      }
     }
+    try { const r = await askAI("deepseek", system + "\nAlways answer with valid JSON only, no markdown.", [{ role: "user", content: task + "\n\nDATA:\n" + data }], 1500); return reply(200, { result: parse(r.text), provider: r.provider }, origin); }
+    catch (e) { lastErr = String(e.message || e).slice(0, 200); }
     return reply(502, { error: "The SDR brain couldn't answer: " + lastErr }, origin);
   }
 
