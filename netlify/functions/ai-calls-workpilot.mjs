@@ -28,6 +28,12 @@ async function idToken(key, s) {
   return d.idToken;
 }
 
+// Phone menus ("press 1"), voicemail greetings and AI/virtual receptionists are not people: those calls stay blue in WorkPilot.
+const IVR = /(press (one|two|three|four|five|six|seven|eight|nine|zero|pound|star|\d)|para espa(ñ|n)ol|listen carefully|menu (has|options) (have )?changed|menu options|dial by name|(dial|enter) (the|your) (party'?s )?extension|your call is important|please (stay on the line|hold)|all (of )?our (representatives|staff|agents)|you(?:'ve| have) reached|office (hours|is (currently )?closed)|(our|the) office is (currently )?closed|after the (tone|beep)|leave (a|your) message|mailbox|not available to take your call|record your (name|message)|state your name|google voice|the (person|party|number) you (are|have) (calling|called|dialed)|call screening|this call (may|will) be recorded|for quality (and|or) training)/i;
+const BOT = /(i'?m an? (ai|automated|virtual|digital)|i am an? (ai|automated|virtual|digital)|(virtual|ai|automated|digital) (assistant|receptionist|agent)|this is an automated|answering service)/i;
+const HUMAN = /(who'?s calling|who is (this|calling)|can i ask who|may i ask who|what is (this|it) (about|regarding)|what'?s this (about|regarding)|(she|he)'?s (not (in|here|available)|with a patient|busy)|the doctor (is|isn'?t)|hold on|one moment|let me (check|see|transfer|get)|not interested|we'?re (good|all set)|i'?m the (office )?manager)/i;
+export const automatedOnly = (said) => { const t = String(said || ""); return !!t && (BOT.test(t) || (IVR.test(t) && !HUMAN.test(t))); };
+
 function outcome(c, said, booked) {
   const secs = c.start_time && c.end_time ? (new Date(c.end_time) - new Date(c.start_time)) / 1000 : 0;
   const end = String(c.end_reason || c.status || "");
@@ -35,6 +41,7 @@ function outcome(c, said, booked) {
   if (booked) return "Appointment booked";
   if (/don'?t call|do not call|remove (me|us|our)|take (me|us) off|stop calling/.test(t)) return "Do not call";
   if (/voicemail/.test(end)) return "Voicemail";
+  if (automatedOnly(said)) return /leave (a|your) message|mailbox|after the (tone|beep)|not available to take your call/i.test(said) ? "Voicemail" : "Automated (no human)";
   if (/no_answer|busy|failed/.test(end) && !said) return "No answer";
   if (/call (me |us )?back|callback|call later|try (again|later)|not (in|available) (right now|today)|out of the office/.test(all)) return "Call back";
   if (/@| at gmail| dot com| dot net| dot org/.test(t)) return "Email captured";
