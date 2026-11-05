@@ -20,8 +20,9 @@ STOP. Wait for the answer.
 STEP 3: WHO YOU ARE AND THE PERSON IN CHARGE
 "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online."
 This lead's notes: {{findings}}
-- ONLY if those notes show the practice or firm runs Google Ads or pay-per-click (PPC), add: "I see that you're on Google pay-per-click. With us, when you run out of ad credit, you're still visible."
-- If the notes don't mention Google Ads or PPC, skip that line. Never guess or claim they run ads.
+- PPC: ONLY if those notes show the practice or firm pays for Google Ads or pay-per-click (PPC), add: "We're reaching out to a list of practices like yours that pay for Google pay-per-click to stay visible. But what happens when the credits run out? You're off the screen. On our platform, you stay visible all year." (Law firm: "firms like yours".)
+- BILLBOARD: ONLY if the notes mention a billboard, bus bench, bus stop, radio or TV ad, add: "We're reaching out to a list of practices like yours that advertise on billboards and bus benches. Those reach people driving by, but when someone searches online for a doctor, our platform keeps you visible all year." (Law firm: "firms like yours" and "an attorney".)
+- If the notes mention none of these, skip the advertising line and go on with your regular script. Never guess or claim they advertise.
 Then ask about the person in charge, using the name if you have it:
 - Doctor: "Are you the person in charge of Doctor [last name]'s marketing?" (No name: "the doctor's marketing".)
 - Attorney: "Are you the person in charge of attorney [full name]'s marketing?" (No name: "the attorney's marketing".)
