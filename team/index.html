@@ -625,8 +625,9 @@ function startBarge() {
   try { r.start(); } catch (e) {}
 }
 // ✋ Stop: ends her whole answer at once (not just the current sentence) and opens the mic for Tania.
-function stopTalking() { if (!V.speaking && !V.audio) return; V.interrupted = true; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); V.audio && V.audio.onended && V.audio.onended(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} V.speaking = ""; vSay("Stopped. Listening…"); if (V.on) setTimeout(listen, 250); }
-document.addEventListener("keydown", (e) => { if (e.code === "Space" && V.on && V.speaking && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || "")) { e.preventDefault(); stopTalking(); } });
+function stopTalking() { V.interrupted = true; if (G.on) G.gen = (G.gen || 0) + 1; V.busy = false; // also cancels agents still "thinking" in a group meeting
+   try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); V.audio && V.audio.onended && V.audio.onended(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} V.speaking = ""; vSay("Stopped. Listening…"); if (V.on) setTimeout(listen, 250); }
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && V.on && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || "")) { e.preventDefault(); stopTalking(); } });
 function stopBarge() { const r = V.barge; if (r && !V.interrupted) { V.barge = null; try { r.abort(); } catch (e) {} } }
 async function speak(text, who) {
   V.lastAnswer = String(text || "");
@@ -650,7 +651,7 @@ try { $("vFree").checked = freeVoice(); $("vFree").onchange = () => { try { loca
 document.addEventListener("click", (e) => {
   if (e.target.id === "micBtn") { G.on = false; V.rp = false; voiceStart(""); }
   if (e.target.id === "vEnd") voiceStop();
-  if (e.target.id === "vTalk") { V.interrupted = true; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} if (!V.on) V.on = true; listen(); }
+  if (e.target.id === "vTalk") { V.interrupted = true; if (G.on) G.gen = (G.gen || 0) + 1; V.busy = false; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} if (!V.on) V.on = true; listen(); }
   if (e.target.id === "vSkip") stopTalking();
 });
 </script>
