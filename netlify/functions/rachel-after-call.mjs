@@ -24,7 +24,12 @@ const PHONE_RULES_END = "### END PHONE RULES";
 // Rebecca: which opener to use when the lead is known to pay for Google PPC or a billboard / bus bench (from the lead's notes).
 const REB_START = "### REBECCA ADVERTISING RULES (WebSwan)", REB_END = "### END REBECCA ADVERTISING RULES";
 const REBECCA_RULES = `${REB_START}
-These rules win over STEP 3 of your script. After "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online.", look at this lead's notes: {{findings}}
+OPENING (wins over STEP 1 and STEP 2 of your script; the rest of your script stays the same):
+1. "Hi, how are you today?" Then pause and listen. If they ask how you are: "I'm doing well, thank you for asking." Then: "Just so you know, this call is recorded."
+2. "I won't take much of your time. Are you accepting new patients?" (For a law firm: "Are you accepting new clients?") Then pause and wait for the answer. If no: thank them warmly and end the call.
+3. If yes: "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online." and go on with STEP 3.
+If someone asks who is calling, give your first name: "This is Rebecca with WebSwan Media Network."
+ADVERTISING LINE: these rules win over STEP 3 of your script. After "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online.", look at this lead's notes: {{findings}}
 - PPC: ONLY if the notes show the practice or firm pays for Google Ads or pay-per-click (PPC), say: "We're reaching out to a list of practices like yours that pay for Google pay-per-click to stay visible. But what happens when the credits run out? You're off the screen. On our platform, you stay visible all year." For a law firm say "firms like yours".
 - BILLBOARD: ONLY if the notes mention a billboard, bus bench, bus stop, radio or TV ad, say: "We're reaching out to a list of practices like yours that advertise on billboards and bus benches. Those reach people driving by, but when someone searches online for a doctor, our platform keeps you visible all year." For a law firm say "firms like yours" and "an attorney".
 - If the notes mention none of these, skip the advertising line and use your regular script. Never guess or claim they advertise.
