@@ -101,7 +101,9 @@ export default async (req) => {
       if (!text) return reply(400, { error: "Nothing to say." }, origin);
       const H = { "X-API-Key": ck, Authorization: "Bearer " + ck, "Cartesia-Version": process.env.CARTESIA_TTS_VERSION || "2025-04-16", "Content-Type": "application/json" };
       const s = await getSettings(); const voices = Object.assign({}, s.voices || {});
-      let vid = voices[agent];
+      // Phone agents always use the voice of their live Cartesia agent (so a meeting sounds exactly like her calls); the cache is only for office-only agents.
+      const live = agent === "rachel" || (AGENTS[agent].caller && agent !== "sdr");
+      let vid = live ? "" : voices[agent];
       if (!vid) {
         try {
           if (agent === "rachel" || AGENTS[agent].caller) {
@@ -117,7 +119,7 @@ export default async (req) => {
             const taken = Object.values(voices); const pick = fem.find((v) => !taken.includes(v.id)) || fem[0];
             vid = pick && pick.id;
           }
-          if (vid) { voices[agent] = vid; await teamStore().setJSON("settings", Object.assign({}, (await teamStore().get("settings", { type: "json" })) || {}, { voices })); }
+          if (vid && !live) { voices[agent] = vid; await teamStore().setJSON("settings", Object.assign({}, (await teamStore().get("settings", { type: "json" })) || {}, { voices })); }
         } catch (e) { /* fall back below */ }
       }
       if (!vid) return reply(502, { error: "No voice found." }, origin);
