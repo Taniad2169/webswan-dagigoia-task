@@ -428,15 +428,18 @@ function groupStart(members) {
   groupTurn("Everyone, say hi in one short sentence so I know you're here.");
 }
 // Who is named, in the order Tania said them.
+// Speech-to-text often mishears names ("Kobe" for Coby, "Alex" for Alek), so each agent answers to a few spellings.
+const SOUNDS = { sdr: "coby|kobe|koby|cobie|colby|cody|toby|kobi|sdr", alek: "alek|alec|alex|alek's", monica: "monica|monika|veronica", rebecca: "rebecca|becca|rebekah", george: "george|jorge", rachel: "rachel|rachael", tatiana: "tatiana|tatyana", clara: "clara|klara|claire", eva: "eva|ava|eve", linda: "linda|lynda" };
+const nameRe = (k) => SOUNDS[k] || first(k).toLowerCase();
 function named(text) {
   const t = text.toLowerCase();
-  return G.members.map((k) => ({ k, i: t.search(new RegExp("\\b" + first(k).toLowerCase() + "\\b")) })).filter((x) => x.i >= 0).sort((a, b) => a.i - b.i).map((x) => x.k);
+  return G.members.map((k) => ({ k, i: t.search(new RegExp("\\b(" + nameRe(k) + ")\\b")) })).filter((x) => x.i >= 0).sort((a, b) => a.i - b.i).map((x) => x.k);
 }
 function plan(text) {
   const n = named(text), t = text.toLowerCase();
   const all = /\b(everyone|everybody|all of you|each of you|the team|you all|y'all|go around|what do you (all|guys) think)\b/.test(t);
   // "Coby, your turn" / "Monica, it's your turn to answer Coby": only that person speaks.
-  const turn = G.members.find((k) => new RegExp("\\b" + first(k).toLowerCase() + "\\b[\\s,.!]*(it'?s\\s+|now\\s+)?(your turn|go ahead|you'?re up)").test(t));
+  const turn = G.members.find((k) => new RegExp("\\b(" + nameRe(k) + ")\\b[\\s,.!]*(it'?s\\s+|now\\s+)?(your turn|go ahead|you'?re up|over to you)").test(t));
   if (turn) return { kind: "named", order: [turn] };
   if (all && n.length < 2) return { kind: "all", order: n.length ? [n[0], ...G.members.filter((k) => k !== n[0])] : G.members.slice() };
   // One name or several: Tania gives the floor to ONE person (the first one she names). The others wait for their turn.
