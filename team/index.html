@@ -76,6 +76,14 @@
     .app.chat aside { display: none; } .app:not(.chat) main { display: none; }
     .back { display: inline-block; }
   }
+  /* Chat height: drag the bar under the messages (double-click resets); the height is remembered */
+  .app { height: auto; min-height: calc(100vh - 104px); }
+  .msgs { flex: none; height: var(--mh, 74vh); min-height: 260px; }
+  .grip { height: 16px; cursor: ns-resize; background: #eef4fb; border-top: 1px solid var(--line); display: grid; place-items: center; touch-action: none; user-select: none; }
+  .grip::before { content: ""; width: 64px; height: 5px; border-radius: 3px; background: #9fb6cf; }
+  .grip:hover::before { background: #1182f0; }
+  .compose textarea { resize: vertical; min-height: 54px; max-height: 40vh; }
+  @media (max-width: 820px) { .app { height: auto; min-height: calc(100vh - 118px); } }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -96,6 +104,7 @@
     <div class="tools" id="tools"></div>
     <div id="extra"></div>
     <div class="msgs" id="msgs"></div>
+    <div class="grip" id="grip" title="Drag to make the chat taller or shorter (double-click to reset)" aria-label="Resize the chat"></div>
     <form class="compose" id="form"><button type="button" class="btn" id="micBtn" title="Talk with her (voice conversation)" aria-label="Start a voice conversation">🎙️</button><textarea id="txt" placeholder="Message…"></textarea><button class="btn pri" id="send">Send</button></form>
   </main>
 </div>
@@ -654,6 +663,19 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "vTalk") { V.interrupted = true; if (G.on) G.gen = (G.gen || 0) + 1; V.busy = false; try { V.barge && V.barge.abort(); } catch (x) {} V.barge = null; try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} if (!V.on) V.on = true; listen(); }
   if (e.target.id === "vSkip") stopTalking();
 });
+</script>
+<script>
+// Drag the bar under the chat to make it taller or shorter, like AI Sale Agent. Remembered on this device.
+(function () {
+  const g = document.getElementById("grip"), m = document.getElementById("msgs"); if (!g || !m) return;
+  try { const h = localStorage.getItem("wsChatH"); if (h) m.style.height = h; } catch (e) {}
+  let y0 = 0, h0 = 0, on = false;
+  g.addEventListener("pointerdown", (e) => { on = true; y0 = e.clientY; h0 = m.getBoundingClientRect().height; try { g.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
+  g.addEventListener("pointermove", (e) => { if (!on) return; m.style.height = Math.max(260, Math.round(h0 + e.clientY - y0)) + "px"; });
+  const end = () => { if (!on) return; on = false; try { localStorage.setItem("wsChatH", m.style.height); } catch (e) {} };
+  g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+  g.addEventListener("dblclick", () => { m.style.height = ""; try { localStorage.removeItem("wsChatH"); } catch (e) {} });
+})();
 </script>
 </body>
 </html>
