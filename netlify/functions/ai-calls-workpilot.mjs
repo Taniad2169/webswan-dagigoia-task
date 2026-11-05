@@ -44,7 +44,10 @@ function outcome(c, said, booked) {
   if (automatedOnly(said)) return /leave (a|your) message|mailbox|after the (tone|beep)|not available to take your call/i.test(said) ? "Voicemail" : "Automated (no human)";
   if (/no_answer|busy|failed/.test(end) && !said) return "No answer";
   if (/call (me |us )?back|callback|call later|try (again|later)|not (in|available) (right now|today)|out of the office/.test(all)) return "Call back";
-  if (/@| at gmail| dot com| dot net| dot org/.test(t)) return "Email captured";
+  // Interest: they asked for info, price or a demo, or said yes to it (not "not interested").
+  const interested = !/not interested|no thank|no, thank|we'?re (good|all set|fine)/.test(t) && /\binterested\b|sounds (good|great|interesting)|tell me more|send (me|it|us|over)|how much|what('?s| is| are) the (price|cost|fee)|pricing|\bdemo\b|sign (me|us) up|let'?s do it|i'?d like to (know|learn|see|hear)/.test(t);
+  if (/@| at gmail| dot com| dot net| dot org/.test(t)) return interested ? "Email captured (interested)" : "Email captured";
+  if (interested) return "Interested";
   const turns = (c.transcript || []).filter((x) => x.role === "user" && x.text).length;
   if (secs < 30 || turns <= 2) return "Hang up";
   return "Talked";
@@ -68,10 +71,15 @@ export async function runWorkpilotSync(hours) {
   for (const [a, label] of AGENTS) {
     const aid = process.env["CARTESIA_AGENT_" + a.toUpperCase()] || ids[a];
     if (!aid) continue;
-    const qs = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript", start_time_gte: since });
-    const r = await fetch(API + "/agents/calls?" + qs, { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": V_READ } });
-    if (!r.ok) { lastErr = "Cartesia " + r.status + " for " + label; continue; }
-    const calls = (await r.json()).data || [];
+    let calls = [], ok = false;
+    for (const from of [new Date(Date.now() - 3 * 3600e3).toISOString(), since]) { // newest calls first, so a busy day never cuts them off
+      const qs = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript", start_time_gte: from });
+      const r = await fetch(API + "/agents/calls?" + qs, { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": V_READ } });
+      if (!r.ok) { lastErr = "Cartesia " + r.status + " for " + label; continue; }
+      ok = true; const seen = new Set(calls.map((x) => x.id || x.agent_call_id));
+      for (const x of ((await r.json()).data || [])) if (!seen.has(x.id || x.agent_call_id)) calls.push(x);
+    }
+    if (!ok) continue;
     for (const c of calls) {
       const id = c.id || c.agent_call_id;
       if (!id || done.has(id)) continue;
@@ -84,6 +92,7 @@ export async function runWorkpilotSync(hours) {
       if (inbound && !said) { done.add(id); continue; } // empty inbound ring
       const booked = bookings.find((b) => b.callId === id);
       const out = outcome(c, said, booked);
+      if (out === "Do not call") { done.add(id); continue; } // Tania doesn't want do-not-call leads in WorkPilot
       const start = c.start_time ? new Date(c.start_time) : new Date();
       const secs = c.start_time && c.end_time ? Math.round((new Date(c.end_time) - start) / 1000) : 0;
       const when = start.toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " PT";
