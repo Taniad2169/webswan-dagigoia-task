@@ -1103,7 +1103,13 @@ async function liveCall(leadId, prefer) {
   });
   const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
 }
-const findingsOf = l => (l && l.scanReport) || ((String((l && l.notes) || '').match(/Findings:\s*([^|\n]+)/i) || [])[1] || '').trim();
+const findingsOf = l => {
+  const base = (l && l.scanReport) || ((String((l && l.notes) || '').match(/Findings:\s*([^|\n]+)/i) || [])[1] || '').trim();
+  // Rebecca uses her PPC or billboard opener when the lead's notes say how the practice advertises.
+  const txt = [l && l.notes, l && l.type, l && l.tags, l && l.source].concat(((l && l.mem) || []).map(m => m && m.text)).filter(Boolean).join(' ');
+  const ads = [/\b(ppc|pay[- ]?per[- ]?click|google ads|adwords|sponsored ads?)\b/i.test(txt) && 'Google pay-per-click (PPC)', /\b(billboards?|bus (bench|benches|stop|shelter)|bench ads?|radio ads?|tv ads?|television ads?)\b/i.test(txt) && 'billboard / bus bench'].filter(Boolean);
+  return [base, ads.length ? 'Advertises with: ' + ads.join(' and ') : ''].filter(Boolean).join(' | ');
+};
 async function liveStart(l, a, lang, opts = {}) {
   toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
   try {
@@ -1733,6 +1739,29 @@ function stopRec(close) {
   const a = document.getElementById('recAudio'); if (a) { a.pause(); a.currentTime = 0; }
   if (close) { if (a) a.src = ''; const b = document.getElementById('recBar'); if (b) b.remove(); }
 }
+// WorkPilot's 🎧 button opens Voice Studio with ?listen=<call id>: play that call's recording as soon as Tania is signed in.
+async function playCallId(callId) {
+  const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');
+  const r = await fetch(VOICE_API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ action: 'audio', callId }) });
+  if (!r.ok) { let d = {}; try { d = await r.json(); } catch (e) {} throw new Error(d.error || 'Recording not available (' + r.status + ')'); }
+  const url = URL.createObjectURL(await r.blob());
+  let bar = $('recBar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'recBar'; bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:50;background:var(--card,#fff);border:1px solid #cfd8e3;border-radius:14px;padding:10px 12px;box-shadow:0 8px 30px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center;flex-wrap:wrap'; document.body.appendChild(bar); }
+  const x = state.calls.find(k => k.live && k.live.callId === callId);
+  bar.innerHTML = `<strong style="font-size:14px">▶ ${esc(x ? (x.leadName || 'Call') + ' · ' + (x.agentName || '') : 'Call recording')}</strong><audio id="recAudio" controls autoplay src="${url}" style="flex:1;min-width:220px"></audio><button class="btn danger small" onclick="stopRec(false)">⏹ Stop</button><a class="btn secondary small" href="${url}" download="call-${esc(callId)}.wav">Save</a><button class="btn outline small" onclick="stopRec(true)" aria-label="Stop and close player">✕</button>`;
+}
+(function () {
+  const id = new URLSearchParams(location.search).get('listen'); if (!id || !/^[\w-]{4,120}$/.test(id)) return;
+  let tries = 0;
+  const go = async () => {
+    tries++;
+    let t = null; try { t = window.fbIdToken ? await window.fbIdToken() : null; } catch (e) {}
+    if (!t) { if (tries < 40) return setTimeout(go, 750); return toast('Sign in with Google at the top, then open the recording again from WorkPilot.'); }
+    toast('Loading the call recording…');
+    try { await playCallId(id); } catch (e) { toast(e.message); }
+  };
+  setTimeout(go, 800);
+})();
 async function playRec(id) {
   const x = state.calls.find(k => k.id === id); if (!x || !x.live || !x.live.callId) return;
   toast('Loading the recording…');
