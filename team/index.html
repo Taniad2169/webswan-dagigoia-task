@@ -191,7 +191,7 @@ function drawMsgs() {
 }
 const TOOLS = {
   eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["🧹 Clean up inbox", () => cleanPanel()], ["⚙️ Settings", () => settingsPanel()]],
-  tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 Quick posts for this week", () => run("tatiana_weekly")]],
+  tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 This week's posts (all services)", () => run("tatiana_weekly")], ["📝 Blogs + Google posts now", () => run("tatiana_blogs")]],
   linda: [["🔎 Review a website", () => lindaPanel()]],
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
