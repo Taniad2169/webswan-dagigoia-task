@@ -1304,7 +1304,7 @@ async function liveSync(quiet) {
     const ags = ((liveStatus && liveStatus.agents) || []).flatMap(a => [a].concat(((liveStatus.languages || {})[a] || []).filter(l => l !== 'en').map(l => a + '_' + l))); if (!ags.length) return toast((liveStatus && liveStatus.error) || 'No Cartesia agents linked yet.');
     const since = Date.now() - 14 * 864e5; let added = 0, updated = 0;
     for (const name of ags) {
-      const d1 = await voiceApi({ action: 'list', agent: name, since: Date.now() - 864e5, limit: 100 }), d2 = await voiceApi({ action: 'list', agent: name, since, limit: 100 }); const d = { calls: (d1.calls || []).concat(d2.calls || []) }; // today's calls first, so they never get cut off by the 100-call limit
+      let d1 = {}, d2 = {}; try { d1 = await voiceApi({ action: 'list', agent: name, since: Date.now() - 864e5, limit: 100 }); d2 = await voiceApi({ action: 'list', agent: name, since, limit: 100 }); } catch (e) { console.warn('Skipped ' + name + ' while pulling live results: ' + e.message); continue; } // one agent the bridge doesn't know ("Unknown agent") must not stop the others const d = { calls: (d1.calls || []).concat(d2.calls || []) }; // today's calls first, so they never get cut off by the 100-call limit
       for (const c of d.calls || []) {
         if (!c.id) continue;
         let x = state.calls.find(k => k.live && k.live.callId === c.id);
