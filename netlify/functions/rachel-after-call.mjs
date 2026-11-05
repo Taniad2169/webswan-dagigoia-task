@@ -21,19 +21,30 @@ These rules come first and win over anything below.
 3. ENDING THE CALL. After your goodbye (for example "Have a lovely afternoon!"), do NOT hang up right away. People usually answer "you too" or "thank you". Wait for their reply, and only use end_call after they have answered or after about 3 seconds of silence. Never cut a caller off while they are still talking.
 ${RULES_END}`;
 const PHONE_RULES_END = "### END PHONE RULES";
-async function syncRachelRules(agent) {
+// Rebecca: which opener to use when the lead is known to pay for Google PPC or a billboard / bus bench (from the lead's notes).
+const REB_START = "### REBECCA ADVERTISING RULES (WebSwan)", REB_END = "### END REBECCA ADVERTISING RULES";
+const REBECCA_RULES = `${REB_START}
+These rules win over STEP 3 of your script. After "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online.", look at this lead's notes: {{findings}}
+- PPC: ONLY if the notes show the practice or firm pays for Google Ads or pay-per-click (PPC), say: "We're reaching out to a list of practices like yours that pay for Google pay-per-click to stay visible. But what happens when the credits run out? You're off the screen. On our platform, you stay visible all year." For a law firm say "firms like yours".
+- BILLBOARD: ONLY if the notes mention a billboard, bus bench, bus stop, radio or TV ad, say: "We're reaching out to a list of practices like yours that advertise on billboards and bus benches. Those reach people driving by, but when someone searches online for a doctor, our platform keeps you visible all year." For a law firm say "firms like yours" and "an attorney".
+- If the notes mention none of these, skip the advertising line and use your regular script. Never guess or claim they advertise.
+Then continue with the person-in-charge question.
+${REB_END}`;
+// Keep one marked block in an agent's live Cartesia script, right after the phone rules; only writes when it changed.
+async function syncBlock(agent, start, end, block) {
   const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
   const g = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { headers: hd });
   if (!g.ok) return "read " + g.status;
   const d = await g.json(), cur = String(((d.config || (d.agent && d.agent.config)) || {}).instructions || "");
-  if (cur.length < 200 || cur.includes(RACHEL_RULES)) return "ok";
-  let base = cur; const a = base.indexOf(RULES_START), b = base.indexOf(RULES_END);
-  if (a >= 0 && b > a) base = (base.slice(0, a) + base.slice(b + RULES_END.length)).replace(/\n{3,}/g, "\n\n").trim();
-  const p = base.indexOf(PHONE_RULES_END), next = p >= 0 ? base.slice(0, p + PHONE_RULES_END.length) + "\n\n" + RACHEL_RULES + "\n\n" + base.slice(p + PHONE_RULES_END.length).trim() : RACHEL_RULES + "\n\n" + base;
+  if (cur.length < 200 || cur.includes(block)) return "ok";
+  let base = cur; const a = base.indexOf(start), b = base.indexOf(end);
+  if (a >= 0 && b > a) base = (base.slice(0, a) + base.slice(b + end.length)).replace(/\n{3,}/g, "\n\n").trim();
+  const p = base.indexOf(PHONE_RULES_END), next = p >= 0 ? base.slice(0, p + PHONE_RULES_END.length) + "\n\n" + block + "\n\n" + base.slice(p + PHONE_RULES_END.length).trim() : block + "\n\n" + base;
   if (next.length > 30000) return "too long";
   const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
   return u.ok ? "updated" : "patch " + u.status;
 }
+const syncRachelRules = (agent) => syncBlock(agent, RULES_START, RULES_END, RACHEL_RULES);
 
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");
@@ -42,6 +53,7 @@ export default async () => {
   const agent = process.env.CARTESIA_AGENT_RACHEL || ids.rachel || "";
   if (!agent) return new Response("no rachel");
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
+  for (const k of ["rebecca", "rebecca_es"]) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, REB_START, REB_END, REBECCA_RULES); } catch (e) { rules += " · " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
   if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
   const to = String(process.env.RACHEL_NOTIFY_EMAIL || "thewebswann@gmail.com").trim();
