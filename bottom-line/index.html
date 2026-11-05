@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webswan | bottom line and profit margin calculation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for financial visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            swan: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              200: '#b9ddfd',
+              300: '#8bbef0', /* Light Swan Sky */
+              400: '#498ccc', /* Medium Swan Azure */
+              500: '#0e7bc4', /* Vibrant Swan Blue */
+              600: '#0b66a5',
+              700: '#0a5285',
+              800: '#0d466f',
+              900: '#0e3b5c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printable-report, #printable-report * {
+        visibility: visible;
+      }
+      #printable-report {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="h-11 flex items-center justify-center">
+            <img src="../business-service/ws-logo.webp" alt="webswan logo" class="h-10 w-auto object-contain transition-transform hover:scale-105" onerror="this.onerror=null; this.src='https://placehold.co/120x45/0e7bc4/ffffff?text=webswan';">
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold text-[#0e7bc4] tracking-tight leading-none lowercase">webswan</h1>
+              <span class="text-[10px] font-bold bg-[#e0effe] text-[#0e7bc4] border border-[#8bbef0] px-2 py-0.5 rounded-full uppercase tracking-wider">Bottom-Line Studio</span>
+            </div>
+            <p class="text-xs text-[#498ccc] font-medium mt-0.5">bottom line and profit margin calculation</p>
+          </div>
+        </div>
+
+        <!-- Global Header Controls -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- Currency Picker -->
+          <div class="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs">
+            <span class="text-slate-500 px-2 font-medium">Currency:</span>
+            <select id="currency-select" onchange="changeCurrency(this.value)" class="bg-white font-semibold text-slate-700 rounded px-2 py-1 shadow-xs border-0 outline-none focus:ring-1 focus:ring-[#0e7bc4] cursor-pointer">
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+              <option value="GBP">£ GBP</option>
+              <option value="CAD">$ CAD</option>
+              <option value="AUD">$ AUD</option>
+            </select>
+          </div>
+
+          <!-- Back to Swan Budget -->
+          <a href="../budget/" title="Back to Swan Budget" class="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#f0f7ff] text-[#0e7bc4] border border-[#b9ddfd] text-xs sm:text-sm font-semibold rounded-lg transition-all">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Swan Budget</span>
+          </a>
+
+          <!-- Save Button -->
+          <button onclick="manualSaveData()" title="Save all calculations & data" class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm shadow-emerald-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Save</span>
+          </button>
+
+          <!-- Reset Button -->
+          <button onclick="promptResetOptions()" title="Reset calculations or clear data" class="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 border border-slate-200 hover:border-rose-300 text-xs sm:text-sm font-medium rounded-lg shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-rose-400 cursor-pointer">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span>Reset</span>
+          </button>
+
+          <!-- Quick Action Buttons -->
+          <button onclick="openAddClient()" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#0e7bc4] hover:bg-[#0a5285] text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm shadow-[#0e7bc4]/30 transition-all focus:outline-none focus:ring-2 focus:ring-[#0e7bc4]">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Add Client</span>
+          </button>
+          
+          <button onclick="if(!state.clients.length){showToast('Add a client first, then record expenses for it','error');return;} populateExpenseClientDropdown(); openModal('add-expense-modal')" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#498ccc] hover:bg-[#0e7bc4] text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#498ccc]">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Record Expense</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav class="flex space-x-2 sm:space-x-8 overflow-x-auto custom-scrollbar" aria-label="Tabs">
+        <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn active border-[#0e7bc4] text-[#0e7bc4] whitespace-nowrap py-3.5 px-2 border-b-2 font-semibold text-sm flex items-center gap-2">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Executive Dashboard</span>
+        </button>
+        <button onclick="switchTab('clients')" id="tab-btn-clients" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3.5 px-2 border-b-2 font-semibold text-sm flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>Clients & Projects</span>
+          <span id="tab-badge-client-count" class="bg-[#f0f7ff] text-[#0e7bc4] text-xs px-2 py-0.5 rounded-full font-bold border border-[#b9ddfd]">0</span>
+        </button>
+        <button onclick="switchTab('overhead')" id="tab-btn-overhead" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3.5 px-2 border-b-2 font-semibold text-sm flex items-center gap-2">
+          <i data-lucide="building" class="w-4 h-4"></i>
+          <span>Business Overhead</span>
+          <span id="tab-badge-overhead-total" class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-full font-mono font-medium">$0</span>
+        </button>
+        <button onclick="switchTab('calculator')" id="tab-btn-calculator" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3.5 px-2 border-b-2 font-semibold text-sm flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Quote & Margin Estimator</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- MAIN BODY CONTAINER -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: EXECUTIVE DASHBOARD                 -->
+    <!-- ========================================== -->
+    <section id="tab-dashboard" class="tab-content space-y-6">
+      
+      <!-- TOP FINANCIAL METRICS CARDS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        
+        <!-- Total Income -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-[#8bbef0] transition-all">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Gross Income (All)</span>
+            <div class="w-8 h-8 rounded-lg bg-[#f0f7ff] text-[#0e7bc4] flex items-center justify-center">
+              <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-total-revenue">$0.00</div>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>Billed projects</span>
+            <span class="font-medium text-[#0e7bc4]" id="kpi-client-count-sub">0 projects</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#0e7bc4]"></div>
+        </div>
+
+        <!-- Direct Project Expenses -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-rose-300 transition-all">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Direct Project Costs</span>
+            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-direct-costs">$0.00</div>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>Subcontractors & tools</span>
+            <span class="font-medium text-rose-600" id="kpi-cost-ratio">0% of income</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-rose-400"></div>
+        </div>
+
+        <!-- NEW: Total Paid to Myself (20% - 30%) -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-[#498ccc] transition-all">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[#0e7bc4]">Paid to Myself</span>
+            <div class="w-8 h-8 rounded-lg bg-[#e0effe] text-[#0e7bc4] flex items-center justify-center">
+              <i data-lucide="user-check" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-[#0e7bc4] tracking-tight" id="kpi-paid-to-myself">$0.00</div>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>20% - 30% individual allocation</span>
+            <span class="font-bold text-[#498ccc]" id="kpi-avg-cut">25% avg cut</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#498ccc] to-[#0e7bc4]"></div>
+        </div>
+
+        <!-- Business Overhead -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-amber-300 transition-all">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">General Overhead</span>
+            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i data-lucide="building-2" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-overhead-costs">$0.00</div>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <span>Workspace, software</span>
+            <span class="font-medium text-amber-700" id="kpi-overhead-items-count">0 expenses</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-400"></div>
+        </div>
+
+        <!-- Bottom Line (Net Profit) -->
+        <div class="bg-gradient-to-br from-[#0e3b5c] to-[#0a5285] p-5 rounded-2xl text-white shadow-md relative overflow-hidden group">
+          <div class="flex items-center justify-between text-slate-300 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[#8bbef0]">Net Retained Bottom Line</span>
+            <div class="w-8 h-8 rounded-lg bg-white/10 text-[#8bbef0] flex items-center justify-center">
+              <i data-lucide="wallet" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="text-2xl font-black text-white tracking-tight" id="kpi-net-profit">$0.00</div>
+          <div class="flex items-center justify-between text-xs text-slate-300 mt-2">
+            <span>Retained Profit Margin:</span>
+            <span class="px-2 py-0.5 rounded font-bold text-white bg-[#0e7bc4]" id="kpi-net-margin">0.0%</span>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#8bbef0] via-[#498ccc] to-[#0e7bc4]"></div>
+        </div>
+
+      </div>
+
+      <!-- SECONDARY METRICS / PROFIT BENCHMARKS ROW -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <div class="bg-white rounded-xl p-4 border border-slate-200 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-[#f0f7ff] text-[#0e7bc4] flex items-center justify-center shrink-0">
+            <i data-lucide="pie-chart" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Gross Project Margin</p>
+            <p class="text-lg font-bold text-slate-800" id="metric-gross-margin">0.0%</p>
+            <p class="text-[11px] text-slate-400">Before overhead and owner draws</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 border border-slate-200 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-[#e0effe] text-[#498ccc] flex items-center justify-center shrink-0">
+            <i data-lucide="badge-dollar-sign" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Avg Net Profit Per Client</p>
+            <p class="text-lg font-bold text-slate-800" id="metric-avg-client-profit">$0.00</p>
+            <p class="text-[11px] text-slate-400">Project revenue minus direct costs</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-4 border border-slate-200 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <i data-lucide="scale" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Return on Project Cost (ROI)</p>
+            <p class="text-lg font-bold text-slate-800" id="metric-project-roi">0.0x</p>
+            <p class="text-[11px] text-slate-400">Revenue earned per $1 paid out</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CHARTS ROW -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Profit by Client Bar Chart -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Profitability Comparison per Client</h2>
+              <p class="text-xs text-slate-500">Income billed vs. direct costs vs. paid to myself</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="inline-flex items-center gap-1 font-medium text-slate-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#0e7bc4]"></span> Income
+              </span>
+              <span class="inline-flex items-center gap-1 font-medium text-slate-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Cost
+              </span>
+              <span class="inline-flex items-center gap-1 font-medium text-slate-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#498ccc]"></span> To Myself
+              </span>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[280px]">
+            <canvas id="clientComparisonChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Expense Category Breakdown Doughnut -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Expense Allocation</h2>
+              <p class="text-xs text-slate-500">Where all your money is spent</p>
+            </div>
+            <i data-lucide="layers" class="w-4 h-4 text-slate-400"></i>
+          </div>
+          <div class="relative flex-1 min-h-[240px] flex items-center justify-center">
+            <canvas id="expenseCategoryChart"></canvas>
+          </div>
+          <div id="expense-legend-summary" class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CLIENT PROFITABILITY RANKING TABLE -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Client Profit Rankings & Bottom Line</h2>
+            <p class="text-xs text-slate-500">Sorted by highest net margin & total take-home profit</p>
+          </div>
+          <button onclick="switchTab('clients')" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+            <span>Manage All Clients</span>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                <th class="py-3 px-4">Client & Project</th>
+                <th class="py-3 px-4">Income Billed</th>
+                <th class="py-3 px-4">Direct Costs</th>
+                <th class="py-3 px-4">Paid to Myself</th>
+                <th class="py-3 px-4">Net Retained Profit</th>
+                <th class="py-3 px-4">Profit Margin</th>
+                <th class="py-3 px-4 text-center">Status</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-ranking-tbody" class="divide-y divide-slate-100">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: CLIENTS & PROJECTS (DETAILED VIEW)  -->
+    <!-- ========================================== -->
+    <section id="tab-clients" class="tab-content hidden space-y-6">
+      
+      <!-- Filter and Actions Toolbar -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <!-- Search -->
+        <div class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="client-search-input" oninput="renderClientsList()" placeholder="Search clients, projects, or tags..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+        </div>
+
+        <!-- Filters & Add -->
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <select id="client-status-filter" onchange="renderClientsList()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-[#0e7bc4]">
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active Projects</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="LEAD">Pending / Lead</option>
+          </select>
+
+          <select id="client-sort-filter" onchange="renderClientsList()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-[#0e7bc4]">
+            <option value="PROFIT_DESC">Highest Retained ($)</option>
+            <option value="SELF_DESC">Highest Paid to Myself ($)</option>
+            <option value="MARGIN_DESC">Highest Margin (%)</option>
+            <option value="REVENUE_DESC">Highest Revenue</option>
+            <option value="NAME_ASC">Name (A-Z)</option>
+          </select>
+
+          <button onclick="openAddClient()" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#0e7bc4] hover:bg-[#0a5285] text-white text-xs font-semibold rounded-lg shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>New Client Project</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Clients List / Cards Grid -->
+      <div id="clients-card-container" class="space-y-4">
+        <!-- Dynamically rendered detailed accordion cards -->
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: BUSINESS OVERHEAD EXPENSES          -->
+    <!-- ========================================== -->
+    <section id="tab-overhead" class="tab-content hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Overhead Explainer & Allocation Card -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+              <i data-lucide="briefcase" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-base font-bold text-slate-900">General Business Overhead</h2>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              These are expenses not tied to a single specific client project (e.g. software subscriptions, workspace, taxes, professional insurance, marketing).
+            </p>
+            
+            <div class="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-500">Total Monthly Recurring:</span>
+                <span class="font-bold text-slate-800" id="overhead-monthly-sum">$0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-500">Total Annualized Overhead:</span>
+                <span class="font-bold text-slate-800" id="overhead-annual-sum">$0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                <span class="text-slate-600 font-medium">Overhead Drag on Revenue:</span>
+                <span class="font-bold text-amber-600" id="overhead-drag-ratio">0.0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <button onclick="openModal('add-overhead-modal')" class="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-2">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>Add Overhead Expense</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Overhead Expenses Table -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 text-sm">Itemized Indirect Expenses</h3>
+            <span class="text-xs text-slate-500" id="overhead-count-badge">0 items</span>
+          </div>
+          <div class="overflow-x-auto flex-1">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4">Expense Name</th>
+                  <th class="py-3 px-4">Category</th>
+                  <th class="py-3 px-4">Frequency</th>
+                  <th class="py-3 px-4 text-right">Cost</th>
+                  <th class="py-3 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="overhead-tbody" class="divide-y divide-slate-100">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: QUOTE & PROFIT MARGIN ESTIMATOR     -->
+    <!-- ========================================== -->
+    <section id="tab-calculator" class="tab-content hidden space-y-6">
+      
+      <div class="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="bg-gradient-to-r from-[#0e7bc4] via-[#498ccc] to-[#8bbef0] p-6 text-white">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold">Smart Client Quote & Margin Simulator</h2>
+              <p class="text-xs text-white/90">webswan pricing calculator with direct 20% to 30% personal commission projection.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          <!-- Input Form -->
+          <div class="space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Simulation Inputs</h3>
+            
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Calculation Mode</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="setSimMode('from-price')" id="btn-mode-price" class="py-2 text-xs font-bold rounded-lg border border-[#0e7bc4] bg-[#f0f7ff] text-[#0e7bc4] text-center">
+                  Analyze Client Quote
+                </button>
+                <button type="button" onclick="setSimMode('target-margin')" id="btn-mode-target" class="py-2 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-center">
+                  Target Desired Margin
+                </button>
+              </div>
+            </div>
+
+            <div id="sim-input-quote-group">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Proposed Client Budget / Fee (<span class="currency-symbol">$</span>)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-slate-400 font-bold currency-symbol text-sm">$</span>
+                <input type="number" id="sim-quote-price" value="5000" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+              </div>
+            </div>
+
+            <div id="sim-input-target-group" class="hidden">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Desired Profit Margin (%)</label>
+              <div class="relative">
+                <input type="number" id="sim-target-margin" value="55" min="1" max="95" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <span class="absolute right-3 top-2.5 text-slate-400 font-bold text-sm">%</span>
+              </div>
+            </div>
+
+            <!-- SIMULATOR SELF CUT (20% - 30%) -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Pay to Myself (% Allocation)</label>
+              <select id="sim-self-cut" onchange="runSimulation()" class="w-full px-3 py-2 bg-[#f0f7ff] border border-[#b9ddfd] rounded-lg text-sm font-bold text-[#0e7bc4] focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none cursor-pointer">
+                <option value="20">20% to Myself</option>
+                <option value="22">22% to Myself</option>
+                <option value="24">24% to Myself</option>
+                <option value="25" selected>25% to Myself (Standard)</option>
+                <option value="26">26% to Myself</option>
+                <option value="28">28% to Myself</option>
+                <option value="30">30% to Myself (Max Cut)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Estimated Direct Expenses (<span class="currency-symbol">$</span>)</label>
+              <p class="text-[11px] text-slate-400 mb-1">Contractors, licenses, assets, cloud fees</p>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-slate-400 font-bold currency-symbol text-sm">$</span>
+                <input type="number" id="sim-expenses" value="1200" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Tax / Buffer Provision (%)</label>
+              <div class="relative">
+                <input type="number" id="sim-tax-rate" value="20" min="0" max="60" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <span class="absolute right-3 top-2.5 text-slate-400 font-bold text-sm">%</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Real-Time Output Results -->
+          <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 flex flex-col justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Projected Profit Outcomes</h3>
+              
+              <div class="space-y-3.5">
+                
+                <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
+                  <span class="text-xs text-slate-600 font-medium">Recommended Client Fee:</span>
+                  <span class="text-xl font-black text-slate-900" id="sim-res-quote">$5,000.00</span>
+                </div>
+
+                <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
+                  <span class="text-xs text-slate-600">Total Project Expenses:</span>
+                  <span class="text-sm font-bold text-rose-600" id="sim-res-expenses">-$1,200.00</span>
+                </div>
+
+                <!-- Sim Paid to Myself Display -->
+                <div class="flex justify-between items-baseline pb-2 border-b border-slate-200 bg-[#f0f7ff] px-2 py-1 rounded">
+                  <span class="text-xs font-bold text-[#0e7bc4]" id="sim-res-self-label">Paid to Myself (25%):</span>
+                  <span class="text-base font-black text-[#0e7bc4]" id="sim-res-self-amount">+$1,250.00</span>
+                </div>
+
+                <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
+                  <span class="text-xs text-slate-600">Gross Project Profit:</span>
+                  <span class="text-sm font-bold text-slate-700" id="sim-res-gross-profit">$3,800.00</span>
+                </div>
+
+                <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
+                  <span class="text-xs text-slate-600">Estimated Tax Set-Aside:</span>
+                  <span class="text-sm font-semibold text-slate-500" id="sim-res-tax">-$760.00</span>
+                </div>
+
+                <div class="p-4 bg-gradient-to-br from-[#f0f7ff] to-white rounded-xl border border-[#b9ddfd] flex items-center justify-between">
+                  <div>
+                    <p class="text-xs font-bold text-[#0e3b5c]">Retained Bottom Line:</p>
+                    <p class="text-xs text-[#498ccc]">Company profit after your draw & costs</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-xl font-black text-[#0e7bc4]" id="sim-res-net-profit">$1,790.00</p>
+                    <p class="text-xs font-bold text-[#0a5285]" id="sim-res-margin">35.8% Net Margin</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Markup badge -->
+            <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+              <span>Required Cost Markup:</span>
+              <span class="font-bold text-slate-800" id="sim-res-markup">316%</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT CLIENT                   -->
+  <!-- ========================================== -->
+  <div id="add-client-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-[#e0effe] text-[#0e7bc4] flex items-center justify-center">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-slate-900" id="client-modal-title">Add Client & Project</h3>
+        </div>
+        <button onclick="closeModal('add-client-modal')" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="client-form" onsubmit="handleSaveClient(event)" class="p-5 space-y-4">
+        <input type="hidden" id="client-id-field" value="">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Client or Business Name *</label>
+          <input type="text" id="client-name-input" required placeholder="e.g. Acme Corp / Sarah Jenkins" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Project Title / Scope *</label>
+          <input type="text" id="client-project-input" required placeholder="e.g. Full Website Redesign + Branding" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Total Fee / Revenue (<span class="currency-symbol">$</span>) *</label>
+            <input type="number" step="0.01" min="0" id="client-revenue-input" required placeholder="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Project Status</label>
+            <select id="client-status-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none">
+              <option value="ACTIVE">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="LEAD">Pending / Lead</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- NEW: PAY TO MYSELF 20% TO 30% DROPDOWN -->
+        <div class="bg-[#f0f7ff] p-3 rounded-xl border border-[#b9ddfd]">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-[#0e7bc4]">Pay to Myself (Owner Allocation) *</label>
+            <span class="text-[10px] text-[#498ccc] font-semibold">20% to 30% Range</span>
+          </div>
+          <select id="client-selfcut-input" class="w-full px-3 py-2 border border-[#8bbef0] rounded-lg text-sm bg-white font-bold text-[#0e7bc4] focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none cursor-pointer">
+            <option value="20">20% to Myself (Conservative)</option>
+            <option value="22">22% to Myself</option>
+            <option value="24">24% to Myself</option>
+            <option value="25" selected>25% to Myself (Standard)</option>
+            <option value="26">26% to Myself</option>
+            <option value="28">28% to Myself</option>
+            <option value="30">30% to Myself (Target Premium)</option>
+          </select>
+          <p class="text-[11px] text-[#498ccc] mt-1">This percentage will be automatically set aside for you on this project.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Notes / Deadlines (Optional)</label>
+          <textarea id="client-notes-input" rows="2" placeholder="e.g. 50% upfront received, final milestone due end of month..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0e7bc4] focus:outline-none"></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('add-client-modal')" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#0e7bc4] hover:bg-[#0a5285] text-white rounded-lg text-xs font-semibold shadow-sm">Save Client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD CLIENT PROJECT EXPENSE         -->
+  <!-- ========================================== -->
+  <div id="add-expense-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-slate-900">Record Project Payout / Expense</h3>
+        </div>
+        <button onclick="closeModal('add-expense-modal')" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="expense-form" onsubmit="handleSaveProjectExpense(event)" class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Assign to Client Project *</label>
+          <select id="expense-client-select" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Expense Description / Payee *</label>
+          <input type="text" id="expense-desc-input" required placeholder="e.g. Freelance 3D Animator, Stock Photos, Plugin License" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Amount Paid Out (<span class="currency-symbol">$</span>) *</label>
+            <input type="number" step="0.01" min="0.01" id="expense-amount-input" required placeholder="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+            <select id="expense-cat-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none">
+              <option value="Subcontractor">Subcontractor / Labor</option>
+              <option value="Software/Tools">Software & Plugins</option>
+              <option value="Assets & Media">Assets, Fonts, Stock</option>
+              <option value="Hosting & Cloud">Hosting & Cloud APIs</option>
+              <option value="Travel & Misc">Travel & Meeting Exp</option>
+              <option value="Materials">Physical Materials</option>
+              <option value="Other">Other Direct Cost</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Date Incurred</label>
+          <input type="date" id="expense-date-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('add-expense-modal')" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm">Save Project Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD BUSINESS OVERHEAD               -->
+  <!-- ========================================== -->
+  <div id="add-overhead-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+            <i data-lucide="building" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-slate-900">Add General Business Overhead</h3>
+        </div>
+        <button onclick="closeModal('add-overhead-modal')" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="overhead-form" onsubmit="handleSaveOverhead(event)" class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Overhead Description *</label>
+          <input type="text" id="overhead-desc-input" required placeholder="e.g. Adobe Creative Cloud, Coworking desk, Insurance" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Cost (<span class="currency-symbol">$</span>) *</label>
+            <input type="number" step="0.01" min="0.01" id="overhead-cost-input" required placeholder="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Billing Frequency</label>
+            <select id="overhead-freq-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              <option value="MONTHLY">Per Month</option>
+              <option value="ANNUAL">Per Year</option>
+              <option value="ONE_TIME">One-Off Business Exp</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+          <select id="overhead-cat-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <option value="Software Subscriptions">Software & SaaS</option>
+            <option value="Office & Workspace">Office / Desk / Utilities</option>
+            <option value="Legal & Accounting">Legal & Accounting</option>
+            <option value="Marketing & Ads">Marketing & Self-Promotion</option>
+            <option value="Hardware & Equipment">Hardware & Gear</option>
+            <option value="General Admin">General Administration</option>
+          </select>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('add-overhead-modal')" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm">Save Overhead</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CLIENT FULL P&L REPORT (PRINTABLE)  -->
+  <!-- ========================================== -->
+  <div id="client-report-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+      <!-- Modal header (no-print) -->
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 no-print">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-emerald-600"></i>
+          <h3 class="font-bold text-slate-800 text-sm">Individual Client Financial Statement</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 flex items-center gap-1.5 shadow-xs">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>Print / PDF</span>
+          </button>
+          <button onclick="closeModal('client-report-modal')" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Printable Statement) -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="printable-report">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- CONFIRMATION DIALOG (No alert/confirm)     -->
+  <!-- ========================================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-900" id="confirm-title">Are you sure?</h3>
+      <p class="text-xs text-slate-500 mt-1" id="confirm-message">This action cannot be undone.</p>
+      <div class="mt-5 flex items-center justify-center gap-3">
+        <button id="confirm-cancel-btn" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-50">Cancel</button>
+        <button id="confirm-ok-btn" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: RESET OPTIONS                       -->
+  <!-- ========================================== -->
+  <div id="reset-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-900">Reset Calculations</h3>
+      <p class="text-xs text-slate-500 mt-1 mb-4">Choose how you would like to reset your financial calculations:</p>
+      
+      <div class="space-y-2.5 text-left">
+        <button onclick="executeReset('empty')" class="w-full p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/50 flex items-center justify-between transition-colors cursor-pointer">
+          <div>
+            <div class="text-xs font-bold text-slate-800">Clear to Blank Slate</div>
+            <div class="text-[11px] text-slate-400">Erase all clients, costs & overhead (start 100% fresh)</div>
+          </div>
+          <i data-lucide="trash" class="w-4 h-4 text-rose-500"></i>
+        </button>
+
+        <button onclick="executeReset('sample')" class="w-full p-3 rounded-xl border border-slate-200 hover:border-[#8bbef0] hover:bg-[#f0f7ff] flex items-center justify-between transition-colors cursor-pointer">
+          <div>
+            <div class="text-xs font-bold text-slate-800">Restore Sample Demo Data</div>
+            <div class="text-[11px] text-slate-400">Load sample webswan projects and expenses</div>
+          </div>
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-[#0e7bc4]"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-100">
+        <button onclick="closeModal('reset-modal')" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-50 cursor-pointer">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-4">
+    <div class="max-w-7xl mx-auto px-4 text-center sm:flex sm:items-center sm:justify-between text-xs text-slate-400">
+      <div class="flex items-center justify-center sm:justify-start gap-2">
+        <span class="font-bold text-[#0e7bc4]">webswan</span>
+        <span>&bull;</span>
+        <span>bottom line and profit margin calculation</span>
+      </div>
+      <div class="flex justify-center space-x-4 mt-2 sm:mt-0">
+        <button onclick="exportDataJSON()" class="hover:text-[#0e7bc4] flex items-center gap-1 font-medium transition-colors">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Backup (JSON)
+        </button>
+        <button onclick="resetToSampleData()" class="hover:text-rose-600 flex items-center gap-1 font-medium text-slate-400 transition-colors">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reload Sample Data
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT LOGIC & STATE ENGINE           -->
+  <!-- ========================================== -->
+  <script>
+    /* ==========================================================================
+       1. INITIAL STATE & SAMPLE DATA
+       ========================================================================== */
+    const STORAGE_KEY = 'webswan_profit_calc_v3';
+    
+    const sampleData = {
+      currency: 'USD',
+      clients: [
+        {
+          id: 'c1',
+          name: 'Apex Global Logistics',
+          project: 'Enterprise Portal & Tracking API',
+          revenue: 18500,
+          selfCutPercent: 25,
+          status: 'ACTIVE',
+          notes: '50% paid upfront, milestones due end of sprint 4'
+        },
+        {
+          id: 'c2',
+          name: 'Verde Organics Co.',
+          project: 'Brand Identity & Custom E-Commerce',
+          revenue: 11200,
+          selfCutPercent: 30,
+          status: 'COMPLETED',
+          notes: 'Final invoice settled. Client wants retainer next quarter.'
+        },
+        {
+          id: 'c3',
+          name: 'Nova Health & Fitness',
+          project: 'Mobile Companion App UI/UX',
+          revenue: 6400,
+          selfCutPercent: 22,
+          status: 'ACTIVE',
+          notes: 'Figma prototypes and Flutter design system'
+        },
+        {
+          id: 'c4',
+          name: 'Bella Bistro Group',
+          project: 'Local SEO, Menu Portal & Photography',
+          revenue: 2800,
+          selfCutPercent: 20,
+          status: 'COMPLETED',
+          notes: 'Quick turnaround project.'
+        }
+      ],
+      projectExpenses: [
+        // Expenses for Apex
+        { id: 'pe1', clientId: 'c1', desc: 'Senior React Native Dev (Subcontractor)', amount: 4200, category: 'Subcontractor', date: '2026-10-12' },
+        { id: 'pe2', clientId: 'c1', desc: 'AWS Dedicated Staging Server', amount: 320, category: 'Hosting & Cloud', date: '2026-10-18' },
+        { id: 'pe3', clientId: 'c1', desc: 'Security Penetration Audit', amount: 850, category: 'Subcontractor', date: '2026-10-25' },
+        
+        // Expenses for Verde Organics
+        { id: 'pe4', clientId: 'c2', desc: 'Custom Typography Font Licensing', amount: 280, category: 'Assets & Media', date: '2026-09-04' },
+        { id: 'pe5', clientId: 'c2', desc: 'Shopify Plus Private App Theme License', amount: 350, category: 'Software/Tools', date: '2026-09-10' },
+        { id: 'pe6', clientId: 'c2', desc: 'Commercial Product 3D Renders', amount: 950, category: 'Subcontractor', date: '2026-09-18' },
+
+        // Expenses for Nova Health
+        { id: 'pe7', clientId: 'c3', desc: 'Illustrations & Health Icon Pack', amount: 160, category: 'Assets & Media', date: '2026-10-01' },
+        { id: 'pe8', clientId: 'c3', desc: 'Motion Graphics Animator (Micro-interactions)', amount: 1100, category: 'Subcontractor', date: '2026-10-22' },
+
+        // Expenses for Bella Bistro
+        { id: 'pe9', clientId: 'c4', desc: 'Food Photographer Day-Rate', amount: 750, category: 'Subcontractor', date: '2026-08-15' },
+        { id: 'pe10', clientId: 'c4', desc: 'QR Code Dynamic Menu Platform Sub', amount: 90, category: 'Software/Tools', date: '2026-08-16' }
+      ],
+      overheadExpenses: [
+        { id: 'oh1', desc: 'Adobe Creative Cloud All Apps', amount: 59.99, freq: 'MONTHLY', category: 'Software Subscriptions' },
+        { id: 'oh2', desc: 'Figma Professional & Workspace', amount: 45.00, freq: 'MONTHLY', category: 'Software Subscriptions' },
+        { id: 'oh3', desc: 'Professional Indemnity & Cyber Insurance', amount: 650.00, freq: 'ANNUAL', category: 'Legal & Accounting' },
+        { id: 'oh4', desc: 'Accounting Software & Bookkeeper Retainer', amount: 120.00, freq: 'MONTHLY', category: 'Legal & Accounting' },
+        { id: 'oh5', desc: 'High-Speed Studio Fiber Internet', amount: 85.00, freq: 'MONTHLY', category: 'Office & Workspace' }
+      ]
+    };
+
+    let state = loadState();
+
+    // Chart instances
+    let comparisonChartInstance = null;
+    let categoryChartInstance = null;
+
+    /* ==========================================================================
+       2. PERSISTENCE & HELPERS
+       ========================================================================== */
+    function loadState() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const s = JSON.parse(stored) || {};
+          return {
+            currency: s.currency || 'USD',
+            clients: Array.isArray(s.clients) ? s.clients : [],
+            projectExpenses: Array.isArray(s.projectExpenses) ? s.projectExpenses : [],
+            overheadExpenses: Array.isArray(s.overheadExpenses) ? s.overheadExpenses : []
+          };
+        }
+      } catch (e) {
+        console.error('Failed to load storage, using sample data', e);
+      }
+      return JSON.parse(JSON.stringify(sampleData));
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      catch (e) { showToast('Could not save on this device (storage blocked)', 'error'); }
+      updateAppUI();
+    }
+
+    function manualSaveData() {
+      saveState();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      showToast(`All calculations & client projects saved! (${timeStr})`, 'success');
+    }
+
+    function promptResetOptions() {
+      openModal('reset-modal');
+    }
+
+    function executeReset(mode) {
+      closeModal('reset-modal');
+      if (mode === 'empty') {
+        state.clients = [];
+        state.projectExpenses = [];
+        state.overheadExpenses = [];
+        saveState();
+        showToast("Calculations cleared to blank slate!");
+      } else if (mode === 'sample') {
+        state = JSON.parse(JSON.stringify(sampleData));
+        saveState();
+        showToast("Sample data restored successfully!");
+      }
+    }
+
+    function resetToSampleData() {
+      showCustomConfirm("Reset to Sample Data?", "This will overwrite your existing data with default example clients and overhead.", () => {
+        state = JSON.parse(JSON.stringify(sampleData));
+        saveState();
+        showToast("Sample data restored successfully!");
+      });
+    }
+
+    function exportDataJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `webswan_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Data backup file exported!");
+    }
+
+    const currencySymbols = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CAD: '$',
+      AUD: '$'
+    };
+
+    function formatMoney(amount) {
+      const curr = state.currency || 'USD';
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: curr,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount || 0);
+    }
+
+    function formatPercent(ratio) {
+      if (isNaN(ratio) || !isFinite(ratio)) return '0.0%';
+      return `${(ratio * 100).toFixed(1)}%`;
+    }
+
+    function changeCurrency(newCurr) {
+      state.currency = newCurr;
+      const sym = currencySymbols[newCurr] || '$';
+      document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = sym);
+      saveState();
+    }
+
+    /* ==========================================================================
+       3. FINANCIAL CALCULATIONS ENGINE (WITH 20%-30% PAY TO MYSELF)
+       ========================================================================== */
+    function getClientMetrics(clientId) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (!client) return null;
+
+      const directExpenses = state.projectExpenses.filter(e => e.clientId === clientId);
+      const totalDirectCost = directExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const revenue = Number(client.revenue || 0);
+      const selfCutPercent = Number(client.selfCutPercent || 25);
+      
+      // Calculate personal cut (20% to 30%)
+      const payToMyself = revenue * (selfCutPercent / 100);
+
+      // Gross profit on project before owner cut
+      const grossProfit = revenue - totalDirectCost;
+
+      // Net retained project bottom line after direct costs AND pay to myself
+      const netRetainedProfit = grossProfit - payToMyself;
+      
+      const profitMargin = revenue > 0 ? (netRetainedProfit / revenue) : 0;
+      const grossMargin = revenue > 0 ? (grossProfit / revenue) : 0;
+      const roi = totalDirectCost > 0 ? (revenue / totalDirectCost) : revenue > 0 ? 99 : 0;
+      const markup = totalDirectCost > 0 ? ((grossProfit / totalDirectCost) * 100) : 0;
+
+      return {
+        client,
+        directExpenses,
+        revenue,
+        totalDirectCost,
+        selfCutPercent,
+        payToMyself,
+        grossProfit,
+        netRetainedProfit,
+        profitMargin,
+        grossMargin,
+        roi,
+        markup
+      };
+    }
+
+    function updateClientSelfCut(clientId, newCut) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (client) {
+        client.selfCutPercent = Number(newCut);
+        saveState();
+        showToast(`Updated "${client.name}" to ${newCut}% Pay to Myself`);
+      }
+    }
+
+    function getBusinessTotals() {
+      const totalRevenue = state.clients.reduce((acc, c) => acc + Number(c.revenue || 0), 0);
+      const totalDirectCosts = state.projectExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+      
+      // Sum of all money paid to myself across all individual projects
+      let totalPaidToMyself = 0;
+      state.clients.forEach(c => {
+        const cut = Number(c.selfCutPercent || 25);
+        totalPaidToMyself += Number(c.revenue || 0) * (cut / 100);
+      });
+
+      // Calculate overhead total
+      let totalOverheadMonthly = 0;
+      state.overheadExpenses.forEach(oh => {
+        const amt = Number(oh.amount || 0);
+        if (oh.freq === 'MONTHLY') totalOverheadMonthly += amt;
+        else if (oh.freq === 'ANNUAL') totalOverheadMonthly += (amt / 12);
+        else totalOverheadMonthly += amt;
+      });
+
+      const totalOverhead = state.overheadExpenses.reduce((acc, oh) => acc + Number(oh.amount || 0), 0);
+
+      // Business bottom line
+      const grossProjectProfit = totalRevenue - totalDirectCosts;
+      const grossMargin = totalRevenue > 0 ? (grossProjectProfit / totalRevenue) : 0;
+      
+      // True net retained after costs, pay to myself, and overhead
+      const trueNetBottomLine = grossProjectProfit - totalPaidToMyself - totalOverhead;
+      const netBottomLineMargin = totalRevenue > 0 ? (trueNetBottomLine / totalRevenue) : 0;
+
+      const activeClientCount = state.clients.filter(c => c.status === 'ACTIVE').length;
+      const totalClientsCount = state.clients.length;
+      const avgProfitPerClient = totalClientsCount > 0 ? (grossProjectProfit / totalClientsCount) : 0;
+      const overallProjectROI = totalDirectCosts > 0 ? (totalRevenue / totalDirectCosts) : 0;
+      const avgCut = totalRevenue > 0 ? ((totalPaidToMyself / totalRevenue) * 100) : 25;
+
+      return {
+        totalRevenue,
+        totalDirectCosts,
+        totalPaidToMyself,
+        avgCut,
+        totalOverhead,
+        totalOverheadMonthly,
+        grossProjectProfit,
+        grossMargin,
+        trueNetBottomLine,
+        netBottomLineMargin,
+        activeClientCount,
+        totalClientsCount,
+        avgProfitPerClient,
+        overallProjectROI
+      };
+    }
+
+    /* ==========================================================================
+       4. UI RENDERING & TAB SWITCHING
+       ========================================================================== */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-[#0e7bc4]', 'text-[#0e7bc4]');
+        btn.classList.add('border-transparent', 'text-slate-500');
+      });
+
+      const activeSection = document.getElementById(`tab-${tabId}`);
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeSection) activeSection.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-slate-500');
+        activeBtn.classList.add('border-[#0e7bc4]', 'text-[#0e7bc4]');
+      }
+
+      if (tabId === 'dashboard') {
+        renderCharts();
+      }
+      lucide.createIcons();
+    }
+
+    function updateAppUI() {
+      // Sync currency selector
+      const currSelect = document.getElementById('currency-select');
+      if (currSelect) currSelect.value = state.currency || 'USD';
+      const sym = currencySymbols[state.currency || 'USD'] || '$';
+      document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = sym);
+
+      const totals = getBusinessTotals();
+
+      // Top KPI Cards
+      document.getElementById('kpi-total-revenue').textContent = formatMoney(totals.totalRevenue);
+      document.getElementById('kpi-direct-costs').textContent = formatMoney(totals.totalDirectCosts);
+      document.getElementById('kpi-paid-to-myself').textContent = formatMoney(totals.totalPaidToMyself);
+      document.getElementById('kpi-avg-cut').textContent = `${totals.avgCut.toFixed(1)}% avg cut`;
+      document.getElementById('kpi-overhead-costs').textContent = formatMoney(totals.totalOverhead);
+      document.getElementById('kpi-net-profit').textContent = formatMoney(totals.trueNetBottomLine);
+
+      // Margins & Ratios
+      const marginEl = document.getElementById('kpi-net-margin');
+      marginEl.textContent = formatPercent(totals.netBottomLineMargin);
+      if (totals.trueNetBottomLine >= 0) {
+        marginEl.className = "px-2 py-0.5 rounded font-bold text-white bg-[#0e7bc4]";
+      } else {
+        marginEl.className = "px-2 py-0.5 rounded font-bold text-white bg-rose-600";
+      }
+
+      document.getElementById('kpi-client-count-sub').textContent = `${totals.totalClientsCount} Total (${totals.activeClientCount} Active)`;
+      const costRatio = totals.totalRevenue > 0 ? (totals.totalDirectCosts / totals.totalRevenue) * 100 : 0;
+      document.getElementById('kpi-cost-ratio').textContent = `${costRatio.toFixed(1)}% of income`;
+      document.getElementById('kpi-overhead-items-count').textContent = `${state.overheadExpenses.length} accounts`;
+
+      // Secondary row
+      document.getElementById('metric-gross-margin').textContent = formatPercent(totals.grossMargin);
+      document.getElementById('metric-avg-client-profit').textContent = formatMoney(totals.avgProfitPerClient);
+      document.getElementById('metric-project-roi').textContent = `${totals.overallProjectROI.toFixed(2)}x`;
+
+      // Tab badges
+      document.getElementById('tab-badge-client-count').textContent = totals.totalClientsCount;
+      document.getElementById('tab-badge-overhead-total').textContent = formatMoney(totals.totalOverhead);
+
+      // Overhead tab summary
+      document.getElementById('overhead-monthly-sum').textContent = formatMoney(totals.totalOverheadMonthly);
+      document.getElementById('overhead-annual-sum').textContent = formatMoney(totals.totalOverheadMonthly * 12);
+      const overheadDrag = totals.totalRevenue > 0 ? (totals.totalOverhead / totals.totalRevenue) : 0;
+      document.getElementById('overhead-drag-ratio').textContent = formatPercent(overheadDrag);
+      document.getElementById('overhead-count-badge').textContent = `${state.overheadExpenses.length} tracked items`;
+
+      // Populate dropdowns & lists
+      populateExpenseClientDropdown();
+      renderDashboardRankingTable();
+      renderClientsList();
+      renderOverheadTable();
+      renderCharts();
+      runSimulation();
+
+      lucide.createIcons();
+    }
+
+    /* ==========================================================================
+       5. DASHBOARD RANKINGS TABLE & CHARTS
+       ========================================================================== */
+    function renderDashboardRankingTable() {
+      const tbody = document.getElementById('dashboard-ranking-tbody');
+      if (!tbody) return;
+
+      const clientMetricsList = state.clients.map(c => getClientMetrics(c.id));
+      // Sort by highest net retained profit
+      clientMetricsList.sort((a, b) => b.netRetainedProfit - a.netRetainedProfit);
+
+      if (clientMetricsList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-8 text-center text-slate-400 text-xs">
+              No clients entered yet. Click <strong>"Add Client"</strong> above to track your first project!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = clientMetricsList.map(item => {
+        const c = item.client;
+        const marginColor = item.profitMargin >= 0.3 ? 'text-[#0a5285] bg-[#e0effe] border-[#b9ddfd]' :
+                            item.profitMargin >= 0.15 ? 'text-blue-700 bg-blue-50 border-blue-200' :
+                            item.profitMargin >= 0 ? 'text-amber-700 bg-amber-50 border-amber-200' :
+                            'text-rose-700 bg-rose-50 border-rose-200';
+
+        const statusBadge = c.status === 'ACTIVE' ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#e0effe] text-[#0e7bc4]">In Progress</span>' :
+                            c.status === 'COMPLETED' ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">Completed</span>' :
+                            '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">Lead</span>';
+
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3.5 px-4 font-medium text-slate-900">
+              <div class="font-bold">${escapeHtml(c.name)}</div>
+              <div class="text-xs text-slate-500 truncate max-w-xs">${escapeHtml(c.project)}</div>
+            </td>
+            <td class="py-3.5 px-4 font-semibold text-slate-800">${formatMoney(item.revenue)}</td>
+            <td class="py-3.5 px-4 text-rose-600 font-medium">-${formatMoney(item.totalDirectCost)}</td>
+            <td class="py-3.5 px-4 font-bold text-[#0e7bc4]">
+              ${formatMoney(item.payToMyself)}
+              <span class="text-[10px] text-[#498ccc] block">(${item.selfCutPercent}%)</span>
+            </td>
+            <td class="py-3.5 px-4 font-bold ${item.netRetainedProfit >= 0 ? 'text-slate-800' : 'text-rose-600'}">
+              ${formatMoney(item.netRetainedProfit)}
+            </td>
+            <td class="py-3.5 px-4">
+              <span class="px-2.5 py-1 rounded-md text-xs font-bold border ${marginColor}">
+                ${formatPercent(item.profitMargin)}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-center">${statusBadge}</td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <button onclick="viewClientReport('${c.id}')" title="Printable P&L Statement" class="p-1.5 text-slate-500 hover:text-[#0e7bc4] hover:bg-[#f0f7ff] rounded-lg transition-colors">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+              </button>
+              <button onclick="quickAddExpenseForClient('${c.id}')" title="Add Expense to this Client" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderCharts() {
+      if (typeof Chart === 'undefined') return;
+
+      // 1. Client Comparison Chart
+      const compCanvas = document.getElementById('clientComparisonChart');
+      if (compCanvas) {
+        const labels = state.clients.map(c => c.name.length > 14 ? c.name.slice(0, 13) + '…' : c.name);
+        const revenues = state.clients.map(c => c.revenue);
+        const costs = state.clients.map(c => {
+          return state.projectExpenses
+            .filter(e => e.clientId === c.id)
+            .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        });
+        const toMyself = state.clients.map(c => Number(c.revenue || 0) * (Number(c.selfCutPercent || 25) / 100));
+
+        if (comparisonChartInstance) {
+          comparisonChartInstance.destroy();
+        }
+
+        comparisonChartInstance = new Chart(compCanvas, {
+          type: 'bar',
+          data: {
+            labels: labels.length ? labels : ['No Clients'],
+            datasets: [
+              {
+                label: 'Income Billed',
+                data: revenues.length ? revenues : [0],
+                backgroundColor: '#0e7bc4',
+                borderRadius: 6
+              },
+              {
+                label: 'Direct Costs',
+                data: costs.length ? costs : [0],
+                backgroundColor: '#fb7185',
+                borderRadius: 6
+              },
+              {
+                label: 'Paid to Myself',
+                data: toMyself.length ? toMyself : [0],
+                backgroundColor: '#498ccc',
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    return `${ctx.dataset.label}: ${formatMoney(ctx.raw)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: '#f1f5f9' },
+                ticks: {
+                  callback: val => formatMoney(val).slice(0, -3)
+                }
+              },
+              x: {
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      // 2. Expense Category Chart
+      const catCanvas = document.getElementById('expenseCategoryChart');
+      if (catCanvas) {
+        const categoryMap = {};
+
+        state.projectExpenses.forEach(e => {
+          const cat = e.category || 'Other Direct Cost';
+          categoryMap[cat] = (categoryMap[cat] || 0) + Number(e.amount || 0);
+        });
+
+        state.overheadExpenses.forEach(oh => {
+          const cat = oh.category || 'Overhead & SaaS';
+          categoryMap[cat] = (categoryMap[cat] || 0) + Number(oh.amount || 0);
+        });
+
+        const catLabels = Object.keys(categoryMap);
+        const catValues = Object.values(categoryMap);
+
+        const colors = [
+          '#0e7bc4', '#498ccc', '#8bbef0', '#f43f5e', 
+          '#f59e0b', '#8b5cf6', '#64748b', '#10b981'
+        ];
+
+        if (categoryChartInstance) {
+          categoryChartInstance.destroy();
+        }
+
+        categoryChartInstance = new Chart(catCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels.length ? catLabels : ['None'],
+            datasets: [{
+              data: catValues.length ? catValues : [1],
+              backgroundColor: catValues.length ? colors.slice(0, catValues.length) : ['#e2e8f0'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    if (!catValues.length) return 'No expenses logged';
+                    return ` ${ctx.label}: ${formatMoney(ctx.raw)}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        const legendDiv = document.getElementById('expense-legend-summary');
+        if (legendDiv) {
+          if (catLabels.length === 0) {
+            legendDiv.innerHTML = '<p class="col-span-2 text-slate-400 text-center">No expenses tracked</p>';
+          } else {
+            legendDiv.innerHTML = catLabels.slice(0, 4).map((cat, i) => `
+              <div class="flex items-center justify-between text-[11px]">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${colors[i % colors.length]}"></span>
+                  <span class="text-slate-600 truncate">${escapeHtml(cat)}</span>
+                </div>
+                <span class="font-bold text-slate-800 ml-1">${formatMoney(categoryMap[cat])}</span>
+              </div>
+            `).join('');
+          }
+        }
+      }
+    }
+
+    /* ==========================================================================
+       6. CLIENTS & PROJECTS VIEW (WITH 20%-30% SELECTION PER CARD)
+       ========================================================================== */
+    function renderClientsList() {
+      const container = document.getElementById('clients-card-container');
+      if (!container) return;
+
+      const searchTerm = (document.getElementById('client-search-input')?.value || '').toLowerCase();
+      const statusFilter = document.getElementById('client-status-filter')?.value || 'ALL';
+      const sortFilter = document.getElementById('client-sort-filter')?.value || 'PROFIT_DESC';
+
+      let clientList = state.clients.map(c => getClientMetrics(c.id));
+
+      if (searchTerm) {
+        clientList = clientList.filter(item => {
+          return item.client.name.toLowerCase().includes(searchTerm) ||
+                 item.client.project.toLowerCase().includes(searchTerm) ||
+                 (item.client.notes && item.client.notes.toLowerCase().includes(searchTerm));
+        });
+      }
+
+      if (statusFilter !== 'ALL') {
+        clientList = clientList.filter(item => item.client.status === statusFilter);
+      }
+
+      clientList.sort((a, b) => {
+        if (sortFilter === 'PROFIT_DESC') return b.netRetainedProfit - a.netRetainedProfit;
+        if (sortFilter === 'SELF_DESC') return b.payToMyself - a.payToMyself;
+        if (sortFilter === 'MARGIN_DESC') return b.profitMargin - a.profitMargin;
+        if (sortFilter === 'REVENUE_DESC') return b.revenue - a.revenue;
+        if (sortFilter === 'NAME_ASC') return a.client.name.localeCompare(b.client.name);
+        return 0;
+      });
+
+      if (clientList.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-12 text-center rounded-2xl border border-slate-200">
+            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+              <i data-lucide="search-x" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-sm font-bold text-slate-800">No client projects found</h3>
+            <p class="text-xs text-slate-500 mt-1">Try adjusting your search criteria or add a new client project.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = clientList.map(item => {
+        const c = item.client;
+        const marginPct = (item.profitMargin * 100).toFixed(1);
+        const statusBadge = c.status === 'ACTIVE' ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e0effe] text-[#0e7bc4]">In Progress</span>' :
+                            c.status === 'COMPLETED' ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">Completed</span>' :
+                            '<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Pending Lead</span>';
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition-all hover:shadow-md">
+            
+            <!-- Card Header Summary -->
+            <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-bold text-slate-900">${escapeHtml(c.name)}</h3>
+                  ${statusBadge}
+                </div>
+                <p class="text-xs font-medium text-slate-600 mt-0.5">${escapeHtml(c.project)}</p>
+                ${c.notes ? `<p class="text-[11px] text-slate-400 mt-1 italic"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i>${escapeHtml(c.notes)}</p>` : ''}
+              </div>
+
+              <!-- Quick Metrics Grid for Client with Pay to Myself -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#f0f7ff]/70 p-3 rounded-xl border border-[#b9ddfd] text-center">
+                <div>
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Gross Fee</span>
+                  <span class="text-sm font-black text-slate-900">${formatMoney(item.revenue)}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] uppercase font-bold text-rose-500 block">Direct Costs</span>
+                  <span class="text-sm font-bold text-rose-600">-${formatMoney(item.totalDirectCost)}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] uppercase font-bold text-[#0e7bc4] block">Paid to Myself</span>
+                  <span class="text-sm font-black text-[#0e7bc4]">${formatMoney(item.payToMyself)}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] uppercase font-bold text-slate-500 block">Retained Margin</span>
+                  <span class="text-xs font-extrabold px-1.5 py-0.5 rounded bg-[#0e7bc4] text-white inline-block mt-0.5">${marginPct}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- INDIVIDUAL PROJECT 20% - 30% SELECTION BAR -->
+            <div class="bg-[#f0f7ff] px-5 py-2.5 border-b border-[#b9ddfd] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2 text-[#0a5285]">
+                <i data-lucide="user-check" class="w-4 h-4 text-[#0e7bc4]"></i>
+                <span class="font-bold">Pay to Myself Allocation (20% - 30%):</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <select onchange="updateClientSelfCut('${c.id}', this.value)" class="bg-white border border-[#8bbef0] font-bold text-[#0e7bc4] text-xs rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-[#0e7bc4] outline-none cursor-pointer">
+                  <option value="20" ${item.selfCutPercent === 20 ? 'selected' : ''}>20% Pay to Myself</option>
+                  <option value="22" ${item.selfCutPercent === 22 ? 'selected' : ''}>22% Pay to Myself</option>
+                  <option value="24" ${item.selfCutPercent === 24 ? 'selected' : ''}>24% Pay to Myself</option>
+                  <option value="25" ${item.selfCutPercent === 25 ? 'selected' : ''}>25% Pay to Myself (Standard)</option>
+                  <option value="26" ${item.selfCutPercent === 26 ? 'selected' : ''}>26% Pay to Myself</option>
+                  <option value="28" ${item.selfCutPercent === 28 ? 'selected' : ''}>28% Pay to Myself</option>
+                  <option value="30" ${item.selfCutPercent === 30 ? 'selected' : ''}>30% Pay to Myself (Max Cut)</option>
+                </select>
+                <span class="font-extrabold text-[#0e7bc4] bg-white px-2 py-0.5 rounded border border-[#8bbef0]">
+                  ${formatMoney(item.payToMyself)}
+                </span>
+              </div>
+            </div>
+
+            <!-- Itemized Expenses Section -->
+            <div class="bg-slate-50/60 p-4 border-b border-slate-100">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="receipt" class="w-4 h-4 text-slate-500"></i>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    Client Expenses & Payouts (${item.directExpenses.length})
+                  </h4>
+                </div>
+                <button onclick="quickAddExpenseForClient('${c.id}')" class="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-2xs hover:bg-rose-50 transition-colors">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Add Expense Line Item</span>
+                </button>
+              </div>
+
+              ${item.directExpenses.length === 0 ? `
+                <div class="text-center py-4 text-xs text-slate-400 bg-white rounded-xl border border-slate-200 border-dashed">
+                  No project expenses logged for this client yet.
+                </div>
+              ` : `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                  <table class="w-full text-left text-xs">
+                    <thead>
+                      <tr class="bg-slate-100 text-slate-500 uppercase font-semibold border-b border-slate-200">
+                        <th class="py-2 px-3">Description / Payee</th>
+                        <th class="py-2 px-3">Category</th>
+                        <th class="py-2 px-3">Date</th>
+                        <th class="py-2 px-3 text-right">Cost</th>
+                        <th class="py-2 px-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      ${item.directExpenses.map(exp => `
+                        <tr class="hover:bg-slate-50">
+                          <td class="py-2.5 px-3 font-medium text-slate-800">${escapeHtml(exp.desc)}</td>
+                          <td class="py-2.5 px-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">${escapeHtml(exp.category || 'Direct')}</span>
+                          </td>
+                          <td class="py-2.5 px-3 text-slate-500">${exp.date || '—'}</td>
+                          <td class="py-2.5 px-3 font-bold text-rose-600 text-right">-${formatMoney(exp.amount)}</td>
+                          <td class="py-2.5 px-3 text-center">
+                            <button onclick="deleteProjectExpense('${exp.id}')" title="Delete expense" class="text-slate-400 hover:text-rose-600 p-1 rounded">
+                              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `}
+            </div>
+
+            <!-- Card Action Footer -->
+            <div class="px-5 py-3 bg-white flex items-center justify-between text-xs">
+              <div class="text-slate-400 text-[11px]">
+                Net Retained Company Profit: <strong class="text-slate-800">${formatMoney(item.netRetainedProfit)}</strong>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="viewClientReport('${c.id}')" class="px-3 py-1.5 text-[#0e7bc4] bg-[#f0f7ff] hover:bg-[#e0effe] font-semibold rounded-lg flex items-center gap-1.5 transition-colors">
+                  <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                  <span>P&L Statement</span>
+                </button>
+                <button onclick="editClient('${c.id}')" class="px-3 py-1.5 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg font-semibold hover:bg-slate-50">
+                  Edit Client
+                </button>
+                <button onclick="deleteClient('${c.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function populateExpenseClientDropdown() {
+      const select = document.getElementById('expense-client-select');
+      if (!select) return;
+
+      select.innerHTML = state.clients.map(c => `
+        <option value="${c.id}">${escapeHtml(c.name)} - ${escapeHtml(c.project)}</option>
+      `).join('');
+    }
+
+    /* ==========================================================================
+       7. BUSINESS OVERHEAD EXPENSES TAB LOGIC
+       ========================================================================== */
+    function renderOverheadTable() {
+      const tbody = document.getElementById('overhead-tbody');
+      if (!tbody) return;
+
+      if (state.overheadExpenses.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 text-center text-slate-400 text-xs">
+              No overhead expenses recorded yet. Click <strong>"Add Overhead Expense"</strong> to log monthly subscriptions, software, or office rent.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = state.overheadExpenses.map(oh => {
+        const freqBadge = oh.freq === 'MONTHLY' ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700">Monthly</span>' :
+                          oh.freq === 'ANNUAL' ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700">Annual</span>' :
+                          '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">One-Time</span>';
+
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(oh.desc)}</td>
+            <td class="py-3 px-4 text-xs text-slate-600">${escapeHtml(oh.category || 'General')}</td>
+            <td class="py-3 px-4">${freqBadge}</td>
+            <td class="py-3 px-4 text-right font-bold text-amber-700">${formatMoney(oh.amount)}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="deleteOverheadExpense('${oh.id}')" title="Delete overhead" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    /* ==========================================================================
+       8. QUOTE & MARGIN SIMULATOR LOGIC
+       ========================================================================== */
+    let currentSimMode = 'from-price';
+
+    function setSimMode(mode) {
+      currentSimMode = mode;
+      const btnPrice = document.getElementById('btn-mode-price');
+      const btnTarget = document.getElementById('btn-mode-target');
+      const groupQuote = document.getElementById('sim-input-quote-group');
+      const groupTarget = document.getElementById('sim-input-target-group');
+
+      if (mode === 'from-price') {
+        btnPrice.className = "py-2 text-xs font-bold rounded-lg border border-[#0e7bc4] bg-[#f0f7ff] text-[#0e7bc4] text-center";
+        btnTarget.className = "py-2 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-center";
+        groupQuote.classList.remove('hidden');
+        groupTarget.classList.add('hidden');
+      } else {
+        btnTarget.className = "py-2 text-xs font-bold rounded-lg border border-[#0e7bc4] bg-[#f0f7ff] text-[#0e7bc4] text-center";
+        btnPrice.className = "py-2 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-center";
+        groupTarget.classList.remove('hidden');
+        groupQuote.classList.add('hidden');
+      }
+      runSimulation();
+    }
+
+    function runSimulation() {
+      const costs = Number(document.getElementById('sim-expenses')?.value || 0);
+      const taxRate = Number(document.getElementById('sim-tax-rate')?.value || 0) / 100;
+      const selfCutPercent = Number(document.getElementById('sim-self-cut')?.value || 25);
+      let quotePrice = 0;
+
+      if (currentSimMode === 'from-price') {
+        quotePrice = Number(document.getElementById('sim-quote-price')?.value || 0);
+      } else {
+        const targetMargin = Math.min(0.95, Math.max(0.01, Number(document.getElementById('sim-target-margin')?.value || 50) / 100));
+        quotePrice = costs / (1 - targetMargin);
+      }
+
+      const payToMyself = quotePrice * (selfCutPercent / 100);
+      const grossProfit = quotePrice - costs;
+      const taxProvision = grossProfit > 0 ? (grossProfit * taxRate) : 0;
+      const netRetainedProfit = grossProfit - payToMyself - taxProvision;
+      const netMargin = quotePrice > 0 ? (netRetainedProfit / quotePrice) : 0;
+      const markup = costs > 0 ? ((quotePrice - costs) / costs) * 100 : 0;
+
+      document.getElementById('sim-res-quote').textContent = formatMoney(quotePrice);
+      document.getElementById('sim-res-expenses').textContent = `-${formatMoney(costs)}`;
+      document.getElementById('sim-res-self-label').textContent = `Paid to Myself (${selfCutPercent}%):`;
+      document.getElementById('sim-res-self-amount').textContent = `+${formatMoney(payToMyself)}`;
+      document.getElementById('sim-res-gross-profit').textContent = formatMoney(grossProfit);
+      document.getElementById('sim-res-tax').textContent = `-${formatMoney(taxProvision)}`;
+      document.getElementById('sim-res-net-profit').textContent = formatMoney(netRetainedProfit);
+      document.getElementById('sim-res-margin').textContent = `${formatPercent(netMargin)} Retained Margin`;
+      document.getElementById('sim-res-markup').textContent = `${markup.toFixed(1)}%`;
+    }
+
+    /* ==========================================================================
+       9. CRUD OPERATIONS (CLIENTS, DIRECT COSTS, OVERHEAD)
+       ========================================================================== */
+    function handleSaveClient(event) {
+      event.preventDefault();
+      const idField = document.getElementById('client-id-field').value;
+      const name = document.getElementById('client-name-input').value.trim();
+      const project = document.getElementById('client-project-input').value.trim();
+      const revenue = parseFloat(document.getElementById('client-revenue-input').value) || 0;
+      const selfCutPercent = parseInt(document.getElementById('client-selfcut-input').value) || 25;
+      const status = document.getElementById('client-status-input').value;
+      const notes = document.getElementById('client-notes-input').value.trim();
+
+      if (!name || !project) {
+        showToast("Please provide both client and project name", "error");
+        return;
+      }
+
+      if (idField) {
+        // Update
+        const idx = state.clients.findIndex(c => c.id === idField);
+        if (idx !== -1) {
+          state.clients[idx] = { ...state.clients[idx], name, project, revenue, selfCutPercent, status, notes };
+          showToast(`Client "${name}" updated successfully!`);
+        }
+      } else {
+        // Create
+        const newClient = {
+          id: 'c_' + Date.now(),
+          name,
+          project,
+          revenue,
+          selfCutPercent,
+          status,
+          notes
+        };
+        state.clients.unshift(newClient);
+        showToast(`Client "${name}" added!`);
+      }
+
+      saveState();
+      closeModal('add-client-modal');
+      event.target.reset();
+      document.getElementById('client-id-field').value = '';
+    }
+
+    function editClient(clientId) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      document.getElementById('client-id-field').value = client.id;
+      document.getElementById('client-name-input').value = client.name;
+      document.getElementById('client-project-input').value = client.project;
+      document.getElementById('client-revenue-input').value = client.revenue;
+      document.getElementById('client-selfcut-input').value = client.selfCutPercent || 25;
+      document.getElementById('client-status-input').value = client.status;
+      document.getElementById('client-notes-input').value = client.notes || '';
+      document.getElementById('client-modal-title').textContent = "Edit Client Project";
+
+      openModal('add-client-modal');
+    }
+
+    function deleteClient(clientId) {
+      const client = state.clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      showCustomConfirm(
+        `Delete "${client.name}"?`,
+        "This will permanently delete this client and all associated project expenses from your bottom line.",
+        () => {
+          state.clients = state.clients.filter(c => c.id !== clientId);
+          state.projectExpenses = state.projectExpenses.filter(e => e.clientId !== clientId);
+          saveState();
+          showToast(`Deleted ${client.name}`);
+        }
+      );
+    }
+
+    function quickAddExpenseForClient(clientId) {
+      populateExpenseClientDropdown();
+      const select = document.getElementById('expense-client-select');
+      if (select) select.value = clientId;
+      openModal('add-expense-modal');
+    }
+
+    function handleSaveProjectExpense(event) {
+      event.preventDefault();
+      const clientId = document.getElementById('expense-client-select').value;
+      const desc = document.getElementById('expense-desc-input').value.trim();
+      const amount = parseFloat(document.getElementById('expense-amount-input').value) || 0;
+      const category = document.getElementById('expense-cat-select').value;
+      const date = document.getElementById('expense-date-input').value || new Date().toISOString().slice(0, 10);
+
+      if (!clientId || !desc || amount <= 0) {
+        showToast("Please enter a valid expense amount and description", "error");
+        return;
+      }
+
+      const newExpense = {
+        id: 'pe_' + Date.now(),
+        clientId,
+        desc,
+        amount,
+        category,
+        date
+      };
+
+      state.projectExpenses.unshift(newExpense);
+      saveState();
+      closeModal('add-expense-modal');
+      event.target.reset();
+      showToast(`Expense of ${formatMoney(amount)} logged!`);
+    }
+
+    function deleteProjectExpense(expenseId) {
+      showCustomConfirm("Delete this expense line item?", "This cost will be removed from the client's calculations.", () => {
+        state.projectExpenses = state.projectExpenses.filter(e => e.id !== expenseId);
+        saveState();
+        showToast("Expense removed");
+      });
+    }
+
+    function handleSaveOverhead(event) {
+      event.preventDefault();
+      const desc = document.getElementById('overhead-desc-input').value.trim();
+      const amount = parseFloat(document.getElementById('overhead-cost-input').value) || 0;
+      const freq = document.getElementById('overhead-freq-select').value;
+      const category = document.getElementById('overhead-cat-select').value;
+
+      if (!desc || amount <= 0) {
+        showToast("Please fill in valid overhead details", "error");
+        return;
+      }
+
+      const newOverhead = {
+        id: 'oh_' + Date.now(),
+        desc,
+        amount,
+        freq,
+        category
+      };
+
+      state.overheadExpenses.unshift(newOverhead);
+      saveState();
+      closeModal('add-overhead-modal');
+      event.target.reset();
+      showToast("Overhead item saved");
+    }
+
+    function deleteOverheadExpense(ohId) {
+      showCustomConfirm("Delete overhead expense?", "This expense will no longer count against your overall business net bottom line.", () => {
+        state.overheadExpenses = state.overheadExpenses.filter(o => o.id !== ohId);
+        saveState();
+        showToast("Overhead expense deleted");
+      });
+    }
+
+    /* ==========================================================================
+       10. CLIENT INDIVIDUAL P&L REPORT (PRINTABLE)
+       ========================================================================== */
+    function viewClientReport(clientId) {
+      const data = getClientMetrics(clientId);
+      if (!data) return;
+
+      const reportDiv = document.getElementById('printable-report');
+      const c = data.client;
+
+      reportDiv.innerHTML = `
+        <div class="space-y-6">
+          
+          <!-- Statement Header with webswan logo & title -->
+          <div class="border-b-2 border-[#0e7bc4] pb-4 flex justify-between items-start">
+            <div class="flex items-center space-x-3">
+              <img src="../business-service/ws-logo.webp" alt="webswan logo" class="h-10 w-auto object-contain" onerror="this.onerror=null; this.src='https://placehold.co/100x40/0e7bc4/ffffff?text=webswan';">
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-[#0e7bc4]">webswan Client Financial Statement</div>
+                <h2 class="text-2xl font-black text-slate-900 mt-0.5">${escapeHtml(c.name)}</h2>
+                <p class="text-xs text-[#498ccc] font-medium">${escapeHtml(c.project)}</p>
+              </div>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+              <p>Generated: ${new Date().toLocaleDateString()}</p>
+              <p class="font-bold text-[#0e7bc4] uppercase mt-1">Status: ${c.status}</p>
+            </div>
+          </div>
+
+          <!-- Financial Snapshot Box -->
+          <div class="grid grid-cols-4 gap-2 bg-[#f0f7ff] p-4 rounded-xl border border-[#b9ddfd] text-center">
+            <div>
+              <div class="text-[10px] text-slate-500 font-semibold uppercase">Total Revenue</div>
+              <div class="text-lg font-black text-slate-900 mt-0.5">${formatMoney(data.revenue)}</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-500 font-semibold uppercase">Direct Project Costs</div>
+              <div class="text-lg font-black text-rose-600 mt-0.5">-${formatMoney(data.totalDirectCost)}</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-[#0e7bc4] font-bold uppercase">Paid to Myself (${data.selfCutPercent}%)</div>
+              <div class="text-lg font-black text-[#0e7bc4] mt-0.5">${formatMoney(data.payToMyself)}</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-500 font-semibold uppercase">Net Retained Profit</div>
+              <div class="text-lg font-black ${data.netRetainedProfit >= 0 ? 'text-[#0a5285]' : 'text-rose-600'} mt-0.5">${formatMoney(data.netRetainedProfit)}</div>
+            </div>
+          </div>
+
+          <!-- Bottom Line Ratios -->
+          <div class="flex items-center justify-between p-3 bg-[#e0effe] rounded-xl border border-[#b9ddfd] text-xs">
+            <span class="font-bold text-[#0e3b5c]">Owner Draw Rate: <strong>${data.selfCutPercent}%</strong></span>
+            <span class="font-bold text-[#0e3b5c]">Retained Profit Margin: <strong>${formatPercent(data.profitMargin)}</strong></span>
+            <span class="font-bold text-[#0e3b5c]">Direct ROI Ratio: <strong>${data.roi.toFixed(2)}x</strong></span>
+          </div>
+
+          <!-- Itemized Direct Expenses Breakdown -->
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Itemized Project Costs & Payouts</h3>
+            ${data.directExpenses.length === 0 ? `
+              <p class="text-xs text-slate-400 italic">No expenses incurred for this project.</p>
+            ` : `
+              <table class="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+                <thead class="bg-slate-100 text-slate-600 font-semibold">
+                  <tr>
+                    <th class="p-2.5">Date</th>
+                    <th class="p-2.5">Description / Vendor</th>
+                    <th class="p-2.5">Category</th>
+                    <th class="p-2.5 text-right">Cost</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${data.directExpenses.map(e => `
+                    <tr>
+                      <td class="p-2.5 text-slate-500">${e.date || '—'}</td>
+                      <td class="p-2.5 font-medium text-slate-800">${escapeHtml(e.desc)}</td>
+                      <td class="p-2.5 text-slate-600">${escapeHtml(e.category || 'Direct')}</td>
+                      <td class="p-2.5 text-right font-bold text-rose-600">-${formatMoney(e.amount)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+                <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
+                  <tr>
+                    <td colspan="3" class="p-2.5 text-slate-700 text-right">Total Project Direct Expenses:</td>
+                    <td class="p-2.5 text-right text-rose-600">-${formatMoney(data.totalDirectCost)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            `}
+          </div>
+
+          ${c.notes ? `
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600">
+              <span class="font-bold block text-slate-700 mb-0.5">Project Notes:</span>
+              ${escapeHtml(c.notes)}
+            </div>
+          ` : ''}
+
+          <div class="text-[10px] text-slate-400 text-center pt-4 border-t border-slate-100">
+            webswan &bull; bottom line and profit margin calculation statement
+          </div>
+
+        </div>
+      `;
+
+      openModal('client-report-modal');
+      lucide.createIcons();
+    }
+
+    /* ==========================================================================
+       11. MODAL HELPERS & NOTIFICATIONS (NO alert() OR confirm())
+       ========================================================================== */
+    function openAddClient() {
+      const form = document.getElementById('client-form');
+      if (form) form.reset();
+      document.getElementById('client-id-field').value = '';
+      document.getElementById('client-modal-title').textContent = 'Add Client & Project';
+      openModal('add-client-modal');
+    }
+
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    let confirmCallback = null;
+    function showCustomConfirm(title, message, onConfirm) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      confirmCallback = onConfirm;
+      
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+
+      const okBtn = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+      okBtn.onclick = function() {
+        if (confirmCallback) confirmCallback();
+        closeModal('confirm-modal');
+      };
+
+      cancelBtn.onclick = function() {
+        closeModal('confirm-modal');
+      };
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 pointer-events-auto ${
+        type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'
+      }`;
+      toast.innerHTML = `
+        <i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-4 h-4 text-${type === 'error' ? 'rose-200' : 'emerald-400'}"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function escapeHtml(string) {
+      if (!string) return '';
+      return String(string)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Close modals when clicking backdrop
+    window.addEventListener('click', function(e) {
+      if (e.target.classList.contains('backdrop-blur-xs')) {
+        e.target.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+    });
+
+    /* ==========================================================================
+       12. INITIALIZATION ON WINDOW LOAD
+       ========================================================================== */
+    window.onload = function() {
+      // Set current date in expense modal
+      const dateField = document.getElementById('expense-date-input');
+      if (dateField) dateField.value = new Date().toISOString().slice(0, 10);
+
+      updateAppUI();
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>

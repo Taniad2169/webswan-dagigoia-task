@@ -83,6 +83,7 @@
   .hright{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .hbtn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer}
   .hbtn:hover{background:rgba(255,255,255,.24)}
+  a.hbtn{text-decoration:none;display:inline-flex;align-items:center}
   .save-pill{font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.16);white-space:nowrap}
 
   main{max-width:1180px;margin:0 auto;padding:18px 16px 40px;display:grid;gap:18px}
@@ -213,6 +214,7 @@
       <div class="htitle"><b>Swan Budget</b><span>Fixed monthly + extras, saved to your account</span></div>
       <div class="hright">
         <span class="save-pill" id="savepill">☁️ Loading…</span>
+        <a class="hbtn" href="../bottom-line/" title="Bottom-Line Studio: client profit and margin calculator">📊 Bottom Line</a>
         <button class="hbtn" type="button" onclick="exportData()">⬇️ Export</button>
         <button class="hbtn" type="button" onclick="document.getElementById('importfile').click()">⬆️ Import</button>
         <input type="file" id="importfile" accept="application/json,.json" class="hidden" onchange="importData(this)">
