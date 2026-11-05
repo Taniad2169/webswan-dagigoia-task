@@ -50,6 +50,17 @@ async function syncBlock(agent, start, end, block) {
   return u.ok ? "updated" : "patch " + u.status;
 }
 const syncRachelRules = (agent) => syncBlock(agent, RULES_START, RULES_END, RACHEL_RULES);
+// Every calling agent: how to answer "are you an AI / a robot / a recording?" and keep going with the script.
+const AI_START = "### AI QUESTION RULE (WebSwan)", AI_END = "### END AI QUESTION RULE";
+const aiRule = (brand) => `${AI_START}
+This rule wins over any other AI answer in your script or rules.
+If someone asks whether you are an AI, a robot, a computer or a recording:
+1. Say: "Yes, I'm the trained AI assistant for ${brand}." Pause briefly.
+2. Say: "I know a lot of people don't like AI until AI solves a problem for them, but I'm here to help."
+3. Then, in the same breath, go right back to your script where you left off and ask your question again. If you were asking for the best email, ask for the email; for the phone number, ask for the number; for the appointment, ask for the day and time. Example: "So, what's the best email to send it to?"
+"I don't have any problem", "no problem", "I'm fine", "okay" or "whatever" after that line are NOT a refusal and NOT a request to stop calling: keep going with your script. Only end the call or promise to remove them from the list when they clearly say "don't call me", "remove me", "take me off your list", "stop calling" or "not interested".
+${AI_END}`;
+const AI_AGENTS = [["rebecca", "WebSwan Media Network"], ["rebecca_es", "WebSwan Media Network"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
 
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");
@@ -59,6 +70,7 @@ export default async () => {
   if (!agent) return new Response("no rachel");
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
   for (const k of ["rebecca", "rebecca_es"]) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, REB_START, REB_END, REBECCA_RULES); } catch (e) { rules += " · " + k + " error"; } } }
+  for (const [k, brand] of AI_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · ai " + k + " " + await syncBlock(id, AI_START, AI_END, aiRule(brand)); } catch (e) { rules += " · ai " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
   if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
   const to = String(process.env.RACHEL_NOTIFY_EMAIL || "thewebswann@gmail.com").trim();
