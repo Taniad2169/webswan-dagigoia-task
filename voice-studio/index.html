@@ -1117,7 +1117,7 @@ function liveApply(x, c) {
   const before = JSON.stringify(x.live);
   x.live = Object.assign(x.live || {}, { status: c.status, endReason: c.endReason, start: c.start, end: c.end });
   if (c.start && c.end) x.live.seconds = Math.max(0, Math.round((new Date(c.end) - new Date(c.start)) / 1000));
-  const done = c.status === 'completed' || c.status === 'failed';
+  const done = /completed|failed|ended/i.test(String(c.status || '')) || !!c.end;
   if (!done) { x.outcome = c.status === 'started' ? 'In progress…' : 'Calling…'; return before !== JSON.stringify(x.live); }
   if (x.live.final) return before !== JSON.stringify(x.live);
   x.live.final = true;
@@ -1309,8 +1309,10 @@ async function liveSync(quiet) {
         if (!c.id) continue;
         let x = state.calls.find(k => k.live && k.live.callId === c.id);
         if (!x) {
-          const m = c.metadata || {}, l = (m.leadId && byId('leads', m.leadId)) || state.leads.find(k => digits(k.phone) && c.to && digits(c.to).endsWith(digits(k.phone).slice(-10)));
-          x = { id: uid(), at: c.start ? new Date(c.start).getTime() : Date.now(), leadId: l ? l.id : '', leadName: l ? l.name : (m.lead || c.to), business: l ? l.business : (m.business || ''), agentName: name.split('_')[0][0].toUpperCase() + name.split('_')[0].slice(1) + (name.includes('_') ? ' (' + name.split('_')[1].toUpperCase() + ')' : ''), type: 'Live AI call', outcome: 'Calling…', notes: '', live: { callId: c.id, to: c.to } };
+          // Rachel and Jennifer answer calls: the other person is the caller (from), not our own line (to).
+          const inbound = /^(rachel|jennifer)(_|$)/.test(name), other = inbound ? c.from : c.to;
+          const m = c.metadata || {}, l = (m.leadId && byId('leads', m.leadId)) || state.leads.find(k => digits(k.phone) && other && digits(other).endsWith(digits(k.phone).slice(-10)));
+          x = { id: uid(), at: c.start ? new Date(c.start).getTime() : Date.now(), leadId: l ? l.id : '', leadName: l ? l.name : (m.lead || (inbound ? 'Caller ' + (other || 'unknown') : c.to)), business: l ? l.business : (m.business || ''), agentName: name.split('_')[0][0].toUpperCase() + name.split('_')[0].slice(1) + (name.includes('_') ? ' (' + name.split('_')[1].toUpperCase() + ')' : ''), type: inbound ? 'Inbound call' : 'Live AI call', outcome: inbound ? 'Answered' : 'Calling…', notes: '', live: { callId: c.id, to: c.to, from: c.from } };
           state.calls.push(x); added++;
         }
         if (liveApply(x, c)) updated++;
