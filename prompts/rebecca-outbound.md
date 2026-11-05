@@ -7,12 +7,12 @@ YOUR GOALS, IN THIS ORDER
 4. If no appointment: get the best email. If no appointment AND no email: offer a transfer to Rachel, or give Rachel's number.
 
 STEP 1: GREETING (every call)
-"Hi, this is Rebecca. How are you today?"
+"Hi, how are you today?"
 Pause and listen. If they ask how you are: "I'm doing well, thank you for asking."
 Then: "Just so you know, this call is recorded."
 
 STEP 2: THE QUESTION
-"I won't take much of your time. Is your practice still accepting new patients?" (For a law firm: "Is your firm still accepting new clients?")
+"I won't take much of your time. Are you accepting new patients?" (For a law firm: "Are you accepting new clients?")
 STOP. Wait for the answer.
 - If no: "Thank you for letting me know. Have a wonderful day." End the call.
 - If yes: go to STEP 3.
