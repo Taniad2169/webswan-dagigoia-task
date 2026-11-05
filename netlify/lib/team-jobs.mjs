@@ -74,14 +74,58 @@ async function siteText() {
   return out.join("\n");
 }
 
+// Every Monday: one post for EVERY service, each with a branded picture, added to the month plan as drafts.
+// Tania opens 📅 Month plan, approves, and sends them to Content360 (the pictures are made when she sends).
+const WEEK_SERVICES = [
+  ["The WebSwan", "custom web development"],
+  ["The WebSwan", "the WSBPA (WebSwan Small Business Phone App)"],
+  ["The WebSwan", "the E-Card for business (use the paper card angle: printing paper cards costs at least $25, people write on them, clean their nails with them and trash them; one scan, one share and you're on their phone)"],
+  ["WebSwan Digital Solutions", "ADA website accessibility compliance"],
+  ["WebSwan Digital Solutions", "cookie consent and privacy compliance"],
+  ["WebSwan Digital Solutions", "HIPAA-safe websites for medical practices"],
+  ["WebSwan Digital Solutions", "attorney bar advertising rules on law firm websites"],
+  ["WebSwan Media Network", "ads on a trusted platform for doctors and lawyers"],
+  ["WebSwan Media Network", "social media management"],
+  ["WebSwan Media Network", "the executive assistant"],
+  ["WebSwan Media Network", "the receptionist that answers every call"],
+  ["WebSwan Media Network", "the appointment setter"]
+];
+// The 6 days after today (Tue to Sun when it runs on Monday), 2 posts a day.
+function weekSlots(n) {
+  const out = [], times = ["09:30", "17:30"];
+  for (let d = 1; out.length < n && d <= 14; d++) {
+    const iso = new Date(Date.now() + d * 864e5).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+    for (const t of times) if (out.length < n) out.push({ date: iso, time: t });
+  }
+  return out;
+}
 export async function tatianaWeekly() {
-  const s = await getSettings();
-  const ask = `Create this week's social media content (week of ${ptDate()}). Start with "# Social content, week of ${ptDate()}".
-For EACH brand (The WebSwan, WebSwan Digital Solutions, WebSwan Media Network): one Facebook post, one Instagram post, one LinkedIn post and one TikTok video script. Rotate the service featured so the week covers different services.
-CURRENT WEBSITE TEXT (data):
-${(await siteText()).slice(0, 12000)}`;
-  const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 6000);
-  await addMessages("tatiana", [{ role: "agent", kind: "weekly", text: ans.text, provider: ans.provider }]);
+  const s = await getSettings(), slots = weekSlots(WEEK_SERVICES.length), sites = (await siteText()).slice(0, 9000);
+  const list = WEEK_SERVICES.map(([b, sv], i) => `${i + 1}. ${b}: ${sv}`).join("\n");
+  const ask = `Write this week's social media posts (week of ${ptDate()}): exactly ${WEEK_SERVICES.length} posts, one for each service below, in this order.
+${list}
+Each post: a scroll-stopping hook in the first line, 40 to 120 words, speaks to one real problem of a doctor, attorney or small business owner, a strong specific call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its branded picture. Fresh angles, not last week's.
+Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...]}
+CURRENT WEBSITE TEXT (data):\n${sites}`;
+  const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
+  let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
+  const posts = Array.isArray(j.posts) ? j.posts : jsonArray(ans.text);
+  if (!posts.length) throw new Error("the AI didn't return the posts, please run 📱 This week's posts again");
+  const stamp = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }), plans = {};
+  for (let i = 0; i < WEEK_SERVICES.length; i++) {
+    const p = posts[i], sl = slots[i]; if (!p || !sl) continue;
+    const text = typeof p === "string" ? p : p.text, headline = typeof p === "string" ? "" : p.headline; if (!text) continue;
+    const month = sl.date.slice(0, 7), plan = plans[month] || (plans[month] = await getPlan(month));
+    if (!plan._cleared) { // this week's drafts replace the month plan's drafts for the same days
+      const days = new Set(slots.map((x) => x.date));
+      plan.items = (plan.items || []).filter((x) => !(x.kind === "social" && x.status === "draft" && days.has(x.date)));
+      plan._cleared = true;
+    }
+    plan.items.push({ id: "wk" + stamp.replace(/-/g, "") + "-" + i, brand: WEEK_SERVICES[i][0], kind: "social", service: WEEK_SERVICES[i][1].split(" (")[0], date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), text: String(text).slice(0, 3000), status: "draft" });
+  }
+  for (const plan of Object.values(plans)) { delete plan._cleared; plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); await savePlan(plan); }
+  const n = Object.values(plans).reduce((a, p) => a + p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).length, 0);
+  await addMessages("tatiana", [{ role: "agent", kind: "weekly", text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, each with a branded picture.\n\nOpen **📅 Month plan** above, read them, tick ✅ Approve (or **Approve all drafts**), then **🚀 Save & send approved to Content360**.`, provider: ans.provider }]);
 }
 
 export async function tatianaBlogs() {
