@@ -1,7 +1,8 @@
 // v2 (Nov 3): needs WORKPILOT_FIREBASE_KEY on webswan-billing.
 // AI calls -> WorkPilot: every 15 minutes, every finished call by Rebecca, Monica, George, Alek (outbound)
 // and Rachel (inbound) becomes a row in WorkPilot's "From AI Calls (Voice Studio)" list (blue), with the agent's
-// name, the outcome (Hang up, Call back, Voicemail, Talked, Email captured, Appointment booked, Do not call),
+// name, the outcome (Hang up, Call back, Voicemail, Talked, Email captured, Transferred to Rachel, Got Rachel's number,
+// Appointment booked, Do not call),
 // the summary and what the person said, so Tania can follow up herself.
 // Netlify env (set by Tania): WORKPILOT_FIREBASE_KEY (same value as in webswan-lead-prospector).
 import { getStore } from "@netlify/blobs";
@@ -34,7 +35,11 @@ const BOT = /(i'?m an? (ai|automated|virtual|digital)|i am an? (ai|automated|vir
 const HUMAN = /(who'?s calling|who is (this|calling)|can i ask who|may i ask who|what is (this|it) (about|regarding)|what'?s this (about|regarding)|(she|he)'?s (not (in|here|available)|with a patient|busy)|the doctor (is|isn'?t)|hold on|one moment|let me (check|see|transfer|get)|not interested|we'?re (good|all set)|i'?m the (office )?manager)/i;
 export const automatedOnly = (said) => { const t = String(said || ""); return !!t && (BOT.test(t) || (IVR.test(t) && !HUMAN.test(t))); };
 
-function outcome(c, said, booked) {
+// The agent sent them to Rachel: a live transfer, or gave Rachel's number to call ((239) 667-0151 or (347) 646-7086).
+const TO_RACHEL = /transferr?ing you (over )?to rachel|transfer you (over )?to rachel|connect(ing)? you (with|to) rachel|put(ting)? you through to rachel/i;
+const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|zero one five one|oh one five one)|(347|three four seven)\D{0,8}(646|six four six)\D{0,8}(7086|seven zero eight six|seven oh eight six)|rachel'?s (number|direct line|line)/i;
+
+function outcome(c, said, booked, agentSaid = "") {
   const secs = c.start_time && c.end_time ? (new Date(c.end_time) - new Date(c.start_time)) / 1000 : 0;
   const end = String(c.end_reason || c.status || "");
   const t = said.toLowerCase(), all = (said + " " + (c.summary || "")).toLowerCase();
@@ -43,6 +48,10 @@ function outcome(c, said, booked) {
   if (/voicemail/.test(end)) return "Voicemail";
   if (automatedOnly(said)) return /leave (a|your) message|mailbox|after the (tone|beep)|not available to take your call/i.test(said) ? "Voicemail" : "Automated (no human)";
   if (/no_answer|busy|failed/.test(end) && !said) return "No answer";
+  // Green in WorkPilot: sent to Rachel (transfer or her number), with the email if they gave one too.
+  const gaveEmail = /@| at gmail| dot com| dot net| dot org/.test(t);
+  if (said && TO_RACHEL.test(agentSaid)) return gaveEmail ? "Transferred to Rachel · Email captured" : "Transferred to Rachel";
+  if (said && RACHEL_NUM.test(agentSaid)) return gaveEmail ? "Got Rachel's number · Email captured" : "Got Rachel's number";
   if (/call (me |us )?back|callback|call later|try (again|later)|not (in|available) (right now|today)|out of the office/.test(all)) return "Call back";
   // Interest: they asked for info, price or a demo, or said yes to it (not "not interested").
   const interested = !/not interested|no thank|no, thank|we'?re (good|all set|fine)/.test(t) && /\binterested\b|sounds (good|great|interesting)|tell me more|send (me|it|us|over)|how much|what('?s| is| are) the (price|cost|fee)|pricing|\bdemo\b|sign (me|us) up|let'?s do it|i'?d like to (know|learn|see|hear)/.test(t);
@@ -90,8 +99,9 @@ export async function runWorkpilotSync(hours) {
       const lead = byPhone.get(digits(other)) || {};
       const said = (c.transcript || []).filter((x) => x.role === "user" && x.text).map((x) => x.text).join(" ").trim();
       if (inbound && !said) { done.add(id); continue; } // empty inbound ring
+      const agentSaid = (c.transcript || []).filter((x) => x.role !== "user" && x.text).map((x) => x.text).join(" ");
       const booked = bookings.find((b) => b.callId === id);
-      const out = outcome(c, said, booked);
+      const out = outcome(c, said, booked, agentSaid);
       if (out === "Do not call") { done.add(id); continue; } // Tania doesn't want do-not-call leads in WorkPilot
       const start = c.start_time ? new Date(c.start_time) : new Date();
       const secs = c.start_time && c.end_time ? Math.round((new Date(c.end_time) - start) / 1000) : 0;
