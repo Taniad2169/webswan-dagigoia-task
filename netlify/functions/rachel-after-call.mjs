@@ -11,14 +11,39 @@ const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pretty = (p) => { const d = String(p || "").replace(/\D/g, "").slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || "unknown"); };
 
+// Tania's newest call-handling rules for Rachel. Every run makes sure Rachel's live Cartesia script has exactly this
+// block (right after the inbound phone rules), so a change here reaches her within 5 minutes without touching the rest.
+const RULES_START = "### RACHEL CALL RULES (WebSwan)", RULES_END = "### END RACHEL RULES";
+const RACHEL_RULES = `${RULES_START}
+These rules come first and win over anything below.
+1. CALL-BACK TIME ZONE. Whenever a caller wants Tania to call them back or gives a day and time, always ask: "And is that Pacific, Central or Eastern time?" (Mountain is fine too). Repeat the day, time and time zone back, and put all three in your summary.
+2. RETURNING A MISSED CALL. If the caller says they are returning a missed call or "someone called me from this number", do NOT ask for their email. Get their name, their practice or business, the best number to reach them (repeat it back) and the best day, time and time zone for Tania to call back. Then thank them.
+3. ENDING THE CALL. After your goodbye (for example "Have a lovely afternoon!"), do NOT hang up right away. People usually answer "you too" or "thank you". Wait for their reply, and only use end_call after they have answered or after about 3 seconds of silence. Never cut a caller off while they are still talking.
+${RULES_END}`;
+const PHONE_RULES_END = "### END PHONE RULES";
+async function syncRachelRules(agent) {
+  const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
+  const g = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { headers: hd });
+  if (!g.ok) return "read " + g.status;
+  const d = await g.json(), cur = String(((d.config || (d.agent && d.agent.config)) || {}).instructions || "");
+  if (cur.length < 200 || cur.includes(RACHEL_RULES)) return "ok";
+  let base = cur; const a = base.indexOf(RULES_START), b = base.indexOf(RULES_END);
+  if (a >= 0 && b > a) base = (base.slice(0, a) + base.slice(b + RULES_END.length)).replace(/\n{3,}/g, "\n\n").trim();
+  const p = base.indexOf(PHONE_RULES_END), next = p >= 0 ? base.slice(0, p + PHONE_RULES_END.length) + "\n\n" + RACHEL_RULES + "\n\n" + base.slice(p + PHONE_RULES_END.length).trim() : RACHEL_RULES + "\n\n" + base;
+  if (next.length > 30000) return "too long";
+  const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
+  return u.ok ? "updated" : "patch " + u.status;
+}
+
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");
   const s = getStore({ name: "voice-studio", consistency: "strong" });
   const ids = (await s.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_RACHEL || ids.rachel || "";
   if (!agent) return new Response("no rachel");
+  let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
-  if (!cal.scriptUrl || !secret) return new Response("email bridge not connected");
+  if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
   const to = String(process.env.RACHEL_NOTIFY_EMAIL || "thewebswann@gmail.com").trim();
 
   const done = new Set((await s.get("rachel-done", { type: "json" })) || []);
@@ -56,5 +81,5 @@ export default async () => {
     } catch (e) { /* try again next run is not needed: the summary stays in Voice Studio's call records */ }
   }
   await s.setJSON("rachel-done", [...done].slice(-3000));
-  return new Response("sent " + sent);
+  return new Response("sent " + sent + " · rules " + rules);
 };
