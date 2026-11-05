@@ -10,6 +10,46 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <meta name="robots" content="noindex, nofollow">
+  <!-- Firebase: saves to the same WebSwan account as Swan Budget -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut }
+      from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM",
+      authDomain: "webswan-gigoia-task.firebaseapp.com",
+      projectId: "webswan-gigoia-task",
+      storageBucket: "webswan-gigoia-task.firebasestorage.app",
+      messagingSenderId: "970866236717",
+      appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4"
+    });
+    const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const ref = doc(db, "swan_budget", "bottom_line");
+
+    window._cloud = {
+      async signIn() {
+        const p = new GoogleAuthProvider();
+        try { await signInWithPopup(auth, p); }
+        catch (e) {
+          if (e && (e.code === "auth/popup-blocked" || e.code === "auth/cancelled-popup-request")) { await signInWithRedirect(auth, p); return; }
+          throw e;
+        }
+      },
+      async signOut() { await signOut(auth); },
+      async load() { const s = await getDoc(ref); return s.exists() ? s.data() : null; },
+      async save(data) { await setDoc(ref, { json: JSON.stringify(data), updatedAt: new Date().toISOString() }); }
+    };
+    onAuthStateChanged(auth, (user) => {
+      const email = user ? (user.email || "").toLowerCase() : "";
+      window._authState = { signedIn: !!user, ok: !!user && OWNERS.includes(email), email };
+      window.dispatchEvent(new CustomEvent("swanAuth", { detail: window._authState }));
+    });
+  </script>
   <script>
     tailwind.config = {
       theme: {
@@ -72,6 +112,18 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
+  <!-- LOCK SCREEN: sign in with your WebSwan Google account -->
+  <section id="bl-lock" class="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-gradient-to-br from-[#0e3b5c] via-[#0a5285] to-[#0e7bc4]">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+      <img src="../business-service/ws-logo.webp" alt="The WebSwan" class="h-12 mx-auto mb-3 object-contain">
+      <h1 class="text-xl font-extrabold text-[#0e3b5c]">Bottom-Line Studio</h1>
+      <p class="text-xs text-slate-500 mt-1 mb-5">Private. Sign in with your WebSwan Google account to open your numbers.</p>
+      <button id="bl-signin" type="button" class="w-full py-2.5 bg-[#0e7bc4] hover:bg-[#0a5285] text-white rounded-xl text-sm font-semibold">🔑 Sign in with Google</button>
+      <p id="bl-lockmsg" class="text-xs text-rose-600 mt-3 min-h-[1rem]"></p>
+      <a href="../budget/" class="text-xs text-[#0e7bc4] font-semibold mt-2 inline-block">← Back to Swan Budget</a>
+    </div>
+  </section>
+
   <!-- TOP APP BAR -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -110,6 +162,9 @@
             <span class="hidden sm:inline">Swan Budget</span>
           </a>
 
+          <!-- Cloud save status -->
+          <span id="bl-savepill" class="hidden md:inline-flex items-center px-2.5 py-1.5 rounded-lg bg-[#f0f7ff] border border-[#b9ddfd] text-[11px] font-semibold text-[#0a5285] whitespace-nowrap">☁️ Loading…</span>
+
           <!-- Save Button -->
           <button onclick="manualSaveData()" title="Save all calculations & data" class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm shadow-emerald-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
             <i data-lucide="save" class="w-4 h-4"></i>
@@ -131,6 +186,10 @@
           <button onclick="if(!state.clients.length){showToast('Add a client first, then record expenses for it','error');return;} populateExpenseClientDropdown(); openModal('add-expense-modal')" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#498ccc] hover:bg-[#0e7bc4] text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#498ccc]">
             <i data-lucide="receipt" class="w-4 h-4"></i>
             <span class="hidden sm:inline">Record Expense</span>
+          </button>
+
+          <button onclick="lockStudio()" title="Lock (sign out)" class="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs sm:text-sm font-medium rounded-lg">
+            <span>🔐</span><span class="hidden lg:inline">Lock</span>
           </button>
         </div>
       </div>
@@ -927,6 +986,10 @@
         <button onclick="exportDataJSON()" class="hover:text-[#0e7bc4] flex items-center gap-1 font-medium transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Backup (JSON)
         </button>
+        <button onclick="document.getElementById('bl-importfile').click()" class="hover:text-[#0e7bc4] flex items-center gap-1 font-medium transition-colors">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Backup
+        </button>
+        <input type="file" id="bl-importfile" accept="application/json,.json" class="hidden" onchange="importDataJSON(this)">
         <button onclick="resetToSampleData()" class="hover:text-rose-600 flex items-center gap-1 font-medium text-slate-400 transition-colors">
           <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reload Sample Data
         </button>
@@ -1023,15 +1086,7 @@
     function loadState() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const s = JSON.parse(stored) || {};
-          return {
-            currency: s.currency || 'USD',
-            clients: Array.isArray(s.clients) ? s.clients : [],
-            projectExpenses: Array.isArray(s.projectExpenses) ? s.projectExpenses : [],
-            overheadExpenses: Array.isArray(s.overheadExpenses) ? s.overheadExpenses : []
-          };
-        }
+        if (stored) return normalizeState(JSON.parse(stored));
       } catch (e) {
         console.error('Failed to load storage, using sample data', e);
       }
@@ -1039,15 +1094,86 @@
     }
 
     function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-      catch (e) { showToast('Could not save on this device (storage blocked)', 'error'); }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      cloudPersist();
       updateAppUI();
     }
 
+    /* ---------- Account (cloud) saving ---------- */
+    let cloudReady = false, cloudTimer = null;
+    function setPill(t) { const p = document.getElementById('bl-savepill'); if (p) p.textContent = t; }
+    function cloudPersist() {
+      if (!cloudReady || !window._cloud) return;
+      setPill('💾 Saving…');
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(cloudSaveNow, 600);
+    }
+    function cloudSaveNow() {
+      cloudTimer = null;
+      if (!window._cloud) return Promise.resolve(false);
+      return window._cloud.save(state).then(() => { setPill('✅ Saved to your account'); return true; })
+        .catch(err => {
+          const blocked = err && err.code === 'permission-denied';
+          setPill(blocked ? '⚠️ Cloud blocked: saved on this device' : '⚠️ Offline: will retry');
+          if (!blocked) cloudTimer = setTimeout(cloudSaveNow, 5000);
+          return false;
+        });
+    }
+    function flushCloud() { if (cloudTimer) { clearTimeout(cloudTimer); cloudSaveNow(); } }
+    window.addEventListener('beforeunload', flushCloud);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushCloud(); });
+
+    function normalizeState(s) {
+      s = s || {};
+      return {
+        currency: s.currency || 'USD',
+        clients: Array.isArray(s.clients) ? s.clients : [],
+        projectExpenses: Array.isArray(s.projectExpenses) ? s.projectExpenses : [],
+        overheadExpenses: Array.isArray(s.overheadExpenses) ? s.overheadExpenses : []
+      };
+    }
+
+    function openStudio() {
+      document.getElementById('bl-lock').classList.add('hidden');
+      if (cloudReady) return;
+      setPill('☁️ Loading…');
+      window._cloud.load().then(data => {
+        cloudReady = true;
+        if (data && data.json) {
+          // Your account copy wins: same numbers on every device
+          state = normalizeState(JSON.parse(data.json));
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+          updateAppUI();
+          setPill('✅ Saved to your account');
+        } else {
+          // First time: move what's on this device into your account
+          cloudSaveNow();
+        }
+      }).catch(() => { cloudReady = true; setPill('⚠️ Offline: saved on this device'); });
+    }
+
+    function lockStudio() {
+      flushCloud();
+      cloudReady = false;
+      if (window._cloud) window._cloud.signOut();
+    }
+
+    function handleAuth(d) {
+      const lock = document.getElementById('bl-lock');
+      const msg = document.getElementById('bl-lockmsg');
+      if (d.ok) { openStudio(); return; }
+      lock.classList.remove('hidden');
+      if (d.signedIn) { msg.textContent = 'This account (' + d.email + ') does not have access.'; window._cloud.signOut(); }
+    }
+    window.addEventListener('swanAuth', e => handleAuth(e.detail));
+
     function manualSaveData() {
-      saveState();
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      updateAppUI();
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      showToast(`All calculations & client projects saved! (${timeStr})`, 'success');
+      if (!cloudReady) { showToast(`Saved on this device (${timeStr})`, 'success'); return; }
+      clearTimeout(cloudTimer); setPill('💾 Saving…');
+      cloudSaveNow().then(ok => showToast(ok ? `Saved to your account! (${timeStr})` : `Saved on this device only (${timeStr})`, ok ? 'success' : 'error'));
     }
 
     function promptResetOptions() {
@@ -1086,6 +1212,22 @@
       downloadAnchor.click();
       downloadAnchor.remove();
       showToast("Data backup file exported!");
+    }
+
+    function importDataJSON(input) {
+      const f = input.files && input.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const o = JSON.parse(rd.result);
+          if (!o || !Array.isArray(o.clients)) throw new Error('bad');
+          showCustomConfirm('Replace your numbers?', 'This replaces everything here with the file "' + f.name + '".', () => {
+            state = normalizeState(o); saveState(); showToast('Backup imported');
+          });
+        } catch (e) { showToast('That file is not a Bottom-Line backup', 'error'); }
+        input.value = '';
+      };
+      rd.readAsText(f);
     }
 
     const currencySymbols = {
@@ -2176,7 +2318,18 @@
     /* ==========================================================================
        12. INITIALIZATION ON WINDOW LOAD
        ========================================================================== */
+    document.getElementById('bl-signin').addEventListener('click', function() {
+      const msg = document.getElementById('bl-lockmsg'); msg.textContent = '';
+      if (!window._cloud) { msg.textContent = 'Still loading, try again in a second.'; return; }
+      window._cloud.signIn().catch(err => {
+        msg.textContent = err && err.code === 'auth/unauthorized-domain'
+          ? 'This web address is not approved in Firebase yet.'
+          : 'Sign-in did not finish. Allow pop-ups for this site and try again.';
+      });
+    });
+
     window.onload = function() {
+      if (window._authState) handleAuth(window._authState);
       // Set current date in expense modal
       const dateField = document.getElementById('expense-date-input');
       if (dateField) dateField.value = new Date().toISOString().slice(0, 10);
