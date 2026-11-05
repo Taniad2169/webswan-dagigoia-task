@@ -6,7 +6,7 @@
 // Netlify env (set by Tania): WORKPILOT_FIREBASE_KEY (same value as in webswan-lead-prospector).
 import { getStore } from "@netlify/blobs";
 
-export const config = { schedule: "*/15 12-23,0-2 * * 1-6" };
+export const config = { schedule: "*/15 * * * *" }; // every 15 minutes, all day and night, so evening and late-night calls reach WorkPilot too
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
