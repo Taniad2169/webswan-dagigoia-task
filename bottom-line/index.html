@@ -276,7 +276,7 @@
           <div class="text-2xl font-black text-[#0e7bc4] tracking-tight" id="kpi-paid-to-myself">$0.00</div>
           <div class="flex items-center justify-between text-xs text-slate-500 mt-2">
             <span>20% - 30% individual allocation</span>
-            <span class="font-bold text-[#498ccc]" id="kpi-avg-cut">25% avg cut</span>
+            <span class="font-bold text-[#498ccc]" id="kpi-avg-cut">0% avg cut</span>
           </div>
           <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#498ccc] to-[#0e7bc4]"></div>
         </div>
@@ -588,14 +588,14 @@
               <label class="block text-xs font-semibold text-slate-700 mb-1">Proposed Client Budget / Fee (<span class="currency-symbol">$</span>)</label>
               <div class="relative">
                 <span class="absolute left-3 top-2.5 text-slate-400 font-bold currency-symbol text-sm">$</span>
-                <input type="number" id="sim-quote-price" value="5000" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <input type="number" id="sim-quote-price" value="" placeholder="0" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
               </div>
             </div>
 
             <div id="sim-input-target-group" class="hidden">
               <label class="block text-xs font-semibold text-slate-700 mb-1">Desired Profit Margin (%)</label>
               <div class="relative">
-                <input type="number" id="sim-target-margin" value="55" min="1" max="95" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <input type="number" id="sim-target-margin" value="" placeholder="0" min="1" max="95" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
                 <span class="absolute right-3 top-2.5 text-slate-400 font-bold text-sm">%</span>
               </div>
             </div>
@@ -619,14 +619,14 @@
               <p class="text-[11px] text-slate-400 mb-1">Contractors, licenses, assets, cloud fees</p>
               <div class="relative">
                 <span class="absolute left-3 top-2.5 text-slate-400 font-bold currency-symbol text-sm">$</span>
-                <input type="number" id="sim-expenses" value="1200" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <input type="number" id="sim-expenses" value="" placeholder="0" oninput="runSimulation()" class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
               </div>
             </div>
 
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Tax / Buffer Provision (%)</label>
               <div class="relative">
-                <input type="number" id="sim-tax-rate" value="20" min="0" max="60" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
+                <input type="number" id="sim-tax-rate" value="" placeholder="0" min="0" max="60" oninput="runSimulation()" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0e7bc4] focus:bg-white">
                 <span class="absolute right-3 top-2.5 text-slate-400 font-bold text-sm">%</span>
               </div>
             </div>
@@ -642,28 +642,28 @@
                 
                 <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
                   <span class="text-xs text-slate-600 font-medium">Recommended Client Fee:</span>
-                  <span class="text-xl font-black text-slate-900" id="sim-res-quote">$5,000.00</span>
+                  <span class="text-xl font-black text-slate-900" id="sim-res-quote">$0.00</span>
                 </div>
 
                 <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
                   <span class="text-xs text-slate-600">Total Project Expenses:</span>
-                  <span class="text-sm font-bold text-rose-600" id="sim-res-expenses">-$1,200.00</span>
+                  <span class="text-sm font-bold text-rose-600" id="sim-res-expenses">-$0.00</span>
                 </div>
 
                 <!-- Sim Paid to Myself Display -->
                 <div class="flex justify-between items-baseline pb-2 border-b border-slate-200 bg-[#f0f7ff] px-2 py-1 rounded">
                   <span class="text-xs font-bold text-[#0e7bc4]" id="sim-res-self-label">Paid to Myself (25%):</span>
-                  <span class="text-base font-black text-[#0e7bc4]" id="sim-res-self-amount">+$1,250.00</span>
+                  <span class="text-base font-black text-[#0e7bc4]" id="sim-res-self-amount">+$0.00</span>
                 </div>
 
                 <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
                   <span class="text-xs text-slate-600">Gross Project Profit:</span>
-                  <span class="text-sm font-bold text-slate-700" id="sim-res-gross-profit">$3,800.00</span>
+                  <span class="text-sm font-bold text-slate-700" id="sim-res-gross-profit">$0.00</span>
                 </div>
 
                 <div class="flex justify-between items-baseline pb-2 border-b border-slate-200">
                   <span class="text-xs text-slate-600">Estimated Tax Set-Aside:</span>
-                  <span class="text-sm font-semibold text-slate-500" id="sim-res-tax">-$760.00</span>
+                  <span class="text-sm font-semibold text-slate-500" id="sim-res-tax">-$0.00</span>
                 </div>
 
                 <div class="p-4 bg-gradient-to-br from-[#f0f7ff] to-white rounded-xl border border-[#b9ddfd] flex items-center justify-between">
@@ -672,8 +672,8 @@
                     <p class="text-xs text-[#498ccc]">Company profit after your draw & costs</p>
                   </div>
                   <div class="text-right">
-                    <p class="text-xl font-black text-[#0e7bc4]" id="sim-res-net-profit">$1,790.00</p>
-                    <p class="text-xs font-bold text-[#0a5285]" id="sim-res-margin">35.8% Net Margin</p>
+                    <p class="text-xl font-black text-[#0e7bc4]" id="sim-res-net-profit">$0.00</p>
+                    <p class="text-xs font-bold text-[#0a5285]" id="sim-res-margin">0.0% Net Margin</p>
                   </div>
                 </div>
 
@@ -683,7 +683,7 @@
             <!-- Markup badge -->
             <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
               <span>Required Cost Markup:</span>
-              <span class="font-bold text-slate-800" id="sim-res-markup">316%</span>
+              <span class="font-bold text-slate-800" id="sim-res-markup">0%</span>
             </div>
           </div>
 
@@ -945,7 +945,7 @@
         <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
       </div>
       <h3 class="text-base font-bold text-slate-900">Reset Calculations</h3>
-      <p class="text-xs text-slate-500 mt-1 mb-4">Choose how you would like to reset your financial calculations:</p>
+      <p class="text-xs text-slate-500 mt-1 mb-4">This erases every client, expense and overhead item so you start from zero.</p>
       
       <div class="space-y-2.5 text-left">
         <button onclick="executeReset('empty')" class="w-full p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/50 flex items-center justify-between transition-colors cursor-pointer">
@@ -956,13 +956,6 @@
           <i data-lucide="trash" class="w-4 h-4 text-rose-500"></i>
         </button>
 
-        <button onclick="executeReset('sample')" class="w-full p-3 rounded-xl border border-slate-200 hover:border-[#8bbef0] hover:bg-[#f0f7ff] flex items-center justify-between transition-colors cursor-pointer">
-          <div>
-            <div class="text-xs font-bold text-slate-800">Restore Sample Demo Data</div>
-            <div class="text-[11px] text-slate-400">Load sample webswan projects and expenses</div>
-          </div>
-          <i data-lucide="refresh-cw" class="w-4 h-4 text-[#0e7bc4]"></i>
-        </button>
       </div>
 
       <div class="mt-4 pt-3 border-t border-slate-100">
@@ -990,9 +983,6 @@
           <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Backup
         </button>
         <input type="file" id="bl-importfile" accept="application/json,.json" class="hidden" onchange="importDataJSON(this)">
-        <button onclick="resetToSampleData()" class="hover:text-rose-600 flex items-center gap-1 font-medium text-slate-400 transition-colors">
-          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reload Sample Data
-        </button>
       </div>
     </div>
   </footer>
@@ -1006,73 +996,17 @@
        ========================================================================== */
     const STORAGE_KEY = 'webswan_profit_calc_v3';
     
-    const sampleData = {
-      currency: 'USD',
-      clients: [
-        {
-          id: 'c1',
-          name: 'Apex Global Logistics',
-          project: 'Enterprise Portal & Tracking API',
-          revenue: 18500,
-          selfCutPercent: 25,
-          status: 'ACTIVE',
-          notes: '50% paid upfront, milestones due end of sprint 4'
-        },
-        {
-          id: 'c2',
-          name: 'Verde Organics Co.',
-          project: 'Brand Identity & Custom E-Commerce',
-          revenue: 11200,
-          selfCutPercent: 30,
-          status: 'COMPLETED',
-          notes: 'Final invoice settled. Client wants retainer next quarter.'
-        },
-        {
-          id: 'c3',
-          name: 'Nova Health & Fitness',
-          project: 'Mobile Companion App UI/UX',
-          revenue: 6400,
-          selfCutPercent: 22,
-          status: 'ACTIVE',
-          notes: 'Figma prototypes and Flutter design system'
-        },
-        {
-          id: 'c4',
-          name: 'Bella Bistro Group',
-          project: 'Local SEO, Menu Portal & Photography',
-          revenue: 2800,
-          selfCutPercent: 20,
-          status: 'COMPLETED',
-          notes: 'Quick turnaround project.'
-        }
-      ],
-      projectExpenses: [
-        // Expenses for Apex
-        { id: 'pe1', clientId: 'c1', desc: 'Senior React Native Dev (Subcontractor)', amount: 4200, category: 'Subcontractor', date: '2026-10-12' },
-        { id: 'pe2', clientId: 'c1', desc: 'AWS Dedicated Staging Server', amount: 320, category: 'Hosting & Cloud', date: '2026-10-18' },
-        { id: 'pe3', clientId: 'c1', desc: 'Security Penetration Audit', amount: 850, category: 'Subcontractor', date: '2026-10-25' },
-        
-        // Expenses for Verde Organics
-        { id: 'pe4', clientId: 'c2', desc: 'Custom Typography Font Licensing', amount: 280, category: 'Assets & Media', date: '2026-09-04' },
-        { id: 'pe5', clientId: 'c2', desc: 'Shopify Plus Private App Theme License', amount: 350, category: 'Software/Tools', date: '2026-09-10' },
-        { id: 'pe6', clientId: 'c2', desc: 'Commercial Product 3D Renders', amount: 950, category: 'Subcontractor', date: '2026-09-18' },
+    // Fresh start: no sample clients, expenses or overhead
+    const EMPTY_STATE = { currency: 'USD', clients: [], projectExpenses: [], overheadExpenses: [] };
 
-        // Expenses for Nova Health
-        { id: 'pe7', clientId: 'c3', desc: 'Illustrations & Health Icon Pack', amount: 160, category: 'Assets & Media', date: '2026-10-01' },
-        { id: 'pe8', clientId: 'c3', desc: 'Motion Graphics Animator (Micro-interactions)', amount: 1100, category: 'Subcontractor', date: '2026-10-22' },
-
-        // Expenses for Bella Bistro
-        { id: 'pe9', clientId: 'c4', desc: 'Food Photographer Day-Rate', amount: 750, category: 'Subcontractor', date: '2026-08-15' },
-        { id: 'pe10', clientId: 'c4', desc: 'QR Code Dynamic Menu Platform Sub', amount: 90, category: 'Software/Tools', date: '2026-08-16' }
-      ],
-      overheadExpenses: [
-        { id: 'oh1', desc: 'Adobe Creative Cloud All Apps', amount: 59.99, freq: 'MONTHLY', category: 'Software Subscriptions' },
-        { id: 'oh2', desc: 'Figma Professional & Workspace', amount: 45.00, freq: 'MONTHLY', category: 'Software Subscriptions' },
-        { id: 'oh3', desc: 'Professional Indemnity & Cyber Insurance', amount: 650.00, freq: 'ANNUAL', category: 'Legal & Accounting' },
-        { id: 'oh4', desc: 'Accounting Software & Bookkeeper Retainer', amount: 120.00, freq: 'MONTHLY', category: 'Legal & Accounting' },
-        { id: 'oh5', desc: 'High-Speed Studio Fiber Internet', amount: 85.00, freq: 'MONTHLY', category: 'Office & Workspace' }
-      ]
-    };
+    // Ids of the old demo entries, so they get cleaned out of saved data too
+    const DEMO_IDS = ['c1','c2','c3','c4','pe1','pe2','pe3','pe4','pe5','pe6','pe7','pe8','pe9','pe10','oh1','oh2','oh3','oh4','oh5'];
+    function stripDemo(st) {
+      st.clients = st.clients.filter(x => !DEMO_IDS.includes(x.id));
+      st.projectExpenses = st.projectExpenses.filter(x => !DEMO_IDS.includes(x.id) && !DEMO_IDS.includes(x.clientId));
+      st.overheadExpenses = st.overheadExpenses.filter(x => !DEMO_IDS.includes(x.id));
+      return st;
+    }
 
     let state = loadState();
 
@@ -1086,11 +1020,11 @@
     function loadState() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return normalizeState(JSON.parse(stored));
+        if (stored) return stripDemo(normalizeState(JSON.parse(stored)));
       } catch (e) {
         console.error('Failed to load storage, using sample data', e);
       }
-      return JSON.parse(JSON.stringify(sampleData));
+      return JSON.parse(JSON.stringify(EMPTY_STATE));
     }
 
     function saveState() {
@@ -1141,10 +1075,13 @@
         cloudReady = true;
         if (data && data.json) {
           // Your account copy wins: same numbers on every device
-          state = normalizeState(JSON.parse(data.json));
+          const fromCloud = normalizeState(JSON.parse(data.json));
+          const before = fromCloud.clients.length + fromCloud.projectExpenses.length + fromCloud.overheadExpenses.length;
+          state = stripDemo(fromCloud);
+          const after = state.clients.length + state.projectExpenses.length + state.overheadExpenses.length;
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
           updateAppUI();
-          setPill('✅ Saved to your account');
+          if (after !== before) cloudSaveNow(); else setPill('✅ Saved to your account');
         } else {
           // First time: move what's on this device into your account
           cloudSaveNow();
@@ -1188,20 +1125,9 @@
         state.overheadExpenses = [];
         saveState();
         showToast("Calculations cleared to blank slate!");
-      } else if (mode === 'sample') {
-        state = JSON.parse(JSON.stringify(sampleData));
-        saveState();
-        showToast("Sample data restored successfully!");
       }
     }
 
-    function resetToSampleData() {
-      showCustomConfirm("Reset to Sample Data?", "This will overwrite your existing data with default example clients and overhead.", () => {
-        state = JSON.parse(JSON.stringify(sampleData));
-        saveState();
-        showToast("Sample data restored successfully!");
-      });
-    }
 
     function exportDataJSON() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
@@ -1345,7 +1271,7 @@
       const totalClientsCount = state.clients.length;
       const avgProfitPerClient = totalClientsCount > 0 ? (grossProjectProfit / totalClientsCount) : 0;
       const overallProjectROI = totalDirectCosts > 0 ? (totalRevenue / totalDirectCosts) : 0;
-      const avgCut = totalRevenue > 0 ? ((totalPaidToMyself / totalRevenue) * 100) : 25;
+      const avgCut = totalRevenue > 0 ? ((totalPaidToMyself / totalRevenue) * 100) : 0;
 
       return {
         totalRevenue,
@@ -1938,8 +1864,9 @@
       if (currentSimMode === 'from-price') {
         quotePrice = Number(document.getElementById('sim-quote-price')?.value || 0);
       } else {
-        const targetMargin = Math.min(0.95, Math.max(0.01, Number(document.getElementById('sim-target-margin')?.value || 50) / 100));
-        quotePrice = costs / (1 - targetMargin);
+        const tm = Number(document.getElementById('sim-target-margin')?.value || 0);
+        const targetMargin = Math.min(0.95, Math.max(0, tm / 100));
+        quotePrice = costs > 0 ? costs / (1 - targetMargin) : 0;
       }
 
       const payToMyself = quotePrice * (selfCutPercent / 100);
