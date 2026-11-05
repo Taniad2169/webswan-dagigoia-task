@@ -290,5 +290,22 @@ export function dueJobs(now = new Date()) {
   if (wd !== "Sat" && wd !== "Sun") jobs.push("tatiana_linkedin");
   return jobs;
 }
-export const JOBS = { eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (m) => c360Push(m), c360_videos: c360Videos };
+// A chat answer that took too long for the live request: finish it here and post it in the agent's chat.
+async function agentReply(agent) {
+  const s = await getSettings(), st = teamStore();
+  const hist = (await st.get("chat-" + agent, { type: "json" })) || [];
+  const last = hist[hist.length - 1]; if (!last || last.role !== "user") return;
+  const past = hist.slice(-15, -1).map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.text || "").slice(0, 6000) }));
+  let extra = "";
+  if (agent === "eva") {
+    const now = new Date();
+    try { extra += "\n\nLATEST EMAILS (data):\n" + JSON.stringify((await scriptCall({ action: "inbox", query: "in:inbox newer_than:2d", max: 40 })).emails || []).slice(0, 14000); } catch (e) { extra += "\n\n(Gmail: " + e.message + ")"; }
+    try { extra += "\n\nGOOGLE CALENDAR AND TASKS, next 7 days (data, UTC times; say them in Pacific time):\n" + JSON.stringify(await scriptCall({ action: "agenda", from: now.toISOString(), to: new Date(now.getTime() + 7 * 864e5).toISOString() })).slice(0, 9000); } catch (e) { extra += "\n\n(Calendar: " + e.message + ")"; }
+  }
+  const notes = (((await st.get("brain-notes", { type: "json" })) || {})[agent] || []).map((n) => "- " + n.note).join("\n");
+  const ans = await askAI(brainFor(s, agent), AGENTS[agent].system + (notes ? "\n\nTANIA'S COACHING NOTES:\n" + notes : "") + "\nToday is " + ptDate() + ".", [...past, { role: "user", content: String(last.text || "") + extra }]);
+  await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
+}
+const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
+export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (m) => c360Push(m), c360_videos: c360Videos };
 export { ptHour };
