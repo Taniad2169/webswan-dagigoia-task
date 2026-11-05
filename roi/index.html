@@ -236,41 +236,89 @@
     <details class="card cheat" id="cheat" open>
       <summary><h2>📋 My cheat sheet: what is a new <span class="unit1">patient</span> worth?</h2><span class="chev"></span></summary>
 
-      <h4>1. Ask them (best)</h4>
-      <div class="q" id="q1">"What's a typical first visit worth to you?"</div>
-      <div class="q" id="q2">"How many times does a new patient usually come back in a year?"</div>
-      <p class="hint" style="font-size:12.5px">Let them say the number out loud. Then the ROI is theirs, not yours.</p>
+      <!-- ===== DOCTORS / DENTISTS / CHIRO / MED SPA ===== -->
+      <div id="cheatMed">
+        <h4>1. Ask them (best)</h4>
+        <div class="q">"What's a typical first visit worth to you?"</div>
+        <div class="q">"How many times does a new patient usually come back in a year?"</div>
+        <div class="q">"How long does a patient usually stay with you?"</div>
+        <p class="hint" style="font-size:12.5px">Let them say the number out loud. Then the ROI is theirs, not yours.</p>
 
-      <h4>2. Quick math</h4>
-      <div class="helper">
-        <div class="grid3" id="helpMed">
-          <div><label class="f" for="hFee">Fee per visit ($)</label><input type="number" id="hFee" min="0" placeholder="0"></div>
-          <div><label class="f" for="hVisits">Visits per year</label><input type="number" id="hVisits" min="0" step="0.5" placeholder="0"></div>
-          <div><label class="f" for="hYears">Years they stay</label><input type="number" id="hYears" min="0" step="0.5" placeholder="1"></div>
+        <h4>2. Quick math</h4>
+        <div class="helper">
+          <div class="grid3">
+            <div><label class="f" for="hFee">Fee per visit ($)</label><input type="number" id="hFee" min="0" placeholder="0"></div>
+            <div><label class="f" for="hVisits">Visits per year</label><input type="number" id="hVisits" min="0" step="0.5" placeholder="0"></div>
+            <div><label class="f" for="hYears">Years they stay</label><input type="number" id="hYears" min="0" step="0.5" placeholder="1"></div>
+          </div>
+          <div class="out">
+            <span>Worth per new patient:</span> <b id="hOutMed">$0</b>
+            <button type="button" class="btn-use" onclick="useHelper()">Use this number ↑</button>
+          </div>
         </div>
-        <div class="grid3 hidden" id="helpLaw">
-          <div><label class="f" for="hRate">Hourly rate ($)</label><input type="number" id="hRate" min="0" placeholder="0"></div>
-          <div><label class="f" for="hHours">Hours per case</label><input type="number" id="hHours" min="0" placeholder="0"></div>
-          <div><label class="f" for="hFlat">Or flat fee per case ($)</label><input type="number" id="hFlat" min="0" placeholder="0"></div>
-        </div>
-        <div class="out">
-          <span>Worth per new <span class="unit1">patient</span>:</span> <b id="hOut">$0</b>
-          <button type="button" class="btn-use" onclick="useHelper()">Use this number ↑</button>
-        </div>
+
+        <h4>3. Look it up</h4>
+        <ul>
+          <li><b>Their own website and Google profile:</b> price list, "new patient special", cash prices or membership plans.</li>
+          <li><a href="https://www.fairhealthconsumer.org" target="_blank" rel="noopener">FAIR Health Consumer</a>: free. Enter their zip code and a procedure to see typical local costs (medical and dental).</li>
+        </ul>
+
+        <h4>4. Rough starting points if they won't say</h4>
+        <ul><li>Doctor ~$600 · Dentist ~$900 · Chiropractor ~$700 · Med spa ~$500 per new patient (these load automatically when you pick the practice type)</li></ul>
       </div>
 
-      <h4>3. Look it up</h4>
-      <ul>
-        <li><b>Their own website and Google profile:</b> look for a price list, "new patient special", consultation fee or flat fees.</li>
-        <li><b>Doctors and dentists:</b> <a href="https://www.fairhealthconsumer.org" target="_blank" rel="noopener">FAIR Health Consumer</a>. Free: enter their zip code and a procedure to see typical local costs (medical and dental).</li>
-        <li><b>Lawyers:</b> <a href="https://clio.com/resources/legal-trends/compare-lawyer-rates/" target="_blank" rel="noopener">Clio lawyer rates</a> by state and practice area. US average is about $362/hr (2026).</li>
-      </ul>
+      <!-- ===== LAWYERS ===== -->
+      <div id="cheatLaw" class="hidden">
+        <h4>1. Ask them (best)</h4>
+        <div class="q">"How do you usually charge: hourly, flat fee, or a percentage of the settlement?"</div>
+        <div class="q">"What does a typical case bring in for your firm?"</div>
+        <div class="q">"About how many hours does a typical case take?"</div>
+        <div class="q">"How many new clients do you sign in a month right now, and how many more could you handle?"</div>
+        <p class="hint" style="font-size:12.5px">Injury, malpractice and workers' comp lawyers usually work on contingency (a share of the settlement). Family, criminal, immigration and estate lawyers usually bill hourly or flat fees.</p>
 
-      <h4>4. Rough starting points if they won't say</h4>
-      <ul>
-        <li>Doctor ~$600 · Dentist ~$900 · Chiropractor ~$700 · Med spa ~$500 per new patient (these load automatically when you pick the practice type)</li>
-        <li>Lawyer: hourly rate × hours per case. Example: $362 × 10 hrs ≈ $3,600 per client</li>
-      </ul>
+        <h4>2. Quick math</h4>
+        <div class="helper">
+          <div class="grid2">
+            <div>
+              <label class="f" for="hArea">Practice area</label>
+              <select id="hArea"></select>
+              <div class="hint">Picks the average hourly rate for you (Clio, Oct 2026).</div>
+            </div>
+            <div>
+              <label class="f" for="hMode">How they charge</label>
+              <select id="hMode">
+                <option value="hourly">Hourly</option>
+                <option value="flat">Flat fee per case</option>
+                <option value="contingency">Contingency (% of settlement)</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2" id="hmHourly" style="margin-top:10px">
+            <div><label class="f" for="hRate">Hourly rate ($)</label><input type="number" id="hRate" min="0" placeholder="0"></div>
+            <div><label class="f" for="hHours">Hours per case</label><input type="number" id="hHours" min="0" placeholder="0"></div>
+          </div>
+          <div class="grid2 hidden" id="hmFlat" style="margin-top:10px">
+            <div><label class="f" for="hFlat">Flat fee per case ($)</label><input type="number" id="hFlat" min="0" placeholder="0"></div>
+          </div>
+          <div class="grid2 hidden" id="hmCont" style="margin-top:10px">
+            <div><label class="f" for="hSettle">Average settlement ($)</label><input type="number" id="hSettle" min="0" placeholder="0"></div>
+            <div><label class="f" for="hPct">Their share (%)</label><input type="number" id="hPct" min="0" max="100" placeholder="33"></div>
+          </div>
+          <div class="out">
+            <span>Worth per new client:</span> <b id="hOutLaw">$0</b>
+            <button type="button" class="btn-use" onclick="useHelper()">Use this number ↑</button>
+          </div>
+        </div>
+
+        <h4>3. Look it up</h4>
+        <ul>
+          <li><b>Their own website and Google profile:</b> consultation fee, flat-fee services (wills, DUI, uncontested divorce), "no fee unless we win".</li>
+          <li><a href="https://clio.com/resources/legal-trends/compare-lawyer-rates/" target="_blank" rel="noopener">Clio lawyer rates</a>: average hourly rate in their state and practice area. US average is $362/hr (Oct 2026).</li>
+        </ul>
+
+        <h4>4. Average hourly rates by practice area (US, Clio Oct 2026)</h4>
+        <div id="lawRates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 14px;font-size:12.5px"></div>
+      </div>
     </details>
   </div>
 
@@ -459,7 +507,7 @@ function refresh() {
   document.querySelectorAll('.unit1').forEach(e => e.textContent = p.unit);
   document.querySelectorAll('.unit2').forEach(e => e.textContent = p.units);
   SERVICES.forEach(s => $('svc-' + s.id).classList.toggle('on', st.svc[s.id].on));
-  if ($('hOut')) updateHelper();
+  if ($('hOutMed')) updateHelper();
   save();
   const r = calc();
   if (!r.lines.length) { $('resEmpty').classList.remove('hidden'); $('resBox').classList.add('hidden'); $('resSub').textContent = 'Pick at least one service to see the numbers.'; return; }
@@ -582,21 +630,42 @@ function clearAll() { st = freshState('doctor'); $('quickPick').value = ''; fill
 function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
 
 /* ========= Cheat sheet helper ========= */
+// Clio Legal Trends, national average lawyer hourly rates, updated October 2026
+const LAW_RATES = { 'Administrative Law':350, 'Appellate':313, 'Bankruptcy':481, 'Business Formation / Compliance':400, 'Civil Litigation':368,
+  'Civil Rights / Constitutional':386, 'Collections & Debt':339, 'Commercial / Sale of Goods':426, 'Construction':324, 'Contracts':384,
+  'Corporate Litigation':484, 'Criminal':219, 'Elder Law':308, 'Employment / Labor':388, 'Family':357, 'Government':254, 'Immigration':377,
+  'Insurance':225, 'Intellectual Property':461, 'Juvenile':132, 'Mediation / Arbitration':393, 'Medical Malpractice':266, 'Personal Injury':324,
+  'Real Estate':399, 'Small Claims':307, 'Tax':446, 'Traffic Offenses':345, 'Trusts':419, 'Wills & Estates':391, "Workers' Compensation":187 };
+const CONTINGENCY = ['Personal Injury', 'Medical Malpractice', "Workers' Compensation"];
+$('hArea').innerHTML = '<option value="">Average of all areas ($362/hr)</option>' + Object.keys(LAW_RATES).map(k => `<option>${esc(k)}</option>`).join('');
+$('lawRates').innerHTML = Object.entries(LAW_RATES).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #edf3f9;padding:3px 0"><span>${esc(k)}</span><b>$${v}</b></div>`).join('');
+
 function helperValue() {
   if (st.type === 'attorney') {
-    const flat = num($('hFlat').value);
-    return flat > 0 ? flat : num($('hRate').value) * num($('hHours').value);
+    const mode = $('hMode').value;
+    if (mode === 'flat') return num($('hFlat').value);
+    if (mode === 'contingency') { const pct = $('hPct').value === '' ? 33 : num($('hPct').value); return num($('hSettle').value) * pct / 100; }
+    return num($('hRate').value) * num($('hHours').value);
   }
   const yrs = $('hYears').value === '' ? 1 : num($('hYears').value);
   return num($('hFee').value) * num($('hVisits').value) * yrs;
 }
 function updateHelper() {
   const law = st.type === 'attorney';
-  $('helpMed').classList.toggle('hidden', law); $('helpLaw').classList.toggle('hidden', !law);
-  $('q1').textContent = law ? '"What does a typical case bring in for you, or what is your hourly rate?"' : '"What\'s a typical first visit worth to you?"';
-  $('q2').textContent = law ? '"About how many hours does a typical case take?"' : '"How many times does a new patient usually come back in a year?"';
-  $('hOut').textContent = money(helperValue());
+  $('cheatMed').classList.toggle('hidden', law); $('cheatLaw').classList.toggle('hidden', !law);
+  const mode = $('hMode').value;
+  $('hmHourly').classList.toggle('hidden', mode !== 'hourly');
+  $('hmFlat').classList.toggle('hidden', mode !== 'flat');
+  $('hmCont').classList.toggle('hidden', mode !== 'contingency');
+  $(law ? 'hOutLaw' : 'hOutMed').textContent = money(helperValue());
 }
+$('hArea').addEventListener('change', e => {
+  const a = e.target.value;
+  $('hRate').value = a ? LAW_RATES[a] : 362;
+  $('hMode').value = CONTINGENCY.includes(a) ? 'contingency' : 'hourly';
+  updateHelper();
+});
+$('hMode').addEventListener('change', updateHelper);
 function useHelper() {
   const v = Math.round(helperValue());
   if (v <= 0) { toast('Fill in the quick math first'); return; }
@@ -604,7 +673,7 @@ function useHelper() {
   toast('Using ' + money(v) + ' per new ' + PRESETS[st.type].unit);
   $('cValue').scrollIntoView({ behavior:'smooth', block:'center' });
 }
-['hFee','hVisits','hYears','hRate','hHours','hFlat'].forEach(id => $(id).addEventListener('input', updateHelper));
+['hFee','hVisits','hYears','hRate','hHours','hFlat','hSettle','hPct'].forEach(id => $(id).addEventListener('input', updateHelper));
 
 $('quickPick').addEventListener('change', e => applyPack(e.target.value));
 $('cType').addEventListener('change', e => applyType(e.target.value));
