@@ -79,10 +79,14 @@
   /* Chat height: drag the bar under the messages (double-click resets); the height is remembered */
   .app { height: auto; min-height: calc(100vh - 104px); }
   .msgs { flex: none; height: var(--mh, 74vh); min-height: 260px; }
-  .grip { height: 16px; cursor: ns-resize; background: #eef4fb; border-top: 1px solid var(--line); display: grid; place-items: center; touch-action: none; user-select: none; }
-  .grip::before { content: ""; width: 64px; height: 5px; border-radius: 3px; background: #9fb6cf; }
+  .grip { height: 24px; cursor: ns-resize; background: #e3eefa; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; gap: 8px; touch-action: none; user-select: none; font-size: 12px; font-weight: 700; color: #4b6a8a; }
+  .grip::before { content: ""; width: 64px; height: 6px; border-radius: 3px; background: #8fb0d3; }
+  .grip::after { content: "drag to make the chat taller or shorter"; }
   .grip:hover::before { background: #1182f0; }
-  .compose textarea { resize: vertical; min-height: 54px; max-height: 40vh; }
+  .compose textarea { resize: vertical; height: 84px; min-height: 54px; max-height: 50vh; }
+  /* Side panel: show every agent at once, like Marblism (the page scrolls, not a tiny box) */
+  aside { align-self: start; }
+  .list { flex: none; overflow: visible; }
   @media (max-width: 820px) { .app { height: auto; min-height: calc(100vh - 118px); } }
   [hidden] { display: none !important; }
 </style>
