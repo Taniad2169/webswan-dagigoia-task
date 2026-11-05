@@ -84,6 +84,21 @@
   .row b{font-weight:800}
   .empty{padding:24px;text-align:center;color:var(--muted);font-size:13px;border:1.5px dashed var(--line);border-radius:14px}
 
+  /* Cheat sheet */
+  .cheat summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  .cheat summary::-webkit-details-marker{display:none}
+  .cheat summary h2{margin:0}
+  .cheat summary .chev{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700}
+  .cheat[open] summary .chev::after{content:"Hide"} .cheat:not([open]) summary .chev::after{content:"Show"}
+  .cheat h4{margin:16px 0 6px;font-size:13px;color:#1b5a96;text-transform:uppercase;letter-spacing:.04em}
+  .cheat ol,.cheat ul{margin:0;padding-left:20px;font-size:13.5px;line-height:1.6}
+  .cheat .q{background:#f0f7ff;border-left:3px solid var(--b1);padding:7px 10px;border-radius:6px;margin:4px 0;font-size:13.5px}
+  .cheat a{color:#1b74d0;font-weight:700}
+  .helper{margin-top:10px;padding:12px;border:1.5px dashed #b9d6f5;border-radius:12px;background:#fbfdff}
+  .helper .out{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:14px}
+  .helper .out b{font-size:20px;color:var(--navy)}
+  .btn-use{background:var(--grad);color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer}
+
   /* Toast */
   #toast{position:fixed;bottom:20px;right:20px;background:#14263d;color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:100}
 
@@ -170,7 +185,7 @@
         <div>
           <label class="f" for="cValue">Avg. revenue per new <span class="unit1">patient</span> ($)</label>
           <input type="number" id="cValue" min="0" step="50">
-          <div class="hint">Ask them: "What's a new <span class="unit1">patient</span> worth to you?"</div>
+          <div class="hint">Ask them, or use <a href="#cheat" onclick="document.getElementById('cheat').open=true" style="color:#1b74d0;font-weight:700">my cheat sheet</a>.</div>
         </div>
         <div>
           <label class="f" for="cMonths">Look ahead</label>
@@ -216,6 +231,47 @@
       </div>
       <div id="svcList"></div>
     </section>
+
+    <!-- CHEAT SHEET (screen only, never printed) -->
+    <details class="card cheat" id="cheat" open>
+      <summary><h2>📋 My cheat sheet: what is a new <span class="unit1">patient</span> worth?</h2><span class="chev"></span></summary>
+
+      <h4>1. Ask them (best)</h4>
+      <div class="q" id="q1">"What's a typical first visit worth to you?"</div>
+      <div class="q" id="q2">"How many times does a new patient usually come back in a year?"</div>
+      <p class="hint" style="font-size:12.5px">Let them say the number out loud. Then the ROI is theirs, not yours.</p>
+
+      <h4>2. Quick math</h4>
+      <div class="helper">
+        <div class="grid3" id="helpMed">
+          <div><label class="f" for="hFee">Fee per visit ($)</label><input type="number" id="hFee" min="0" placeholder="0"></div>
+          <div><label class="f" for="hVisits">Visits per year</label><input type="number" id="hVisits" min="0" step="0.5" placeholder="0"></div>
+          <div><label class="f" for="hYears">Years they stay</label><input type="number" id="hYears" min="0" step="0.5" placeholder="1"></div>
+        </div>
+        <div class="grid3 hidden" id="helpLaw">
+          <div><label class="f" for="hRate">Hourly rate ($)</label><input type="number" id="hRate" min="0" placeholder="0"></div>
+          <div><label class="f" for="hHours">Hours per case</label><input type="number" id="hHours" min="0" placeholder="0"></div>
+          <div><label class="f" for="hFlat">Or flat fee per case ($)</label><input type="number" id="hFlat" min="0" placeholder="0"></div>
+        </div>
+        <div class="out">
+          <span>Worth per new <span class="unit1">patient</span>:</span> <b id="hOut">$0</b>
+          <button type="button" class="btn-use" onclick="useHelper()">Use this number ↑</button>
+        </div>
+      </div>
+
+      <h4>3. Look it up</h4>
+      <ul>
+        <li><b>Their own website and Google profile:</b> look for a price list, "new patient special", consultation fee or flat fees.</li>
+        <li><b>Doctors and dentists:</b> <a href="https://www.fairhealthconsumer.org" target="_blank" rel="noopener">FAIR Health Consumer</a>. Free: enter their zip code and a procedure to see typical local costs (medical and dental).</li>
+        <li><b>Lawyers:</b> <a href="https://clio.com/resources/legal-trends/compare-lawyer-rates/" target="_blank" rel="noopener">Clio lawyer rates</a> by state and practice area. US average is about $362/hr (2026).</li>
+      </ul>
+
+      <h4>4. Rough starting points if they won't say</h4>
+      <ul>
+        <li>Doctor ~$600 · Dentist ~$900 · Chiropractor ~$700 · Med spa ~$500 per new patient (these load automatically when you pick the practice type)</li>
+        <li>Lawyer: hourly rate × hours per case. Example: $362 × 10 hrs ≈ $3,600 per client</li>
+      </ul>
+    </details>
   </div>
 
   <!-- RESULTS -->
@@ -403,6 +459,7 @@ function refresh() {
   document.querySelectorAll('.unit1').forEach(e => e.textContent = p.unit);
   document.querySelectorAll('.unit2').forEach(e => e.textContent = p.units);
   SERVICES.forEach(s => $('svc-' + s.id).classList.toggle('on', st.svc[s.id].on));
+  if ($('hOut')) updateHelper();
   save();
   const r = calc();
   if (!r.lines.length) { $('resEmpty').classList.remove('hidden'); $('resBox').classList.add('hidden'); $('resSub').textContent = 'Pick at least one service to see the numbers.'; return; }
@@ -523,6 +580,31 @@ function applyType(type) {
 }
 function clearAll() { st = freshState('doctor'); $('quickPick').value = ''; fillForm(); refresh(); toast('Fresh estimate started'); }
 function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
+
+/* ========= Cheat sheet helper ========= */
+function helperValue() {
+  if (st.type === 'attorney') {
+    const flat = num($('hFlat').value);
+    return flat > 0 ? flat : num($('hRate').value) * num($('hHours').value);
+  }
+  const yrs = $('hYears').value === '' ? 1 : num($('hYears').value);
+  return num($('hFee').value) * num($('hVisits').value) * yrs;
+}
+function updateHelper() {
+  const law = st.type === 'attorney';
+  $('helpMed').classList.toggle('hidden', law); $('helpLaw').classList.toggle('hidden', !law);
+  $('q1').textContent = law ? '"What does a typical case bring in for you, or what is your hourly rate?"' : '"What\'s a typical first visit worth to you?"';
+  $('q2').textContent = law ? '"About how many hours does a typical case take?"' : '"How many times does a new patient usually come back in a year?"';
+  $('hOut').textContent = money(helperValue());
+}
+function useHelper() {
+  const v = Math.round(helperValue());
+  if (v <= 0) { toast('Fill in the quick math first'); return; }
+  st.value = v; $('cValue').value = v; refresh();
+  toast('Using ' + money(v) + ' per new ' + PRESETS[st.type].unit);
+  $('cValue').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+['hFee','hVisits','hYears','hRate','hHours','hFlat'].forEach(id => $(id).addEventListener('input', updateHelper));
 
 $('quickPick').addEventListener('change', e => applyPack(e.target.value));
 $('cType').addEventListener('change', e => applyType(e.target.value));
