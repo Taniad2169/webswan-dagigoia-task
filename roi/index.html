@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>The WebSwan | Client ROI Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --b1:#3898f5; --b2:#6aa8e6; --b3:#48d6fa;
+    --navy:#0d2f57; --ink:#14263d; --muted:#5f7389; --line:#dbe7f3;
+    --bg:#f2f8fd; --card:#fff; --good:#16a085; --bad:#d64561;
+    --grad:linear-gradient(120deg,#3898f5,#6aa8e6 55%,#48d6fa);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  button,input,select{font:inherit}
+  .hidden{display:none!important}
+
+  /* Header */
+  header{background:var(--grad);color:#fff;position:sticky;top:0;z-index:20;box-shadow:0 4px 16px rgba(13,47,87,.2)}
+  .hwrap{max-width:1200px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .hlogo{height:44px;background:#fff;border-radius:10px;padding:4px 8px}
+  .htitle b{display:block;font-size:20px;font-weight:800}
+  .htitle span{font-size:12.5px;opacity:.92}
+  .hright{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .hbtn{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .hbtn:hover{background:rgba(255,255,255,.3)}
+  .hbtn.main{background:#fff;color:var(--navy);border-color:#fff}
+  .hphoto{height:44px;width:44px;border-radius:50%;object-fit:cover;border:2px solid #fff}
+
+  main{max-width:1200px;margin:0 auto;padding:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+  @media (max-width:960px){main{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 10px rgba(13,47,87,.04)}
+  .card h2{margin:0 0 4px;font-size:16px;color:var(--navy)}
+  .card .sub{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+  .stack{display:flex;flex-direction:column;gap:18px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media (max-width:620px){.grid2,.grid3{grid-template-columns:1fr}}
+  label.f{display:block;font-size:12px;font-weight:700;color:#33475e;margin-bottom:4px}
+  input[type=text],input[type=number],select{width:100%;padding:9px 11px;border:1px solid #c9d8e8;border-radius:10px;background:#fbfdff;font-size:14px;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--b1);box-shadow:0 0 0 3px rgba(56,152,245,.18);background:#fff}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+  .quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .quick select{flex:1;min-width:220px}
+  .pill{border:1px solid #b9d6f5;background:#f0f7ff;color:#1b5a96;border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .pill:hover{background:#e0effe}
+
+  .svc{border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;transition:.15s}
+  .svc.on{border-color:var(--b1);background:#f5faff}
+  .svc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .svc-top input[type=checkbox]{width:20px;height:20px;accent-color:var(--b1);cursor:pointer}
+  .svc-name{font-weight:800;font-size:14.5px;color:var(--navy)}
+  .svc-desc{font-size:12px;color:var(--muted);margin:3px 0 0 30px}
+  .svc-tier{margin-left:auto;min-width:200px;max-width:270px}
+  .svc-body{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 0 30px}
+  @media (max-width:620px){.svc-body{grid-template-columns:1fr 1fr;margin-left:0}.svc-desc{margin-left:0}.svc-tier{margin-left:0;max-width:none;width:100%}}
+  .svc:not(.on) .svc-body{opacity:.45}
+  .svc-body label{font-size:11px;font-weight:700;color:#4a5f77;display:block;margin-bottom:3px}
+  .svc-body input{padding:7px 9px;font-size:13px}
+
+  /* Results */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{border-radius:14px;padding:14px;color:#fff}
+  .kpi small{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+  .kpi b{display:block;font-size:24px;font-weight:900;margin-top:4px}
+  .kpi em{font-style:normal;font-size:11.5px;opacity:.92}
+  .k1{background:linear-gradient(135deg,#0d2f57,#1b5a96)}
+  .k2{background:linear-gradient(135deg,#3898f5,#48d6fa)}
+  .k3{background:linear-gradient(135deg,#16a085,#2fc79a)}
+  .k3.neg{background:linear-gradient(135deg,#b4324c,#d64561)}
+  .k4{background:linear-gradient(135deg,#6aa8e6,#3898f5)}
+  .roi-big{text-align:center;padding:16px;border-radius:14px;background:#f0f7ff;border:1px solid #b9d6f5;margin-top:10px}
+  .roi-big small{font-size:12px;font-weight:800;color:#1b5a96;text-transform:uppercase;letter-spacing:.05em}
+  .roi-big b{display:block;font-size:40px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .roi-big span{font-size:12.5px;color:var(--muted)}
+  .rows{margin-top:12px;font-size:13px}
+  .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #edf3f9}
+  .row b{font-weight:800}
+  .empty{padding:24px;text-align:center;color:var(--muted);font-size:13px;border:1.5px dashed var(--line);border-radius:14px}
+
+  /* Toast */
+  #toast{position:fixed;bottom:20px;right:20px;background:#14263d;color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:100}
+
+  /* ===== Printable report (hidden on screen) ===== */
+  #report{display:none}
+  @media print{
+    @page{size:letter;margin:12mm}
+    body{background:#fff}
+    header,main,#toast{display:none!important}
+    #report{display:block;color:#14263d;font-size:12px}
+    .r-head{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--grad);color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .r-head img.logo{height:46px;background:#fff;border-radius:8px;padding:4px 8px}
+    .r-head img.ph{height:52px;width:52px;border-radius:50%;object-fit:cover;border:2px solid #fff;margin-left:auto}
+    .r-head h1{margin:0;font-size:20px}
+    .r-head p{margin:2px 0 0;font-size:11.5px;opacity:.95}
+    .r-for{display:flex;justify-content:space-between;margin:14px 2px 10px;font-size:12px}
+    .r-for b{font-size:16px;color:#0d2f57;display:block}
+    .r-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 12px}
+    .r-kpi{border:1px solid #cfe0f2;border-radius:10px;padding:10px;text-align:center}
+    .r-kpi small{display:block;font-size:9.5px;font-weight:800;text-transform:uppercase;color:#5f7389;letter-spacing:.05em}
+    .r-kpi b{display:block;font-size:17px;color:#0d2f57;margin-top:3px}
+    .r-kpi.hl{background:#eaf4ff;border-color:#3898f5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .r-kpi.hl b{color:#1b74d0;font-size:20px}
+    h3.r{font-size:12.5px;color:#0d2f57;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #3898f5;padding-bottom:3px}
+    table.r{width:100%;border-collapse:collapse;font-size:11.5px}
+    table.r th{text-align:left;background:#f0f7ff;color:#33475e;padding:6px 8px;font-size:10.5px;text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    table.r td{padding:6px 8px;border-bottom:1px solid #e3edf7;vertical-align:top}
+    table.r td.n,table.r th.n{text-align:right;white-space:nowrap}
+    table.r tfoot td{font-weight:800;border-top:2px solid #cfe0f2}
+    .r-bars{display:flex;align-items:flex-end;gap:4px;height:110px;padding:6px 4px 0;border-bottom:1px solid #cfe0f2}
+    .r-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%}
+    .r-bar i{display:block;width:100%;border-radius:3px 3px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .r-bar .c{background:#cfdbe8}
+    .r-bar .g{background:linear-gradient(180deg,#48d6fa,#3898f5)}
+    .r-barlbl{display:flex;gap:4px;font-size:9px;color:#5f7389;padding:2px 4px}
+    .r-barlbl span{flex:1;text-align:center}
+    .r-legend{font-size:10px;color:#5f7389;margin-top:4px}
+    .r-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .r-note{font-size:10px;color:#5f7389;margin-top:12px;line-height:1.5}
+    .r-next{margin-top:12px;padding:10px 12px;border-radius:10px;background:#f0f7ff;border:1px solid #b9d6f5;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .r-foot{margin-top:14px;padding-top:8px;border-top:1px solid #dbe7f3;display:flex;justify-content:space-between;font-size:10.5px;color:#33475e}
+    .r-avoid{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <img class="hlogo" src="../business-service/ws-logo.webp" alt="The WebSwan">
+    <div class="htitle"><b>Client ROI Estimator</b><span>What working with The WebSwan can bring a practice</span></div>
+    <div class="hright">
+      <a class="hbtn" href="../bottom-line/">📊 Bottom Line</a>
+      <a class="hbtn" href="../budget/">💵 Swan Budget</a>
+      <button class="hbtn" type="button" onclick="clearAll()">↺ New estimate</button>
+      <button class="hbtn main" type="button" onclick="printReport()">🖨️ Print / PDF</button>
+      <img class="hphoto" src="../business-service/tania.jpg" alt="Tania Domingue">
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stack">
+
+    <!-- CLIENT -->
+    <section class="card">
+      <h2>1. Who is this for?</h2>
+      <p class="sub">This goes at the top of the PDF you send them.</p>
+      <div class="grid2">
+        <div><label class="f" for="cName">Client name</label><input type="text" id="cName" placeholder="Dr. Name"></div>
+        <div><label class="f" for="cPractice">Practice / firm</label><input type="text" id="cPractice" placeholder="Practice name"></div>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <div>
+          <label class="f" for="cType">Type of practice</label>
+          <select id="cType">
+            <option value="doctor">Doctor / Medical practice</option>
+            <option value="dentist">Dentist</option>
+            <option value="chiro">Chiropractor</option>
+            <option value="medspa">Med spa / Aesthetics</option>
+            <option value="attorney">Attorney / Law firm</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="cValue">Avg. revenue per new <span class="unit1">patient</span> ($)</label>
+          <input type="number" id="cValue" min="0" step="50">
+          <div class="hint">Ask them: "What's a new <span class="unit1">patient</span> worth to you?"</div>
+        </div>
+        <div>
+          <label class="f" for="cMonths">Look ahead</label>
+          <select id="cMonths">
+            <option value="12">12 months</option>
+            <option value="24">24 months</option>
+            <option value="36">36 months</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label class="f" for="cScen">Outlook</label>
+          <select id="cScen">
+            <option value="0.6">Conservative</option>
+            <option value="1" selected>Expected</option>
+            <option value="1.4">Optimistic</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="cHourly">Staff cost per hour ($)</label>
+          <input type="number" id="cHourly" min="0" step="1">
+          <div class="hint">Used for time saved by the virtual assistant.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section class="card">
+      <h2>2. Pick the services</h2>
+      <p class="sub">Choose a package, tick one or more services, or select all. Prices and expected results can be adjusted.</p>
+      <div class="quick">
+        <select id="quickPick" aria-label="Quick package">
+          <option value="">Quick pick a package…</option>
+          <option value="website">Website only</option>
+          <option value="web-pwa">Website + PWA phone app</option>
+          <option value="growth">Growth: Website + Landing Page + Advertising</option>
+          <option value="front">Front desk: Website + Virtual Assistant</option>
+          <option value="all">Complete Swan Package (everything)</option>
+        </select>
+        <button class="pill" type="button" onclick="selectAll(true)">✓ Select all</button>
+        <button class="pill" type="button" onclick="selectAll(false)">✕ Clear</button>
+      </div>
+      <div id="svcList"></div>
+    </section>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="stack">
+    <section class="card" style="position:sticky;top:90px">
+      <h2>3. Their estimated return</h2>
+      <p class="sub" id="resSub">Pick at least one service to see the numbers.</p>
+      <div id="resEmpty" class="empty">No services selected yet.</div>
+      <div id="resBox" class="hidden">
+        <div class="kpis">
+          <div class="kpi k1"><small>Their investment</small><b id="rInvest">$0</b><em id="rInvestD"></em></div>
+          <div class="kpi k2"><small>New income</small><b id="rIncome">$0</b><em id="rIncomeD"></em></div>
+          <div class="kpi k3" id="rNetBox"><small>Net gain</small><b id="rNet">$0</b><em id="rNetD"></em></div>
+          <div class="kpi k4"><small>Pays for itself</small><b id="rPayback">—</b><em>Break-even point</em></div>
+        </div>
+        <div class="roi-big"><small>Return on investment</small><b id="rRoi">0%</b><span id="rRoiD"></span></div>
+        <div class="rows">
+          <div class="row"><span>Extra new <span class="unit2">patients</span> per month</span><b id="rPerMonth">0</b></div>
+          <div class="row"><span>Total new <span class="unit2">patients</span></span><b id="rTotalPts">0</b></div>
+          <div class="row"><span>Staff time saved</span><b id="rHours">0 hrs</b></div>
+          <div class="row"><span>Setup (one time)</span><b id="rSetup">$0</b></div>
+          <div class="row"><span>Monthly</span><b id="rMonthly">$0/mo</b></div>
+        </div>
+        <button class="pill" type="button" style="width:100%;margin-top:14px;padding:11px;font-size:14px" onclick="printReport()">🖨️ Print / Save as PDF for the client</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- PRINTABLE REPORT -->
+<div id="report"></div>
+<div id="toast"></div>
+
+<script>
+/* ========= Services and prices (from The WebSwan price list) ========= */
+const SERVICES = [
+  { id:'web', name:'Custom Website', icon:'🌐',
+    desc:'Custom, mobile-ready, ADA-compliant website built for the state where they practice.',
+    tiers:[
+      { label:'Standard Custom Website', setup:1997, monthly:109, yearly:0 },
+      { label:'Premium Website Package', setup:3998, monthly:109, yearly:0 },
+      { label:'Managed Website Program (ADA + cookie banners)', setup:899, monthly:499, yearly:0 }
+    ], benefitKey:'web' },
+  { id:'pwa', name:'PWA Phone App', icon:'📱',
+    desc:'Their own phone app: booking, reminders and one-tap contact, which brings people back.',
+    tiers:[
+      { label:'Standard Phone App', setup:899, monthly:69, yearly:0 },
+      { label:'Standard Phone App Plus', setup:1299, monthly:89, yearly:0 }
+    ], benefitKey:'pwa' },
+  { id:'landing', name:'Landing Page', icon:'🎯',
+    desc:'A focused page for one service or campaign that turns visitors into booked appointments.',
+    tiers:[ { label:'Landing Page', setup:799, monthly:109, yearly:0 } ], benefitKey:'landing' },
+  { id:'ads', name:'Advertising (WebSwan Media Network)', icon:'📣',
+    desc:'Listed and promoted to people searching for a doctor or attorney. Setup waived with a website, landing page or app.',
+    tiers:[
+      { label:'Found + Leads membership', setup:400, monthly:69, yearly:289 },
+      { label:'Found membership', setup:400, monthly:49, yearly:289 }
+    ], benefitKey:'ads' },
+  { id:'va', name:'Virtual Assistant (Rachel, 24/7 AI receptionist)', icon:'🤖',
+    desc:'Answers every call day and night, books appointments and captures calls that would have been missed.',
+    tiers:[
+      { label:'Full service', setup:200, monthly:499, yearly:0 },
+      { label:'Partial service', setup:200, monthly:299, yearly:0 }
+    ], benefitKey:'va', hours:true }
+];
+
+/* Expected extra new patients/clients per month from each service, by practice type */
+const PRESETS = {
+  doctor:   { value:600,  unit:'patient', units:'patients', web:2,   pwa:1,    landing:1,   ads:2,   va:2,   hours:15 },
+  dentist:  { value:900,  unit:'patient', units:'patients', web:2,   pwa:1,    landing:1,   ads:2,   va:2,   hours:15 },
+  chiro:    { value:700,  unit:'patient', units:'patients', web:2,   pwa:1,    landing:1,   ads:2,   va:2,   hours:15 },
+  medspa:   { value:500,  unit:'client',  units:'clients',  web:3,   pwa:2,    landing:2,   ads:3,   va:2,   hours:15 },
+  attorney: { value:3500, unit:'client',  units:'clients',  web:0.5, pwa:0.25, landing:0.5, ads:0.5, va:0.5, hours:15 }
+};
+const PACKS = { website:['web'], 'web-pwa':['web','pwa'], growth:['web','landing','ads'], front:['web','va'], all:['web','pwa','landing','ads','va'] };
+const STORE = 'webswan_roi_estimator_v1';
+const $ = id => document.getElementById(id);
+const money = n => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let st = null;
+
+function freshState(type) {
+  const p = PRESETS[type || 'doctor'];
+  return {
+    name:'', practice:'', type:type || 'doctor', value:p.value, months:12, scen:'1', hourly:25,
+    svc: Object.fromEntries(SERVICES.map(s => [s.id, {
+      on:false, tier:0, setup:s.tiers[0].setup, monthly:s.tiers[0].monthly, yearly:s.tiers[0].yearly,
+      gain:p[s.benefitKey], hours: s.hours ? p.hours : 0
+    }]))
+  };
+}
+
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.svc) { const f = freshState(s.type); s.svc = Object.assign(f.svc, s.svc); return Object.assign(f, s); } } catch (e) {}
+  return freshState('doctor');
+}
+function save() { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch (e) {} }
+
+/* ========= Build the service cards ========= */
+function buildServices() {
+  $('svcList').innerHTML = SERVICES.map(s => `
+    <div class="svc" id="svc-${s.id}">
+      <div class="svc-top">
+        <input type="checkbox" id="on-${s.id}" aria-label="${esc(s.name)}">
+        <label for="on-${s.id}" class="svc-name" style="cursor:pointer">${s.icon} ${esc(s.name)}</label>
+        ${s.tiers.length > 1 ? `<select class="svc-tier" id="tier-${s.id}" aria-label="Option">${s.tiers.map((t,i) => `<option value="${i}">${esc(t.label)}</option>`).join('')}</select>` : ''}
+      </div>
+      <div class="svc-desc">${esc(s.desc)}</div>
+      <div class="svc-body">
+        <div><label for="setup-${s.id}">Setup ($)</label><input type="number" min="0" id="setup-${s.id}"></div>
+        <div><label for="monthly-${s.id}">Monthly ($)</label><input type="number" min="0" id="monthly-${s.id}"></div>
+        <div><label for="gain-${s.id}">New <span class="unit2">patients</span>/mo</label><input type="number" min="0" step="0.5" id="gain-${s.id}"></div>
+        ${s.hours ? `<div><label for="hours-${s.id}">Staff hrs saved/mo</label><input type="number" min="0" id="hours-${s.id}"></div>` : `<div><label for="yearly-${s.id}">Yearly fee ($)</label><input type="number" min="0" id="yearly-${s.id}"></div>`}
+      </div>
+    </div>`).join('');
+
+  SERVICES.forEach(s => {
+    $('on-' + s.id).addEventListener('change', e => { st.svc[s.id].on = e.target.checked; $('quickPick').value = ''; refresh(); });
+    if ($('tier-' + s.id)) $('tier-' + s.id).addEventListener('change', e => {
+      const t = s.tiers[+e.target.value], v = st.svc[s.id];
+      v.tier = +e.target.value; v.setup = t.setup; v.monthly = t.monthly; v.yearly = t.yearly; v.on = true;
+      fillForm(); refresh();
+    });
+    ['setup','monthly','gain','hours','yearly'].forEach(k => {
+      const el = $(k + '-' + s.id); if (!el) return;
+      el.addEventListener('input', () => { st.svc[s.id][k] = num(el.value); refresh(); });
+    });
+  });
+}
+
+function fillForm() {
+  $('cName').value = st.name; $('cPractice').value = st.practice; $('cType').value = st.type;
+  $('cValue').value = st.value; $('cMonths').value = String(st.months); $('cScen').value = st.scen; $('cHourly').value = st.hourly;
+  SERVICES.forEach(s => {
+    const v = st.svc[s.id];
+    $('on-' + s.id).checked = v.on;
+    if ($('tier-' + s.id)) $('tier-' + s.id).value = String(v.tier);
+    $('setup-' + s.id).value = v.setup; $('monthly-' + s.id).value = v.monthly; $('gain-' + s.id).value = v.gain;
+    if ($('hours-' + s.id)) $('hours-' + s.id).value = v.hours;
+    if ($('yearly-' + s.id)) $('yearly-' + s.id).value = v.yearly;
+  });
+}
+
+/* ========= The math ========= */
+function calc() {
+  const months = +st.months, scen = num(st.scen), value = num(st.value), hourly = num(st.hourly);
+  const chosen = SERVICES.filter(s => st.svc[s.id].on);
+  const hasBuild = ['web','pwa','landing'].some(id => st.svc[id].on);
+  let setup = 0, monthly = 0, yearly = 0, gainPerMonth = 0, hoursPerMonth = 0;
+  const lines = chosen.map(s => {
+    const v = st.svc[s.id];
+    const waived = s.id === 'ads' && hasBuild && v.setup > 0;
+    const sSetup = waived ? 0 : num(v.setup);
+    setup += sSetup; monthly += num(v.monthly); yearly += num(v.yearly);
+    gainPerMonth += num(v.gain) * scen;
+    if (s.hours) hoursPerMonth += num(v.hours);
+    const tier = s.tiers[v.tier] || s.tiers[0];
+    return { name: s.name, tier: s.tiers.length > 1 ? tier.label : '', setup: sSetup, waived, monthly: num(v.monthly), yearly: num(v.yearly), gain: num(v.gain) * scen, hours: s.hours ? num(v.hours) : 0 };
+  });
+
+  // Month by month. New services take time to get going: month 1 at 40%, month 2 at 70%, then full.
+  const ramp = m => m === 1 ? 0.4 : m === 2 ? 0.7 : 1;
+  let cumCost = 0, cumBenefit = 0, payback = null, totalPts = 0, totalIncome = 0, totalSaved = 0;
+  const timeline = [];
+  for (let m = 1; m <= months; m++) {
+    const cost = (m === 1 ? setup : 0) + monthly + ((m - 1) % 12 === 0 ? yearly : 0);
+    const pts = gainPerMonth * ramp(m);
+    const inc = pts * value;
+    const saved = hoursPerMonth * hourly;
+    cumCost += cost; cumBenefit += inc + saved;
+    totalPts += pts; totalIncome += inc; totalSaved += saved;
+    if (payback === null && cumBenefit >= cumCost && cumCost > 0) payback = m;
+    timeline.push({ m, cumCost, cumBenefit });
+  }
+  const invest = cumCost, benefit = totalIncome + totalSaved, net = benefit - invest;
+  return { lines, setup, monthly, yearly, months, value, gainPerMonth, hoursPerMonth, totalPts, totalIncome, totalSaved,
+           invest, benefit, net, roi: invest > 0 ? net / invest : 0, multiple: invest > 0 ? benefit / invest : 0, payback, timeline };
+}
+
+/* ========= Screen ========= */
+function refresh() {
+  const p = PRESETS[st.type];
+  document.querySelectorAll('.unit1').forEach(e => e.textContent = p.unit);
+  document.querySelectorAll('.unit2').forEach(e => e.textContent = p.units);
+  SERVICES.forEach(s => $('svc-' + s.id).classList.toggle('on', st.svc[s.id].on));
+  save();
+  const r = calc();
+  if (!r.lines.length) { $('resEmpty').classList.remove('hidden'); $('resBox').classList.add('hidden'); $('resSub').textContent = 'Pick at least one service to see the numbers.'; return; }
+  $('resEmpty').classList.add('hidden'); $('resBox').classList.remove('hidden');
+  const who = st.practice || st.name || 'this practice';
+  $('resSub').textContent = `Estimate for ${who} over ${r.months} months (${$('cScen').selectedOptions[0].text.toLowerCase()} outlook).`;
+  $('rInvest').textContent = money(r.invest); $('rInvestD').textContent = `${r.months} months, all in`;
+  $('rIncome').textContent = money(r.benefit); $('rIncomeD').textContent = r.totalSaved > 0 ? `${money(r.totalIncome)} income + ${money(r.totalSaved)} time saved` : 'From new ' + p.units;
+  $('rNet').textContent = money(r.net); $('rNetD').textContent = r.net >= 0 ? 'More than they spend' : 'Not covered yet';
+  $('rNetBox').classList.toggle('neg', r.net < 0);
+  $('rPayback').textContent = r.payback ? (r.payback === 1 ? 'Month 1' : 'Month ' + r.payback) : 'Beyond ' + r.months + ' mo';
+  $('rRoi').textContent = Math.round(r.roi * 100).toLocaleString('en-US') + '%';
+  $('rRoiD').textContent = r.invest > 0 ? `About ${money(r.multiple * 100)} back for every $100 invested` : '';
+  $('rPerMonth').textContent = (Math.round(r.gainPerMonth * 10) / 10).toLocaleString('en-US');
+  $('rTotalPts').textContent = Math.round(r.totalPts).toLocaleString('en-US');
+  $('rHours').textContent = Math.round(r.hoursPerMonth * r.months).toLocaleString('en-US') + ' hrs';
+  $('rSetup').textContent = money(r.setup);
+  $('rMonthly').textContent = money(r.monthly) + '/mo' + (r.yearly ? ' + ' + money(r.yearly) + '/yr' : '');
+}
+
+/* ========= Printable PDF ========= */
+function buildReport() {
+  const r = calc(), p = PRESETS[st.type];
+  const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const scenTxt = $('cScen').selectedOptions[0].text;
+  const typeTxt = $('cType').selectedOptions[0].text;
+  // bars: show up to 12 points
+  const step = Math.max(1, Math.ceil(r.timeline.length / 12));
+  const pts = r.timeline.filter((t, i) => (i + 1) % step === 0 || i === r.timeline.length - 1);
+  const max = Math.max(1, ...pts.map(t => Math.max(t.cumCost, t.cumBenefit)));
+  const bars = pts.map(t => `<div class="r-bar"><div style="display:flex;gap:2px;align-items:flex-end;height:100%;width:100%"><i class="c" style="height:${(t.cumCost / max * 100).toFixed(1)}%"></i><i class="g" style="height:${(t.cumBenefit / max * 100).toFixed(1)}%"></i></div></div>`).join('');
+  const lbls = pts.map(t => `<span>M${t.m}</span>`).join('');
+
+  $('report').innerHTML = `
+    <div class="r-head">
+      <img class="logo" src="../business-service/ws-logo.webp" alt="The WebSwan">
+      <div><h1>Return on Investment Estimate</h1><p>Prepared by The WebSwan · Premium web design, apps, advertising and virtual assistance</p></div>
+      <img class="ph" src="../business-service/tania.jpg" alt="Tania Domingue">
+    </div>
+
+    <div class="r-for">
+      <div>Prepared for<b>${esc(st.name) || 'Valued client'}</b>${esc(st.practice)}${st.practice ? ' · ' : ''}${esc(typeTxt)}</div>
+      <div style="text-align:right">Date<b style="font-size:13px">${today}</b>${r.months}-month view · ${esc(scenTxt)} outlook</div>
+    </div>
+
+    <div class="r-kpis r-avoid">
+      <div class="r-kpi"><small>Your investment</small><b>${money(r.invest)}</b></div>
+      <div class="r-kpi"><small>Estimated new income</small><b>${money(r.benefit)}</b></div>
+      <div class="r-kpi"><small>Net gain</small><b>${money(r.net)}</b></div>
+      <div class="r-kpi hl"><small>Return on investment</small><b>${Math.round(r.roi * 100).toLocaleString('en-US')}%</b></div>
+    </div>
+    <p style="margin:0 2px 4px;font-size:12px">${r.payback ? `<b>Estimated to pay for itself by month ${r.payback}.</b> ` : ''}Every $100 invested is estimated to bring back about <b>${money(r.multiple * 100)}</b>.</p>
+
+    <h3 class="r">Services included</h3>
+    <table class="r r-avoid">
+      <thead><tr><th>Service</th><th class="n">Setup</th><th class="n">Monthly</th><th class="n">New ${p.units}/mo</th></tr></thead>
+      <tbody>${r.lines.map(l => `<tr><td><b>${esc(l.name)}</b>${l.tier ? '<br><span style="color:#5f7389">' + esc(l.tier) + '</span>' : ''}${l.yearly ? '<br><span style="color:#5f7389">+ ' + money(l.yearly) + '/yr network fee</span>' : ''}${l.hours ? '<br><span style="color:#5f7389">Saves about ' + l.hours + ' staff hours a month</span>' : ''}</td>
+        <td class="n">${l.waived ? '<b style="color:#16a085">Waived</b>' : money(l.setup)}</td><td class="n">${money(l.monthly)}</td><td class="n">${(Math.round(l.gain * 10) / 10)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td class="n">${money(r.setup)}</td><td class="n">${money(r.monthly)}${r.yearly ? '<br><span style="font-weight:600">+ ' + money(r.yearly) + '/yr</span>' : ''}</td><td class="n">${Math.round(r.gainPerMonth * 10) / 10}</td></tr></tfoot>
+    </table>
+
+    <h3 class="r">How we estimated it</h3>
+    <table class="r r-avoid">
+      <tbody>
+        <tr><td>Average revenue per new ${p.unit}</td><td class="n">${money(r.value)}</td></tr>
+        <tr><td>Extra new ${p.units} per month (at full speed)</td><td class="n">${Math.round(r.gainPerMonth * 10) / 10}</td></tr>
+        <tr><td>Total new ${p.units} over ${r.months} months</td><td class="n">${Math.round(r.totalPts)}</td></tr>
+        <tr><td>New income from those ${p.units}</td><td class="n">${money(r.totalIncome)}</td></tr>
+        ${r.totalSaved > 0 ? `<tr><td>Staff time saved (${Math.round(r.hoursPerMonth * r.months)} hrs at ${money(st.hourly)}/hr)</td><td class="n">${money(r.totalSaved)}</td></tr>` : ''}
+        <tr><td><b>Total estimated benefit</b></td><td class="n"><b>${money(r.benefit)}</b></td></tr>
+        <tr><td>Total investment (setup + ${r.months} months${r.yearly ? ' + yearly fees' : ''})</td><td class="n">${money(r.invest)}</td></tr>
+        <tr><td><b>Net gain</b></td><td class="n"><b>${money(r.net)}</b></td></tr>
+      </tbody>
+    </table>
+
+    <div class="r-avoid">
+      <h3 class="r">Investment vs. return over time</h3>
+      <div class="r-bars">${bars}</div>
+      <div class="r-barlbl">${lbls}</div>
+      <div class="r-legend"><i style="background:#cfdbe8"></i>Total invested so far <i style="background:#3898f5"></i>Total return so far</div>
+    </div>
+
+    <div class="r-next r-avoid"><b>Next step:</b> we start with a complimentary demo, with no cost and no obligation. If you love it, we begin with a down payment. If not, you owe nothing. Every WebSwan website is built compliant with the laws of your state.</div>
+
+    <p class="r-note">This is an estimate, not a guarantee. It is based on the figures above, including the average value of a new ${p.unit} and the expected number of new ${p.units} each service brings in. New services start slower (40% in month 1, 70% in month 2). Actual results depend on your market, your follow-up and how quickly new ${p.units} are booked.</p>
+
+    <div class="r-foot">
+      <span><b>Tania Domingue</b>, Founder · The WebSwan · Best Design Agency 2024 (RankWatch)</span>
+      <span>(415) 877-0687 · designs@thewebswan.com · Oakland, CA 94609</span>
+    </div>`;
+}
+
+function printReport() {
+  if (!calc().lines.length) { toast('Pick at least one service first'); return; }
+  buildReport();
+  const old = document.title;
+  const who = (st.practice || st.name || 'Client').replace(/[^\w\- ]+/g, '').trim();
+  document.title = 'WebSwan ROI Estimate - ' + who;
+  // wait for the logo and photo before printing
+  const imgs = [...$('report').querySelectorAll('img')];
+  Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
+    window.print();
+    setTimeout(() => { document.title = old; }, 500);
+  });
+}
+
+/* ========= Controls ========= */
+function selectAll(on) { SERVICES.forEach(s => st.svc[s.id].on = on); $('quickPick').value = ''; fillForm(); refresh(); }
+function applyPack(key) {
+  const ids = PACKS[key]; if (!ids) return;
+  SERVICES.forEach(s => st.svc[s.id].on = ids.includes(s.id));
+  fillForm(); refresh();
+}
+function applyType(type) {
+  const p = PRESETS[type]; st.type = type; st.value = p.value;
+  SERVICES.forEach(s => { st.svc[s.id].gain = p[s.benefitKey]; if (s.hours) st.svc[s.id].hours = p.hours; });
+  fillForm(); refresh();
+}
+function clearAll() { st = freshState('doctor'); $('quickPick').value = ''; fillForm(); refresh(); toast('Fresh estimate started'); }
+function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
+
+$('quickPick').addEventListener('change', e => applyPack(e.target.value));
+$('cType').addEventListener('change', e => applyType(e.target.value));
+$('cName').addEventListener('input', e => { st.name = e.target.value; refresh(); });
+$('cPractice').addEventListener('input', e => { st.practice = e.target.value; refresh(); });
+$('cValue').addEventListener('input', e => { st.value = num(e.target.value); refresh(); });
+$('cMonths').addEventListener('change', e => { st.months = +e.target.value; refresh(); });
+$('cScen').addEventListener('change', e => { st.scen = e.target.value; refresh(); });
+$('cHourly').addEventListener('input', e => { st.hourly = num(e.target.value); refresh(); });
+
+st = load();
+buildServices();
+fillForm();
+refresh();
+</script>
+</body>
+</html>
