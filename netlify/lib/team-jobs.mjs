@@ -104,8 +104,8 @@ export async function tatianaWeekly() {
   const list = WEEK_SERVICES.map(([b, sv], i) => `${i + 1}. ${b}: ${sv}`).join("\n");
   const ask = `Write this week's social media posts (week of ${ptDate()}): exactly ${WEEK_SERVICES.length} posts, one for each service below, in this order.
 ${list}
-Each post: a scroll-stopping hook in the first line, 40 to 120 words, speaks to one real problem of a doctor, attorney or small business owner, a strong specific call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its branded picture. Fresh angles, not last week's.
-Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...]}
+Each post: a scroll-stopping hook in the first line, 40 to 120 words, speaks to one real problem of a doctor, attorney or small business owner, a strong specific call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its picture, and "image": one sentence describing a realistic photo for it (who, where, mood; no text, no logos). Fresh angles, not last week's.
+Reply with JSON only: {"posts": [{"headline": "...", "text": "...", "image": "..."}, ...]}
 CURRENT WEBSITE TEXT (data):\n${sites}`;
   const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
   let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
@@ -121,11 +121,12 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
       plan.items = (plan.items || []).filter((x) => !(x.kind === "social" && x.status === "draft" && days.has(x.date)));
       plan._cleared = true;
     }
-    plan.items.push({ id: "wk" + stamp.replace(/-/g, "") + "-" + i, brand: WEEK_SERVICES[i][0], kind: "social", service: WEEK_SERVICES[i][1].split(" (")[0], date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), text: String(text).slice(0, 3000), status: "draft" });
+    plan.items.push({ id: "wk" + stamp.replace(/-/g, "") + "-" + i, brand: WEEK_SERVICES[i][0], kind: "social", service: WEEK_SERVICES[i][1].split(" (")[0], date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), scene: typeof p === "string" ? "" : String(p.image || "").slice(0, 400), text: String(text).slice(0, 3000), status: "draft" });
   }
   for (const plan of Object.values(plans)) { delete plan._cleared; plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); await savePlan(plan); }
   const n = Object.values(plans).reduce((a, p) => a + p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).length, 0);
   const refs = Object.values(plans).flatMap((p) => p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).map((x) => ({ m: p.month, id: x.id })));
+  for (const p of Object.values(plans)) { try { await tatianaPics(p.month); } catch (e) { console.log("pictures:", e.message); } } // Jimmy paints each post's picture
   await addMessages("tatiana", [{ role: "agent", kind: "weekly", items: refs, text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, each with its picture. Read each one below, edit anything, then tap **✅ Approve & schedule**. It goes to Content360 and posts on its date.`, provider: ans.provider }]);
 }
 
@@ -151,6 +152,7 @@ export async function tatianaBlogs() {
     refs.push({ m: month, id: id + "g" }, { m: month, id: id + "b" });
   }
   plan.items.sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time)); await savePlan(plan);
+  try { await tatianaPics(month); } catch (e) { console.log("pictures:", e.message); }
   await addMessages("tatiana", [{ role: "agent", kind: "blog", items: refs, text: `## 📝 Blogs + Google Business posts are ready\nFor each brand: a **Google Business update** with its picture (it posts to that brand's Google profile) and the **blog article** for the website. Approve each one below.` }]);
 }
 
@@ -182,14 +184,14 @@ export async function tatianaMonth(month) {
   const monthName = new Date(month + "-15T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric" });
   for (const brand of BRANDS) {
     const ask = `Plan ${monthName} social media posts for ${brand}. Write exactly ${slots.length} posts (one for each posting day, in order).
-Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its branded picture.
-Reply with JSON only: {"posts": [{"headline": "...", "text": "..."}, ...]}
+Rotate the services featured so the month covers all of them. Each post: a strong hook, 40 to 120 words, a clear call to action, 3 to 6 hashtags at the end. Each post also gets a short headline (max 9 words) that goes on its picture, and "image": one sentence describing a realistic photo for it (who, where, mood; no text, no logos).
+Reply with JSON only: {"posts": [{"headline": "...", "text": "...", "image": "..."}, ...]}
 CURRENT WEBSITE TEXT (data):\n${sites}`;
     const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 7000);
     let j = {}; try { const m = ans.text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : ans.text); } catch {}
     const posts = Array.isArray(j.posts) ? j.posts : jsonArray(ans.text);
     slots.forEach((sl, i) => { const p = posts[i]; if (!p) return; const text = typeof p === "string" ? p : p.text, headline = typeof p === "string" ? "" : p.headline;
-      if (text) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), text: String(text).slice(0, 3000), status: "draft" }); });
+      if (text) plan.items.push({ id: brand.slice(0, 3) + "-p" + i, brand, kind: "social", date: sl.date, time: sl.time, headline: String(headline || text.split(/[.!?\n]/)[0]).slice(0, 90), scene: typeof p === "string" ? "" : String(p.image || "").slice(0, 400), text: String(text).slice(0, 3000), status: "draft" }); });
     for (const half of [0, 1]) {
       const sl = slots[half ? Math.floor(slots.length / 2) : 0]; if (!sl) continue;
       const b = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write one SEO blog article (700 to 900 words) for ${brand} to publish in ${monthName}${half ? " (second half of the month, different topic)" : ""}. Start with the title on the first line as "# Title". Use H2 subheadings, plain language, and end with a call to action.\nCURRENT WEBSITE TEXT (data):\n${sites.slice(0, 5000)}` }], 3500);
@@ -204,6 +206,41 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   await savePlan(plan);
   const n = (k) => plan.items.filter((x) => x.kind === k).length;
   await addMessages("tatiana", [{ role: "agent", kind: "month", items: plan.items.map((x) => ({ m: month, id: x.id })), text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates** (twice a month per brand, from the blogs)\n- **${n("blog")} blog articles**\n\nThey are all below as cards: read, edit, then **✅ Approve & schedule** each one (or approve them all at once). Approved posts go to Content360 and post on their dates.` }]);
+}
+
+// ---------- Pictures: Jimmy (Gemini 2.5 Flash Image) paints a realistic photo for each post; the AI Office lays
+// The WebSwan template (headline, brand, logo, website, Tania's photo) on top in the browser. About 4 cents a picture.
+async function geminiImage(prompt) {
+  const key = process.env.GEMINI_API_KEY; if (!key) throw new Error("GEMINI_API_KEY is missing in Netlify (webswan-billing).");
+  const models = [process.env.GEMINI_IMAGE_MODEL, "gemini-2.5-flash-image", "gemini-2.5-flash-image-preview"].filter((m, i, a) => m && a.indexOf(m) === i);
+  let last = "";
+  for (const m of models) for (const cfg of [{ responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } }, { responseModalities: ["TEXT", "IMAGE"] }]) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { last = `${m} ${r.status}: ${(j.error && j.error.message) || ""}`; if (r.status === 404) break; continue; }
+    const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+    const part = parts.find((p) => p.inlineData || p.inline_data);
+    if (part) return Buffer.from((part.inlineData || part.inline_data).data, "base64");
+    last = m + ": no picture came back";
+  }
+  throw new Error("Jimmy (Gemini) couldn't make the picture: " + last.slice(0, 250));
+}
+const scenePrompt = (it) => `Create a high-quality, realistic, square marketing photograph for a social media post. ${it.scene ? "Scene: " + it.scene : `Topic: ${String(it.headline || it.title || "").replace(/^Blog on Google:\s*/, "")}, for ${it.brand}${it.service ? " (" + it.service + ")" : ""}. Show a believable moment with a doctor, dentist, attorney or their front-desk team, or a phone or laptop in a modern practice.`} Warm, bright, professional lighting, modern clean office, colors leaning to blue and white. Keep the bottom third calm and uncluttered so text can sit on it. Absolutely no text, letters, words, numbers, logos or watermarks anywhere in the image.`;
+export async function tatianaPics(arg) {
+  let [month, id] = String(arg || "").split("|"); month = month || targetMonth();
+  const plan = await getPlan(month), vs = videoStore();
+  const todo = plan.items.filter((it) => it.kind !== "blog" && it.status !== "scheduled" && (id ? it.id === id : !it.aiImage)).slice(0, 60);
+  let made = 0, err = "";
+  for (const it of todo) {
+    try {
+      const buf = await geminiImage(scenePrompt(it));
+      await vs.set("ai-" + month + "-" + it.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+      const fresh = await getPlan(month), f = fresh.items.find((x) => x.id === it.id); // merge: Tania may be editing other cards meanwhile
+      if (f) { f.aiImage = Date.now(); await savePlan(fresh); }
+      made++;
+    } catch (e) { err = e.message; if (!made) break; }
+  }
+  if (err && !made) throw new Error(err);
 }
 
 // Push every approved social post of the month to Content360 as a scheduled post.
@@ -329,5 +366,5 @@ async function agentReply(agent) {
   await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), c360_videos: c360Videos };
+export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), c360_videos: c360Videos };
 export { ptHour };

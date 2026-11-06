@@ -313,18 +313,48 @@ async function c360Panel() {
 const BRAND_SITE = { "The WebSwan": "thewebswan.com", "WebSwan Digital Solutions": "webswandigitalsolutions.com", "WebSwan Media Network": "webswanmedianetwork.com" };
 let LOGO = null;
 function logoImg() { if (LOGO) return LOGO; LOGO = new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "../rachel-bot/ws-logo.png"; }); return LOGO; }
-async function cardCanvas(it) {
+let TANIA = null;
+function taniaImg() { if (TANIA) return TANIA; TANIA = new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "img/tania-post.jpg"; }); return TANIA; }
+function wrapLines(x, words, maxW) { const lines = []; let line = ""; for (const w of words) { const t = line ? line + " " + w : w; if (x.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); return lines; }
+function roundRect(x, X, Y, W, H, R) { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); }
+async function taniaBadge(x, cx, cy, r) { // Tania's photo in a round badge with a WebSwan-blue ring
+  const ph = await taniaImg(); if (!ph) return;
+  const g = x.createLinearGradient(cx - r, cy - r, cx + r, cy + r); g.addColorStop(0, "#3898f5"); g.addColorStop(1, "#48d6fa");
+  x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r + 12, 0, 7); x.fill();
+  x.fillStyle = "#fff"; x.beginPath(); x.arc(cx, cy, r + 5, 0, 7); x.fill();
+  x.save(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.clip(); x.drawImage(ph, cx - r, cy - r, r * 2, r * 2); x.restore();
+}
+// Tatiana's post picture: Jimmy's photo (bg) with The WebSwan template on top, or the brand-blue card when there is no photo yet.
+async function cardCanvas(it, bg) {
   const c = document.createElement("canvas"); c.width = c.height = 1080; const x = c.getContext("2d");
+  const words = String(it.headline || it.text.split(/[.!?\n]/)[0]).replace(/[#*]/g, "").trim().split(/\s+/);
+  const logo = await logoImg(), site = BRAND_SITE[it.brand] || "thewebswan.com";
+  if (bg) {
+    const s = Math.max(1080 / bg.width, 1080 / bg.height); x.drawImage(bg, (1080 - bg.width * s) / 2, (1080 - bg.height * s) / 2, bg.width * s, bg.height * s);
+    const sh = x.createLinearGradient(0, 380, 0, 1080); sh.addColorStop(0, "rgba(8,28,77,0)"); sh.addColorStop(0.45, "rgba(8,28,77,.72)"); sh.addColorStop(1, "rgba(8,28,77,.96)"); x.fillStyle = sh; x.fillRect(0, 380, 1080, 700);
+    x.font = "800 30px system-ui, Segoe UI, Arial"; const bt = String(it.brand).toUpperCase(), bw = x.measureText(bt).width + 44;
+    const pg = x.createLinearGradient(56, 0, 56 + bw, 0); pg.addColorStop(0, "#3898f5"); pg.addColorStop(1, "#48d6fa");
+    x.fillStyle = pg; roundRect(x, 56, 56, bw, 58, 29); x.fill(); x.fillStyle = "#fff"; x.fillText(bt, 78, 96);
+    let size = 76, lines; do { x.font = `800 ${size}px system-ui, Segoe UI, Arial`; lines = wrapLines(x, words, 940); size -= 4; } while (lines.length * size * 1.16 > 330 && size > 40);
+    const lh = (size + 4) * 1.16; let y = 900 - lines.length * lh + size;
+    x.fillStyle = "#48d6fa"; x.fillRect(70, y - size - 22, 110, 9);
+    x.fillStyle = "#fff"; x.shadowColor = "rgba(0,0,0,.35)"; x.shadowBlur = 12; for (const l of lines) { x.fillText(l, 70, y); y += lh; } x.shadowBlur = 0;
+    if (logo) { const h = 74, w = logo.width * h / logo.height; x.fillStyle = "rgba(255,255,255,.95)"; roundRect(x, 64, 960, w + 28, h + 20, 16); x.fill(); x.drawImage(logo, 78, 970, w, h); }
+    x.font = "700 32px system-ui, Segoe UI, Arial"; x.fillStyle = "#fff"; x.textAlign = "right"; x.fillText(site, 1016, 1016); x.textAlign = "left";
+    await taniaBadge(x, 930, 150, 96);
+    return c;
+  }
   const g = x.createLinearGradient(0, 0, 1080, 1080); g.addColorStop(0, "#1182f0"); g.addColorStop(1, "#339cde"); x.fillStyle = g; x.fillRect(0, 0, 1080, 1080);
   x.fillStyle = "rgba(147,229,250,.18)"; x.beginPath(); x.arc(980, 120, 260, 0, 7); x.fill(); x.beginPath(); x.arc(80, 1010, 200, 0, 7); x.fill();
   x.strokeStyle = "#6ca1d4"; x.lineWidth = 14; x.strokeRect(40, 40, 1000, 1000);
   x.fillStyle = "#fff"; x.font = "700 34px system-ui, Segoe UI, Arial"; x.fillText(String(it.brand).toUpperCase(), 100, 150);
   x.fillStyle = "#93e5fa"; x.fillRect(100, 175, 120, 8);
-  const words = String(it.headline || it.text.split(/[.!?\n]/)[0]).replace(/[#*]/g, "").trim().split(/\s+/); let size = 92, lines;
-  do { x.font = `800 ${size}px system-ui, Segoe UI, Arial`; lines = []; let line = ""; for (const w of words) { const t = line ? line + " " + w : w; if (x.measureText(t).width > 860 && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); size -= 6; } while (lines.length * size * 1.18 > 560 && size > 40);
+  let size = 92, lines;
+  do { x.font = `800 ${size}px system-ui, Segoe UI, Arial`; lines = wrapLines(x, words, 860); size -= 6; } while (lines.length * size * 1.18 > 560 && size > 40);
   x.fillStyle = "#fff"; let y = 330; for (const l of lines) { x.fillText(l, 100, y); y += (size + 6) * 1.18; }
-  const logo = await logoImg(); if (logo) { const h = 110, w = logo.width * h / logo.height; x.drawImage(logo, 100, 880, w, h); }
-  x.font = "600 34px system-ui, Segoe UI, Arial"; x.fillStyle = "#fff"; x.textAlign = "right"; x.fillText(BRAND_SITE[it.brand] || "thewebswan.com", 980, 950);
+  if (logo) { const h = 110, w = logo.width * h / logo.height; x.drawImage(logo, 100, 880, w, h); }
+  x.font = "600 34px system-ui, Segoe UI, Arial"; x.fillStyle = "#fff"; x.textAlign = "right"; x.fillText(site, 980, 950); x.textAlign = "left";
+  await taniaBadge(x, 900, 760, 88);
   return c;
 }
 const toB64 = (c) => new Promise((res) => c.toBlob((b) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); }, "image/png"));
@@ -401,7 +431,7 @@ const cardHead = (it) => it.headline || String(it.title || "").replace(/^Blog on
 function cardHTML(ref, it) {
   const st = STAT[it.status] || [it.status, ""], locked = it.status === "scheduled", hasPic = it.kind !== "blog";
   return `<div class="pcard ${locked ? "done" : ""} ${it.status === "skip" ? "skip" : ""}" data-m="${esc(ref.m)}" data-id="${esc(it.id)}">
-    <div class="pc-pic">${hasPic ? `<canvas width="1080" height="1080"></canvas>${locked ? "" : `<label class="btn" style="display:block;text-align:center;margin-top:6px;cursor:pointer">📷 Use my own photo<input type="file" class="pcF" accept="image/png,image/jpeg" hidden></label>`}` : `<div class="pc-blog"><span>📝</span>Blog article<br><small style="font-weight:400">${esc(it.brand)}</small></div>`}</div>
+    <div class="pc-pic">${hasPic ? `<canvas width="1080" height="1080"></canvas>${locked ? "" : `<button class="btn pcG" style="display:block;width:100%;margin-top:6px">${it.aiImage ? "🎨 New picture" : "🎨 Make the picture"}</button><label class="btn" style="display:block;text-align:center;margin-top:6px;cursor:pointer">📷 Use my own photo<input type="file" class="pcF" accept="image/png,image/jpeg" hidden></label>`}` : `<div class="pc-blog"><span>📝</span>Blog article<br><small style="font-weight:400">${esc(it.brand)}</small></div>`}</div>
     <div>
       <div><span class="chip">${esc(it.brand)}</span><span class="chip">${KIND[it.kind] || esc(it.kind)}</span><span class="chip ${st[1]}">${esc(st[0])}</span></div>
       <div class="pc-dest">${destOf(it)}</div>
@@ -417,10 +447,17 @@ function cardHTML(ref, it) {
       ${it.note ? `<div class="pc-note">${esc(it.note)}</div>` : ""}
     </div></div>`;
 }
+const AIIMG = {};
+function aiImg(m, it) { // Jimmy's photo for this post (cached per picture version)
+  if (!it.aiImage) return Promise.resolve(null);
+  const k = m + "|" + it.id + "|" + it.aiImage;
+  if (!AIIMG[k]) AIIMG[k] = api({ action: "plan_image_get", month: m, id: it.id, ai: true }).then((r) => r.data ? new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = r.data; }) : null).catch(() => null);
+  return AIIMG[k];
+}
 async function drawCardPic(card, it) {
   const cv = card.querySelector("canvas"); if (!cv) return;
   if (it.image === "own") { try { const r = await api({ action: "plan_image_get", month: card.dataset.m, id: it.id }); if (r.data) { const im = new Image(); im.onload = () => cv.getContext("2d").drawImage(im, 0, 0, 1080, 1080); im.src = r.data; return; } } catch {} }
-  const h = card.querySelector(".pcH"); const src = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) })); cv.getContext("2d").drawImage(src, 0, 0);
+  const h = card.querySelector(".pcH"); const src = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) }), await aiImg(card.dataset.m, it)); cv.getContext("2d").drawImage(src, 0, 0);
 }
 async function fillCards() {
   if (!C3) await c360Load();
@@ -430,7 +467,10 @@ async function fillCards() {
     for (const r of refs) { const it = (await planFor(r.m)).items.find((x) => x.id === r.id); if (it) pairs.push([r, it]); }
     if (!pairs.length) { box.innerHTML = m.items ? '<p class="hint">These posts were replaced by a newer plan.</p>' : ""; continue; }
     const open = pairs.filter(([, it]) => !["scheduled", "skip"].includes(it.status)).length;
-    box.innerHTML = `<div class="pcards-top"><b>${pairs.length} posts</b> <span class="hint">${open} waiting for you</span>${open > 1 ? ` <button class="btn pc-ok pcAll">✅ Approve & schedule all ${open}</button>` : ""}</div>` + pairs.map(([r, it]) => cardHTML(r, it)).join("");
+    const noPic = pairs.filter(([, it]) => it.kind !== "blog" && !it.aiImage && !["scheduled", "skip"].includes(it.status) && it.image !== "own");
+    box.innerHTML = `<div class="pcards-top"><b>${pairs.length} posts</b> <span class="hint">${open} waiting for you</span>${noPic.length ? ` <button class="btn pcPics">🎨 Make ${noPic.length} picture${noPic.length > 1 ? "s" : ""} (about ${Math.ceil(noPic.length * 4)}¢)</button>` : ""}${open > 1 ? ` <button class="btn pc-ok pcAll">✅ Approve & schedule all ${open}</button>` : ""}</div>` + pairs.map(([r, it]) => cardHTML(r, it)).join("");
+    const pics = box.querySelector(".pcPics"); if (pics) pics.onclick = async () => { pics.disabled = true; pics.textContent = "🎨 Jimmy is painting…"; const ms = [...new Set(noPic.map(([r]) => r.m))];
+      try { for (const m of ms) await api({ action: "plan_genimg", month: m }); toast(`Jimmy is making ${noPic.length} pictures. They appear on the cards in a few minutes.`); ms.forEach((m) => { redraw(m, 60000); redraw(m, 150000); redraw(m, 300000); }); } catch (e) { toast(e.message); pics.disabled = false; } };
     box.querySelectorAll(".pcard").forEach((card) => {
       const it = pairs.find(([, x]) => x.id === card.dataset.id)[1];
       drawCardPic(card, it);
@@ -438,6 +478,7 @@ async function fillCards() {
       const f = card.querySelector(".pcF"); if (f) f.onchange = () => ownPhoto(card, it, f.files[0]);
       const b = (c, fn) => { const e = card.querySelector(c); if (e) e.onclick = fn; };
       b(".pcA", () => approveCard(card, it));
+      b(".pcG", () => newPicture(card, it));
       b(".pcS", () => saveCard(card, it).then(() => toast("Saved")).catch((e) => toast(e.message)));
       b(".pcK", () => saveCard(card, it, "skip").then(() => { toast("Skipped"); redraw(card.dataset.m); }).catch((e) => toast(e.message)));
       b(".pcC", () => navigator.clipboard.writeText(card.querySelector(".pcX").value).then(() => toast("Copied")));
@@ -455,7 +496,7 @@ async function saveCard(card, it, status) {
 }
 async function cardPicture(card, it) { // Tatiana's branded picture, made here and stored with the post
   if (it.kind === "blog" || it.image === "own") return;
-  const h = card.querySelector(".pcH"); const cv = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) }));
+  const h = card.querySelector(".pcH"); const cv = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) }), await aiImg(card.dataset.m, it));
   await api({ action: "plan_image", month: card.dataset.m, id: it.id, data: await toB64(cv) });
 }
 async function ownPhoto(card, it, file) {
@@ -464,6 +505,11 @@ async function ownPhoto(card, it, file) {
   try { await api({ action: "plan_image", month: card.dataset.m, id: it.id, data, own: true }); it.image = "own"; const im = new Image(); im.onload = () => card.querySelector("canvas").getContext("2d").drawImage(im, 0, 0, 1080, 1080); im.src = data; toast("Your photo is on this post ✅"); } catch (e) { toast(e.message); }
 }
 function redraw(m, later) { const go = () => { delete PLANS[m]; fillCards(); }; later ? setTimeout(go, later) : go(); }
+async function newPicture(card, it) {
+  const b = card.querySelector(".pcG"); b.disabled = true; b.textContent = "🎨 Jimmy is painting…";
+  try { await api({ action: "plan_genimg", month: card.dataset.m, id: it.id }); toast("Jimmy is making a new picture (about 4¢). It shows here in about a minute."); redraw(card.dataset.m, 35000); redraw(card.dataset.m, 80000); }
+  catch (e) { toast(e.message); b.disabled = false; b.textContent = "🎨 New picture"; }
+}
 async function approveCard(card, it) {
   const btn = card.querySelector(".pcA"); btn.disabled = true; btn.textContent = "Approving…";
   try {

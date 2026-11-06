@@ -348,8 +348,9 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       return reply(200, { plan }, origin);
     }
     // Tania's own photo on a post, so the chat card can show it.
+    if (b.action === "plan_genimg") { await startJobs(["tatiana_pics:" + month + (b.id && /^[\w-]{1,60}$/.test(String(b.id)) ? "|" + b.id : "")]); return reply(200, { ok: true }, origin); }
     if (b.action === "plan_image_get") {
-      const buf = await videoStore().get("img-" + month + "-" + String(b.id || "").slice(0, 60), { type: "arrayBuffer" });
+      const buf = await videoStore().get((b.ai ? "ai-" : "img-") + month + "-" + String(b.id || "").slice(0, 60), { type: "arrayBuffer" });
       return reply(200, { data: buf ? "data:image/png;base64," + Buffer.from(buf).toString("base64") : "" }, origin);
     }
     // The branded picture for a post (Tatiana's card made in the browser, or Tania's own photo).
