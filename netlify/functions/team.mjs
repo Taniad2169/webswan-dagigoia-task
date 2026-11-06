@@ -73,6 +73,8 @@ async function rachelLog(n) {
   return calls.slice(0, n || 15).map((c) => { const t = c.telephony_params || {}, st = c.start_time ? new Date(c.start_time) : null, en = c.end_time ? new Date(c.end_time) : null;
     return { when: st ? st.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " PT" : "", caller: prettyPhone(t.from), line: prettyPhone(t.to), minutes: st && en ? Math.max(1, Math.round((en - st) / 60000)) : null, ended: c.end_reason || c.status || "", summary: clean(c.summary || "", 400) }; });
 }
+// Does Tania's message to Jimmy ask him to MAKE something (vs. just talk about it)?
+const jimmyWants = (t) => /\b(make|create|design|draw|paint|generate|give me|do|produce|build|render)\b/i.test(t) && /\b(picture|image|graphic|photo|flyer|banner|poster|logo|thumbnail|background|post|visual|illustration|icon|cover|video|clip|reel|animation)s?\b/i.test(t) && !/\?\s*$/.test(t.trim());
 const notesText = (list) => list && list.length ? "\n\nTANIA'S COACHING NOTES (she asked you to keep these permanently; follow them):\n" + list.map((n) => "- " + n.note).join("\n") : "";
 
 export default async (req) => {
@@ -167,6 +169,18 @@ export default async (req) => {
       all[agent] = list; await teamStore().setJSON("brain-notes", all);
       const live = await syncPhone(agent, list);
       return reply(200, { notes: list, phone: PHONE.includes(agent), live }, origin);
+    }
+    // Jimmy: make a picture or a video (from his panels, or when Tania asks for one in his chat). Done in the background.
+    if (b.action === "jimmy_make" || (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && jimmyWants(clean(b.text, 4000)))) {
+      const text = clean(b.prompt || b.text, 4000).trim(); if (!text) return reply(400, { error: "Tell Jimmy what to make." }, origin);
+      const type = b.type === "video" || (!b.type && /\b(video|clip|reel|animation|animate|footage|b-?roll)\b/i.test(text)) ? "video" : "image";
+      const aspect = ["1:1", "9:16", "16:9"].includes(b.aspect) ? b.aspect : /vertical|reel|tiktok|story|stories|9:16/i.test(text) ? "9:16" : /wide|youtube|banner|16:9|website header|cover/i.test(text) ? "16:9" : type === "video" ? "16:9" : "1:1";
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const q = (await teamStore().get("jimmy-queue", { type: "json" })) || []; q.push({ id, type, prompt: text, aspect, secs: +b.secs || 8, at: new Date().toISOString() });
+      await teamStore().setJSON("jimmy-queue", q.slice(-60));
+      const saved = await addMessages("jimmy", [{ role: "user", text: b.action === "chat" ? text : (type === "video" ? "🎬 Make a video: " : "🎨 Make a picture: ") + text }, { role: "agent", text: type === "video" ? `🎬 On it! I'm making your ${aspect === "9:16" ? "vertical " : ""}video now. Videos take 2 to 6 minutes (about ${Math.round((+b.secs || 8) * 10)}¢). It will appear right here.` : "🎨 On it! Your picture will appear right here in about a minute." }]);
+      await startJobs(["jimmy_make"]);
+      return reply(200, { messages: saved.slice(-2) }, origin);
     }
     if (b.action === "chat") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);

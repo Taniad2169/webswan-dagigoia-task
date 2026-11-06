@@ -204,13 +204,14 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   }
   plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   await savePlan(plan);
+  try { await tatianaPics(month); } catch (e) { console.log("pictures:", e.message); } // Jimmy paints every post's picture
   const n = (k) => plan.items.filter((x) => x.kind === k).length;
   await addMessages("tatiana", [{ role: "agent", kind: "month", items: plan.items.map((x) => ({ m: month, id: x.id })), text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates** (twice a month per brand, from the blogs)\n- **${n("blog")} blog articles**\n\nThey are all below as cards: read, edit, then **✅ Approve & schedule** each one (or approve them all at once). Approved posts go to Content360 and post on their dates.` }]);
 }
 
 // ---------- Pictures: Jimmy (Gemini 2.5 Flash Image) paints a realistic photo for each post; the AI Office lays
 // The WebSwan template (headline, brand, logo, website, Tania's photo) on top in the browser. About 4 cents a picture.
-async function geminiImage(prompt) {
+export async function geminiImage(prompt) {
   const key = process.env.GEMINI_API_KEY; if (!key) throw new Error("GEMINI_API_KEY is missing in Netlify (webswan-billing).");
   const models = [process.env.GEMINI_IMAGE_MODEL, "gemini-2.5-flash-image", "gemini-2.5-flash-image-preview"].filter((m, i, a) => m && a.indexOf(m) === i);
   let last = "";
@@ -241,6 +242,54 @@ export async function tatianaPics(arg) {
     } catch (e) { err = e.message; if (!made) break; }
   }
   if (err && !made) throw new Error(err);
+}
+
+// ---------- Jimmy: quick pictures and videos Tania asks for in his chat ----------
+// Videos: Google Veo through the same Gemini API key (paid tier, about 10 cents a second on Veo 3.1 Fast 720p).
+export async function veoVideo(prompt, aspect = "16:9", secs = 8) {
+  const key = process.env.GEMINI_API_KEY; if (!key) throw new Error("GEMINI_API_KEY is missing in Netlify (webswan-billing).");
+  const H = { "content-type": "application/json", "x-goog-api-key": key }, base = "https://generativelanguage.googleapis.com/v1beta/";
+  const models = [process.env.JIMMY_VIDEO_MODEL, "veo-3.1-fast-generate-preview", "veo-3.0-fast-generate-001", "veo-3.1-generate-preview"].filter((m, i, a) => m && a.indexOf(m) === i);
+  let op = null, last = "";
+  outer: for (const m of models) for (const params of [{ aspectRatio: aspect, durationSeconds: secs }, { aspectRatio: aspect }, {}]) {
+    const r = await fetch(base + "models/" + m + ":predictLongRunning", { method: "POST", headers: H, body: JSON.stringify({ instances: [{ prompt }], parameters: params }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.name) { op = j.name; break outer; }
+    last = `${m} ${r.status}: ${(j.error && j.error.message) || ""}`; if (r.status === 404) break;
+  }
+  if (!op) throw new Error("Jimmy couldn't start the video: " + last.slice(0, 300));
+  for (let i = 0; i < 60; i++) { // up to 10 minutes
+    await new Promise((res) => setTimeout(res, 10000));
+    const j = await (await fetch(base + op, { headers: H })).json().catch(() => ({}));
+    if (!j.done) continue;
+    if (j.error) throw new Error("The video didn't finish: " + (j.error.message || "").slice(0, 300));
+    const resp = j.response || {}, s = ((resp.generateVideoResponse || resp).generatedSamples || resp.generatedVideos || [])[0] || {};
+    const uri = (s.video || {}).uri; if (!uri) throw new Error("Google finished but sent no video (it may have been blocked by their safety filter; try other words).");
+    const v = await fetch(uri, { headers: { "x-goog-api-key": key } });
+    if (!v.ok) throw new Error("Couldn't download the video from Google (" + v.status + ").");
+    return Buffer.from(await v.arrayBuffer());
+  }
+  throw new Error("The video took longer than 10 minutes. Please try again.");
+}
+const BRAND_LOOK = "Brand look: The WebSwan, a premium web design and digital marketing agency for doctors and attorneys. Colors bright blue #3898f5, sky blue #6aa8e6 and aqua #48d6fa with white; clean, modern, warm and professional. If any words appear, spell them exactly and keep them short. No fake reviews, no statistics, no other companies' logos, no celebrities.";
+export async function jimmyMake() {
+  const st = teamStore(), q = (await st.get("jimmy-queue", { type: "json" })) || [];
+  const todo = q.filter((x) => !x.done).slice(0, 6); if (!todo.length) return;
+  for (const t of todo) { t.done = true; } await st.setJSON("jimmy-queue", q.slice(-60)); // claim them so a second worker doesn't repeat
+  for (const t of todo) {
+    try {
+      if (t.type === "video") {
+        const buf = await veoVideo(`${t.prompt}\n${BRAND_LOOK}`, t.aspect === "9:16" ? "9:16" : "16:9", [4, 6, 8].includes(+t.secs) ? +t.secs : 8);
+        await videoStore().set("jimmy-" + t.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+        await addMessages("jimmy", [{ role: "agent", kind: "video", media: { key: "jimmy-" + t.id, type: "video", mime: "video/mp4" }, prompt: t.prompt, text: `🎬 Here's your video${t.aspect === "9:16" ? " (vertical, for Reels, TikTok and Stories)" : ""}. Download it, or send it to Tatiana to schedule.` }]);
+      } else {
+        const shape = t.aspect === "9:16" ? "Tall vertical 9:16 format." : t.aspect === "16:9" ? "Wide 16:9 format." : "Square 1:1 format.";
+        const buf = await geminiImage(`${t.prompt}\n${shape}\n${BRAND_LOOK}`);
+        await videoStore().set("jimmy-" + t.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+        await addMessages("jimmy", [{ role: "agent", kind: "image", media: { key: "jimmy-" + t.id, type: "image", mime: "image/png" }, prompt: t.prompt, text: "🎨 Here you go! Download it, or tell me what to change and I'll make another." }]);
+      }
+    } catch (e) { await addMessages("jimmy", [{ role: "agent", kind: "error", text: `⚠️ I couldn't make that ${t.type === "video" ? "video" : "picture"}: ${String(e.message || e).slice(0, 300)}` }]); }
+  }
 }
 
 // Push every approved social post of the month to Content360 as a scheduled post.
@@ -366,5 +415,5 @@ async function agentReply(agent) {
   await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), c360_videos: c360Videos };
+export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), jimmy_make: jimmyMake, c360_videos: c360Videos };
 export { ptHour };
