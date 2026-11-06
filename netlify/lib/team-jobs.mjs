@@ -125,18 +125,33 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   }
   for (const plan of Object.values(plans)) { delete plan._cleared; plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); await savePlan(plan); }
   const n = Object.values(plans).reduce((a, p) => a + p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).length, 0);
-  await addMessages("tatiana", [{ role: "agent", kind: "weekly", text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, each with a branded picture.\n\nOpen **📅 Month plan** above, read them, tick ✅ Approve (or **Approve all drafts**), then **🚀 Save & send approved to Content360**.`, provider: ans.provider }]);
+  const refs = Object.values(plans).flatMap((p) => p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).map((x) => ({ m: p.month, id: x.id })));
+  await addMessages("tatiana", [{ role: "agent", kind: "weekly", items: refs, text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, each with its picture. Read each one below, edit anything, then tap **✅ Approve & schedule**. It goes to Content360 and posts on its date.`, provider: ans.provider }]);
 }
 
+// Twice a month (1st and 15th): one blog + its Google Business update per brand, added to the plan so they show
+// as cards in Tatiana's chat for Tania to approve. A brand that already has a blog in this half of the month is skipped.
 export async function tatianaBlogs() {
-  const s = await getSettings();
-  for (const [n, u] of SITES) {
-    const ask = `Write this half-month's content for ${n} (${u}) dated ${ptDate()}. Start with "# ${n}: blog + Google Business Profile post". Give: 1) one Google Business Profile post, 2) one full blog article for the website.
-CURRENT WEBSITE TEXT (data):
-${(await siteText()).slice(0, 9000)}`;
-    const ans = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: ask }], 5000);
-    await addMessages("tatiana", [{ role: "agent", kind: "blog", text: ans.text, provider: ans.provider }]);
+  const s = await getSettings(), sites = (await siteText()).slice(0, 9000);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const date = new Date(Date.now() + 864e5).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const month = date.slice(0, 7), plan = await getPlan(month), late = Number(date.slice(8)) > 15;
+  const half = (d) => (Number(String(d).slice(8)) > 15) === late && String(d).slice(0, 7) === month;
+  const refs = [], stamp = today.replace(/-/g, "");
+  for (const brand of BRANDS) {
+    const have = plan.items.filter((x) => x.brand === brand && (x.kind === "blog" || x.kind === "gbp") && half(x.date));
+    if (have.some((x) => x.kind === "gbp")) { have.forEach((x) => refs.push({ m: month, id: x.id })); continue; }
+    const b = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Write one SEO blog article (700 to 900 words) for ${brand}, dated ${ptDate()}. Start with the title on the first line as "# Title". Use H2 subheadings, plain language, and end with a call to action.\nCURRENT WEBSITE TEXT (data):\n${sites.slice(0, 5000)}` }], 3500);
+    const title = (b.text.match(/^#\s+(.+)$/m) || [])[1] || brand + " blog";
+    const g = await askAI(brainFor(s, "tatiana"), AGENTS.tatiana.system, [{ role: "user", content: `Turn this blog into a Google Business Profile update for ${brand}: under 1,200 characters, plain text, no hashtags, no phone numbers, end with "Read the full article on our website." Also give a headline of at most 9 words for its picture. Reply with JSON only: {"headline": "...", "text": "..."}\n\n${b.text.slice(0, 6000)}` }], 900);
+    let gj = {}; try { const m = g.text.match(/\{[\s\S]*\}/); gj = JSON.parse(m ? m[0] : g.text); } catch { gj = { text: g.text }; }
+    const id = brand.slice(0, 3) + "-x" + stamp;
+    plan.items.push({ id: id + "b", brand, kind: "blog", date, time: "09:00", title: title.slice(0, 160), text: b.text.slice(0, 12000), status: "draft" });
+    plan.items.push({ id: id + "g", brand, kind: "gbp", date, time: "10:30", title: "Blog on Google: " + title.slice(0, 120), headline: String(gj.headline || title).slice(0, 90), text: String(gj.text || "").trim().slice(0, 1450), status: "draft" });
+    refs.push({ m: month, id: id + "g" }, { m: month, id: id + "b" });
   }
+  plan.items.sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time)); await savePlan(plan);
+  await addMessages("tatiana", [{ role: "agent", kind: "blog", items: refs, text: `## 📝 Blogs + Google Business posts are ready\nFor each brand: a **Google Business update** with its picture (it posts to that brand's Google profile) and the **blog article** for the website. Approve each one below.` }]);
 }
 
 // ---------- Tatiana Lambert: a full month of content, pushed to Content360 after Tania approves ----------
@@ -188,23 +203,25 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   await savePlan(plan);
   const n = (k) => plan.items.filter((x) => x.kind === k).length;
-  await addMessages("tatiana", [{ role: "agent", kind: "month", text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates** (twice a month per brand, from the blogs)\n- **${n("blog")} blog articles**\n\nOpen **📅 Month plan** above to read, edit and approve. Approved posts go to Content360 on their dates.` }]);
+  await addMessages("tatiana", [{ role: "agent", kind: "month", items: plan.items.map((x) => ({ m: month, id: x.id })), text: `## 📅 ${monthName} content plan is ready\n- **${n("social")} social posts** (Mon, Wed, Fri for all 3 brands)\n- **${n("gbp")} Google Business updates** (twice a month per brand, from the blogs)\n- **${n("blog")} blog articles**\n\nThey are all below as cards: read, edit, then **✅ Approve & schedule** each one (or approve them all at once). Approved posts go to Content360 and post on their dates.` }]);
 }
 
 // Push every approved social post of the month to Content360 as a scheduled post.
-export async function c360Push(month) {
-  month = month || targetMonth();
+export async function c360Push(arg) {
+  let [month, onlyId] = String(arg || "").split("|"); month = month || targetMonth();
   const plan = await getPlan(month), accts = await c360Accounts(); let map = await brandMap();
   if (!Object.keys(map).length) map = suggestedMap(accts);
   const vs = videoStore();
   let ok = 0, drafts = 0, skipped = 0;
   for (const it of plan.items) {
-    if (it.status !== "approved") continue;
+    if (it.status !== "approved" || (onlyId && it.id !== onlyId)) continue;
     if (it.kind === "blog") { it.note = "Blog: copy it into your website (Content360 doesn't publish blogs)."; skipped++; continue; }
     if (it.kind === "gbp") {
       const g = accts.filter((a) => isGBP(a.provider) && servesBrand(map, a, it.brand));
       if (!g.length) { it.note = "Connect " + it.brand + "'s Google Business Profile in Content360 (Add account → Google My Business), then tick it for this brand."; skipped++; continue; }
-      try { const r = await createPost({ accountIds: g.map((a) => a.id), providers: g.map((a) => a.provider), text: it.text, date: it.date, time: it.time, title: it.title || it.text.slice(0, 80) });
+      try { const gp = it.image ? await vs.get("img-" + month + "-" + it.id, { type: "arrayBuffer" }) : null;
+        const gm = gp ? [await uploadMedia(new Blob([gp], { type: "image/png" }), it.id + ".png")] : [];
+        const r = await createPost({ accountIds: g.map((a) => a.id), providers: g.map((a) => a.provider), text: it.text, mediaIds: gm, date: it.date, time: it.time, title: it.title || it.text.slice(0, 80) });
         it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled on Google Business" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++; }
       catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
       continue;
@@ -218,6 +235,11 @@ export async function c360Push(month) {
       const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: it.text, mediaIds, date: it.date, time: it.time, title: it.headline || it.text.slice(0, 80) });
       it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled in Content360" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++;
     } catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
+  }
+  if (onlyId) { // a single card: merge only that post into the latest plan (other cards may be saving at the same time); its status shows on the card
+    const fresh = await getPlan(month), f = fresh.items.find((x) => x.id === onlyId), it = plan.items.find((x) => x.id === onlyId);
+    if (f && it) { Object.assign(f, { status: it.status, note: it.note, c360Id: it.c360Id }); await savePlan(fresh); }
+    return;
   }
   await savePlan(plan);
   await addMessages("tatiana", [{ role: "agent", kind: "push", text: `## ✅ Sent to Content360\n- ${ok} posts scheduled${drafts ? `\n- ${drafts} saved as drafts in Content360 (open them there to finish)` : ""}${skipped ? `\n- ${skipped} blogs / Google updates kept here for you` : ""}${plan.items.some((x) => x.status === "error") ? "\n- ⚠️ Some posts had a problem: see 📅 Month plan" : ""}` }]);
@@ -307,5 +329,5 @@ async function agentReply(agent) {
   await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (m) => c360Push(m), c360_videos: c360Videos };
+export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), c360_videos: c360Videos };
 export { ptHour };

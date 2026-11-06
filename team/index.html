@@ -63,6 +63,23 @@
   .pi textarea { font: inherit; font-size: 14px; }
   .chip { display: inline-block; font-size: 12px; border-radius: 99px; padding: 2px 8px; background: #eef5fc; color: #0b4f8a; margin-right: 4px; }
   .chip.ok { background: #e6f6ec; color: #17693a; } .chip.bad { background: #fde8e8; color: #9b1c1c; }
+  /* Tatiana's post cards in her chat: picture + where it posts + Approve & schedule (like Marblism) */
+  .pcards { margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+  .pcards-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pcard { display: grid; grid-template-columns: 230px 1fr; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 2px 8px rgba(17,130,240,.06); }
+  .pcard.done { border-color: #9bd8b0; background: #f6fcf8; }
+  .pcard.skip { opacity: .55; }
+  @media (max-width: 700px) { .pcard { grid-template-columns: 1fr; } }
+  .pc-pic canvas, .pc-pic img { width: 100%; aspect-ratio: 1/1; border-radius: 10px; border: 1px solid var(--line); object-fit: cover; display: block; background: #eef5fc; }
+  .pc-blog { aspect-ratio: 1/1; border-radius: 10px; background: linear-gradient(135deg,#eef5fc,#dceefe); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; color: #0b4f8a; font-weight: 700; }
+  .pc-blog span { font-size: 46px; }
+  .pc-dest { font-size: 12.5px; color: #33475e; background: #f3f8fd; border-radius: 8px; padding: 6px 9px; margin: 6px 0; }
+  .pcard input, .pcard textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 14px; }
+  .pcard textarea { min-height: 120px; }
+  .pc-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .pc-row input[type=date], .pc-row input[type=time] { width: auto; }
+  .pc-ok { background: linear-gradient(120deg,#16a34a,#22c55e); color: #fff; border: 0; }
+  .pc-note { font-size: 12px; color: #6b7c8f; margin-top: 6px; }
   .panel label { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 2px; }
   .panel input, .panel textarea, .panel select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
@@ -192,7 +209,7 @@ function drawMsgs() {
     const ok = cur + g.d, open = q || (ok in openDays ? openDays[ok] : (g.d === today || g.d === lastDay));
     h += `<div class="day ${g.d === today ? "today" : ""}" data-day="${esc(g.d)}" title="Click to open or close">${open ? "▾" : "▸"} ${esc(g.d)} <small>(${g.ms.length})</small></div>`;
     if (!open) continue;
-    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button><select class="copy" data-send="${esc(m.id)}" aria-label="Send this to another agent" style="margin-left:6px"><option value="">➡️ Send to…</option>${ORDER.filter((k) => k !== cur && k !== "rachel").map((k) => `<option value="${k}">${esc((((S.agents || FALLBACK)[k]) || FALLBACK[k]).name)}</option>`).join("")}</select>` : ""}</div>`;
+    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${cur === "tatiana" && m.role !== "user" && (m.items || m.kind === "weekly") ? `<div class="pcards" data-cards="${esc(m.id)}"><p class="hint">Loading the posts…</p></div>` : ""}${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button><select class="copy" data-send="${esc(m.id)}" aria-label="Send this to another agent" style="margin-left:6px"><option value="">➡️ Send to…</option>${ORDER.filter((k) => k !== cur && k !== "rachel").map((k) => `<option value="${k}">${esc((((S.agents || FALLBACK)[k]) || FALLBACK[k]).name)}</option>`).join("")}</select>` : ""}</div>`;
   }
   if (!days.length) h += q ? `<p class="hint">Nothing matches "${esc(findQ)}".</p>` : `<p class="hint">No messages yet. Say hi to ${esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)}.</p>`;
   $("msgs").innerHTML = h;
@@ -201,10 +218,11 @@ function drawMsgs() {
   $("msgs").querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => { const m = msgs.find((x) => x.id === b.dataset.copy); if (m) navigator.clipboard.writeText(m.text).then(() => toast("Copied")); });
   $("msgs").querySelectorAll("[data-send]").forEach((sel) => sel.onchange = () => sendToAgent(sel.dataset.send, sel.value));
   if (!q) $("msgs").scrollTop = $("msgs").scrollHeight;
+  if (cur === "tatiana") fillCards();
 }
 const TOOLS = {
   eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["🧹 Clean up inbox", () => cleanPanel()], ["⚙️ Settings", () => settingsPanel()]],
-  tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 This week's posts (all services)", () => run("tatiana_weekly")], ["📝 Blogs + Google posts now", () => run("tatiana_blogs")]],
+  tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 Write this week's posts", () => run("tatiana_weekly")], ["📝 Write blogs + Google posts", () => run("tatiana_blogs")]],
   linda: [["🔎 Review a website", () => lindaPanel()]],
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
@@ -220,7 +238,7 @@ async function sendToAgent(id, to) {
   await openAgent(to); await ask(text);
 }
 async function openAgent(k) {
-  cur = k; findQ = ""; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
+  cur = k; findQ = ""; PLANS = {}; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
   const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
@@ -355,6 +373,119 @@ async function planPanel(month) {
       const todo = ch.filter((c) => c.status === "approved").map((c) => items.find((x) => x.id === c.id)).filter((it) => it && it.kind === "social" && it.image !== "own");
       let n = 0; for (const it of todo) { const d = document.querySelector(`.pi[data-id="${CSS.escape(it.id)}"]`); const cv = await cardCanvas(Object.assign({}, it, { headline: (d && d.querySelector(".pH").value) || it.headline })); await api({ action: "plan_image", month: PLAN.month, id: it.id, data: await toB64(cv) }); it.image = "card"; $("pPush").textContent = `Making pictures ${++n}/${todo.length}…`; }
       await api({ action: "plan_save", month: PLAN.month, changes: [], push: true }); toast("Sending approved posts to Content360… Tatiana reports back in her chat."); setTimeout(() => planPanel(PLAN.month), 60000); } catch (e) { toast(e.message); $("pPush").disabled = false; $("pPush").textContent = "🚀 Save & send approved to Content360"; } };
+}
+/* ---------- Tatiana's posts as cards in her chat ---------- */
+let PLANS = {};
+const PROV = { facebook_page: "Facebook", facebook_group: "Facebook group", instagram: "Instagram", instagram_direct: "Instagram", linkedin: "LinkedIn", linkedin_page: "LinkedIn", twitter: "X", threads: "Threads", pinterest: "Pinterest", tiktok: "TikTok", youtube: "YouTube" };
+const isGBPp = (p) => /google|gmb|gbp|business_profile/i.test(String(p || ""));
+const KIND = { social: "📱 Social post", gbp: "📍 Google Business", blog: "📝 Blog article" };
+const STAT = { draft: ["Waiting for you", ""], approved: ["Approved · sending…", "ok"], scheduled: ["✅ Scheduled", "ok"], "c360-draft": ["Draft in Content360", ""], error: ["⚠️ Problem", "bad"], skip: ["Skipped", ""] };
+async function planFor(m) { if (!PLANS[m]) PLANS[m] = api({ action: "plan_get", month: m }).then((r) => r.plan).catch(() => ({ month: m, items: [] })); return PLANS[m]; }
+const ptDay = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+function nextMonth(m) { const [y, mo] = m.split("-").map(Number); return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`; }
+async function refsOf(m) {
+  if (m.items && m.items.length) return m.items;
+  if (m.kind !== "weekly") return [];
+  const d = ptDay(m.at), pre = "wk" + d.replace(/-/g, ""), out = []; // older weekly messages: find this week's posts by their id
+  for (const mo of [d.slice(0, 7), nextMonth(d.slice(0, 7))]) (await planFor(mo)).items.filter((x) => String(x.id).startsWith(pre) && !out.some((o) => o.id === x.id)).forEach((x) => out.push({ m: mo, id: x.id }));
+  return out;
+}
+function destOf(it) {
+  if (it.kind === "blog") return "🌐 Your website: copy and paste it (Content360 doesn't publish blogs).";
+  if (!C3 || !C3.ready) return "⚠️ Content360 isn't connected yet, so nothing can post. (🔗 Content360 accounts)";
+  const acc = (C3.accounts || []).filter((a) => a.authorized !== false && (C3.map[a.id] || []).includes(it.brand) && (it.kind === "gbp" ? isGBPp(a.provider) : (!isGBPp(a.provider) && PROV[a.provider] && !/tiktok|youtube/.test(a.provider))));
+  if (!acc.length) return it.kind === "gbp" ? `⚠️ No Google Business profile is ticked for ${it.brand} in Content360 yet.` : `⚠️ No account is ticked for ${it.brand} yet (🔗 Content360 accounts).`;
+  return "📍 Posts to: " + acc.map((a) => esc((isGBPp(a.provider) ? "Google Business" : PROV[a.provider]) + " (" + (a.username ? "@" + a.username : a.name) + ")")).join(" · ");
+}
+const cardHead = (it) => it.headline || String(it.title || "").replace(/^Blog on Google:\s*/, "") || it.text.split(/[.!?\n]/)[0];
+function cardHTML(ref, it) {
+  const st = STAT[it.status] || [it.status, ""], locked = it.status === "scheduled", hasPic = it.kind !== "blog";
+  return `<div class="pcard ${locked ? "done" : ""} ${it.status === "skip" ? "skip" : ""}" data-m="${esc(ref.m)}" data-id="${esc(it.id)}">
+    <div class="pc-pic">${hasPic ? `<canvas width="1080" height="1080"></canvas>${locked ? "" : `<label class="btn" style="display:block;text-align:center;margin-top:6px;cursor:pointer">📷 Use my own photo<input type="file" class="pcF" accept="image/png,image/jpeg" hidden></label>`}` : `<div class="pc-blog"><span>📝</span>Blog article<br><small style="font-weight:400">${esc(it.brand)}</small></div>`}</div>
+    <div>
+      <div><span class="chip">${esc(it.brand)}</span><span class="chip">${KIND[it.kind] || esc(it.kind)}</span><span class="chip ${st[1]}">${esc(st[0])}</span></div>
+      <div class="pc-dest">${destOf(it)}</div>
+      ${hasPic ? `<input class="pcH" value="${esc(cardHead(it))}" placeholder="Headline on the picture" ${locked ? "disabled" : ""}>` : `<b>${esc(it.title || "")}</b>`}
+      <textarea class="pcX" rows="${it.kind === "blog" ? 10 : 6}" ${locked ? "disabled" : ""} style="margin-top:6px">${esc(it.text)}</textarea>
+      <div class="pc-row">
+        <span class="hint">Posts on</span><input type="date" class="pcD" value="${esc(it.date)}" ${locked ? "disabled" : ""}><input type="time" class="pcT" value="${esc(it.time)}" ${locked ? "disabled" : ""}><span class="hint">Pacific</span>
+      </div>
+      <div class="pc-row">
+        ${locked ? "" : `<button class="btn pc-ok pcA">${it.kind === "blog" ? "✅ Approve" : "✅ Approve & schedule"}</button><button class="btn pcS">💾 Save edits</button>${it.status === "skip" ? "" : '<button class="btn pcK">⏭ Skip</button>'}`}
+        <button class="btn pcC">Copy text</button>
+      </div>
+      ${it.note ? `<div class="pc-note">${esc(it.note)}</div>` : ""}
+    </div></div>`;
+}
+async function drawCardPic(card, it) {
+  const cv = card.querySelector("canvas"); if (!cv) return;
+  if (it.image === "own") { try { const r = await api({ action: "plan_image_get", month: card.dataset.m, id: it.id }); if (r.data) { const im = new Image(); im.onload = () => cv.getContext("2d").drawImage(im, 0, 0, 1080, 1080); im.src = r.data; return; } } catch {} }
+  const h = card.querySelector(".pcH"); const src = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) })); cv.getContext("2d").drawImage(src, 0, 0);
+}
+async function fillCards() {
+  if (!C3) await c360Load();
+  for (const box of document.querySelectorAll("[data-cards]")) {
+    const m = msgs.find((x) => x.id === box.dataset.cards); if (!m) continue;
+    const refs = await refsOf(m); const pairs = [];
+    for (const r of refs) { const it = (await planFor(r.m)).items.find((x) => x.id === r.id); if (it) pairs.push([r, it]); }
+    if (!pairs.length) { box.innerHTML = m.items ? '<p class="hint">These posts were replaced by a newer plan.</p>' : ""; continue; }
+    const open = pairs.filter(([, it]) => !["scheduled", "skip"].includes(it.status)).length;
+    box.innerHTML = `<div class="pcards-top"><b>${pairs.length} posts</b> <span class="hint">${open} waiting for you</span>${open > 1 ? ` <button class="btn pc-ok pcAll">✅ Approve & schedule all ${open}</button>` : ""}</div>` + pairs.map(([r, it]) => cardHTML(r, it)).join("");
+    box.querySelectorAll(".pcard").forEach((card) => {
+      const it = pairs.find(([, x]) => x.id === card.dataset.id)[1];
+      drawCardPic(card, it);
+      const h = card.querySelector(".pcH"); if (h && it.image !== "own") h.oninput = () => { clearTimeout(h._t); h._t = setTimeout(() => drawCardPic(card, Object.assign({}, it, { image: "" })), 300); };
+      const f = card.querySelector(".pcF"); if (f) f.onchange = () => ownPhoto(card, it, f.files[0]);
+      const b = (c, fn) => { const e = card.querySelector(c); if (e) e.onclick = fn; };
+      b(".pcA", () => approveCard(card, it));
+      b(".pcS", () => saveCard(card, it).then(() => toast("Saved")).catch((e) => toast(e.message)));
+      b(".pcK", () => saveCard(card, it, "skip").then(() => { toast("Skipped"); redraw(card.dataset.m); }).catch((e) => toast(e.message)));
+      b(".pcC", () => navigator.clipboard.writeText(card.querySelector(".pcX").value).then(() => toast("Copied")));
+    });
+    const all = box.querySelector(".pcAll"); if (all) all.onclick = () => approveAll(box, pairs);
+  }
+}
+function cardChange(card, it, status) {
+  const h = card.querySelector(".pcH");
+  return { id: it.id, headline: h ? h.value : undefined, text: card.querySelector(".pcX").value, date: card.querySelector(".pcD").value, time: card.querySelector(".pcT").value, status };
+}
+async function saveCard(card, it, status) {
+  const r = await api({ action: "plan_save", month: card.dataset.m, changes: [cardChange(card, it, status)] });
+  PLANS[card.dataset.m] = Promise.resolve(r.plan); return r.plan.items.find((x) => x.id === it.id) || it;
+}
+async function cardPicture(card, it) { // Tatiana's branded picture, made here and stored with the post
+  if (it.kind === "blog" || it.image === "own") return;
+  const h = card.querySelector(".pcH"); const cv = await cardCanvas(Object.assign({}, it, { headline: (h && h.value) || cardHead(it) }));
+  await api({ action: "plan_image", month: card.dataset.m, id: it.id, data: await toB64(cv) });
+}
+async function ownPhoto(card, it, file) {
+  if (!file) return; if (file.size > 4 * 1024 * 1024) return toast("Please use a picture under 4 MB.");
+  const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(file); });
+  try { await api({ action: "plan_image", month: card.dataset.m, id: it.id, data, own: true }); it.image = "own"; const im = new Image(); im.onload = () => card.querySelector("canvas").getContext("2d").drawImage(im, 0, 0, 1080, 1080); im.src = data; toast("Your photo is on this post ✅"); } catch (e) { toast(e.message); }
+}
+function redraw(m, later) { const go = () => { delete PLANS[m]; fillCards(); }; later ? setTimeout(go, later) : go(); }
+async function approveCard(card, it) {
+  const btn = card.querySelector(".pcA"); btn.disabled = true; btn.textContent = "Approving…";
+  try {
+    if (it.kind !== "blog" && (!C3 || !C3.ready)) throw new Error("Connect Content360 first (🔗 Content360 accounts).");
+    const fresh = await saveCard(card, it, "approved");
+    if (it.kind === "blog") { toast("Approved ✅ Copy it into your website."); return redraw(card.dataset.m); }
+    btn.textContent = "Making the picture…"; await cardPicture(card, fresh);
+    btn.textContent = "Sending…"; await api({ action: "plan_save", month: card.dataset.m, changes: [], pushId: it.id });
+    toast("Sending to Content360 ✅ The card turns green when it's scheduled."); redraw(card.dataset.m, 25000); redraw(card.dataset.m, 70000);
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = it.kind === "blog" ? "✅ Approve" : "✅ Approve & schedule"; }
+}
+async function approveAll(box, pairs) {
+  const cards = [...box.querySelectorAll(".pcard")].filter((c) => { const it = pairs.find(([, x]) => x.id === c.dataset.id)[1]; return !["scheduled", "skip"].includes(it.status); });
+  if (!confirm(`Approve and schedule all ${cards.length} posts?`)) return;
+  const btn = box.querySelector(".pcAll"); btn.disabled = true;
+  try {
+    if (!C3 || !C3.ready) throw new Error("Connect Content360 first (🔗 Content360 accounts).");
+    const months = new Set(); let n = 0;
+    for (const c of cards) { const it = pairs.find(([, x]) => x.id === c.dataset.id)[1]; const fresh = await saveCard(c, it, "approved"); await cardPicture(c, fresh); months.add(c.dataset.m); btn.textContent = `Preparing ${++n}/${cards.length}…`; }
+    for (const m of months) await api({ action: "plan_save", month: m, changes: [], push: true });
+    toast("All sent to Content360 ✅ Tatiana reports back in her chat."); months.forEach((m) => { redraw(m, 30000); redraw(m, 90000); });
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "✅ Approve & schedule all"; }
 }
 async function videoPanel() {
   $("extra").innerHTML = '<div class="panel"><p class="hint">Loading…</p></div>';

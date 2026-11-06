@@ -344,7 +344,13 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       plan.items.sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time));
       await savePlan(plan);
       if (b.push) await startJobs(["c360_push:" + month]);
+      else if (b.pushId && /^[\w-]{1,60}$/.test(String(b.pushId))) await startJobs(["c360_push:" + month + "|" + b.pushId]);
       return reply(200, { plan }, origin);
+    }
+    // Tania's own photo on a post, so the chat card can show it.
+    if (b.action === "plan_image_get") {
+      const buf = await videoStore().get("img-" + month + "-" + String(b.id || "").slice(0, 60), { type: "arrayBuffer" });
+      return reply(200, { data: buf ? "data:image/png;base64," + Buffer.from(buf).toString("base64") : "" }, origin);
     }
     // The branded picture for a post (Tatiana's card made in the browser, or Tania's own photo).
     if (b.action === "plan_image") {
