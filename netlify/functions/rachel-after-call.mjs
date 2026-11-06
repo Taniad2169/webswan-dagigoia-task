@@ -16,6 +16,7 @@ const pretty = (p) => { const d = String(p || "").replace(/\D/g, "").slice(-10);
 const RULES_START = "### RACHEL CALL RULES (WebSwan)", RULES_END = "### END RACHEL RULES";
 const RACHEL_RULES = `${RULES_START}
 These rules come first and win over anything below.
+0. GREETING (Tania, Nov 6). Your greeting is exactly: "Thank you for calling The WebSwan, this is Rachel. This call is being recorded. How may I assist you?" Say it in one breath. Never call yourself a virtual assistant or virtual receptionist. Only if a caller asks whether you are an AI, say: "Yes, I'm the trained AI assistant for The WebSwan."
 1. CALL-BACK TIME ZONE. Whenever a caller wants Tania to call them back or gives a day and time, always ask: "And is that Pacific, Central or Eastern time?" (Mountain is fine too). Repeat the day, time and time zone back, and put all three in your summary.
 2. RETURNING A MISSED CALL. If the caller says they are returning a missed call or "someone called me from this number", do NOT ask for their email. Get their name, their practice or business, the best number to reach them (repeat it back) and the best day, time and time zone for Tania to call back. Then thank them.
 3. ENDING THE CALL. After your goodbye (for example "Have a lovely afternoon!"), do NOT hang up right away. People usually answer "you too" or "thank you". Wait for their reply, and only use end_call after they have answered or after about 3 seconds of silence. Never cut a caller off while they are still talking.
@@ -60,6 +61,18 @@ async function syncBlock(agent, start, end, block) {
   return u.ok ? "updated" : "patch " + u.status;
 }
 const syncRachelRules = (agent) => syncBlock(agent, RULES_START, RULES_END, RACHEL_RULES);
+// Rachel's opening line (Cartesia initial_message). Tania, Nov 6: no "virtual assistant" in the greeting, ever.
+// Every run puts this exact greeting back if anything else (an old copy) is in the agent.
+const RACHEL_GREETING = "Thank you for calling The WebSwan, this is Rachel. This call is being recorded. How may I assist you?";
+async function syncGreeting(agent) {
+  const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
+  const g = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { headers: hd });
+  if (!g.ok) return "greeting read " + g.status;
+  const d = await g.json(), cfg = (d.config || (d.agent && d.agent.config)) || {};
+  if (cfg.initial_message === RACHEL_GREETING) return "greeting ok";
+  const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { initial_message: RACHEL_GREETING } }) });
+  return u.ok ? "greeting updated" : "greeting patch " + u.status;
+}
 // Every calling agent: how to answer "are you an AI / a robot / a recording?" and keep going with the script.
 const AI_START = "### AI QUESTION RULE (WebSwan)", AI_END = "### END AI QUESTION RULE";
 const aiRule = (brand) => `${AI_START}
@@ -79,6 +92,7 @@ export default async () => {
   const agent = process.env.CARTESIA_AGENT_RACHEL || ids.rachel || "";
   if (!agent) return new Response("no rachel");
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
+  try { rules += " · " + await syncGreeting(agent); } catch (e) { rules += " · greeting error"; }
   for (const k of ["rebecca", "rebecca_es"]) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, REB_START, REB_END, REBECCA_RULES); } catch (e) { rules += " · " + k + " error"; } } }
   for (const [k, brand] of AI_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · ai " + k + " " + await syncBlock(id, AI_START, AI_END, aiRule(brand)); } catch (e) { rules += " · ai " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
