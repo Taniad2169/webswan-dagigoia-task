@@ -1134,6 +1134,9 @@ function liveApply(x, c) {
   x.notes = [c.summary, x.live.seconds ? 'Length ' + Math.floor(x.live.seconds / 60) + 'm ' + (x.live.seconds % 60) + 's' : '', c.endReason ? 'Ended: ' + c.endReason.replace(/_/g, ' ') : ''].filter(Boolean).join(' · ');
   const said = lines.filter(m => m.role === 'user').map(m => m.text).join(' ');
   const l = byId('leads', x.leadId);
+  // Tania's own test calls: keep the recording and transcript, but no outcome, coaching, learning or review.
+  const testPhone = String((l && l.phone) || x.live.to || '').replace(/\D/g, '').slice(-10);
+  if (['4156189200', '4158770687', '5166100203'].includes(testPhone) || /TEST CALL/i.test(String(x.leadName || ''))) { x.outcome = 'Test call (Tania)'; x.test = true; return true; }
   if (/^dial_(no_answer|busy|timeout)$|voicemail/.test(c.endReason || '') || (c.status === 'failed' && !said)) x.outcome = 'No answer';
   else if (/^dial_failed$/.test(c.endReason || '')) x.outcome = 'Wrong number';
   else if (OPT_OUT.test(said)) {
