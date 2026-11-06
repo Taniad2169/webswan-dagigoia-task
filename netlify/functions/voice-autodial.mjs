@@ -26,6 +26,10 @@ function clock(tz, d = new Date()) {
   const g = (t) => (p.find((x) => x.type === t) || {}).value;
   return { day: String(g("weekday")).slice(0, 3).toLowerCase(), mins: Number(g("hour")) * 60 + Number(g("minute")), hour: Number(g("hour")) };
 }
+// Each agent's own calling hours inside the dialing windows, in the schedule's time zone (Tania, Nov 6):
+// Monica 7-8 AM and 1-2 PM, George 8-9 AM, Rebecca 9-10 AM and 12-1 PM. Alek is not limited (floating, Tania's own calls).
+// Voice Studio can override this by saving settings.agentHours.
+const DEFAULT_AGENT_HOURS = { monica: [["07:00", "08:00"], ["13:00", "14:00"]], george: [["08:00", "09:00"]], rebecca: [["09:00", "10:00"], ["12:00", "13:00"]] };
 const toMins = (s) => { const m = String(s || "").match(/^(\d{1,2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : -1; };
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
@@ -113,6 +117,8 @@ export default async () => {
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
     const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
+    const slots = (s.agentHours || DEFAULT_AGENT_HOURS)[name];
+    if (slots && !slots.some(([a, b]) => now.mins >= toMins(a) && now.mins < toMins(b))) continue; // not this agent's hour; stays in the queue
     if (name === "alek" && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
     const floating = name === "alek" && lead.mode === "floating" && String(lead.task || "").length >= 10;
     const pick = floating && ALEK_NUM() ? { id: ALEK_NUM() } : numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
