@@ -71,7 +71,9 @@ a{color:#137fae}
 .ws-left{display:flex;align-items:center;gap:14px}.ws-me{width:58px;height:58px;border-radius:50%;object-fit:cover;border:3px solid #93e5fa;flex:none}.ws-logo{height:54px;width:auto;flex:none}.ws-ft{margin-top:48px;padding:18px 0 6px;border-top:1px solid var(--line);text-align:center;font-size:13px;color:#5c6b7a}@media(max-width:800px){.ws-me{width:46px;height:46px}.ws-logo{height:42px}}
 </style>
 </head>
-<body>
+<body class="vs-locked">
+<style>body.vs-locked>*:not(#vsGate){visibility:hidden!important}#vsGate{display:none}body.vs-locked #vsGate{display:flex;position:fixed;inset:0;z-index:2147483647;background:#0f1d2e;color:#fff;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-family:system-ui,sans-serif;text-align:center;padding:24px}#vsGate button{background:#fff;color:#0f1d2e;border:0;border-radius:10px;padding:12px 20px;font-size:16px;font-weight:600;cursor:pointer}</style>
+<div id="vsGate" role="dialog" aria-modal="true" aria-labelledby="vsGateT"><div style="font-size:42px" aria-hidden="true">🔒</div><h1 id="vsGateT" style="margin:0;font-size:24px">WebSwan Voice Studio</h1><p style="margin:0;max-width:360px;opacity:.85">Private workspace. Sign in with your WebSwan Google account to continue.</p><button type="button" onclick="window.cloudClick && window.cloudClick()">Sign in with Google</button><p id="vsGateMsg" role="status" style="margin:0;font-size:14px;opacity:.8"></p></div>
 <a class="skip" href="#content">Skip to content</a>
 <aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><a href="../team/" style="display:block;margin:6px 0 12px;padding:12px;border-radius:10px;background:#1182f0;color:#fff;font-weight:800;text-decoration:none">🏢 AI Office<br><small style="font-weight:600;opacity:.9">Eva · Tatiana · Linda · Rachel</small></a><a href="../team/#brief" style="display:block;margin:0 0 12px;padding:12px;border-radius:10px;background:#0b2f57;color:#fff;font-weight:800;text-decoration:none">🎙️ Voice briefing<br><small style="font-weight:600;opacity:.9">Talk with any agent by name</small></a><nav id="nav" aria-label="Sections"></nav><a href="../team/#tatiana" style="display:block;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">📅 Content calendar (Tatiana)</a><a href="jennifer.html" style="display:block;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">👩‍💼 Jennifer Back Office</a><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
 <main>
@@ -1494,10 +1496,10 @@ window.cloudClick = async () => {
 };
 onAuthStateChanged(auth, async u => {
   user = u; window.cloudUser = u ? u.email : '';
-  if (!u) { last = {}; status('☁ Sign in to sync', 'Sync your workspace to your private WebSwan cloud'); return; }
+  if (!u) { document.body.classList.add('vs-locked'); last = {}; status('☁ Sign in to sync', 'Sync your workspace to your private WebSwan cloud'); return; }
   status('☁ Syncing…');
-  try { await pull(); toast('☁ Synced with your WebSwan cloud.'); if (window.livePoll) window.livePoll(); if (window.liveAutoSync) window.liveAutoSync(); }
-  catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else status('☁ Sync error', String(e.message || e)); }
+  try { await pull(); document.body.classList.remove('vs-locked'); toast('☁ Synced with your WebSwan cloud.'); if (window.livePoll) window.livePoll(); if (window.liveAutoSync) window.liveAutoSync(); }
+  catch (e) { console.error(e); if (/permission/i.test(e.code || e.message)) { const gm = document.getElementById('vsGateMsg'); if (gm) gm.textContent = 'That Google account isn’t allowed. Use your WebSwan Google account.'; toast('This Google account isn’t allowed in WebSwan Voice Studio. Use your WebSwan Google account.'); await signOut(auth); } else { const gm = document.getElementById('vsGateMsg'); if (gm) gm.textContent = 'Couldn’t reach your WebSwan cloud. Check your connection and reload the page.'; status('☁ Sync error', String(e.message || e)); } }
 });
 window.fbIdToken = async () => (user ? user.getIdToken() : null);
 getRedirectResult(auth).catch(e => { if (e && e.code) toast('Sign-in didn’t work: ' + e.code); });
