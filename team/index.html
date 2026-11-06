@@ -162,7 +162,7 @@
 const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
 const ORDER = ["eva", "tatiana", "jimmy", "linda", "clara", "rachel", "sdr", "monica", "george", "rebecca", "alek"];
-const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.svg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Coby", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Linda", role: "Legal & Compliance", photo: "img/linda.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Coby", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
 let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini (Jimmy)", claude: "Claude" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
 let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
@@ -227,7 +227,7 @@ const TOOLS = {
   eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["🧹 Clean up inbox", () => cleanPanel()], ["⚙️ Settings", () => settingsPanel()]],
   tatiana: [["📅 Month plan", () => planPanel()], ["🎬 Schedule a video", () => videoPanel()], ["🔗 Content360 accounts", () => c360Panel()], ["📱 Write this week's posts", () => run("tatiana_weekly")], ["📝 Write blogs + Google posts", () => run("tatiana_blogs")]],
   linda: [["🔎 Review a website", () => lindaPanel()]],
-  jimmy: [["🎨 Quick picture", () => jimmyPanel("image")], ["🎬 Make a video", () => jimmyPanel("video")], ["🖼 Pictures for Tatiana's posts", () => jimmyPostPics()]],
+  jimmy: [["🎨 Quick picture", () => jimmyPanel("image")], ["🎬 Video idea for my Gemini app", () => videoIdeaPanel()], ["📤 Upload a video to schedule", () => { openAgent("tatiana").then(() => videoPanel()); }], ["🖼 Pictures for Tatiana's posts", () => jimmyPostPics()]],
   rachel: [["📞 Rachel's script", () => ask("Show me Rachel's current receptionist script and suggest improvements.")]]
 };
 
@@ -247,7 +247,7 @@ async function openAgent(k) {
   const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = tl[b.dataset.t][1]);
-  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / make a vertical video of…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
+  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / give me a video idea for…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
   document.querySelector(".app").classList.add("chat"); drawList();
   $("msgs").innerHTML = '<p class="hint">Loading…</p>';
   try { msgs = (await api({ action: "history", agent: k })).messages || []; } catch (e) { msgs = []; toast(e.message); }
@@ -571,6 +571,14 @@ function jimmyPanel(type) {
     try { const r = await api({ action: "jimmy_make", type, prompt: p, aspect: $("jA").value, secs: vid ? +$("jS").value : undefined }); msgs = msgs.concat(r.messages); $("extra").innerHTML = ""; drawMsgs();
       setTimeout(() => cur === "jimmy" && openAgent("jimmy"), vid ? 180000 : 60000); if (vid) setTimeout(() => cur === "jimmy" && openAgent("jimmy"), 360000); }
     catch (e) { toast(e.message); $("jGo").disabled = false; } };
+}
+// Videos come from Tania's Gemini app (her subscription covers them): Jimmy writes the prompt to paste there.
+function videoIdeaPanel() {
+  $("extra").innerHTML = `<div class="panel"><b>🎬 Video idea for your Gemini app</b> <span class="hint">Jimmy writes the prompt. You paste it in the Gemini app (your subscription covers the video), download it, then tap 📤 Upload a video to schedule.</span>
+    <label>What is the video about?</label><textarea id="vi" rows="3" placeholder="e.g. Our AI receptionist answers every call for a busy dental office"></textarea>
+    <div class="row"><div><label>Shape</label><select id="viA"><option value="vertical 9:16 for Reels, TikTok and Stories">Vertical 9:16 (Reels, TikTok, Stories)</option><option value="wide 16:9 for YouTube and websites">Wide 16:9 (YouTube, website)</option></select></div></div>
+    <p style="margin:10px 0 0"><button class="btn pri" id="viGo">✍️ Write my video prompt</button> <a class="btn" href="https://gemini.google.com/app" target="_blank" rel="noopener">Open the Gemini app ↗</a></p></div>`;
+  $("viGo").onclick = () => { const t = $("vi").value.trim(); if (!t) return toast("Tell Jimmy what the video is about"); $("extra").innerHTML = ""; ask(`Write me a ready-to-paste video prompt for my Gemini app, ${$("viA").value}: ${t}`); };
 }
 async function jimmyPostPics() {
   try { await api({ action: "plan_genimg", month: (C3 && C3.month) || new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }).slice(0, 7) });
