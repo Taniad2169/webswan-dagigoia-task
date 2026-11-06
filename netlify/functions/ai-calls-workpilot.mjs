@@ -13,6 +13,8 @@ const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
 const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
 const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
+// Tania's own phones: test calls to these never go to WorkPilot.
+const TEST_PHONES = new Set(["4156189200", "4158770687", "5166100203"]);
 const pretty = (p) => { const d = digits(p); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
 
 async function idToken(key, s) {
@@ -96,6 +98,7 @@ export async function runWorkpilotSync(hours) {
       const tp = c.telephony_params || {}, md = c.metadata || {};
       const inbound = a === "rachel";
       const other = inbound ? (tp.from || c.from) : (tp.to || c.to);
+      if (TEST_PHONES.has(digits(other))) { done.add(id); continue; } // Tania's test call
       const lead = byPhone.get(digits(other)) || {};
       const said = (c.transcript || []).filter((x) => x.role === "user" && x.text).map((x) => x.text).join(" ").trim();
       if (inbound && !said) { done.add(id); continue; } // empty inbound ring
