@@ -103,6 +103,14 @@ export default async (req) => {
       await teamStore().setJSON("settings", s);
       return reply(200, { settings: s }, origin);
     }
+    // Tania, Nov 6: "reboot their memory". Clears an agent's chat (what gets fed back into role plays), keeping a dated archive copy.
+    if (b.action === "history_clear") {
+      if (!agent) return reply(400, { error: "Unknown agent." }, origin);
+      const old = await history(agent);
+      if (old.length) await teamStore().setJSON("chat-archive-" + agent + "-" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-"), old);
+      await teamStore().setJSON("chat-" + agent, []);
+      return reply(200, { ok: true, cleared: old.length }, origin);
+    }
     if (b.action === "history") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
       return reply(200, { messages: (await history(agent)).slice(-200) }, origin);
