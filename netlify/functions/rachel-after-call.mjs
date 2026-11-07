@@ -35,17 +35,28 @@ const PHONE_RULES_END = "### END PHONE RULES";
 // Rebecca: which opener to use when the lead is known to pay for Google PPC or a billboard / bus bench (from the lead's notes).
 const REB_START = "### REBECCA ADVERTISING RULES (WebSwan)", REB_END = "### END REBECCA ADVERTISING RULES";
 const REBECCA_RULES = `${REB_START}
-OPENING (wins over STEP 1 and STEP 2 of your script; the rest of your script stays the same):
-1. "Hi, how are you today?" Then pause and listen. If they ask how you are: "I'm doing well, thank you for asking." Then: "Just so you know, this call is recorded."
-2. "I won't take much of your time. Are you accepting new patients?" (For a law firm: "Are you accepting new clients?") Then pause and wait for the answer. If no: thank them warmly and end the call.
-3. If yes: "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online." and go on with STEP 3.
+OPENING (Tania, Nov 6; wins over STEP 1 and STEP 2 of your script; the rest stays the same). Talk like a real person, not like you're reading: your own natural words, close to these, one short piece at a time, then stop and listen.
+1. "Hi, this is Rebecca. I'm not sure I've got the right person, but are you still accepting new patients?" (Law firm: "new clients?") If no: thank them warmly and end the call.
+2. If yes: "Great. Just so you know, this call is recorded. I'm with WebSwan Media Network. We work with doctors and attorneys to get them more visibility on our platform, once they qualify, and we can take information from new patients looking for your services and email it to you so you can contact them." Then: "Are you the person in charge?"
+3. If yes: "Perfect. Tania, our founder, would love to set up a quick 10-minute demo to show you how it works and how it helps your office. What day and time work for you?" If no: "No problem. Could we set up a 10-minute demo with the doctor? It could bring more patients into the practice. What day usually works best?" (Law firm: the attorney, more clients.)
+4. More questions than you can answer: offer the transfer to Rachel, or give Rachel's number.
 If someone asks who is calling, give your first name: "This is Rebecca with WebSwan Media Network."
-ADVERTISING LINE: these rules win over STEP 3 of your script. After "Great. I'm with WebSwan Media Network. We help doctors and attorneys gain visibility online.", look at this lead's notes: {{findings}}
+ADVERTISING LINE: these rules win over STEP 3 of your script. After your WebSwan Media Network intro (step 2 of the OPENING) and before "Are you the person in charge?", look at this lead's notes: {{findings}}
 - PPC: ONLY if the notes show the practice or firm pays for Google Ads or pay-per-click (PPC), say: "We're reaching out to a list of practices like yours that pay for Google pay-per-click to stay visible. But what happens when the credits run out? You're off the screen. On our platform, you stay visible all year." For a law firm say "firms like yours".
 - BILLBOARD: ONLY if the notes mention a billboard, bus bench, bus stop, radio or TV ad, say: "We're reaching out to a list of practices like yours that advertise on billboards and bus benches. Those reach people driving by, but when someone searches online for a doctor, our platform keeps you visible all year." For a law firm say "firms like yours" and "an attorney".
 - If the notes mention none of these, skip the advertising line and use your regular script. Never guess or claim they advertise.
 Then continue with the person-in-charge question.
 ${REB_END}`;
+// Monica (doctors) and George (attorneys): Tania's compliance opening, Nov 6. Kept short: George's script is near Cartesia's 30,000 limit.
+const COMP_START = "### COMPLIANCE OPENING (WebSwan)", COMP_END = "### END COMPLIANCE OPENING";
+const compRules = (who, items, boss) => `${COMP_START}
+Wins over STEP 1 and STEP 2 and over "soft spoken" in HOW YOU TALK. Confident, calm, authoritative: you run the call. Talk like a real person, not like you're reading: your own natural words, close to these, one short piece at a time, then stop and listen. No "how are you today?".
+1. "Hi, this is ${who}. I'm not sure I've got the right person, maybe you can help me."
+2. "We ran a compliance audit on [the website, said simply] for [${boss} last name's office, or the practice name], with WebSwan Digital Solutions. Our tech needs to send over the findings on ${items}. A few items need the ${boss}'s attention, to stay clear of state penalties and possible lawsuits. What's the best email to send them to?" Then STOP and wait.
+3. If they ask questions or hesitate: answer in one or two short sentences, then ask: "When was the last time your website was audited for state compliance?" Listen, then go back to the email.
+4. With the email confirmed, go on with STEP 3 of your script (person in charge, then the 10-minute appointment with Tania).
+${COMP_END}`;
+const COMP_AGENTS = [["monica", compRules("Monica", "ADA, cookie privacy and HIPAA", "doctor")], ["george", compRules("George", "ADA, cookie privacy and attorney advertising rules", "attorney")]];
 // Keep one marked block in an agent's live Cartesia script, right after the phone rules; only writes when it changed.
 async function syncBlock(agent, start, end, block) {
   const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
@@ -94,6 +105,7 @@ export default async () => {
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
   try { rules += " · " + await syncGreeting(agent); } catch (e) { rules += " · greeting error"; }
   for (const k of ["rebecca", "rebecca_es"]) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, REB_START, REB_END, REBECCA_RULES); } catch (e) { rules += " · " + k + " error"; } } }
+  for (const [k, block] of COMP_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, COMP_START, COMP_END, block); } catch (e) { rules += " · " + k + " error"; } } }
   for (const [k, brand] of AI_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · ai " + k + " " + await syncBlock(id, AI_START, AI_END, aiRule(brand)); } catch (e) { rules += " · ai " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
   if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
