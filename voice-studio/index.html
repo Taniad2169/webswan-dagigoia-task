@@ -1352,7 +1352,7 @@ function dialCard() {
   if (dialQ.error) return `<div class="card section"><h2>🤖 Auto-dialer</h2><p class="muted">${esc(dialQ.error)}</p><button class="btn outline small" onclick="dialRefresh()">↻ Try again</button></div>`;
   const s = dialQ.settings || {}, k = dialQ.counts || {}, L = liveStatus && !liveStatus.error ? liveStatus : null;
   const ready = L && L.keySet && L.numbers && L.live;
-  const ags = ['rebecca', 'george', 'monica', 'alek', 'tatiana'];
+  const ags = ['rebecca', 'george', 'monica', 'alek']; // Tatiana retired as a caller (Nov 6)
   const recent = (dialQ.leads || []).filter(l => l.status !== 'queued').slice(-8).reverse();
   return `<div class="card section"><div class="row"><h2>🤖 Auto-dialer</h2><span class="chip ${dialQ.paused ? 'warn' : ready ? 'ok' : 'warn'}">${dialQ.paused ? (dialQ.pauseReason === 'budget' ? '⏸ Paused: budget reached' : '⏸ Paused') : ready ? '▶ On' : 'Waiting for Cartesia setup'}</span></div>
     ${dialQ.pauseReason === 'budget' ? `<p class="note warn">The auto-dialer paused itself because this month's call budget hit the stop line. See 💰 Monthly call budget in <a href="#" onclick="nav('Usage & setup');return false">Usage & setup</a> to approve more, or wait for the next billing cycle.</p>` : ''}
