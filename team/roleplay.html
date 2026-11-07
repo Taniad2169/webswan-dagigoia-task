@@ -74,6 +74,7 @@
     <div id="cobyBox" style="display:none;margin-top:12px;text-align:left;background:#fff7e6;border:1px solid #f3d38a;border-radius:12px;padding:12px">
       <b>💬 Coby is listening</b> <span class="hint">Talk to him (the mic stays on), or type below. He gives his opinion on the role play, then listens to yours.</span>
       <div class="row" style="margin-top:8px"><input id="cobyText" style="flex:1;min-width:220px;font:inherit;padding:9px;border-radius:9px;border:1px solid #f3d38a" placeholder="Coby, what did you think of Monica's opening?"><button class="btn pri" id="cobySend">Send</button><button class="btn" id="cobyDone">Done with Coby</button></div>
+      <div class="row" style="margin-top:8px"><span class="hint">Have Coby coach one of them directly (he heard the call):</span><span id="cobyCoach"></span></div>
     </div>
     <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Coby, it runs on its own: say "pause" to step in, "continue" to go on.</p>
   </div>
@@ -299,6 +300,20 @@ async function cobyTurn(text) {
   catch (e) { S.busy = false; say("⚠️ Coby " + e.message); }
 }
 async function ask_(agent, text) { return ask(agent, text, { roleplay: false }); }
+$("cobyCoach").innerHTML = CALLERS.map((c) => `<button class="btn" data-coach="${c.k}" style="padding:7px 12px">Coby → ${c.n}</button>`).join(" ");
+$("cobyCoach").onclick = (e) => { const b = e.target.closest("[data-coach]"); if (b) cobyCoaches(b.dataset.coach); };
+async function cobyCoaches(k) {
+  if (S.busy) return; S.busy = true; hush(); micLook(""); say("💭 Coby is coaching " + first(k) + "…");
+  const call = S.log.filter((x) => !/→ Coby|coaching|feedback/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
+  const notes = S.log.filter((x) => x.who === "Tania → Coby").map((x) => x.text).join(" | ").slice(-1200);
+  try {
+    const c = await ask_("sdr", `COACHING (not a role play): you heard this practice call. Talk directly to ${first(k)} as her call coach, by name, in 2 to 4 short spoken sentences: what she did well, and the exact words to change. Respect Tania's opinions: ${notes || "(none yet)"}\n\nTHE CALL (data):\n${call || "(no call yet)"}`);
+    addLog("Coby → " + first(k), c, "coby"); S.busy = false; await speak(c, "sdr"); S.busy = true; say("💭 " + first(k) + " is answering Coby…");
+    const r = await ask_(k, `Coby, your call coach, just gave you this feedback on your practice call: "${c}". Answer him in 1 to 3 short spoken sentences: say what you'll do differently on your next call, with the exact new line. No role play.`);
+    addLog(first(k) + " → Coby", r, "ag"); S.busy = false; await speak(r, k);
+    brainBox(k); say("Save " + first(k) + "'s lesson to her brain below, or keep talking to Coby.");
+  } catch (e) { S.busy = false; say("⚠️ " + e.message); }
+}
 $("coby").onclick = () => { S.coach = true; hush(); $("cobyBox").style.display = "block"; if (!S.on) { S.on = true; startRec(); } S.turn = "listen"; micLook("live"); say("💬 Coby is listening. Ask him what he thinks."); $("cobyText").focus(); };
 $("cobySend").onclick = () => { const t = $("cobyText").value.trim(); if (!t) return; $("cobyText").value = ""; cobyTurn(t); };
 $("cobyText").addEventListener("keydown", (e) => { if (e.key === "Enter") $("cobySend").click(); });
