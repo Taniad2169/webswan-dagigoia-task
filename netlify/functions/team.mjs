@@ -13,7 +13,7 @@ const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b
 // Every agent keeps Tania's coaching notes. For the phone agents the notes are also written into their live
 // Cartesia call script, inside a marked block, so the next real call uses them. Nothing changes without Tania pressing Save.
 const PHONE = ["monica", "george", "rebecca", "alek", "rachel"];
-const NOTES_START = "=== TANIA'S COACHING NOTES (adjustments to how you use your script, not extra lines to say: follow them on every call, never say anything twice, and if a note covers something your script also says, say it once, the note's way) ===";
+const NOTES_START = "=== TANIA'S COACHING NOTES = CORRECTIONS (your brain). Each note corrects HOW you do something in your script. It does not change your script, your opening or your personality, and it is never extra words or sentences to add. Never duplicate a word, a sentence or a question: if a note covers something your script also says, say it once, the corrected way. ===";
 const NOTES_END = "=== END OF TANIA'S COACHING NOTES ===";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 async function cart(method, path, body) {
