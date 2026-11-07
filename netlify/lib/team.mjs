@@ -19,7 +19,7 @@ const TEAM = `THE WEBSWAN EXECUTIVE TEAM (how we work together)
 - Tania, CEO: final authority over every decision, purchase, publication, legal step and client commitment.
 - Claude, CTO: builds and maintains the systems, integrations and security.
 - Gips (ChatGPT), CSO, Chief Strategist Officer: business strategy, pricing, growth and financial planning.
-- Jimmy (Gemini): deep research (treat his research as evidence to verify, not as final authority), and the AI Office's Graphics & Template Creator: he paints the pictures for Tatiana's posts (social and Google Business) and makes any quick graphic or short video Tania asks for.
+- Jimmy (Grok): deep research (treat his research as evidence to verify, not as final authority), and the AI Office's Graphics & Template Creator: he paints the pictures for Tatiana's posts (social and Google Business) and makes any quick graphic or short video Tania asks for.
 - The AI Office: Eva (executive assistant), Tatiana (social media and brand growth), Linda (legal research and risk), Clara (budget strategist), Rachel (inbound receptionist). Jimmy (graphics, templates and videos). The phone agents Rebecca, Monica, George, Alek and Rachel live in Voice Studio.
 - The four businesses: The WebSwan (custom websites, SEO, technical development, the SBPA phone app), WebSwan Digital Solutions (compliance audits, outreach, digital solutions), WebSwan Media Network (curated advertising directory for qualified doctors and attorneys, plus the AI receptionist, AI appointment setter, social media marketing and advertising), SwanDesk AI (the platform behind the AI receptionist and appointment setter, sold through WebSwan Media Network).
 Shared rules for every agent:
@@ -65,7 +65,7 @@ Rules: sound like a real person, warm and confident, no dashes as separators, no
   },
   jimmy: {
     name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg",
-    system: `You are Jimmy, WebSwan's Graphics & Template Creator (powered by Gemini): a creative, upbeat graphic designer and video maker. You create the pictures for Tatiana's posts (social media and Google Business): Tatiana writes the words and a picture idea, you paint a realistic picture that matches the content, and the AI Office lays The WebSwan template on top (brand name, headline, the WebSwan logo, the website and Tania's photo in a round badge). Tania can also ask you for anything quick: a flyer, a banner, a social graphic, a thumbnail, a logo idea, a background, a short video clip.
+    system: `You are Jimmy, WebSwan's Graphics & Template Creator (powered by Grok from xAI): a creative, upbeat graphic designer and video maker. You create the pictures for Tatiana's posts (social media and Google Business): Tatiana writes the words and a picture idea, you paint a realistic picture that matches the content, and the AI Office lays The WebSwan template on top (brand name, headline, the WebSwan logo, the website and Tania's photo in a round badge). Tania can also ask you for anything quick: a flyer, a banner, a social graphic, a thumbnail, a logo idea, a background, a short video clip.
 ${COMPANY}
 ${TEAM}
 How you work:
@@ -162,14 +162,15 @@ In this chat you are NOT on a sales call: you are talking with Tania, your boss 
 export const PROVIDERS = {
   deepseek: { label: "DeepSeek", env: "DEEPSEEK_API_KEY" },
   chatgpt: { label: "ChatGPT (Gips)", env: "OPENAI_API_KEY" },
-  gemini: { label: "Gemini (Jimmy)", env: "GEMINI_API_KEY" },
-  claude: { label: "Claude", env: "ANTHROPIC_API_KEY" }
+  gemini: { label: "Gemini", env: "GEMINI_API_KEY" },
+  claude: { label: "Claude", env: "ANTHROPIC_API_KEY" },
+  grok: { label: "Grok (Jimmy)", env: "XAI_API_KEY" }
 };
 export const providerReady = () => Object.fromEntries(Object.entries(PROVIDERS).map(([k, p]) => [k, !!process.env[p.env]]));
 export function pickProvider(want) {
   const ready = providerReady();
   if (want && ready[want]) return want;
-  return ["deepseek", "chatgpt", "gemini", "claude"].find((k) => ready[k]) || "";
+  return ["deepseek", "chatgpt", "gemini", "claude", "grok"].find((k) => ready[k]) || "";
 }
 
 // messages: [{ role: "user" | "assistant", content }]
@@ -178,6 +179,20 @@ export async function askAI(provider, system, messages, maxTokens = 3000) {
   if (!p) throw new Error("No AI is connected yet. Add DEEPSEEK_API_KEY (or OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY) in Netlify.");
   const key = process.env[PROVIDERS[p].env];
   let r, j;
+  if (p === "grok") {
+    // xAI's API speaks the same language as ChatGPT's. Model names change: try the configured one, then the latest aliases.
+    const models = [process.env.XAI_MODEL, "grok-4-latest", "grok-4", "grok-3-latest"].filter((m, i, a) => m && a.indexOf(m) === i);
+    let lastErr = "";
+    for (const model of models) {
+      r = await fetch("https://api.x.ai/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }) });
+      j = await r.json().catch(() => ({}));
+      if (r.ok) return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "", provider: p };
+      lastErr = (j.error && (j.error.message || j.error)) || j.message || String(r.status);
+      if (!/model|not found|does not exist/i.test(String(lastErr))) break;
+    }
+    throw new Error("Grok: " + String(lastErr).slice(0, 200));
+  }
   if (p === "deepseek" || p === "chatgpt") {
     const url = p === "deepseek" ? "https://api.deepseek.com/chat/completions" : "https://api.openai.com/v1/chat/completions";
     const model = p === "deepseek" ? (process.env.DEEPSEEK_MODEL || "deepseek-chat") : (process.env.OPENAI_MODEL || "gpt-4.1");
@@ -305,4 +320,9 @@ export async function getSettings() {
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
   return s;
 }
-export const brainFor = (s, agent) => (s.brains && s.brains[agent]) || s.provider || "deepseek";
+// Tania, Nov 7: Jimmy now runs on Grok (xAI) whenever XAI_API_KEY is set, even if his brain was set to Gemini before.
+export const brainFor = (s, agent) => {
+  const b = (s.brains && s.brains[agent]) || "";
+  if (agent === "jimmy" && process.env.XAI_API_KEY && (!b || b === "gemini")) return "grok";
+  return b || s.provider || "deepseek";
+};

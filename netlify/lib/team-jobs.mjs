@@ -226,6 +226,33 @@ export async function geminiImage(prompt) {
   }
   throw new Error("Jimmy (Gemini) couldn't make the picture: " + last.slice(0, 250));
 }
+// ---------- Pictures by Grok (xAI Grok Imagine), Tania's choice since Nov 7. Gemini stays as the backup. ----------
+// About 2 to 4 cents a picture. Needs XAI_API_KEY in Netlify (webswan-billing).
+export async function grokImage(prompt, aspect = "1:1") {
+  const key = process.env.XAI_API_KEY; if (!key) throw new Error("XAI_API_KEY is missing in Netlify (webswan-billing).");
+  const models = [process.env.XAI_IMAGE_MODEL, "grok-imagine-image-2.0", "grok-imagine-image"].filter((m, i, a) => m && a.indexOf(m) === i);
+  let last = "";
+  for (const model of models) for (const extra of [{ aspect_ratio: aspect, resolution: "1k" }, {}]) {
+    const r = await fetch("https://api.x.ai/v1/images/generations", { method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt: String(prompt).slice(0, 4000), n: 1, response_format: "b64_json", ...extra }) });
+    const j = await r.json().catch(() => ({}));
+    const d = (j.data || [])[0] || {};
+    if (r.ok && d.b64_json) return Buffer.from(d.b64_json, "base64");
+    if (r.ok && d.url) { const im = await fetch(d.url); if (im.ok) return Buffer.from(await im.arrayBuffer()); }
+    last = `${model} ${r.status}: ${(j.error && (j.error.message || j.error)) || j.message || "no picture came back"}`;
+    if (r.status === 404 || /model/i.test(String(last))) break; // try the next model
+  }
+  throw new Error("Jimmy (Grok) couldn't make the picture: " + String(last).slice(0, 250));
+}
+// Grok first when its key is set; Gemini as the backup (or the only one when there is no Grok key).
+export async function makeImage(prompt, aspect = "1:1") {
+  if (process.env.XAI_API_KEY) {
+    try { return await grokImage(prompt, aspect); }
+    catch (e) { if (!process.env.GEMINI_API_KEY) throw e; console.log("Grok picture failed, using Gemini:", e.message); }
+  }
+  return geminiImage(prompt);
+}
+const imgMime = (buf) => buf[0] === 0xff && buf[1] === 0xd8 ? "image/jpeg" : buf[0] === 0x52 && buf[1] === 0x49 ? "image/webp" : "image/png";
 const scenePrompt = (it) => `Create a high-quality, realistic, square marketing photograph for a social media post. ${it.scene ? "Scene: " + it.scene : `Topic: ${String(it.headline || it.title || "").replace(/^Blog on Google:\s*/, "")}, for ${it.brand}${it.service ? " (" + it.service + ")" : ""}. Show a believable moment with a doctor, dentist, attorney or their front-desk team, or a phone or laptop in a modern practice.`} Warm, bright, professional lighting, modern clean office, colors leaning to blue and white. Keep the bottom third calm and uncluttered so text can sit on it. Absolutely no text, letters, words, numbers, logos or watermarks anywhere in the image.`;
 export async function tatianaPics(arg) {
   let [month, id] = String(arg || "").split("|"); month = month || targetMonth();
@@ -234,7 +261,7 @@ export async function tatianaPics(arg) {
   let made = 0, err = "";
   for (const it of todo) {
     try {
-      const buf = await geminiImage(scenePrompt(it));
+      const buf = await makeImage(scenePrompt(it), "1:1");
       await vs.set("ai-" + month + "-" + it.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
       const fresh = await getPlan(month), f = fresh.items.find((x) => x.id === it.id); // merge: Tania may be editing other cards meanwhile
       if (f) { f.aiImage = Date.now(); await savePlan(fresh); }
@@ -284,9 +311,9 @@ export async function jimmyMake() {
         await addMessages("jimmy", [{ role: "agent", kind: "video", media: { key: "jimmy-" + t.id, type: "video", mime: "video/mp4" }, prompt: t.prompt, text: `🎬 Here's your video${t.aspect === "9:16" ? " (vertical, for Reels, TikTok and Stories)" : ""}. Download it, or send it to Tatiana to schedule.` }]);
       } else {
         const shape = t.aspect === "9:16" ? "Tall vertical 9:16 format." : t.aspect === "16:9" ? "Wide 16:9 format." : "Square 1:1 format.";
-        const buf = await geminiImage(`${t.prompt}\n${shape}\n${BRAND_LOOK}`);
+        const buf = await makeImage(`${t.prompt}\n${shape}\n${BRAND_LOOK}`, t.aspect === "9:16" ? "9:16" : t.aspect === "16:9" ? "16:9" : "1:1");
         await videoStore().set("jimmy-" + t.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-        await addMessages("jimmy", [{ role: "agent", kind: "image", media: { key: "jimmy-" + t.id, type: "image", mime: "image/png" }, prompt: t.prompt, text: "🎨 Here you go! Download it, or tell me what to change and I'll make another." }]);
+        await addMessages("jimmy", [{ role: "agent", kind: "image", media: { key: "jimmy-" + t.id, type: "image", mime: imgMime(buf) }, prompt: t.prompt, text: "🎨 Here you go! Download it, or tell me what to change and I'll make another." }]);
       }
     } catch (e) { await addMessages("jimmy", [{ role: "agent", kind: "error", text: `⚠️ I couldn't make that ${t.type === "video" ? "video" : "picture"}: ${String(e.message || e).slice(0, 300)}` }]); }
   }
