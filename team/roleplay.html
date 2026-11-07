@@ -278,7 +278,8 @@ async function finish() {
 }
 /* ---------- save a role-play lesson to the agent's brain (goes into her live Cartesia script) ---------- */
 function brainBox(who) {
-  const d = document.createElement("div"); d.className = "ln fb";
+  const old = document.getElementById("bnWrap"); if (old) old.remove();
+  const d = document.createElement("div"); d.className = "ln fb"; d.id = "bnWrap";
   d.innerHTML = `<b>🧠 Teach ${esc(first(who))} from this role play</b><textarea id="bnSaid" rows="3" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff" placeholder="What should ${esc(first(who))} do differently? (or leave empty to use her feedback)"></textarea><button class="btn" id="bnDraft">✍️ Write the rule</button> <span id="bnOut"></span>`;
   $("log").appendChild(d); $("log").scrollTop = 1e9;
   $("bnDraft").onclick = async () => {
