@@ -58,7 +58,7 @@
     </div>
     <div class="row" style="margin-top:10px">
       <label><input type="checkbox" id="phones"> 🎧 I'm wearing headphones (I can interrupt just by talking)</label>
-      <label><input type="checkbox" id="free"> 🆓 Free browser voice (no Cartesia credits)</label>
+      <label><input type="checkbox" id="free"> 🆓 Practice voice (browser, no Cartesia credits). Leave OFF to hear each agent's real Cartesia voice</label>
     </div>
   </div>
 
@@ -105,7 +105,7 @@ const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen:
 const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k }).n;
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
 function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).checked = v == null ? d : v === "on"; } catch (e) { $(id).checked = d; } $(id).onchange = () => { try { localStorage.setItem(key, $(id).checked ? "on" : "off"); } catch (e) {} }; }
-pref("phones", "wsPhones", false); pref("free", "wsFreeVoice", false);
+pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", false); // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
 
 function drawAgents() {
   $("agents").innerHTML = CALLERS.map((c) => `<button class="ag ${S.agent === c.k ? "on" : ""}" data-k="${c.k}"><img src="img/${c.k}.jpg" alt=""><b>${c.n}</b><small>${esc(c.r)}</small></button>`).join("");
@@ -267,7 +267,22 @@ async function finish() {
   if (!S.on) return; hush(); const who = S.agent; S.on = false; S.finishing = true; try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); say("📝 Getting feedback…");
   try { const fb = await ask(who, "The role play just ended.", { roleplay: false, rpEnd: true }); addLog(first(who) + " · feedback", fb, "fb"); S.on = true; await speak(fb, who); S.on = false; } catch (e) {}
   if (mode() === "coby") { try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice call with " + first(who) + ". Give " + first(who) + " the one most important coaching point to sound more natural and get the email or appointment, in two sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {} }
-  S.finishing = false; say("Done. Pick a caller and press 🎙️ to go again.");
+  S.finishing = false; brainBox(who); say("Done. Save a lesson to " + first(who) + "'s brain below, or press 🎙️ to go again.");
+}
+/* ---------- save a role-play lesson to the agent's brain (goes into her live Cartesia script) ---------- */
+function brainBox(who) {
+  const d = document.createElement("div"); d.className = "ln fb";
+  d.innerHTML = `<b>🧠 Teach ${esc(first(who))} from this role play</b><textarea id="bnSaid" rows="3" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff" placeholder="What should ${esc(first(who))} do differently? (or leave empty to use her feedback)"></textarea><button class="btn" id="bnDraft">✍️ Write the rule</button> <span id="bnOut"></span>`;
+  $("log").appendChild(d); $("log").scrollTop = 1e9;
+  $("bnDraft").onclick = async () => {
+    const said = $("bnSaid").value.trim() || ("Use your feedback from this role play: " + (S.log.filter((x) => /feedback|coaching/.test(x.who)).map((x) => x.text).join(" ").slice(0, 500)));
+    $("bnOut").textContent = "Writing…";
+    try {
+      const r = await api({ action: "brain_draft", agent: who, said, context: S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-4500) });
+      $("bnOut").innerHTML = `<textarea id="bnNote" rows="4" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff">${esc(r.note)}</textarea><button class="btn pri" id="bnSave">💾 Save to ${esc(first(who))}'s brain</button>`;
+      $("bnSave").onclick = async () => { try { await api({ action: "brain_add", agent: who, note: $("bnNote").value }); $("bnOut").innerHTML = "✅ Saved. " + esc(first(who)) + " uses it on her next real call."; } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; } };
+    } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; }
+  };
 }
 function stopAll() { S.on = false; hush(); try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); }
 $("mic").onclick = () => { if (S.on) { if (S.turn === "agent") { hush(); yourTurn(); } return; } start(); };
