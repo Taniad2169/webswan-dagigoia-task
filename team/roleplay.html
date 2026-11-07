@@ -296,7 +296,7 @@ function brainBox(who) {
     $("bnOut").textContent = "Writing…";
     try {
       const r = await api({ action: "brain_draft", agent: who, said, context: S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-4500) });
-      $("bnOut").innerHTML = `<textarea id="bnNote" rows="4" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff">${esc(r.note)}</textarea><button class="btn pri" id="bnSave">💾 Save to ${esc(first(who))}'s brain</button>`;
+      $("bnOut").innerHTML = `<textarea id="bnNote" rows="4" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff">${esc(r.note)}</textarea><button class="btn pri" id="bnSave">✅ Approve and save to ${esc(first(who))}'s brain</button><div class="hint" style="margin-top:4px">Saved as a coaching note only. Her script, opening and personality stay exactly the same.</div>`;
       $("bnSave").onclick = async () => { try { await api({ action: "brain_add", agent: who, note: $("bnNote").value }); $("bnOut").innerHTML = "✅ Saved. " + esc(first(who)) + " uses it on her next real call."; } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; } };
     } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; }
   };
