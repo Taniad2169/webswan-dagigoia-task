@@ -108,8 +108,8 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catc
 save();
 
 let page = 'Overview';
-const pages = ['Overview', 'SDR AI', 'AI Team', 'Leads', 'Agents', 'Campaigns', "Alek's calendar", 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
-const icons = ['◫', '✦', '★', '♙', '◉', '◷', '📅', '🎙', '☎', '📋', '⚙'];
+const pages = ['Overview', 'SDR AI', 'AI Team', 'Leads', 'Agents', 'Brain', 'Campaigns', "Alek's calendar", 'Practice call', 'Call records', 'Tania call-back', 'Usage & setup'];
+const icons = ['◫', '✦', '★', '♙', '◉', '🧠', '◷', '📅', '🎙', '☎', '📋', '⚙'];
 const STATUSES = ['New', 'Contacted', 'Interested', 'Appointment requested', 'Follow up', 'Not interested', 'Do not call'];
 const LINE_TYPES = ['Business landline', 'Mobile', 'Unknown'];
 const CONSENTS = ['None', 'Oral consent', 'Prior express written consent'];
@@ -190,7 +190,7 @@ function render() {
   $('nav').innerHTML = pages.map((p, i) => `<button class="nav ${page === p ? 'active' : ''}" type="button" ${page === p ? 'aria-current="page"' : ''} onclick="nav(&quot;${p}&quot;)">${icons[i]} &nbsp; ${p}${p === 'Tania call-back' && cbN ? ` <span class="pill ok" style="margin-left:6px;padding:1px 8px">${cbN}</span>` : ''}</button>`).join('');
   $('title').textContent = page; $('crumb').textContent = page.toUpperCase();
   const c = $('content');
-  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'AI Team': cc => (typeof renderTeam === 'function' ? renderTeam(cc) : (cc.innerHTML = '<div class="card empty">Loading your AI team…</div>')), 'Leads': renderLeads, 'Agents': renderAgents, 'Campaigns': renderCampaigns, "Alek's calendar": cc => (typeof renderAlekCal === 'function' ? renderAlekCal(cc) : (cc.innerHTML = '<div class="card empty">Loading…</div>')), 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
+  ({ 'Overview': renderOverview, 'SDR AI': renderSDR, 'AI Team': cc => (typeof renderTeam === 'function' ? renderTeam(cc) : (cc.innerHTML = '<div class="card empty">Loading your AI team…</div>')), 'Leads': renderLeads, 'Agents': renderAgents, 'Brain': cc => (typeof renderBrain === 'function' ? renderBrain(cc) : (cc.innerHTML = '<div class="card empty">Loading…</div>')), 'Campaigns': renderCampaigns, "Alek's calendar": cc => (typeof renderAlekCal === 'function' ? renderAlekCal(cc) : (cc.innerHTML = '<div class="card empty">Loading…</div>')), 'Practice call': renderPractice, 'Call records': renderCalls, 'Tania call-back': cc => renderCallback(cc), 'Usage & setup': renderSetup }[page])(c);
 }
 
 function renderOverview(c) {
@@ -1855,6 +1855,39 @@ function teamAgentsCard() {
       <label for="afIns">${esc(f.name)}’s script (instructions)</label><textarea id="afIns" style="min-height:200px" placeholder="Paste ${esc(f.name)}’s full script here">${esc(f.instructions || '')}</textarea>
       <small class="muted">${/Alek/.test(f.name) ? 'Started from Rebecca’s script with the name changed. Read it over before creating.' : 'Paste the script you want this agent to follow.'} The new agent gets Rebecca’s calendar tools, phone-menu keypad and safety switches.</small>
       <div class="toolbar" style="margin-top:10px"><button class="btn green" onclick="teamAgentCreate()">Create ${esc(f.name)} in Cartesia</button></div>` : ''}</div>`;
+}
+</script>
+
+<script>
+/* ---------- 🧠 Brain: each phone agent's live Cartesia script, split into the parts Tania cares about ---------- */
+const BR = { agent: 'monica', text: '', loading: false, err: '' };
+const BR_AGENTS = [['monica', 'Monica'], ['george', 'George'], ['rebecca', 'Rebecca'], ['alek', 'Alek'], ['rachel', 'Rachel']];
+function brSection(t, start, end) { const i = t.indexOf(start); if (i < 0) return ''; const j = t.indexOf(end, i + start.length); return t.slice(i + start.length, j > i ? j : undefined).trim(); }
+async function brLoad(k) {
+  BR.agent = k; BR.loading = true; BR.err = ''; render();
+  try { const r = await voiceApi({ action: 'agent_get', agent: k }); BR.text = r.instructions || ''; } catch (e) { BR.err = e.message; BR.text = ''; }
+  BR.loading = false; render();
+}
+async function brSave() {
+  const t = $('brFull').value;
+  if (!confirm('Save this script to ' + BR.agent[0].toUpperCase() + BR.agent.slice(1) + '\'s LIVE Cartesia voice? Her next real call uses it.')) return;
+  try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); } catch (e) { toast(e.message); }
+}
+function renderBrain(c) {
+  if (!BR.text && !BR.loading && !BR.err) { setTimeout(() => brLoad(BR.agent), 0); }
+  const t = BR.text || '';
+  const persona = (t.match(/0\. YOUR PERSONALITY:[^\n]*/) || [''])[0].replace(/^0\. YOUR PERSONALITY:\s*/, '');
+  const opening = brSection(t, '### COMPLIANCE OPENING (WebSwan)', '### END COMPLIANCE OPENING') || brSection(t, '### REBECCA ADVERTISING RULES (WebSwan)', '### END REBECCA ADVERTISING RULES') || brSection(t, '### RACHEL CALL RULES (WebSwan)', '### END RACHEL RULES');
+  const ai = brSection(t, '### AI QUESTION RULE (WebSwan)', '### END AI QUESTION RULE');
+  const notes = brSection(t, "=== TANIA'S COACHING NOTES", '=== END OF TANIA');
+  const box = (title, body, hint) => `<div class="card section"><h2 style="margin:0 0 6px">${title}</h2>${hint ? `<p class="muted" style="margin:0 0 8px;font-size:13px">${hint}</p>` : ''}<div style="white-space:pre-wrap;font-size:14px;line-height:1.5;background:#f7fbfe;border:1px solid #e1edf5;border-radius:10px;padding:12px;max-height:340px;overflow:auto">${body ? esc(body) : '<span class="muted">(none)</span>'}</div></div>`;
+  c.innerHTML = `<div class="row section"><p>Everything your phone agents know, straight from their live Cartesia voice. Pick an agent.</p><div class="toolbar">${BR_AGENTS.map(([k, n]) => `<button class="btn ${BR.agent === k ? '' : 'outline'} small" onclick="brLoad('${k}')">${n}</button>`).join('')}<button class="btn outline small" onclick="brLoad(BR.agent)">↻ Refresh</button></div></div>
+  ${BR.loading ? '<div class="card empty">Loading her brain…</div>' : BR.err ? `<div class="card empty">⚠️ ${esc(BR.err)}<br><br>Sign in with Google at the top, then press Refresh.</div>` : `
+  ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
+  ${box('🎬 Opening and call flow', opening, 'Your final opening and the steps after it. This block wins over anything older in her script.')}
+  ${box('🤖 If asked "are you AI?"', ai)}
+  ${box('🧠 Coaching notes from role plays', notes, 'Lessons you saved from the Role Play Room or the AI Office. Add more with the 🧠 box after a role play.')}
+  <div class="card section"><h2 style="margin:0 0 6px">📜 Full live script</h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her complete prompt: ${t.length.toLocaleString()} of 30,000 characters. Edit carefully; Save updates her live voice.</p><textarea id="brFull" style="width:100%;min-height:420px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfd8e3">${esc(t)}</textarea><div class="toolbar" style="margin-top:8px"><button class="btn green" onclick="brSave()">💾 Save to live voice</button></div></div>`}`;
 }
 </script>
 </body>
