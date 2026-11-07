@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan Role Play Room</title>
+<style>
+  :root { --blue:#1182f0; --ink:#1d2733; --muted:#6b7684; --line:#e6ebf2; --bg:#f6f8fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 "Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; background:linear-gradient(90deg,#0b2f57,#1182f0); color:#fff; flex-wrap:wrap; }
+  header b { font-size:19px; } header a { color:#fff; font-weight:700; text-decoration:none; background:rgba(255,255,255,.15); padding:7px 12px; border-radius:9px; }
+  main { max-width:980px; margin:0 auto; padding:18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  h2 { margin:0 0 10px; font-size:17px; }
+  .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .ag { border:2px solid var(--line); background:#fff; border-radius:14px; padding:10px; cursor:pointer; text-align:center; font:inherit; }
+  .ag img { width:84px; height:84px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 6px; }
+  .ag b { display:block; font-size:16px; } .ag small { color:var(--muted); font-size:12.5px; }
+  .ag.on { border-color:var(--blue); background:#eef6ff; box-shadow:0 0 0 3px #cfe6ff; }
+  .row { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  label { font-weight:700; font-size:14px; }
+  select { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+  .btn { font:inherit; font-weight:800; border:0; border-radius:12px; padding:12px 18px; cursor:pointer; background:#e8eef6; color:var(--ink); }
+  .btn.pri { background:var(--blue); color:#fff; } .btn.red { background:#d32f2f; color:#fff; }
+  .mic { width:110px; height:110px; border-radius:50%; font-size:42px; border:0; cursor:pointer; background:var(--blue); color:#fff; box-shadow:0 8px 24px rgba(17,130,240,.35); }
+  .mic.live { background:#16a34a; animation:pulse 1.4s infinite; } .mic.agent { background:#7c3aed; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(22,163,74,.5)} 70%{box-shadow:0 0 0 22px rgba(22,163,74,0)} 100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} }
+  #state { font-weight:800; font-size:16px; min-height:26px; text-align:center; }
+  #heard { color:#35506a; min-height:22px; text-align:center; font-size:14px; }
+  #log { max-height:420px; overflow-y:auto; }
+  .ln { padding:8px 10px; border-radius:10px; margin:6px 0; } .ln b { display:block; font-size:12.5px; color:var(--muted); }
+  .ln.me { background:#e9f3fe; } .ln.ag { background:#f3effe; } .ln.coby { background:#fff7e6; } .ln.fb { background:#e9f9ee; }
+  .hint { color:var(--muted); font-size:13px; }
+  #signin { display:none; }
+</style>
+</head>
+<body>
+<header><div><b>🎭 Role Play Room</b><div style="font-size:12.5px;opacity:.85">Practice your callers, one at a time, with your voice</div></div><div class="row"><a href="../voice-studio/">⬅ Voice Studio</a><a href="./">🏢 AI Office</a></div></header>
+<main>
+  <div class="card" id="signin"><p>Sign in with your WebSwan Google account (thewebswann@gmail.com) to start.</p><button class="btn pri" id="signBtn">Sign in with Google</button></div>
+
+  <div class="card">
+    <h2>1. Pick who's calling</h2>
+    <div class="agents" id="agents"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Who plays the doctor or attorney?</h2>
+    <div class="row">
+      <label><input type="radio" name="mode" value="me" checked> 🙋‍♀️ Me (I answer the phone)</label>
+      <label><input type="radio" name="mode" value="coby"> 🤖 Coby plays the prospect, I watch</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>Coby plays: <select id="role"></select></label>
+      <label>How hard: <select id="mood"><option value="friendly">Friendly</option><option value="busy" selected>Busy, a bit rushed</option><option value="tough">Tough, pushes back</option></select></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label><input type="checkbox" id="phones"> 🎧 I'm wearing headphones (I can interrupt just by talking)</label>
+      <label><input type="checkbox" id="free"> 🆓 Free browser voice (no Cartesia credits)</label>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center">
+    <button class="mic" id="mic" title="Start the role play">🎙️</button>
+    <div id="state" style="margin-top:10px">Pick a caller, then press the microphone.</div>
+    <div id="heard"></div>
+    <div class="row" style="justify-content:center;margin-top:10px">
+      <button class="btn" id="hush">✋ Stop talking (Space)</button>
+      <button class="btn red" id="end">End role play + feedback</button>
+    </div>
+    <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Coby, it runs on its own: say "pause" to step in, "continue" to go on.</p>
+  </div>
+
+  <div class="card"><h2>Conversation</h2><div id="log"><p class="hint">Nothing yet.</p></div></div>
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" });
+  const auth = getAuth(app);
+  window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
+  onAuthStateChanged(auth, (u) => { document.getElementById("signin").style.display = u ? "none" : "block"; });
+  document.getElementById("signBtn").onclick = () => window._auth.signIn().catch((e) => alert("Sign-in failed: " + e.message));
+</script>
+<script>
+const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const CALLERS = [
+  { k: "monica", n: "Monica", r: "Compliance · doctors", male: false, kind: "doctor" },
+  { k: "george", n: "George", r: "Compliance · attorneys", male: true, kind: "attorney" },
+  { k: "rebecca", n: "Rebecca", r: "Media Network", male: false, kind: "doctor" },
+  { k: "alek", n: "Alek", r: "Backup · both", male: true, kind: "doctor" },
+  { k: "rachel", n: "Rachel", r: "Answers calls", male: false, kind: "caller" }
+];
+const ROLES = {
+  doctor: ["the front desk receptionist at a doctor's office", "the office manager at a medical practice", "the doctor", "the receptionist at a dental office"],
+  attorney: ["the receptionist at a law firm", "the office manager at a law firm", "the attorney"],
+  caller: ["a doctor calling back about the compliance report", "an attorney calling about advertising", "an office manager with questions"]
+};
+const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen: 0, log: [], audio: null, speaking: "", doneAt: 0, buf: "", timer: null, rec: null, cobyTurns: 0 };
+const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k }).n;
+const mode = () => document.querySelector('input[name="mode"]:checked').value;
+function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).checked = v == null ? d : v === "on"; } catch (e) { $(id).checked = d; } $(id).onchange = () => { try { localStorage.setItem(key, $(id).checked ? "on" : "off"); } catch (e) {} }; }
+pref("phones", "wsPhones", false); pref("free", "wsFreeVoice", false);
+
+function drawAgents() {
+  $("agents").innerHTML = CALLERS.map((c) => `<button class="ag ${S.agent === c.k ? "on" : ""}" data-k="${c.k}"><img src="img/${c.k}.jpg" alt=""><b>${c.n}</b><small>${esc(c.r)}</small></button>`).join("");
+}
+function drawRoles() {
+  const c = CALLERS.find((x) => x.k === S.agent); const list = ROLES[c ? c.kind : "doctor"];
+  $("role").innerHTML = list.map((r) => `<option>${esc(r)}</option>`).join("");
+}
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); say("Ready: " + first(S.agent) + ". Press the microphone."); };
+drawAgents(); drawRoles();
+
+function say(t) { $("state").textContent = t; }
+function micLook(m) { $("mic").className = "mic" + (m ? " " + m : ""); }
+function addLog(who, text, cls) { S.log.push({ who, text }); if (S.log.length === 1) $("log").innerHTML = ""; const d = document.createElement("div"); d.className = "ln " + cls; d.innerHTML = `<b>${esc(who)}</b>${esc(text)}`; $("log").appendChild(d); $("log").scrollTop = 1e9; }
+
+async function api(body) {
+  const tok = await window._auth.token(); if (!tok) throw new Error("Please sign in first.");
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+async function ask(agent, text, opt) {
+  const r = await api(Object.assign({ action: "chat", agent, text, voice: true, roleplay: true }, opt || {}));
+  const m = (r.messages || []).find((x) => x.role === "agent" || x.role === "assistant") || (r.messages || [])[1] || {};
+  if (String(m.id || "").startsWith("tmp")) throw new Error("took too long to answer, try again");
+  return String(m.text || "").replace(/^\s*\(?[A-Z][a-z]+\)?:\s*/, "").trim();
+}
+
+/* ---------- voices ---------- */
+function chunks(t) { const s = String(t || "").replace(/[*_#`>|]/g, "").replace(/\s+/g, " ").trim(); return (s.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [s]).map((x) => x.trim()).filter(Boolean); }
+async function ttsUrl(text, who) {
+  const r = await api({ action: "tts", agent: who, text: text.slice(0, 2400) });
+  const bin = atob(r.audio), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([u8], { type: r.mime || "audio/mpeg" }));
+}
+function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
+function browserSay(text, male) { return new Promise((res) => { try { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const pick = vs.find((v) => (male ? /male|guy|david|mark|andrew|christopher|eric|davis/i : /female|aria|jenny|zira|samantha|ava|emma|michelle/i).test(v.name)) || vs[0]; if (pick) u.voice = pick; u.rate = 1.02; u.onend = res; u.onerror = res; speechSynthesis.speak(u); } catch (e) { res(); } }); }
+async function speak(text, who) {
+  const gen = S.gen; const parts = chunks(text); const male = who === "sdr" || (CALLERS.find((c) => c.k === who) || {}).male;
+  const free = $("free").checked || who === "sdr";
+  S.turn = "agent"; micLook("agent"); say("🗣️ " + first(who) + " is talking…" + ($("phones").checked ? " (just talk to interrupt)" : " (tap ✋ to interrupt)"));
+  let next = free ? null : ttsUrl(parts[0], who).catch(() => null);
+  for (let i = 0; i < parts.length; i++) {
+    const url = free ? null : await next;
+    if (!free && i + 1 < parts.length) next = ttsUrl(parts[i + 1], who).catch(() => null);
+    if (gen !== S.gen || !S.on) break;
+    S.speaking = parts[i];
+    if (url) { await play(url); URL.revokeObjectURL(url); } else await browserSay(parts[i], male);
+    if (gen !== S.gen || !S.on) break;
+  }
+  S.speaking = ""; S.doneAt = Date.now(); S.audio = null;
+  return gen === S.gen && S.on;
+}
+function hush() { S.gen++; try { S.audio && S.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} S.speaking = ""; S.doneAt = Date.now(); S.busy = false; }
+
+/* ---------- listening: she talks -> they stop; she stops -> they answer ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const words = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 2);
+function isEcho(t) { // the mic hearing the agent through the speakers
+  if (!S.speaking && Date.now() - S.doneAt > 1500) return false;
+  const w = words(t); if (!w.length) return true; const said = new Set(words(S.speaking + " " + (S.log.length ? S.log[S.log.length - 1].text : "")));
+  return w.filter((x) => said.has(x)).length / w.length >= 0.5;
+}
+function startRec() {
+  if (!SR) { say("This browser can't hear the mic. Use Chrome or Edge."); return; }
+  if (S.rec) return;
+  const r = new SR(); S.rec = r; r.lang = "en-US"; r.continuous = true; r.interimResults = true;
+  r.onresult = (e) => {
+    let interim = "", fin = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fin += x[0].transcript + " "; else interim += x[0].transcript; }
+    const heard = (fin + interim).trim(); if (!heard) return;
+    const agentTalking = S.turn === "agent";
+    if (agentTalking && !$("phones").checked) return; // no headphones: the mic ignores the speakers until they finish
+    if (isEcho(heard)) return;
+    if (agentTalking && heard.split(/\s+/).length >= 2) { hush(); S.turn = "me"; } // she started talking: they stop right away
+    if (S.turn === "agent" || S.busy) return;
+    S.turn = "me"; micLook("live"); $("heard").textContent = "You: " + (S.buf + " " + heard).trim();
+    if (fin) S.buf = (S.buf + " " + fin).trim();
+    clearTimeout(S.timer); S.timer = setTimeout(commit, fin ? 900 : 1600); // she stopped talking: their turn
+  };
+  r.onend = () => { S.rec = null; if (S.on && !S.finishing) setTimeout(startRec, 120); };
+  r.onerror = (e) => { if (e.error === "not-allowed") { say("Please allow the microphone, then press 🎙️ again."); stopAll(); } };
+  try { r.start(); } catch (e) {}
+}
+function commit() {
+  const text = S.buf.trim(); S.buf = ""; $("heard").textContent = "";
+  if (!text || !S.on) return;
+  if (/\b(end|stop|finish) (the )?role ?play\b/i.test(text)) return finish();
+  if (mode() === "coby") {
+    if (/^\s*(pause|hold on|wait)\b/i.test(text)) { S.paused = true; hush(); say("⏸️ Paused. Say \"continue\" when you're ready."); return; }
+    if (/\b(continue|go on|keep going|resume)\b/i.test(text)) { S.paused = false; return cobyLoop(); }
+    addLog("Tania (coach)", text, "me"); S.paused = true; say("⏸️ Paused for your note. Say \"continue\" to go on.");
+    return;
+  }
+  const opening = !S.log.some((x) => x.who === first(S.agent));
+  addLog("You", text, "me");
+  agentTurn(opening ? `Tania wants to role play a real call with you now. She is the person who picks up the phone. She just answered: "${text}". Say your opening line.` : text);
+}
+
+/* ---------- me as the prospect ---------- */
+async function agentTurn(text) {
+  S.busy = true; S.turn = "thinking"; micLook(""); say("💭 " + first(S.agent) + " is thinking…");
+  const gen = ++S.gen;
+  try {
+    const ans = await ask(S.agent, text);
+    if (gen !== S.gen || !S.on) return;
+    addLog(first(S.agent), ans, "ag"); S.busy = false;
+    const ok = await speak(ans, S.agent);
+    if (ok) yourTurn();
+  } catch (e) { S.busy = false; say("⚠️ " + first(S.agent) + " " + e.message); yourTurn(); }
+}
+function yourTurn() { S.turn = "listen"; micLook("live"); say("🎙️ Your turn. Just talk."); }
+
+/* ---------- Coby as the prospect: they go back and forth on their own ---------- */
+function scene() { return "a " + $("mood").value + " " + $("role").value.replace(/^the /, ""); }
+async function cobyLoop() {
+  while (S.on && !S.paused && S.cobyTurns < 24) {
+    const last = S.log.filter((x) => x.who !== "Tania (coach)").slice(-1)[0];
+    const cobyNext = !last || last.who !== "Coby";
+    const who = cobyNext ? "sdr" : S.agent;
+    let text;
+    if (who === "sdr") {
+      text = !last ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). ${first(S.agent)} from WebSwan is calling. You just picked up the phone: say only how you'd answer it, like "Good morning, ${S.agent === "george" ? "Miller Law Office" : "Doctor Smith's office"}, this is Karen." Use a realistic office name. One line only, no stage directions.`
+        : `ROLE PLAY: you are still ${scene()}. ${first(S.agent)} just said: "${last.text}". Reply with ONLY your next line as that person (one or two short sentences), the way a real ${$("mood").value} office person would: sometimes ask who's calling or why, push back, or give the email or a time. If ${first(S.agent)} said goodbye, just say goodbye. No stage directions, no coaching.`;
+    } else {
+      text = !S.log.some((x) => x.who === first(S.agent))
+        ? `Tania wants to role play now. Coby is playing ${$("role").value}. You are calling, they just picked up and said: "${last.text}". Say your opening line.`
+        : `The person on the phone says: "${last.text}"`;
+    }
+    S.busy = true; S.turn = "thinking"; micLook(""); say("💭 " + first(who) + " is thinking…");
+    const gen = ++S.gen; let ans;
+    try { ans = await ask(who, text); } catch (e) { S.busy = false; say("⚠️ " + first(who) + " " + e.message + ". Say \"continue\" to try again."); S.paused = true; return; }
+    S.busy = false; if (gen !== S.gen || !S.on || S.paused) return;
+    addLog(first(who), ans, who === "sdr" ? "coby" : "ag"); S.cobyTurns++;
+    const ok = await speak(ans, who); if (!ok || S.paused) return;
+    const lastTwo = S.log.slice(-2).map((x) => x.text).join(" ");
+    if (/\b(good ?bye|bye now|have a (great|good|nice|lovely|wonderful) (day|afternoon|evening))\b/i.test(lastTwo) && S.log.slice(-2).every((x) => /bye|have a/i.test(x.text))) return finish();
+    await new Promise((r) => setTimeout(r, 350)); // a natural beat between speakers
+  }
+  if (S.on && !S.paused) finish();
+}
+
+/* ---------- start / end ---------- */
+async function start() {
+  if (!S.agent) { say("Pick a caller first."); return; }
+  if (!(await window._auth.token())) { say("Please sign in first (button above)."); return; }
+  S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; $("log").innerHTML = '<p class="hint">Starting…</p>';
+  startRec();
+  if (mode() === "coby") return cobyLoop();
+  if (S.agent === "rachel") { // Rachel answers the phone, so she speaks first
+    S.busy = true; say("💭 Rachel is picking up…");
+    try { const g = await ask("rachel", "Tania wants to role play now: she is calling you as a prospect. Answer the phone with your greeting."); addLog("Rachel", g, "ag"); S.busy = false; if (await speak(g, "rachel")) yourTurn(); } catch (e) { S.busy = false; say("⚠️ " + e.message); yourTurn(); }
+    return;
+  }
+  // Outbound callers wait for the person to answer, like a real call.
+  S.pending = true; yourTurn(); say("📞 Ringing… answer like you would at the office (\"Good morning, Doctor Smith's office\").");
+}
+async function finish() {
+  if (!S.on) return; hush(); const who = S.agent; S.on = false; S.finishing = true; try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); say("📝 Getting feedback…");
+  try { const fb = await ask(who, "The role play just ended.", { roleplay: false, rpEnd: true }); addLog(first(who) + " · feedback", fb, "fb"); S.on = true; await speak(fb, who); S.on = false; } catch (e) {}
+  if (mode() === "coby") { try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice call with " + first(who) + ". Give " + first(who) + " the one most important coaching point to sound more natural and get the email or appointment, in two sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {} }
+  S.finishing = false; say("Done. Pick a caller and press 🎙️ to go again.");
+}
+function stopAll() { S.on = false; hush(); try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); }
+$("mic").onclick = () => { if (S.on) { if (S.turn === "agent") { hush(); yourTurn(); } return; } start(); };
+$("hush").onclick = () => { if (S.on) { hush(); if (mode() === "coby") { S.paused = true; say("⏸️ Paused. Say \"continue\" when you're ready."); } else yourTurn(); } };
+$("end").onclick = () => finish();
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT" && S.on) { e.preventDefault(); $("hush").click(); } });
+try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {}
+</script>
+</body>
+</html>
