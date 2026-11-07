@@ -56,6 +56,7 @@ const PHONE_RULES_START = "### PHONE MENU, HUMAN AND VOICEMAIL RULES (WebSwan)";
 const PHONE_RULES_END = "### END PHONE RULES";
 const PHONE_RULES = `${PHONE_RULES_START}
 These rules come before everything else in your script.
+{{PERSONA}}
 1. PHONE MENUS. If a recording answers with options ("press 1 for appointments, press 2 for billing..."), NEVER say the number out loud. Use the send_dtmf tool to press the key on the keypad. Pick the option for the front desk, reception, the operator, new patients or new clients, or "all other questions". If there is no good option, press 0. If the menu asks for an extension or "dial by name", press 0. If it says "stay on the line", do nothing and wait.
 2. GREET A LIVE PERSON IMMEDIATELY (MOST IMPORTANT RULE). Any short live greeting is a real person: "Hello", "Hi", "Good morning", the office or firm name ("Law office of...", "Doctor Smith's office", "Smile Dental"), "How can I help you?", "This is Maria". The moment they finish, say your greeting within one second. Never wait to be sure. Never make anyone say "Hello?" twice. Silence loses the call.
 3. STAY SILENT ONLY FOR CLEAR RECORDINGS. Say nothing only when it is clearly a machine: a menu with "press" or options, hold music, "your call is important to us", "please hold", "please stay on the line", a recorded list of office hours, or a voicemail greeting. Everything else is a person: greet them.
@@ -64,12 +65,21 @@ These rules come before everything else in your script.
 3c. NEVER NARRATE. When you stay silent (rings, menus, hold, recordings), output nothing at all. Never say what you are doing, like "I'm waiting on hold" or "staying silent".
 3d. ONE BREATH GREETING. Say your whole greeting in one sentence without stopping after "Hi" ("Hi, this is [name], how are you today?").
 3e. SHORT TURNS. Speak at most two short sentences at a time, then stop and let them answer. Never give a speech. Do not over-explain.
+3f. RINGING, CONNECTING AND TRANSFERS: TOTAL SILENCE. While the phone is ringing, after "one moment", "let me connect you", "please hold", "I'll transfer you", or during any recording, you say NOTHING. Not "thank you", not "hello?", not "are you still there?", not "goodbye". Use skip_turn and wait. You speak only when a live person speaks to you. Never say "are you still there?" unless a live person already spoke with you and then went quiet for a long time.
 4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
 5. LONG HOLD. If you have been on hold or in menus for about 90 seconds with no live person, use end_call.
 6. "ARE YOU A ROBOT?" If someone asks whether you are a robot or AI, answer honestly and warmly, in Tania's words: "Yes, I'm the trained AI assistant for" and the company you call for (WebSwan Media Network, WebSwan Digital Solutions or The WebSwan), then "I know a lot of people don't like AI until AI solves a problem for them, but I'm here to help." Then, in the same breath, go back to the script where you left off and ask your question again (email, phone number or appointment). "I don't have any problem" is not a refusal: keep going. Never deny being AI, and never bring it up if nobody asks. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
 ${PHONE_RULES_END}`;
+// Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
+// authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
+const HUMAN_STYLE = "Sound like a real, experienced person on the phone, never like a recording or a robot, even on speakerphone: relaxed natural pace, contractions (I'm, we've, that's), short everyday sentences, a light natural acknowledgment now and then (\"sure\", \"got it\", \"of course\"), and never read lists or long sentences. Never sound rushed, nervous, apologetic or salesy. Never fill silence with chatter.";
+function persona(agent) {
+  if (agent === "rebecca" || agent === "rachel" || agent === "rachelout") return "0. YOUR PERSONALITY: confident, calm and friendly. Warm and easy to talk to, smiling in your voice, but you lead the conversation and always steer back to the next step. " + HUMAN_STYLE;
+  return "0. YOUR PERSONALITY: confident, calm and authoritative. You run the call: you speak with quiet certainty like a senior compliance professional, you never sound unsure, you never over-explain or beg, and after a question you stop and let the silence work. Polite and respectful, never pushy or rude. " + HUMAN_STYLE;
+}
 // Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
 const INBOUND_RULES = `${PHONE_RULES_START}
+{{PERSONA}}
 You answer incoming calls and calls transferred to you. Speak first, right away, with your greeting; never wait in silence.
 If you are ever on hold or reach a recording, say nothing and wait; if no person speaks for about a minute, use end_call.
 If someone asks whether you are a robot or AI, answer honestly and warmly, then continue helping.
@@ -78,7 +88,7 @@ function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
-  return base ? (agent === "rachel" ? INBOUND_RULES : PHONE_RULES) + "\n\n" + base : "";
+  return base ? (agent === "rachel" ? INBOUND_RULES : PHONE_RULES).replace("{{PERSONA}}", persona(agent)) + "\n\n" + base : "";
 }
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
@@ -436,9 +446,14 @@ export default async (req) => {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
-          system_tools: Object.assign({ end_call: {}, send_dtmf: {}, voicemail_detection: {} }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
+          system_tools: Object.assign({ end_call: {}, send_dtmf: {}, skip_turn: {}, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
-        report.agents[a] = ins.length > 200 ? "connected · phone-menu & voicemail rules on" : "connected (rules not added: no script found)";
+        // Tania, Nov 6: the "are you still there?" check-in fired after 5 s of ringing/hold. Outbound callers wait much longer.
+        let turnNote = "";
+        if (!a.startsWith("rachel") || a.startsWith("rachelout")) {
+          for (const secs of [30, 20]) { try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { turn: { inactivity_check_in_secs: secs, inactivity_end_call_secs: 120 } } }); turnNote = " · quiet during rings (" + secs + " s)"; break; } catch (e) { turnNote = " · ring wait not changed: " + String(e.message || e).slice(0, 80); } }
+        }
+        report.agents[a] = (ins.length > 200 ? "connected · phone-menu & voicemail rules on" : "connected (rules not added: no script found)") + turnNote;
       } catch (e) { report.agents[a] = "error: " + e.message; }
     }
     return reply(200, report, origin);
