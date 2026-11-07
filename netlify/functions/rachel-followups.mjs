@@ -16,6 +16,8 @@ const local = (tz, opt) => new Intl.DateTimeFormat("en-US", Object.assign({ time
 export default async () => {
   if (String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() !== "on" || !process.env.CARTESIA_API_KEY) return new Response("off");
   const store = getStore({ name: "voice-studio", consistency: "strong" });
+  // Tania's hard rule (Nov 7): nothing goes out after 6 PM New York time, and never on weekends.
+  { const nyH = Number(local("America/New_York", { hour: "numeric", hourCycle: "h23" })), nyD = local("America/New_York", { weekday: "short" }); if (nyH >= 18 || nyD === "Sat" || nyD === "Sun") return new Response("after 6 PM New York time"); }
   const list = (await store.get("rachel-followups", { type: "json" })) || [];
   const due = list.filter((c) => c.status === "scheduled" && Date.parse(c.callAt) <= Date.now());
   if (!due.length) return new Response("nothing due");

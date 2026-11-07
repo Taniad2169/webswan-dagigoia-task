@@ -70,6 +70,7 @@ These rules come before everything else in your script.
 4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
 5. LONG HOLD. If you have been on hold or in menus for about 90 seconds with no live person, use end_call.
 6. "ARE YOU AN AI, A RECORDING OR A ROBOT?" Never say you are an AI, a virtual assistant or a recording unless someone asks. If they ask, answer honestly in Tania's words: "Yes, I am a trained AI for The WebSwan." Then, in the same breath, go right back to what you were asking (the email, the name or the appointment). "I don't have any problem" is not a refusal: keep going. Never deny being AI. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
+7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) start with "FOLLOW-UP CALL", Tania already emailed the report. Then, after your greeting, say instead of your usual reason: "I'm calling about the website audit report Tania emailed on [the day in the notes]." If the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer Rachel.
 ${PHONE_RULES_END}`;
 // Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
 // authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
@@ -222,7 +223,8 @@ export default async (req) => {
 
   let b;
   try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
-  if (viaOffice && b.action !== "audio") return reply(403, { error: "This account can only play recordings here." }, origin);
+  // WorkPilot may play recordings and hand Eva's emailed leads to the callers (eva_handoff), nothing else.
+  if (viaOffice && b.action !== "audio" && b.action !== "eva_handoff" && b.action !== "eva_handoff_list") return reply(403, { error: "This account can only play recordings here." }, origin);
   const store = getStore({ name: "voice-studio", consistency: "strong" });
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
@@ -319,6 +321,47 @@ export default async (req) => {
     return reply(200, { callbacks: list.slice().sort((x, y) => Date.parse(x.callAt) - Date.parse(y.callAt)) }, origin);
   }
 
+
+  // ---------- Eva hand-off (from WorkPilot): Eva emailed the audit → the right caller follows up ----------
+  // Tania, Nov 7: callers wait 24 hours after Eva's email, never call after 6 PM New York time (voice-autodial),
+  // and get everything Eva knew: when the email went out, who was spoken to, what was said, the website findings.
+  // Doctors → Monica, attorneys → George, advertising (WebSwan Media Network) → Rebecca. Tania can pick another caller.
+  if (b.action === "eva_handoff" || b.action === "eva_handoff_list") {
+    const log = (await store.get("eva-handoffs", { type: "json" })) || [];
+    if (b.action === "eva_handoff_list") return reply(200, { handoffs: log.slice(-100).reverse() }, origin);
+    const x = b.lead || {};
+    const phone = e164(x.phone), st = clean(x.state, 2).toUpperCase();
+    if (!phone) return reply(400, { error: "This lead has no valid US phone number, so no caller can follow up." }, origin);
+    if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the lead's state (2 letters) so the caller calls in their business hours." }, origin);
+    const txt = (x.industry || "") + " " + (x.business || "") + " " + (x.kind || "");
+    const want = String(x.agent || "").toLowerCase();
+    const agent = ["monica", "george", "rebecca", "alek"].includes(want) ? want
+      : /advertis|media network|wsmn|directory|new patients|new clients/i.test(x.kind || "") ? "rebecca"
+      : /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "george" : "monica";
+    const sentAt = Date.parse(x.emailSentAt) || Date.now();
+    const notBefore = sentAt + 24 * 3600e3;
+    const day = new Date(sentAt).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric" });
+    const caller = clean(x.spokeBy, 40) || "Tania";
+    const facts = [
+      `FOLLOW-UP CALL. Tania emailed the website audit report to ${clean(x.email, 120) || "the practice"} on ${day}${x.subject ? ' (subject: "' + clean(x.subject, 120) + '")' : ""}${Array.isArray(x.files) && x.files.length ? ", with " + x.files.map((f) => clean(f, 60)).join(" and ") + " attached" : ""}.`,
+      x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
+      x.said && `What they said on the last call: ${clean(x.said, 220)}.`,
+      x.contact && `Person in charge: ${clean(x.contact, 80)}.`,
+      Array.isArray(x.findings) && x.findings.length && `Website findings in the report: ${x.findings.slice(0, 4).map((f) => clean(f, 120)).join("; ")}.`,
+      "Goal: confirm they received the email, then book the 10-minute appointment with Tania (Alek can also set it up). If they have questions about the report, offer Rachel."
+    ].filter(Boolean).join(" ");
+    const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
+    const item = { id: clean(x.id, 60) || "eva_" + crypto.randomBytes(4).toString("hex"), name: clean(x.contact || x.spokeWith, 120), business: clean(x.business, 160), phone, state: st, agent, lang: "en", mode: "selling", task: "",
+      findings: facts.slice(0, 900), campaign: "Eva follow-up (" + agent + ")", status: "queued", addedAt: Date.now(), notBefore, followup: true, emailSentAt: new Date(sentAt).toISOString() };
+    const same = q.leads.find((l) => l.status === "queued" && e164(l.phone) === phone);
+    if (same) Object.assign(same, item, { id: same.id || item.id }); else q.leads.push(item);
+    if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
+    await store.setJSON("queue", q);
+    log.push({ at: new Date().toISOString(), by: email, business: item.business, phone, state: st, agent, notBefore: new Date(notBefore).toISOString(), updated: !!same });
+    await store.setJSON("eva-handoffs", log.slice(-500));
+    return reply(200, { ok: true, agent, notBefore: new Date(notBefore).toISOString(), updated: !!same, paused: !!q.paused }, origin);
+  }
+
   if (b.action === "queue_get" || b.action === "queue_set") {
     const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "08:00", end: "09:00", start2: "13:00", end2: "14:00", tz: "America/Los_Angeles", perWindow: 25, agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
     if (b.action === "queue_set") {
@@ -350,7 +393,7 @@ export default async (req) => {
     }
     const n = (k) => q.leads.filter((l) => l.status === k).length;
     return reply(200, { settings: q.settings, paused: !!q.paused, pauseReason: q.pauseReason || "", lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
-      leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, lang: l.lang || "en", status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null })) }, origin);
+      leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, lang: l.lang || "en", status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null, followup: !!l.followup, notBefore: l.notBefore || null, emailSentAt: l.emailSentAt || null })) }, origin);
   }
 
 

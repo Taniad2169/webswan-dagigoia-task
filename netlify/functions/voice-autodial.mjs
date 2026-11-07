@@ -9,9 +9,10 @@
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
-// Wakes every minute 12:00-01:59 UTC, Tue-Fri UTC (= Tue-Thu, 8 AM to 6 PM Eastern / 5 AM to 6 PM Pacific, summer or winter).
-// The schedule saved in Voice Studio (up to two windows, in Tania's chosen time zone) narrows it to the exact hours.
-export const config = { schedule: "* 12-23,0-1 * * 2-5" };
+// Wakes every minute 12:00-01:59 UTC, Mon-Sat UTC (covers Monday to Friday daytime in every US time zone).
+// The schedule saved in Voice Studio (days + up to two windows, in Tania's chosen time zone) narrows it to the exact days and hours.
+// (Before Nov 7 this was Tue-Fri UTC, so a Monday checked in the schedule never dialed.)
+export const config = { schedule: "* 12-23,0-1 * * 1-6" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
@@ -71,6 +72,9 @@ export default async () => {
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const q = await store.get("queue", { type: "json" });
   if (!q || q.paused || !Array.isArray(q.leads) || !q.leads.length) return new Response("idle");
+  // Tania's hard rule (Nov 7): nothing goes out after 6 PM New York time, and never on weekends.
+  const ny = clock("America/New_York");
+  if (ny.hour >= 18 || ny.day === "sat" || ny.day === "sun") return new Response("after 6 PM New York time");
   const s = q.settings || {};
   const tz = s.tz || "America/New_York", now = clock(tz);
   if (!(s.days || []).includes(now.day)) return new Response("not a dialing day");
@@ -105,6 +109,7 @@ export default async () => {
 
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
+    if (lead.notBefore && Date.now() < lead.notBefore) continue; // Eva follow-up: waits 24 hours after her email
     if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
     const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
     if ((placedBy[ln] || 0) >= perRun) continue;
