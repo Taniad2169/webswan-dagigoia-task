@@ -13,6 +13,7 @@
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
 import { askAI } from "../lib/team.mjs";
 import crypto from "node:crypto";
+import { verifyOwner } from "../lib/auth.mjs";
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript, openSlots, pickChoices, say, busyWindow, scriptCode } from "../lib/cal.mjs";
 import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAgentIds, sanitizeBudget } from "../lib/budget.mjs";
@@ -211,13 +212,17 @@ export default async (req) => {
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" }, origin);
   if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
 
-  let email;
+  let email, viaOffice = false;
   try { email = await verifyFirebaseToken((req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "")); }
-  catch (e) { return reply(401, { error: "Please sign in with Google again." }, origin); }
+  catch (e) {
+    // WorkPilot (signed in on the WebSwan task project) may only play call recordings here.
+    try { email = await verifyOwner(req); viaOffice = true; } catch (e2) { return reply(401, { error: "Please sign in with Google again." }, origin); }
+  }
   if (!OWNERS.includes(email)) return reply(403, { error: "This account can't place calls." }, origin);
 
   let b;
   try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
+  if (viaOffice && b.action !== "audio") return reply(403, { error: "This account can only play recordings here." }, origin);
   const store = getStore({ name: "voice-studio", consistency: "strong" });
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
