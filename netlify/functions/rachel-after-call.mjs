@@ -99,10 +99,10 @@ async function syncGreeting(agent) {
 const AI_START = "### AI QUESTION RULE (WebSwan)", AI_END = "### END AI QUESTION RULE";
 const aiRule = (brand) => `${AI_START}
 This rule wins over any other AI answer in your script or rules.
+Never say you are an AI, a virtual assistant or a recording unless someone asks. The only line about the call you say on your own is: "Just so you know, this call is recorded for quality control."
 If someone asks whether you are an AI, a robot, a computer or a recording:
-1. Say: "Yes, I'm the trained AI assistant for ${brand}." Pause briefly.
-2. Say: "I know a lot of people don't like AI until AI solves a problem for them, but I'm here to help."
-3. Then, in the same breath, go right back to your script where you left off and ask your question again. If you were asking for the best email, ask for the email; for the phone number, ask for the number; for the appointment, ask for the day and time. Example: "So, what's the best email to send it to?"
+1. Say: "Yes, I am a trained AI for The WebSwan."
+2. Then, in the same breath, go right back to what you were asking: the email, the name, or the appointment. Example: "So, what's the best email to send it to?"
 "I don't have any problem", "no problem", "I'm fine", "okay" or "whatever" after that line are NOT a refusal and NOT a request to stop calling: keep going with your script. Only end the call or promise to remove them from the list when they clearly say "don't call me", "remove me", "take me off your list", "stop calling" or "not interested".
 ${AI_END}`;
 const AI_AGENTS = [["rebecca", "WebSwan Media Network"], ["rebecca_es", "WebSwan Media Network"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
