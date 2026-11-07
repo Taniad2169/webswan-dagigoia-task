@@ -79,6 +79,8 @@
     <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Coby, it runs on its own: say "pause" to step in, "continue" to go on.</p>
   </div>
 
+  <div class="card" id="notesCard"><h2>🧠 Coaching notes <span class="hint" id="notesWho"></span></h2><p class="hint">Only the adjustments you approved. Editing these never changes the agent's script, opening or personality. Pick a caller above, then edit, add or remove notes and press Save.</p><div id="notesList"><p class="hint">Pick a caller above to see her notes.</p></div><div class="row" style="margin-top:8px"><button class="btn" id="noteAdd">+ Add a note</button><button class="btn pri" id="notesSave">✅ Save notes</button><span id="notesMsg" class="hint"></span></div></div>
+
   <div class="card"><h2>Conversation</h2><div id="log"><p class="hint">Nothing yet.</p></div></div>
 </main>
 
@@ -120,7 +122,32 @@ function drawRoles() {
   const c = CALLERS.find((x) => x.k === S.agent); const list = ROLES[c ? c.kind : "doctor"];
   $("role").innerHTML = list.map((r) => `<option>${esc(r)}</option>`).join("");
 }
-$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); say("Ready: " + first(S.agent) + ". Press the microphone."); };
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); loadNotes(); say("Ready: " + first(S.agent) + ". Press the microphone."); };
+/* ---------- coaching notes editor (team brain notes; synced into a separate block of the live script) ---------- */
+let NOTES = [], NOTES_ORIG = [];
+function drawNotes() {
+  $("notesWho").textContent = S.agent ? "· " + first(S.agent) : "";
+  $("notesList").innerHTML = NOTES.length ? NOTES.map((n, i) => `<div class="row" style="align-items:flex-start;margin:6px 0"><textarea data-n="${i}" rows="2" style="flex:1;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff">${esc(n.note)}</textarea><button class="btn" data-del="${i}" title="Remove this note">🗑</button></div>`).join("") : '<p class="hint">No coaching notes yet. Add one, or approve one after a role play.</p>';
+}
+async function loadNotes() {
+  if (!S.agent) return; $("notesMsg").textContent = "Loading…";
+  try { const r = await api({ action: "brain_list", agent: S.agent }); NOTES = (r.notes || []).map((n) => ({ id: n.id, note: n.note })); NOTES_ORIG = NOTES.map((n) => ({ ...n })); drawNotes(); $("notesMsg").textContent = ""; }
+  catch (e) { $("notesMsg").textContent = "⚠️ " + e.message; }
+}
+$("notesList").addEventListener("input", (e) => { const i = e.target.dataset.n; if (i != null) NOTES[+i].note = e.target.value; });
+$("notesList").addEventListener("click", (e) => { const i = e.target.dataset.del; if (i != null) { NOTES.splice(+i, 1); drawNotes(); } });
+$("noteAdd").onclick = () => { if (!S.agent) return say("Pick a caller first."); NOTES.push({ id: null, note: "" }); drawNotes(); const t = document.querySelectorAll("#notesList textarea"); if (t.length) t[t.length - 1].focus(); };
+$("notesSave").onclick = async () => {
+  if (!S.agent) return; $("notesMsg").textContent = "Saving…";
+  try {
+    const keep = new Map(NOTES.filter((n) => n.id).map((n) => [n.id, n.note.trim()]));
+    for (const o of NOTES_ORIG) if (!keep.has(o.id) || keep.get(o.id) !== o.note.trim()) await api({ action: "brain_remove", agent: S.agent, id: o.id });
+    for (const n of NOTES) { const t = n.note.trim(); if (!t) continue; const o = n.id && NOTES_ORIG.find((x) => x.id === n.id); if (!o || o.note.trim() !== t) await api({ action: "brain_add", agent: S.agent, note: t }); }
+    await loadNotes(); $("notesMsg").textContent = "✅ Saved. " + first(S.agent) + " uses them on her next call.";
+  } catch (e) { $("notesMsg").textContent = "⚠️ " + e.message; }
+};
+// Opened from Voice Studio's Brain page: roleplay.html#notes=monica
+window.addEventListener("load", () => { const m = location.hash.match(/notes=(\w+)/); if (m && CALLERS.some((c) => c.k === m[1])) { S.agent = m[1]; drawAgents(); drawRoles(); const go = () => window._auth && window._auth.token().then((t) => t ? (loadNotes(), document.getElementById("notesCard").scrollIntoView()) : setTimeout(go, 800)); setTimeout(go, 800); } });
 drawAgents(); drawRoles();
 
 function say(t) { $("state").textContent = t; }
@@ -297,7 +324,7 @@ function brainBox(who) {
     try {
       const r = await api({ action: "brain_draft", agent: who, said, context: S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-4500) });
       $("bnOut").innerHTML = `<textarea id="bnNote" rows="4" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #cfe6ff">${esc(r.note)}</textarea><button class="btn pri" id="bnSave">✅ Approve and save to ${esc(first(who))}'s brain</button><div class="hint" style="margin-top:4px">Saved as a coaching note only. Her script, opening and personality stay exactly the same.</div>`;
-      $("bnSave").onclick = async () => { try { await api({ action: "brain_add", agent: who, note: $("bnNote").value }); $("bnOut").innerHTML = "✅ Saved. " + esc(first(who)) + " uses it on her next real call."; } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; } };
+      $("bnSave").onclick = async () => { try { await api({ action: "brain_add", agent: who, note: $("bnNote").value }); $("bnOut").innerHTML = "✅ Saved. " + esc(first(who)) + " uses it on her next real call."; if (S.agent === who) loadNotes(); } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; } };
     } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; }
   };
 }

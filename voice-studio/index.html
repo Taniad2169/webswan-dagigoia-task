@@ -1886,7 +1886,7 @@ function renderBrain(c) {
   ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
   ${box('🎬 Opening and call flow', opening, 'Your final opening and the steps after it. This block wins over anything older in her script.')}
   ${box('🤖 If asked "are you AI?"', ai)}
-  ${box('🧠 Coaching notes from role plays', notes, 'Lessons you saved from the Role Play Room or the AI Office. Add more with the 🧠 box after a role play.')}
+  ${box('🧠 Coaching notes from role plays', notes, 'Only the adjustments you approved; they never change her script or personality.')}<div style="margin:-8px 0 14px"><a class="btn small" href="../team/roleplay.html#notes=${BR.agent}" target="_blank" rel="noopener">✏️ Add, edit or remove coaching notes</a></div>
   <div class="card section"><h2 style="margin:0 0 6px">📜 Full live script</h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her complete prompt: ${t.length.toLocaleString()} of 30,000 characters. Edit carefully; Save updates her live voice.</p><textarea id="brFull" style="width:100%;min-height:420px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfd8e3">${esc(t)}</textarea><div class="toolbar" style="margin-top:8px"><button class="btn green" onclick="brSave()">💾 Save to live voice</button></div></div>`}`;
 }
 </script>
