@@ -70,7 +70,7 @@ These rules come before everything else in your script.
 4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
 5. LONG HOLD. If you have been on hold or in menus for about 90 seconds with no live person, use end_call.
 6. "ARE YOU AN AI, A RECORDING OR A ROBOT?" Never say you are an AI, a virtual assistant or a recording unless someone asks. If they ask, answer honestly in Tania's words: "Yes, I am a trained AI for The WebSwan." Then, in the same breath, go right back to what you were asking (the email, the name or the appointment). "I don't have any problem" is not a refusal: keep going. Never deny being AI. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
-7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) start with "FOLLOW-UP CALL", Tania already emailed the report. Then, after your greeting, say instead of your usual reason: "I'm calling about the website audit report Tania emailed on [the day in the notes]." If the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer Rachel.
+7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) contain "FOLLOW-UP CALL", we already emailed them. Then, after your greeting, say instead of your usual reason that you're following up on the email sent on [the day in the notes] (the website audit report from Tania, or Eva's email about new patients or clients, whichever the notes say). If the notes say they replied, start from their reply. If the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer Rachel.
 ${PHONE_RULES_END}`;
 // Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
 // authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
@@ -342,7 +342,16 @@ export default async (req) => {
     const notBefore = sentAt + 24 * 3600e3;
     const day = new Date(sentAt).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric" });
     const caller = clean(x.spokeBy, 40) || "Tania";
-    const facts = [
+    const media = x.kind === "newpatients" || agent === "rebecca";
+    const who = /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "clients" : "patients";
+    const facts = media ? [
+      `FOLLOW-UP CALL. Eva from WebSwan Media Network emailed ${clean(x.email, 120) || "the practice"} on ${day} (subject: "${clean(x.subject, 120) || "Are you still accepting new " + who + "?"}"). The email said our new platform features qualified practices that are open for new ${who}, that we checked their Google reviews and they pre-qualify for visibility to get new ${who}, and that you (Rebecca) would call to set a 10-minute appointment with the person in charge.`,
+      x.reply && `They replied to Eva: "${clean(x.reply, 300)}". Start from what they said.`,
+      x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
+      x.contact && `Person in charge: ${clean(x.contact, 80)}.`,
+      `Goal: book the 10-minute appointment with Tania. Talk about getting NEW ${who}, never "your ${who}". If they have questions, offer Rachel.`
+    ].filter(Boolean).join(" ") : [
+      x.reply && `They replied to the email: "${clean(x.reply, 300)}". Start from what they said.`,
       `FOLLOW-UP CALL. Tania emailed the website audit report to ${clean(x.email, 120) || "the practice"} on ${day}${x.subject ? ' (subject: "' + clean(x.subject, 120) + '")' : ""}${Array.isArray(x.files) && x.files.length ? ", with " + x.files.map((f) => clean(f, 60)).join(" and ") + " attached" : ""}.`,
       x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
       x.said && `What they said on the last call: ${clean(x.said, 220)}.`,
@@ -363,11 +372,11 @@ export default async (req) => {
   }
 
   if (b.action === "queue_get" || b.action === "queue_set") {
-    const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["tue", "wed", "thu"], start: "08:00", end: "09:00", start2: "13:00", end2: "14:00", tz: "America/Los_Angeles", perWindow: 25, agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
+    const q = (await store.get("queue", { type: "json" })) || { settings: { days: ["mon", "tue", "wed", "thu"], start: "08:00", end: "09:00", start2: "13:00", end2: "14:00", tz: "America/Los_Angeles", perWindow: 25, agent: "rebecca", perMinute: 1 }, leads: [], paused: true };
     if (b.action === "queue_set") {
       const s = b.settings;
       if (s) {
-        const days = (Array.isArray(s.days) ? s.days : []).filter((d) => ["mon", "tue", "wed", "thu", "fri"].includes(d));
+        const days = (Array.isArray(s.days) ? s.days : []).filter((d) => ["mon", "tue", "wed", "thu"].includes(d)); // Tania, Nov 7: no Friday campaign calls
         const hm = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || "")) ? String(v) : null;
         const start = hm(s.start), end = hm(s.end), start2 = hm(s.start2), end2 = hm(s.end2);
         if (!start || !end || end <= start) return reply(400, { error: "Pick a start and end time (end after start)." }, origin);

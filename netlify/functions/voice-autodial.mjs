@@ -75,6 +75,8 @@ export default async () => {
   // Tania's hard rule (Nov 7): nothing goes out after 6 PM New York time, and never on weekends.
   const ny = clock("America/New_York");
   if (ny.hour >= 18 || ny.day === "sat" || ny.day === "sun") return new Response("after 6 PM New York time");
+  // Tania, Nov 7: campaigns call Monday to Thursday only (doctors leave early or are off on Fridays). Alek's callbacks still run lead by lead.
+  if (ny.day === "fri") return new Response("no campaign calls on Fridays");
   const s = q.settings || {};
   const tz = s.tz || "America/New_York", now = clock(tz);
   if (!(s.days || []).includes(now.day)) return new Response("not a dialing day");
