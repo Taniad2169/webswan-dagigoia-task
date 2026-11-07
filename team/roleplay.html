@@ -58,7 +58,7 @@
     </div>
     <div class="row" style="margin-top:10px">
       <label><input type="checkbox" id="phones"> 🎧 I'm wearing headphones (I can interrupt just by talking)</label>
-      <label><input type="checkbox" id="free"> 🆓 Practice voice (browser, no Cartesia credits). Leave OFF to hear each agent's real Cartesia voice</label>
+      <label><input type="checkbox" id="free"> 🆓 No-cost practice voices (browser voices, no Cartesia credits). Uncheck to hear their real Cartesia voices</label>
     </div>
   </div>
 
@@ -111,7 +111,7 @@ const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen:
 const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k }).n;
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
 function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).checked = v == null ? d : v === "on"; } catch (e) { $(id).checked = d; } $(id).onchange = () => { try { localStorage.setItem(key, $(id).checked ? "on" : "off"); } catch (e) {} }; }
-pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", false); // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
+pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", true); // Tania, Nov 6: role plays at no cost by default (browser voices); uncheck to hear the real Cartesia voices // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
 
 function drawAgents() {
   $("agents").innerHTML = CALLERS.map((c) => `<button class="ag ${S.agent === c.k ? "on" : ""}" data-k="${c.k}"><img src="img/${c.k}.jpg" alt=""><b>${c.n}</b><small>${esc(c.r)}</small></button>`).join("");
@@ -148,7 +148,16 @@ async function ttsUrl(text, who) {
   return URL.createObjectURL(new Blob([u8], { type: r.mime || "audio/mpeg" }));
 }
 function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
-function browserSay(text, male) { return new Promise((res) => { try { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const pick = vs.find((v) => (male ? /male|guy|david|mark|andrew|christopher|eric|davis/i : /female|aria|jenny|zira|samantha|ava|emma|michelle/i).test(v.name)) || vs[0]; if (pick) u.voice = pick; u.rate = 1.02; u.onend = res; u.onerror = res; speechSynthesis.speak(u); } catch (e) { res(); } }); }
+// American English browser voices only, a different one per agent when possible (no British or other accents).
+const VOICE_PREF = { male: [/guy|andrew|christopher|eric|brian|roger|steffan/i, /david/i, /mark/i], female: [/aria|jenny|ava|michelle|emma/i, /google us english/i, /zira/i] };
+const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 1], monica: ["female", 0], rebecca: ["female", 1], rachel: ["female", 0] };
+function pickVoice(who, male) {
+  const vs = speechSynthesis.getVoices().filter((v) => v.lang === "en-US" || v.lang === "en_US");
+  const [g, nth] = AGENT_VOICE[who] || [male ? "male" : "female", 0];
+  const list = []; for (const re of VOICE_PREF[g]) for (const v of vs) if (re.test(v.name) && !list.includes(v)) list.push(v);
+  return list[Math.min(nth, list.length - 1)] || list[0] || vs[0] || null;
+}
+function browserSay(text, male, who) { return new Promise((res) => { try { const u = new SpeechSynthesisUtterance(text); const v = pickVoice(who, male); if (v) { u.voice = v; u.lang = "en-US"; } u.rate = 1.02; u.onend = res; u.onerror = res; speechSynthesis.speak(u); } catch (e) { res(); } }); }
 async function speak(text, who) {
   const gen = S.gen; const parts = chunks(text); const male = who === "sdr" || (CALLERS.find((c) => c.k === who) || {}).male;
   const free = $("free").checked || who === "sdr";
@@ -159,7 +168,7 @@ async function speak(text, who) {
     if (!free && i + 1 < parts.length) next = ttsUrl(parts[i + 1], who).catch(() => null);
     if (gen !== S.gen || !S.on) break;
     S.speaking = parts[i];
-    if (url) { await play(url); URL.revokeObjectURL(url); } else await browserSay(parts[i], male);
+    if (url) { await play(url); URL.revokeObjectURL(url); } else await browserSay(parts[i], male, who);
     if (gen !== S.gen || !S.on) break;
   }
   S.speaking = ""; S.doneAt = Date.now(); S.audio = null;
