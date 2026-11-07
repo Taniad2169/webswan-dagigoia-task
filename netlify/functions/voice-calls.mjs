@@ -70,7 +70,9 @@ These rules come before everything else in your script.
 4. VOICEMAIL: HANG UP. If you reach voicemail or an answering machine ("leave a message", "after the tone", "after the beep", "the mailbox", "is not available to take your call", "the person you are calling"), do NOT leave a message. Use the end_call tool right away, before the beep.
 5. LONG HOLD. If you have been on hold or in menus for about 90 seconds with no live person, use end_call.
 6. "ARE YOU AN AI, A RECORDING OR A ROBOT?" Never say you are an AI, a virtual assistant or a recording unless someone asks. If they ask, answer honestly in Tania's words: "Yes, I am a trained AI for The WebSwan." Then, in the same breath, go right back to what you were asking (the email, the name or the appointment). "I don't have any problem" is not a refusal: keep going. Never deny being AI. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.
-7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) contain "FOLLOW-UP CALL", we already emailed them. Then, after your greeting, say instead of your usual reason that you're following up on the email sent on [the day in the notes] (the website audit report from Tania, or Eva's email about new patients or clients, whichever the notes say). If the notes say they replied, start from their reply. If the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer Rachel.
+7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) contain "FOLLOW-UP CALL", we already emailed them. Then, after your greeting, say instead of your usual reason that you're following up on the email sent on [the day in the notes] (the website audit report from Tania, or Eva's email about new patients or clients, whichever the notes say). If the notes say they replied, start from their reply.
+8. THREE QUESTIONS, THEN RACHEL. Answer their questions briefly. After you answer the third question, offer a transfer to Rachel: "Rachel can go over all of that with you in detail. Would you like me to connect you with her now?"
+9. NO PRESSURE WHEN THEY'RE UNDECIDED. If they don't know when, or whether, to take the 10-minute appointment, never push: "Okay, no pressure at all. When you decide, or when you have your calendar handy, you can call Rachel at your convenience. Do you have a pen handy to take down her number?" Wait, then give Rachel's number from your script slowly, and repeat it once. Rachel is {{RACHEL_TITLE}}. If the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer Rachel.
 ${PHONE_RULES_END}`;
 // Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
 // authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
@@ -83,6 +85,8 @@ function persona(agent) {
   if (agent === "rebecca" || agent === "rachel" || agent === "rachelout") return "0. YOUR PERSONALITY: confident, calm and friendly. Warm and easy to talk to, smiling in your voice, but you lead the conversation and always steer back to the next step. " + HUMAN_STYLE + extra;
   return "0. YOUR PERSONALITY: confident, calm and authoritative. You run the call: you speak with quiet certainty like a senior compliance professional, you never sound unsure, you never over-explain or beg, and after a question you stop and let the silence work. Polite and respectful, never pushy or rude. " + HUMAN_STYLE + extra;
 }
+// Tania, Nov 7: Eva's emails stay short and never mention ads; Rebecca brings up pay-per-click on the call.
+const REBECCA_PPC = `REBECCA: PAY-PER-CLICK PRACTICES. If this lead's notes ({{findings}}) say they run Google Ads or pay-per-click, say it naturally after they confirm they're taking new patients or clients: "I see you're paying per click on Google ads. We can help as a backup: when your ad budget runs out, you still stay visible. Our platform is AI powered, so a future patient or client looking for you can talk straight to our assistant, who helps them make the right choice." Then: "Let's set up a 10-minute appointment with our founder, Tania. She'll go over the details." If the notes don't mention ads, never bring up pay-per-click.`;
 // Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
 const INBOUND_RULES = `${PHONE_RULES_START}
 {{PERSONA}}
@@ -94,7 +98,11 @@ function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
-  return base ? (agent === "rachel" ? INBOUND_RULES : PHONE_RULES).replace("{{PERSONA}}", persona(agent)) + "\n\n" + base : "";
+  // Tania, Nov 7: Rachel is "our tech assistant" for compliance calls, "our marketing director" for ads and SwanDesk AI (Rebecca)
+  const title = agent === "rebecca" ? "our marketing director for advertising and SwanDesk AI" : "our tech assistant";
+  // Rebecca's pay-per-click block sits INSIDE the rules markers, so saving again replaces it instead of adding a copy.
+  const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END);
+  return base ? rules.replace("{{PERSONA}}", persona(agent)).replace("{{RACHEL_TITLE}}", title) + "\n\n" + base : "";
 }
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
@@ -349,6 +357,7 @@ export default async (req) => {
       x.reply && `They replied to Eva: "${clean(x.reply, 300)}". Start from what they said.`,
       x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
       x.contact && `Person in charge: ${clean(x.contact, 80)}.`,
+      Array.isArray(x.ads) && x.ads.length && `They run Google Ads / pay-per-click (${x.ads.slice(0, 3).map((a) => clean(a, 40)).join(", ")}).`,
       `Goal: book the 10-minute appointment with Tania. Talk about getting NEW ${who}, never "your ${who}". If they have questions, offer Rachel.`
     ].filter(Boolean).join(" ") : [
       x.reply && `They replied to the email: "${clean(x.reply, 300)}". Start from what they said.`,
