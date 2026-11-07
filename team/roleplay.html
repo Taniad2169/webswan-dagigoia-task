@@ -69,6 +69,11 @@
     <div class="row" style="justify-content:center;margin-top:10px">
       <button class="btn" id="hush">✋ Stop talking (Space)</button>
       <button class="btn red" id="end">End role play + feedback</button>
+      <button class="btn" id="coby" style="background:#fff3d6">💬 Brainstorm with Coby</button>
+    </div>
+    <div id="cobyBox" style="display:none;margin-top:12px;text-align:left;background:#fff7e6;border:1px solid #f3d38a;border-radius:12px;padding:12px">
+      <b>💬 Coby is listening</b> <span class="hint">Talk to him (the mic stays on), or type below. He gives his opinion on the role play, then listens to yours.</span>
+      <div class="row" style="margin-top:8px"><input id="cobyText" style="flex:1;min-width:220px;font:inherit;padding:9px;border-radius:9px;border:1px solid #f3d38a" placeholder="Coby, what did you think of Monica's opening?"><button class="btn pri" id="cobySend">Send</button><button class="btn" id="cobyDone">Done with Coby</button></div>
     </div>
     <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Coby, it runs on its own: say "pause" to step in, "continue" to go on.</p>
   </div>
@@ -193,6 +198,7 @@ function startRec() {
 function commit() {
   const text = S.buf.trim(); S.buf = ""; $("heard").textContent = "";
   if (!text || !S.on) return;
+  if (S.coach) return cobyTurn(text);
   if (/\b(end|stop|finish) (the )?role ?play\b/i.test(text)) return finish();
   if (mode() === "coby") {
     if (/^\s*(pause|hold on|wait)\b/i.test(text)) { S.paused = true; hush(); say("⏸️ Paused. Say \"continue\" when you're ready."); return; }
@@ -284,6 +290,19 @@ function brainBox(who) {
     } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; }
   };
 }
+/* ---------- brainstorm with Coby: his opinion on the role play, not a practice call ---------- */
+async function cobyTurn(text) {
+  addLog("Tania → Coby", text, "me"); S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Coby is thinking…");
+  const call = S.log.filter((x) => !/Coby|→/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
+  const ask = `BRAINSTORM WITH TANIA (not a role play, do not act as a prospect): Tania is reviewing a practice call with ${first(S.agent || "monica")}. Give your honest opinion as her SDR and call coach in 2 to 4 short spoken sentences, then stop and let her talk. If she shares her own opinion, react to it and say what you'd change in the agent's script, with the exact words.\n\nTHE PRACTICE CALL SO FAR (data):\n${call || "(no call yet)"}\n\nTANIA SAYS: ${text}`;
+  try { const ans = await ask_("sdr", ask); S.busy = false; addLog("Coby", ans, "coby"); if (await speak(ans, "sdr")) { S.turn = "listen"; micLook("live"); say("💬 Your turn with Coby. Talk or type."); } }
+  catch (e) { S.busy = false; say("⚠️ Coby " + e.message); }
+}
+async function ask_(agent, text) { return ask(agent, text, { roleplay: false }); }
+$("coby").onclick = () => { S.coach = true; hush(); $("cobyBox").style.display = "block"; if (!S.on) { S.on = true; startRec(); } S.turn = "listen"; micLook("live"); say("💬 Coby is listening. Ask him what he thinks."); $("cobyText").focus(); };
+$("cobySend").onclick = () => { const t = $("cobyText").value.trim(); if (!t) return; $("cobyText").value = ""; cobyTurn(t); };
+$("cobyText").addEventListener("keydown", (e) => { if (e.key === "Enter") $("cobySend").click(); });
+$("cobyDone").onclick = () => { S.coach = false; $("cobyBox").style.display = "none"; hush(); if (S.agent && mode() === "me") { yourTurn(); say("Back to the role play. Your turn."); } else { stopAll(); say("Done with Coby. Press 🎙️ to start a role play."); } };
 function stopAll() { S.on = false; hush(); try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); }
 $("mic").onclick = () => { if (S.on) { if (S.turn === "agent") { hush(); yourTurn(); } return; } start(); };
 $("hush").onclick = () => { if (S.on) { hush(); if (mode() === "coby") { S.paused = true; say("⏸️ Paused. Say \"continue\" when you're ready."); } else yourTurn(); } };
