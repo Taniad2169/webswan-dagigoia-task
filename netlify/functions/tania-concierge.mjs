@@ -248,7 +248,10 @@ export default async (req) => {
       if (!msgs.length) return reply(400, { error: "Say something to Tania." }, origin);
       const ctx = b.context ? "\n\nRESULTS YOU FOUND FOR THIS VISITOR (use only these facts):\n" + clean(JSON.stringify(b.context), 6000) : "";
       const lang = { en: "English", es: "Spanish", pt: "Brazilian Portuguese", fr: "French", ht: "Haitian Creole" }[b.lang] || "English";
-      const a = await askAI("", PERSONA + `\nAnswer in ${lang}. Keep it under 90 words.` + ctx, msgs, 600);
+      // White-label travel agency copies send brand { name, agency }: the concierge speaks as their own assistant.
+      const bn = String((b.brand && b.brand.name) || "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 40), ba = String((b.brand && b.brand.agency) || "").replace(/[^\p{L}\p{N} .,&'-]/gu, "").trim().slice(0, 80);
+      const persona = bn || ba ? PERSONA.replace(/^You are Tania, the friendly travel and city concierge of Travel Hub by The WebSwan\./, `You are ${bn || "the travel concierge"}, the friendly travel and city concierge of ${ba || "this travel agency"}.`) + (ba ? ` When someone wants something booked or wants a person, tell them ${ba}'s travel agents can book it for them and to use the contact buttons on this page.` : "") : PERSONA;
+      const a = await askAI("", persona + `\nAnswer in ${lang}. Keep it under 90 words.` + ctx, msgs, 600);
       return reply(200, { text: a.text }, origin);
     }
     return reply(400, { error: "Unknown action" }, origin);

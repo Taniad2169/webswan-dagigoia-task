@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<!-- SwanVoyage AI © The WebSwan (Tania Domingue). Sample for evaluation only. Not for commercial use, copying or resale without a written license from The WebSwan. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwanVoyage AI · The travel app for travel agencies · by The WebSwan</title>
+<meta name="description" content="SwanVoyage AI: Your World. Your Journey. Your AI Concierge. Flights, hotels, cruises, car rentals and an AI travel concierge, with a direct line to your travel agents.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1d59">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+/* =========================================================================
+   AGENCY SETTINGS: change these for each travel agency you sell this to.
+   ========================================================================= */
+window.AGENCY = {
+  demo: true,                                  // true = shows the "demo for travel agencies" banner (set false for a client)
+  name: 'SwanVoyage AI',                       // agency name in the header, title and footer (put the client agency's name here)
+  tagline: 'Your World. Your Journey. Your AI Concierge.',
+  logo: '',                                    // link to the agency logo (leave empty to show the emoji below)
+  logoEmoji: '🌍',
+  phone: '(415) 877-0687',                     // agency phone (calls and texts)
+  email: 'designs@thewebswan.com',             // where trip requests go
+  whatsapp: '',                                // WhatsApp number with country code, digits only, e.g. 14155551234
+  website: 'https://thewebswan.com',
+  hours: 'Monday to Friday, 10 AM to 8 PM',
+  colors: { main: '#0b1d59', accent: '#0be0c0', light: '#77c6e0' },
+  concierge: { name: 'Sofia', title: 'Your AI travel concierge', photo: '' },   // the AI concierge's name and photo
+  kiwiAffiliate: 'travelpayoutsdeeplink_www.webswanmedianetwork.com_04b50ff9e8fc41388648bb3cd-701416'
+};
+window.TRAVEL_BRAND = { name: AGENCY.concierge.name, agency: AGENCY.name, title: AGENCY.concierge.title, photo: AGENCY.concierge.photo || undefined };
+</script>
+<style>
+:root{--main:#0b1d59;--accent:#0be0c0;--light:#77c6e0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,var(--light) 0%,var(--accent) 50%,var(--main) 100%);min-height:100vh;padding:16px;color:#1f2a37;line-height:1.55}
+.container{max-width:1200px;margin:0 auto}
+.card{background:rgba(255,255,255,.94);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:18px}
+#wm{position:fixed;inset:-50%;z-index:9998;pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='220'><text x='10' y='120' font-family='Arial,sans-serif' font-size='26' font-weight='700' fill='rgba(180,20,40,0.16)' transform='rotate(-28 210 110)'>SAMPLE · NOT FOR COMMERCIAL USE</text><text x='60' y='160' font-family='Arial,sans-serif' font-size='15' font-weight='700' fill='rgba(180,20,40,0.14)' transform='rotate(-28 210 110)'>SwanVoyage AI © The WebSwan</text></svg>");background-repeat:repeat}
+@media print{#wm{position:fixed;inset:0}}
+#demoBar{background:#fff8d6;border:2px dashed #e0b100;color:#4a3b00;border-radius:14px;padding:10px 14px;margin-bottom:14px;font-size:.92rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+#demoBar a{color:#7a3b00;font-weight:800}
+header.card{text-align:center;margin-bottom:16px}
+.logo{font-size:2.6rem;line-height:1}.logo img{max-height:64px;max-width:220px}
+h1{font-size:clamp(1.7rem,5vw,2.6rem);font-weight:800;color:var(--main);margin:6px 0}
+.tagline{color:#475569;max-width:640px;margin:0 auto 12px}
+.contact{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.contact a,.contact button{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;font-weight:700;font-size:.95rem;text-decoration:none;border:0;cursor:pointer;color:#fff;background:var(--main)}
+.contact .alt{background:#fff;color:var(--main);border:2px solid var(--main)}
+.contact .wa{background:#25D366}
+.search{margin-bottom:16px}
+.search .box{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--light);border-radius:999px;padding:6px 8px 6px 18px}
+.search input{flex:1;border:0;outline:0;font-size:1rem;padding:8px 0;background:transparent}
+.search button{border:0;background:transparent;color:#94a3b8;cursor:pointer;font-size:1rem;padding:6px 10px}
+#categoryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px;margin-bottom:16px}
+.category.hidden{display:none}
+.cat-head{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--light);padding-bottom:10px;margin-bottom:12px}
+.cat-head span{font-size:1.7rem}.cat-head h2{font-size:1.35rem;color:var(--main)}
+.links-grid{display:grid;gap:9px}
+.travel-link{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;background:#fff;border:1px solid rgba(0,0,0,.07);text-decoration:none;color:#1f2a37;transition:transform .2s,box-shadow .2s}
+.travel-link:hover{transform:translateX(4px);box-shadow:0 5px 15px rgba(0,0,0,.12)}
+.link-icon{width:34px;height:34px;min-width:34px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#fff;font-weight:800;background:linear-gradient(45deg,var(--light),var(--accent))}
+.link-title{font-weight:700}.link-url{font-size:.78rem;color:#64748b}
+.travel-link .fa-arrow-right{margin-left:auto;color:var(--light)}
+#quote h2{color:var(--main);margin-bottom:4px}
+#quote p{color:#475569;font-size:.92rem;margin-bottom:10px}
+#quoteForm{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+#quoteForm label{font-size:.75rem;font-weight:800;text-transform:uppercase;color:var(--main);display:block}
+#quoteForm input,#quoteForm select,#quoteForm textarea{width:100%;padding:9px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:.95rem;font-family:inherit;margin-top:3px}
+#quoteForm .wide{grid-column:1/-1}
+#quoteForm button{grid-column:1/-1;padding:12px;border:0;border-radius:12px;background:var(--main);color:#fff;font-weight:800;font-size:1rem;cursor:pointer}
+footer.card{text-align:center;margin-top:16px;font-size:.9rem;color:#475569}
+footer a{color:var(--main);font-weight:700}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:10px 20px;border-radius:999px;display:none;z-index:10000}
+#toast.show{display:block}
+#installButton{display:none;position:fixed;right:16px;bottom:84px;z-index:50;border:0;border-radius:999px;padding:10px 16px;font-weight:800;background:#fff;color:var(--main);box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer}
+:focus-visible{outline:3px solid #ffb703;outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<a href="#main-content" class="sr-only">Skip to content</a>
+<div id="toast" role="status" aria-live="polite"></div>
+<button id="installButton" type="button"><i class="fas fa-download"></i> Install app</button>
+<div id="wm" aria-hidden="true"></div>
+<div class="container">
+  <div id="demoBar" hidden>
+    <span>✨ <b>SwanVoyage AI sample for travel agencies</b> (not for commercial use). Your logo, colors, phone and your own AI concierge, as an app your clients install on their phone.</span>
+    <span>Get yours: <a href="tel:+14158770687">(415) 877-0687</a> · <a href="mailto:designs@thewebswan.com?subject=Travel%20app%20for%20my%20agency">designs@thewebswan.com</a></span>
+  </div>
+  <header class="card">
+    <div class="logo" id="agencyLogo"></div>
+    <h1 id="agencyName"></h1>
+    <p class="tagline" id="agencyTagline"></p>
+    <div class="contact" id="agencyContact"></div>
+  </header>
+  <div class="search card">
+    <label for="searchInput" class="sr-only">Search airlines, hotels and car rentals</label>
+    <div class="box"><i class="fas fa-search" style="color:var(--light)" aria-hidden="true"></i><input id="searchInput" type="search" placeholder="Search airlines, hotels, car rentals…"><button type="button" id="clearSearch" aria-label="Clear search"><i class="fas fa-times"></i></button></div>
+  </div>
+  <main id="main-content">
+    <div id="categoryGrid"></div>
+    <section class="card" id="quote" aria-labelledby="quoteTitle">
+      <h2 id="quoteTitle">✈️ Let our agents book it for you</h2>
+      <p>Tell us about your trip and one of our travel agents will send you options and prices. No booking fees to ask.</p>
+      <form id="quoteForm">
+        <div><label for="qName">Your name</label><input id="qName" required autocomplete="name"></div>
+        <div><label for="qPhone">Phone</label><input id="qPhone" type="tel" autocomplete="tel"></div>
+        <div><label for="qEmail">Email</label><input id="qEmail" type="email" autocomplete="email"></div>
+        <div><label for="qType">Trip type</label><select id="qType"><option>Flights</option><option>Hotel</option><option>Flights + hotel</option><option>Cruise</option><option>All-inclusive vacation</option><option>Group trip</option><option>Car rental</option><option>Other</option></select></div>
+        <div><label for="qFrom">From</label><input id="qFrom" placeholder="City or airport"></div>
+        <div><label for="qTo">To</label><input id="qTo" placeholder="Destination"></div>
+        <div><label for="qDep">Leaving</label><input id="qDep" type="date"></div>
+        <div><label for="qRet">Returning</label><input id="qRet" type="date"></div>
+        <div><label for="qPeople">Travelers</label><input id="qPeople" type="number" min="1" value="2"></div>
+        <div><label for="qBudget">Budget (optional)</label><input id="qBudget" placeholder="e.g. $2,500"></div>
+        <div class="wide"><label for="qNotes">Anything else</label><textarea id="qNotes" rows="3" placeholder="Hotels you like, flexible dates, special needs…"></textarea></div>
+        <button type="submit"><i class="fas fa-paper-plane"></i> Send my trip request</button>
+      </form>
+    </section>
+  </main>
+  <footer class="card">
+    <p id="footName"></p>
+    <p style="margin-top:6px;font-size:.8rem">Prices and availability are set by each provider. Links open the provider's own site.</p>
+    <p style="margin-top:6px;font-size:.8rem"><b>SwanVoyage AI</b> by <a href="https://thewebswan.com" target="_blank" rel="noopener">The WebSwan</a> · © The WebSwan. All rights reserved. Licensed software: no copying or resale.</p>
+  </footer>
+</div>
+<script>
+(function () {
+  var A = window.AGENCY, $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var r = document.documentElement.style; r.setProperty('--main', A.colors.main); r.setProperty('--accent', A.colors.accent); r.setProperty('--light', A.colors.light);
+  document.title = A.name + (A.demo ? ' · Sample (not for commercial use)' : ' · Travel app');
+  $('demoBar').hidden = !A.demo;
+  // the watermark stays unless The WebSwan turns demo off for a licensed client; it comes back if someone deletes it
+  if (A.demo) setInterval(function () { if (!document.getElementById('wm')) { var w = document.createElement('div'); w.id = 'wm'; w.setAttribute('aria-hidden', 'true'); document.body.prepend(w); } }, 1500); else { var wm = $('wm'); if (wm) wm.remove(); }
+  $('agencyLogo').innerHTML = A.logo ? '<img src="' + esc(A.logo) + '" alt="' + esc(A.name) + ' logo">' : '<span aria-hidden="true">' + esc(A.logoEmoji) + '</span>';
+  $('agencyName').textContent = A.name;
+  $('agencyTagline').textContent = A.tagline;
+  $('footName').textContent = '© ' + new Date().getFullYear() + ' ' + A.name + (A.hours ? ' · ' + A.hours : '');
+  var tel = String(A.phone || '').replace(/\D/g, '');
+  $('agencyContact').innerHTML = (tel ? '<a href="tel:+' + (tel.length === 10 ? '1' + tel : tel) + '"><i class="fas fa-phone"></i> Call an agent</a>' : '')
+    + '<a class="alt" href="#quote"><i class="fas fa-suitcase-rolling"></i> Get a trip quote</a>'
+    + (A.whatsapp ? '<a class="wa" href="https://wa.me/' + esc(A.whatsapp) + '" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>' : '')
+    + (A.email ? '<a class="alt" href="mailto:' + esc(A.email) + '"><i class="fas fa-envelope"></i> Email</a>' : '');
+
+  var kiwi = 'https://www.kiwi.com/us/?affilid=' + encodeURIComponent(A.kiwiAffiliate || '');
+  var LINKS = {
+    flights: { title: 'Flights', icon: '✈️', links: [['Kiwi.com cheap flights', kiwi, '✈️'], ['Skiplagged', 'https://skiplagged.com', '🎯'], ['Skyscanner', 'https://www.skyscanner.com', 'S'], ['Google Flights', 'https://www.google.com/flights', 'G'], ['Air Canada', 'https://www.aircanada.com', '🇨🇦'], ['Air France', 'https://www.airfrance.com', '🇫🇷'], ['Alaska Airlines', 'https://www.alaskaair.com', 'A'], ['American Airlines', 'https://www.aa.com', 'A'], ['British Airways', 'https://www.britishairways.com', '🇬🇧'], ['Delta Air Lines', 'https://www.delta.com', 'Δ'], ['Frontier Airlines', 'https://www.flyfrontier.com', 'F'], ['JetBlue', 'https://www.jetblue.com', 'J'], ['Lufthansa', 'https://www.lufthansa.com', '🇩🇪'], ['Qatar Airways', 'https://www.qatarairways.com', '🇶🇦'], ['Southwest Airlines', 'https://www.southwest.com', 'S'], ['Spirit Airlines', 'https://www.spirit.com', 'S'], ['United Airlines', 'https://www.united.com', 'U'], ['Amtrak', 'https://www.amtrak.com', '🚆']] },
+    hotels: { title: 'Hotels & stays', icon: '🏨', links: [['Agoda', 'https://www.agoda.com', 'A'], ['Airbnb', 'https://www.airbnb.com', '🏠'], ['Booking.com', 'https://www.booking.com', 'B'], ['Hotels.com', 'https://www.hotels.com', 'H'], ['VRBO', 'https://www.vrbo.com', 'V']] },
+    cars: { title: 'Car rentals', icon: '🚗', links: [['Alamo', 'https://www.alamo.com', 'A'], ['Avis', 'https://www.avis.com', 'A'], ['Enterprise', 'https://www.enterprise.com', 'E'], ['Expedia Cars', 'https://www.expedia.com/Cars', 'E'], ['Hertz', 'https://www.hertz.com', 'H'], ['Kayak Car Rental', 'https://www.kayak.com/cars', 'K'], ['Rentalcars.com', 'https://www.rentalcars.com', 'R'], ['Turo', 'https://turo.com', 'T']] },
+    cruises: { title: 'Cruises', icon: '🛳️', links: [['Carnival', 'https://www.carnival.com', 'C'], ['Royal Caribbean', 'https://www.royalcaribbean.com', 'R'], ['Norwegian Cruise Line', 'https://www.ncl.com', 'N'], ['MSC Cruises', 'https://www.msccruisesusa.com', 'M'], ['Celebrity Cruises', 'https://www.celebritycruises.com', 'C']] },
+    tracking: { title: 'Track a flight', icon: '🛩️', links: [['FlightAware', 'https://flightaware.com', '🛩️'], ['Flightradar24', 'https://www.flightradar24.com', '📡']] }
+  };
+  window.categoryKeywords = { flights: ['flight', 'airline', 'plane', 'fly', 'train', 'amtrak'], hotels: ['hotel', 'stay', 'airbnb', 'vrbo', 'room'], cars: ['car', 'rental', 'rent'], cruises: ['cruise', 'ship', 'boat'], tracking: ['track', 'flight status', 'radar'] };
+  $('categoryGrid').innerHTML = Object.keys(LINKS).map(function (k) {
+    var c = LINKS[k];
+    return '<section class="category card ' + k + '" id="' + k + 'Category" aria-labelledby="' + k + 'Title"><div class="cat-head"><span aria-hidden="true">' + c.icon + '</span><h2 id="' + k + 'Title">' + esc(c.title) + '</h2></div><div class="links-grid" id="' + k + 'Links">'
+      + c.links.map(function (l) { var host = ''; try { host = new URL(l[1]).hostname.replace(/^www\./, ''); } catch (e) {}
+        return '<a class="travel-link" data-name="' + esc(l[0].toLowerCase()) + '" href="' + esc(l[1]) + '" target="_blank" rel="noopener noreferrer"><div class="link-icon" aria-hidden="true">' + esc(l[2]) + '</div><div><div class="link-title">' + esc(l[0]) + '</div><div class="link-url">' + esc(host) + '</div></div><i class="fas fa-arrow-right" aria-hidden="true"></i></a>'; }).join('')
+      + '</div></section>';
+  }).join('');
+
+  // search
+  function filter() {
+    var q = $('searchInput').value.trim().toLowerCase();
+    document.querySelectorAll('.category').forEach(function (cat) {
+      var key = cat.id.replace('Category', ''), any = false, catHit = q && (window.categoryKeywords[key] || []).some(function (w) { return w.indexOf(q) >= 0 || q.indexOf(w) >= 0; });
+      cat.querySelectorAll('.travel-link').forEach(function (a) { var hit = !q || catHit || a.dataset.name.indexOf(q) >= 0; a.style.display = hit ? '' : 'none'; if (hit) any = true; });
+      cat.classList.toggle('hidden', !!q && !any && !catHit);
+    });
+  }
+  $('searchInput').addEventListener('input', filter);
+  $('clearSearch').onclick = function () { $('searchInput').value = ''; filter(); $('searchInput').focus(); };
+
+  function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 3200); }
+  window.showToast = toast;
+
+  // trip request: opens the traveler's email app addressed to the agency (nothing is sent without them)
+  $('quoteForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = function (id) { return $(id).value.trim(); };
+    var body = ['Trip request from the ' + A.name + ' app', '', 'Name: ' + v('qName'), 'Phone: ' + v('qPhone'), 'Email: ' + v('qEmail'), 'Trip: ' + v('qType'), 'From: ' + v('qFrom'), 'To: ' + v('qTo'), 'Leaving: ' + v('qDep'), 'Returning: ' + v('qRet'), 'Travelers: ' + v('qPeople'), 'Budget: ' + v('qBudget'), '', v('qNotes')].join('\n');
+    location.href = 'mailto:' + encodeURIComponent(A.email) + '?subject=' + encodeURIComponent('Trip request: ' + (v('qTo') || v('qType')) + ' (' + v('qName') + ')') + '&body=' + encodeURIComponent(body);
+    toast('📧 Your email app is opening with your trip details. Press Send and an agent will get back to you.');
+  });
+
+  // install as an app
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; $('installButton').style.display = 'block'; });
+  $('installButton').onclick = function () { if (!deferred) return; deferred.prompt(); deferred = null; $('installButton').style.display = 'none'; };
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+<!-- price finder, city explorer, trip plan and the AI concierge (same engine as Travel Hub) -->
+<script src="../travel-plus/travel-plus.js" defer></script>
+</body>
+</html>

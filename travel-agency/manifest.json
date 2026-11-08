@@ -1,0 +1,23 @@
+{
+  "name": "SwanVoyage AI",
+  "short_name": "SwanVoyage",
+  "description": "Flights, hotels, cruises, car rentals and an AI travel concierge, with a direct line to your travel agent.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1d59",
+  "theme_color": "#0b1d59",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

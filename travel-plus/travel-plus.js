@@ -358,7 +358,7 @@
   function addCars() {
     try {
       var box = document.getElementById('carsLinks'); if (!box) return;
-      [{ name: 'Flexcar', url: 'https://www.flexcar.com', emoji: 'F' }, { name: 'Rent-A-Relic', url: 'https://www.google.com/search?q=Rent-A-Relic+Oakland+CA', emoji: 'R' }].forEach(function (item) {
+      [{ name: 'Flexcar', url: 'https://www.flexcar.com', emoji: 'F' }, { name: 'Rent-A-Relic', url: 'https://www.google.com/search?q=Rent-A-Relic+Oakland+CA', emoji: 'R' }].filter(function (item) { return !(window.AGENCY && /relic/i.test(item.name)); }).forEach(function (item) {
         var key = item.name.toLowerCase(); if (box.querySelector('[data-name="' + key + '"]')) return;
         if (typeof travelLinks !== 'undefined' && travelLinks.cars && !travelLinks.cars.some(function (x) { return x.name === item.name; })) travelLinks.cars.push(item);
         var a = typeof createTravelLink === 'function' ? createTravelLink(item, 9) : null;
