@@ -34,7 +34,7 @@ export default async (req) => {
   if (fsv(f.active) !== true) return reply(404, { error: "This provider isn't available right now." }, o);
   const plan = fsv(f.plan), code = fsv(f.code), providerName = fsv(f.name);
   if (kind === "call" && (plan !== "premium" || !code)) return reply(400, { error: "This provider doesn't offer call-backs. Please call the office directly." }, o);
-  if (plan !== "leads") return reply(400, { error: "Please contact this office directly." }, o);
+  if (plan !== "leads" && plan !== "calendar") return reply(400, { error: "Please contact this office directly." }, o);  // $89 calendar plan also gets the email
 
   const s = store();
   const list = (await s.get("central", { type: "json" })) || [];
@@ -43,7 +43,7 @@ export default async (req) => {
   if (ip && list.filter((x) => x.ip === ip && x.at > Date.now() - 36e5).length >= 5) return reply(429, { error: "Too many requests. Please try again later." }, o);
 
   const rec = { id: "cr_" + crypto.randomBytes(6).toString("hex"), at: Date.now(), kind, status: kind === "call" ? "queued" : "new", providerId: pid, providerCode: code, providerName, providerState: fsv(f.state),
-    name, phone, email, bestTime: clean(b.bestTime, 80), state: clean(b.state, 2).toUpperCase() || fsv(f.state), city: clean(b.city, 60), consent: { at: Date.now(), text: kind === "call" ? "Agreed to an AI call from Jennifer (WSMN) about booking; may be recorded." : "Agreed to share contact details with the office." }, ip };
+    name, phone, email, bestTime: clean(b.bestTime, 80).replace(/\s*·\s*Paying:.*$/, ""), payment: clean(b.payment, 40), state: clean(b.state, 2).toUpperCase() || fsv(f.state), city: clean(b.city, 60), consent: { at: Date.now(), text: kind === "call" ? "Agreed to an AI call from Jennifer (WSMN) about booking; may be recorded." : "Agreed to share contact details with the office." }, ip };
   let message = kind === "call" ? "Thank you! Jennifer will call you during business hours to help you book." : "Thank you! We've sent your request to the office. They'll contact you soon.";
   if (kind === "call" && openNow(rec.state)) {
     const r = await placeCentralCall(s, rec);
