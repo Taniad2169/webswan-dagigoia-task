@@ -30,6 +30,7 @@ export default async (req) => {
 
   if ((b0.action || url0.searchParams.get("action")) === "wsmn_request") return text(await wsmnRequest(store, b0));
   if ((b0.action || url0.searchParams.get("action")) === "caller") return text(await callerBrief(store, b0.caller_id || url0.searchParams.get("caller_id") || ""));
+  if ((b0.action || url0.searchParams.get("action")) === "heads_up") return text(await taniaHeadsUp(store, b0));
 
   const cal = sanitizeCal(await store.get("calendar", { type: "json" }));
   const calSecret = await store.get("cal-secret");
@@ -261,4 +262,25 @@ async function wsmnRequest(store, b) {
     list.unshift(rec); await store.setJSON("central", list.slice(0, 3000));
     return m.ok ? `Done. ${rec.providerName}'s office has the request and will contact ${name}. Tell the caller that, thank them, and end warmly.` : `Saved. Tania's office will make sure ${rec.providerName}'s office gets it. Tell the caller the office will contact them soon.`;
   } catch (e) { return "The directory can't be reached right now. Take the caller's name and number and say Tania's office will follow up."; }
+}
+
+// Tania, Nov 7: heads-up email right before a caller transfers someone to her (Cartesia transfers can't whisper).
+async function taniaHeadsUp(store, b) {
+  const c = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, n);
+  const esc = (v) => c(v, 400).replace(/&/g, "&amp;");
+  const who = c(b.person, 120) || c(b.lead_name, 120) || "someone at the office", biz = c(b.business, 160), why = c(b.reason, 400), agent = c(b.agent_name, 30) || "Your caller";
+  const phone = c(b.lead_phone, 30);
+  const log = (await store.get("tania-headsups", { type: "json" }).catch(() => null)) || [];
+  log.push({ at: new Date().toISOString(), who, biz, why, agent, phone, callId: c(b.call_id, 80), leadId: c(b.lead_id, 60) });
+  await store.setJSON("tania-headsups", log.slice(-200));
+  const to = String(process.env.TANIA_ALERT_EMAIL || "designs@thewebswan.com").trim();
+  const cal = sanitizeCal(await store.get("calendar", { type: "json" })), secret = await store.get("cal-secret");
+  if (cal.scriptUrl && secret) {
+    const subject = "📞 " + agent + " is transferring " + who + (biz ? " (" + biz + ")" : "") + " to you now";
+    const html = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#17324c"><h2 style="margin:0 0 8px">📞 Incoming transfer from ${esc(agent)}</h2>
+      <p><b>Who:</b> ${esc(who)}</p>${biz ? `<p><b>Practice:</b> ${esc(biz)}</p>` : ""}${phone ? `<p><b>Their number:</b> ${esc(phone)}</p>` : ""}${why ? `<p><b>Why:</b> ${esc(why)}</p>` : ""}
+      <p style="color:#5f7891;font-size:13px">They asked to speak with you. Your phone should ring in a few seconds.</p></div>`;
+    try { await callScript(cal, secret, { action: "mail", to, subject, html, fromName: "WebSwan Voice Studio" }); } catch (e) {}
+  }
+  return "Tania has been told who is coming. Now say \"Please hold one moment while I connect you with Tania\" and transfer the call to Tania.";
 }
