@@ -45,7 +45,7 @@ const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "boo
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
-  wsmn69_399: { label: "$69 WSMN Found + Leads + $399 receptionist", full: true },
+  wsmn69_399: { label: "$89 WSMN Found + Leads + Calendar + $399 receptionist", full: true },
   wsmn149_299: { label: "(old) $149 WSMN + $299 receptionist", full: true },
   full499: { label: "$499 Full Service (standalone)", full: true }
 };
