@@ -332,6 +332,28 @@
     };
     $('#tp-ex-form').onsubmit = function (e) { e.preventDefault(); explore($('#tp-city').value, $('#tp-exdate').value); };
   }
+  // VRBO in the Hotels & stays list (right after Airbnb), and findable in the manual search
+  function addVrbo() {
+    try {
+      var box = document.getElementById('hotelsLinks');
+      if (!box || box.querySelector('[data-name="vrbo"]')) return;
+      var item = { name: 'VRBO', url: 'https://www.vrbo.com', emoji: '🏡' };
+      if (typeof travelLinks !== 'undefined' && travelLinks.hotels && !travelLinks.hotels.some(function (x) { return /vrbo/i.test(x.name); })) {
+        var ai = travelLinks.hotels.findIndex(function (x) { return /airbnb/i.test(x.name); }); travelLinks.hotels.splice(ai + 1, 0, item);
+      }
+      if (typeof categoryKeywords !== 'undefined' && categoryKeywords.hotels && categoryKeywords.hotels.indexOf('vrbo') < 0) categoryKeywords.hotels.push('vrbo', 'vacation rental', 'vacation home');
+      var a = typeof createTravelLink === 'function' ? createTravelLink(item, 2) : null;
+      if (!a) {
+        a = document.createElement('a'); a.className = 'travel-link'; a.setAttribute('data-name', 'vrbo'); a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.setAttribute('aria-label', 'Visit VRBO');
+        a.innerHTML = '<div class="link-icon" aria-hidden="true">🏡</div><div class="link-content"><div class="link-title">VRBO</div><div class="link-url">vrbo.com</div></div><div class="link-arrow" aria-hidden="true">→</div>';
+      }
+      var air = box.querySelector('[data-name="airbnb"]');
+      if (air && air.nextSibling) box.insertBefore(a, air.nextSibling); else box.appendChild(a);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(addVrbo, 300); }); else setTimeout(addVrbo, 300);
+  setTimeout(addVrbo, 2500);
+
   // Tania, the travel & city concierge (her own chat bubble)
   try {
     var tsrc = ((document.currentScript && document.currentScript.src) || 'https://taniad2169.github.io/webswan-dagigoia-task/travel-plus/travel-plus.js').replace(/[^/]*$/, '') + 'tania.js';
