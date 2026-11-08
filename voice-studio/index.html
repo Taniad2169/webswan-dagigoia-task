@@ -1129,7 +1129,9 @@ const findingsOf = l => {
   // Tania, Nov 7: a Google-ads check that came back "no" (r.advertising = 'No') never turns on the PPC opener; a confirmed advertiser ('Yes') always does.
   const advNo = l && l.r && l.r.advertising === 'No', advYes = l && l.r && l.r.advertising === 'Yes';
   const ads = [!advNo && (advYes || /\b(ppc|pay[- ]?per[- ]?click|google ads|adwords|sponsored ads?)\b/i.test(txt)) && 'Google pay-per-click (PPC)', /\b(billboards?|bus (bench|benches|stop|shelter)|bench ads?|radio ads?|tv ads?|television ads?)\b/i.test(txt) && 'billboard / bus bench'].filter(Boolean);
-  return [base, ads.length ? 'Advertises with: ' + ads.join(' and ') : ''].filter(Boolean).join(' | ');
+  // Tania, Nov 8: carry the website along so WorkPilot can show an "Open website" button for her audit.
+  const site = (l && l.r && l.r.website) || ((String((l && l.notes) || '').match(/Website:\s*([^\s|;,]+)/i) || [])[1] || '');
+  return [base, ads.length ? 'Advertises with: ' + ads.join(' and ') : '', site ? 'Website: ' + String(site).replace(/[.,;]+$/, '') : ''].filter(Boolean).join(' | ');
 };
 async function liveStart(l, a, lang, opts = {}) {
   toast('Dialing ' + (l.name || l.phone) + ' with ' + a.name + '…');
