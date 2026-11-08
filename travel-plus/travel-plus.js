@@ -332,5 +332,10 @@
     };
     $('#tp-ex-form').onsubmit = function (e) { e.preventDefault(); explore($('#tp-city').value, $('#tp-exdate').value); };
   }
+  // Tania, the travel & city concierge (her own chat bubble)
+  try {
+    var tsrc = ((document.currentScript && document.currentScript.src) || 'https://taniad2169.github.io/webswan-dagigoia-task/travel-plus/travel-plus.js').replace(/[^/]*$/, '') + 'tania.js';
+    if (!document.querySelector('script[src="' + tsrc + '"]')) { var ts = document.createElement('script'); ts.src = tsrc; ts.defer = true; document.head.appendChild(ts); }
+  } catch (e) {}
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
