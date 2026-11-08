@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Swan Video · Admin · The WebSwan</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#eef6fb;color:#17324c;padding:18px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto}
+h1{color:#0b1d59;font-size:1.6rem}h2{color:#0b1d59;font-size:1.15rem;margin-bottom:8px}
+.card{background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(8,42,72,.1);padding:16px;margin:14px 0}
+.muted{color:#5f7891;font-size:.9rem}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer;background:#0b1d59;color:#fff;font-size:.92rem}
+.btn.alt{background:#fff;color:#0b1d59;border:2px solid #0b1d59}.btn.swan{background:linear-gradient(90deg,#77c6e0,#0be0c0);color:#062743}
+label{display:block;font-size:.75rem;font-weight:800;text-transform:uppercase;color:#0b1d59;margin-top:8px}
+input,select{width:100%;padding:8px;border:1.5px solid #cbd5e1;border-radius:9px;font-size:.95rem;margin-top:3px;font-family:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.site h2{display:flex;align-items:center;justify-content:space-between}
+.switch{position:relative;display:inline-flex;align-items:center;gap:8px;font-size:.85rem;font-weight:800;cursor:pointer}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.switch .tr{width:46px;height:26px;border-radius:13px;background:#cbd5e1;position:relative;transition:.2s}
+.switch .tr::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+.tr{background:#0be0c0}.switch input:checked+.tr::after{left:23px}
+.switch input:focus-visible+.tr{outline:3px solid #ffb703}
+.lib{display:flex;flex-direction:column;gap:8px}
+.lib .row{display:grid;grid-template-columns:1fr 1.4fr auto;gap:8px;align-items:center}
+.thumb{width:100%;aspect-ratio:16/9;border-radius:10px;background:#0b1d59 center/cover;margin-top:8px}
+code{display:block;background:#0b1d59;color:#c9f7ee;padding:8px;border-radius:8px;font-size:.78rem;word-break:break-all;margin-top:6px}
+#msg{min-height:1.4em;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 Swan Video · Admin</h1>
+  <p class="muted">Pick which video plays in the video bubble on each site, with one switch per site. Under every video: a swan-colored <b>Call Rachel</b> button and an <b>Intake</b> button that opens your form.</p>
+  <div class="card" id="signin"><p>Sign in with your Google account (thewebswann@gmail.com) to change the videos.</p><p style="margin-top:10px"><button class="btn" id="go" type="button">Sign in with Google</button></p></div>
+  <div id="app" hidden>
+    <div class="card">
+      <h2>📚 Your videos</h2>
+      <p class="muted">Paste a YouTube link (unlisted is fine) or a direct .mp4 link, and give it a name.</p>
+      <div class="lib" id="lib"></div>
+      <p style="margin-top:10px"><button class="btn alt" type="button" id="addVid">+ Add a video</button></p>
+    </div>
+    <div class="grid" id="sites"></div>
+    <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn swan" type="button" id="save">💾 Save</button><span id="msg" role="status"></span></div>
+  </div>
+</div>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+const auth = getAuth(initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" }));
+const API = 'https://webswan-billing.netlify.app/.netlify/functions/site-video';
+const SITES = {
+  wsmn: { name: 'WebSwan Media Network', url: 'ads.webswanmedianetwork.com', d: { title: 'What WebSwan Media Network does for you', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
+  webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'Meet The WebSwan family', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' } },
+  digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'Website compliance can cost you', video: 'https://youtu.be/4EkFN0lj4cw', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' } }
+};
+const START_VIDEOS = [{ id: 'v1', title: 'Introducing WebSwan Media Network', url: 'https://youtu.be/w5TuDgEbdjg' }, { id: 'v2', title: 'Website compliance can cost you', url: 'https://youtu.be/4EkFN0lj4cw' }, { id: 'v3', title: 'The WebSwan Family', url: 'https://youtu.be/chB9apX6nAk' }];
+let cfg = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const ytId = (v) => ((String(v).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/) || String(v).match(/^([\w-]{11})$/)) || [])[1] || '';
+async function api(body) {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await auth.currentUser.getIdToken() }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('Error ' + r.status)); return d;
+}
+function render() {
+  $('lib').innerHTML = cfg.videos.map((v, i) => `<div class="row"><input aria-label="Video name" data-v="${i}" data-k="title" value="${esc(v.title)}"><input aria-label="Video link" data-v="${i}" data-k="url" value="${esc(v.url)}" placeholder="https://youtu.be/... or https://.../video.mp4"><button class="btn alt" type="button" data-del="${i}" aria-label="Remove ${esc(v.title)}">🗑</button></div>`).join('') || '<p class="muted">No videos yet.</p>';
+  $('sites').innerHTML = Object.entries(SITES).map(([k, s]) => { const x = cfg.sites[k]; const id = ytId(x.video);
+    return `<div class="card site"><h2>${esc(s.name)} <label class="switch"><input type="checkbox" data-s="${k}" data-k="on" ${x.on !== false ? 'checked' : ''}><span class="tr"></span><span>${x.on !== false ? 'On' : 'Off'}</span></label></h2>
+      <p class="muted">${esc(s.url)}</p>
+      <label>Video playing on this site<select data-s="${k}" data-k="video">${cfg.videos.map(v => `<option value="${esc(v.url)}" ${v.url === x.video ? 'selected' : ''}>${esc(v.title)}</option>`).join('')}${cfg.videos.some(v => v.url === x.video) ? '' : `<option value="${esc(x.video)}" selected>${esc(x.video || 'none')}</option>`}</select></label>
+      <div class="thumb" style="background-image:url('${id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''}')"></div>
+      <label>Title at the top of the video<input data-s="${k}" data-k="title" value="${esc(x.title)}"></label>
+      <label>Rachel's number (button under the video)<input data-s="${k}" data-k="rachel" value="${esc(x.rachel)}" placeholder="+13162486839"></label>
+      <label>Number as shown<input data-s="${k}" data-k="rachelLabel" value="${esc(x.rachelLabel)}"></label>
+      <label>Intake form (#form-id on the page, or a link)<input data-s="${k}" data-k="intake" value="${esc(x.intake)}"></label>
+      <label>Intake button text<input data-s="${k}" data-k="intakeLabel" value="${esc(x.intakeLabel)}"></label>
+      <label>Embed code for this site</label><code>&lt;script src="https://taniad2169.github.io/webswan-dagigoia-task/swan-video/swan-video.js" data-site="${k}" defer&gt;&lt;/script&gt;</code></div>`; }).join('');
+}
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.v !== undefined) cfg.videos[+t.dataset.v][t.dataset.k] = t.value;
+  if (t.dataset.s) { cfg.sites[t.dataset.s][t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox' || t.tagName === 'SELECT') render(); }
+});
+document.addEventListener('change', (e) => { if (e.target.dataset.v !== undefined) render(); });
+document.addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del]'); if (del) { cfg.videos.splice(+del.dataset.del, 1); render(); }
+});
+$('addVid').onclick = () => { cfg.videos.push({ id: Math.random().toString(36).slice(2, 10), title: 'New video', url: '' }); render(); $('lib').querySelector('.row:last-child input[data-k="url"]').focus(); };
+$('save').onclick = async () => { $('msg').textContent = 'Saving…'; try { const d = await api({ action: 'set', config: cfg }); cfg = fill(d.config); render(); $('msg').textContent = '✅ Saved. Each site shows the new video within a minute.'; } catch (e) { $('msg').textContent = '❌ ' + e.message; } };
+function fill(c) {
+  c = c || {}; const out = { videos: Array.isArray(c.videos) && c.videos.length ? c.videos : START_VIDEOS.slice(), sites: {} };
+  for (const [k, s] of Object.entries(SITES)) out.sites[k] = Object.assign({ on: true }, s.d, (c.sites || {})[k] || {});
+  return out;
+}
+$('go').onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => alert(e.message));
+onAuthStateChanged(auth, async (u) => {
+  if (!u) return;
+  $('signin').hidden = true; $('app').hidden = false;
+  try { cfg = fill((await api({ action: 'get' })).config); } catch (e) { cfg = fill(null); $('msg').textContent = '⚠️ ' + e.message + ' (the settings server goes live with the next Netlify update)'; }
+  render();
+});
+</script>
+</body>
+</html>
