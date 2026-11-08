@@ -677,7 +677,8 @@ export default async (req) => {
     let moved = 0;
     for (const l of q.leads || []) {
       if (l.status !== "queued" || !ids.has(String(l.id))) continue;
-      l.agent = to; if (b.mode === "floating") { l.mode = "floating"; l.task = task; } if (b.campaign) l.campaign = String(b.campaign).slice(0, 120); moved++;
+      l.agent = to; if (b.mode === "floating") { l.mode = "floating"; l.task = task; } if (b.campaign) l.campaign = String(b.campaign).slice(0, 120);
+      if (b.lang && LANGS[b.lang]) l.lang = b.lang; moved++;
     }
     await store.setJSON("queue", q);
     return reply(200, { moved, supported: true }, origin);

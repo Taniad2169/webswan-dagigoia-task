@@ -1116,7 +1116,7 @@ async function applyPendingQueueMoves() {
   if (!p.length) return;
   const keep = [];
   for (const m of p) {
-    try { const d = await voiceApi({ action: 'queue_move', ids: m.ids, to: m.to, mode: m.mode, task: m.task, campaign: m.campaign }); if (!d || !d.supported) keep.push(m); else toast('🔁 Moved ' + d.moved + ' queued lead' + (d.moved === 1 ? '' : 's') + ' to ' + m.to[0].toUpperCase() + m.to.slice(1) + '.'); }
+    try { const d = await voiceApi({ action: 'queue_move', ids: m.ids, to: m.to, mode: m.mode, task: m.task, campaign: m.campaign, lang: m.lang }); if (!d || !d.supported) keep.push(m); else toast('🔁 Moved ' + d.moved + ' queued lead' + (d.moved === 1 ? '' : 's') + ' to ' + m.to[0].toUpperCase() + m.to.slice(1) + '.'); }
     catch (e) { keep.push(m); }
   }
   localStorage.setItem('vs_pending_moves', JSON.stringify(keep));
