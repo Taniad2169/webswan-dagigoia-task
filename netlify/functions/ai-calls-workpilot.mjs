@@ -39,7 +39,7 @@ export const automatedOnly = (said) => { const t = String(said || ""); return !!
 
 // The agent sent them to Rachel: a live transfer, or gave Rachel's number to call ((239) 667-0151 or (347) 646-7086).
 const TO_RACHEL = /transferr?ing you (over )?to rachel|transfer you (over )?to rachel|connect(ing)? you (with|to) rachel|put(ting)? you through to rachel/i;
-const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|zero one five one|oh one five one)|(347|three four seven)\D{0,8}(646|six four six)\D{0,8}(7086|seven zero eight six|seven oh eight six)|rachel'?s (number|direct line|line)/i;
+const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|zero one five one|oh one five one)|(347|three four seven)\D{0,8}(646|six four six)\D{0,8}(7086|seven zero eight six|seven oh eight six)|(316|three one six)\D{0,8}(248|two four eight)\D{0,8}(6839|six eight three nine)|rachel'?s (number|direct line|line)/i;
 
 function outcome(c, said, booked, agentSaid = "") {
   const secs = c.start_time && c.end_time ? (new Date(c.end_time) - new Date(c.start_time)) / 1000 : 0;

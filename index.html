@@ -2336,7 +2336,7 @@ ${b.brand}`;
     w.text.addEventListener("click", () => {
       if (!wLast) return;
       const first = (wLast.clientName || "").split(" ").filter(x => !/^dr\.?$/i.test(x))[0] || "there";
-      const txt = `Hi ${first}, it's Tania from WebSwan Media Network. Here is your secure link to join: ${wLast.url} ($689 today, then $29/mo starting in 30 days). Questions? Call (347) 646-7086.`;
+      const txt = `Hi ${first}, it's Tania from WebSwan Media Network. Here is your secure link to join: ${wLast.url} ($689 today, then $29/mo starting in 30 days). Questions? Call (316) 248-6839.`;
       location.href = "sms:" + String(wLast.phone || "").replace(/[^0-9+]/g, "") + "?&body=" + encodeURIComponent(txt);
     });
     w.mail.addEventListener("click", () => {

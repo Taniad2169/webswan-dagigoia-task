@@ -24,7 +24,7 @@ const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billin
 const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer", "rachel", "rachelout"];
 // Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
 const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
-const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13476467086";
+const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13162486839";
 function rachelTransfers(agent) {
   const comp = { destination: { type: "phone", phone_number: RACHEL_COMPLIANCE }, condition: "The person has questions about website compliance, ADA, privacy, HIPAA, the audit findings or the risk, and agrees to be transferred to Rachel, WebSwan Digital Solutions' compliance coordinator." };
   const ads = { destination: { type: "phone", phone_number: RACHEL_ADVERTISING }, condition: "The person wants more information about WebSwan Media Network, advertising, visibility or being added to the directory, and agrees to be transferred to Rachel, the advertising coordinator." };

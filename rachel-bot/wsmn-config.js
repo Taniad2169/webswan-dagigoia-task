@@ -1,6 +1,6 @@
 /* Rachel Bennet for WebSwan Media Network (online advertising for doctors & attorneys). */
 (function () {
-  var R = '<a href="tel:+13476467086">(347) 646-7086</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
+  var R = '<a href="tel:+13162486839">(316) 248-6839</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
   var ADS = '<a href="https://ads.webswanmedianetwork.com/" target="_blank" rel="noopener">ads.webswanmedianetwork.com</a>';
   window.RACHEL_CONFIG = {
     name: 'Rachel Bennet',
