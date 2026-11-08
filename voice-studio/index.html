@@ -1112,7 +1112,9 @@ const findingsOf = l => {
   const base = (l && l.scanReport) || ((String((l && l.notes) || '').match(/Findings:\s*([^|\n]+)/i) || [])[1] || '').trim();
   // Rebecca uses her PPC or billboard opener when the lead's notes say how the practice advertises.
   const txt = [l && l.notes, l && l.type, l && l.tags, l && l.source].concat(((l && l.mem) || []).map(m => m && m.text)).filter(Boolean).join(' ');
-  const ads = [/\b(ppc|pay[- ]?per[- ]?click|google ads|adwords|sponsored ads?)\b/i.test(txt) && 'Google pay-per-click (PPC)', /\b(billboards?|bus (bench|benches|stop|shelter)|bench ads?|radio ads?|tv ads?|television ads?)\b/i.test(txt) && 'billboard / bus bench'].filter(Boolean);
+  // Tania, Nov 7: a Google-ads check that came back "no" (r.advertising = 'No') never turns on the PPC opener; a confirmed advertiser ('Yes') always does.
+  const advNo = l && l.r && l.r.advertising === 'No', advYes = l && l.r && l.r.advertising === 'Yes';
+  const ads = [!advNo && (advYes || /\b(ppc|pay[- ]?per[- ]?click|google ads|adwords|sponsored ads?)\b/i.test(txt)) && 'Google pay-per-click (PPC)', /\b(billboards?|bus (bench|benches|stop|shelter)|bench ads?|radio ads?|tv ads?|television ads?)\b/i.test(txt) && 'billboard / bus bench'].filter(Boolean);
   return [base, ads.length ? 'Advertises with: ' + ads.join(' and ') : ''].filter(Boolean).join(' | ');
 };
 async function liveStart(l, a, lang, opts = {}) {
