@@ -177,7 +177,8 @@
     var c = dest(), a = S.dep || '', b = S.ret || a, e = encodeURIComponent(c);
     say(t('carIntro'));
     var L = [['Kayak cars', 'https://www.kayak.com/cars/' + e + (a ? '/' + a + '/' + b : '')], ['Rentalcars.com', 'https://www.rentalcars.com/SearchResults.do?location=' + e], ['Turo', 'https://turo.com/us/en/search?location=' + e + (a ? '&startDate=' + a + '&endDate=' + b : '')],
-      ['Enterprise', 'https://www.enterprise.com/en/car-rental-locations.html?q=' + e], ['Hertz', 'https://www.hertz.com/rentacar/location/search?query=' + e], ['Uber / Lyft', 'https://www.uber.com/global/en/r/cities/']];
+      ['Enterprise', 'https://www.enterprise.com/en/car-rental-locations.html?q=' + e], ['Hertz', 'https://www.hertz.com/rentacar/location/search?query=' + e], ['Flexcar (month-to-month)', 'https://www.flexcar.com'], ['Uber / Lyft', 'https://www.uber.com/global/en/r/cities/']];
+    if (/oakland|berkeley|emeryville|san francisco|\bsf\b|bay area|alameda|richmond|san leandro|\bOAK\b|\bSFO\b/i.test(c)) L.splice(3, 0, ['Rent-A-Relic (Oakland)', 'https://www.google.com/search?q=' + encodeURIComponent('Rent-A-Relic Oakland CA')]);
     addHTML(linkCard('🚗 ' + c, L));
     S.extra = 'car'; addHTML(tripCard());
     say(t('selfbook')); chips([['stay', t('stay'), stays], ['food', t('food'), function () { S.city = c; food(); }], menuChip()]);

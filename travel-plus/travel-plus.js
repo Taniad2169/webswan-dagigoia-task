@@ -354,6 +354,24 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(addVrbo, 300); }); else setTimeout(addVrbo, 300);
   setTimeout(addVrbo, 2500);
 
+  // Flexcar and Rent-A-Relic in the Car Rental list (manual search finds them too)
+  function addCars() {
+    try {
+      var box = document.getElementById('carsLinks'); if (!box) return;
+      [{ name: 'Flexcar', url: 'https://www.flexcar.com', emoji: 'F' }, { name: 'Rent-A-Relic', url: 'https://www.google.com/search?q=Rent-A-Relic+Oakland+CA', emoji: 'R' }].forEach(function (item) {
+        var key = item.name.toLowerCase(); if (box.querySelector('[data-name="' + key + '"]')) return;
+        if (typeof travelLinks !== 'undefined' && travelLinks.cars && !travelLinks.cars.some(function (x) { return x.name === item.name; })) travelLinks.cars.push(item);
+        var a = typeof createTravelLink === 'function' ? createTravelLink(item, 9) : null;
+        if (!a) { a = document.createElement('a'); a.className = 'travel-link'; a.setAttribute('data-name', key); a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.innerHTML = '<div class="link-icon" aria-hidden="true">' + item.emoji + '</div><div class="link-content"><div class="link-title">' + item.name + '</div><div class="link-url">' + item.url.replace(/^https:\/\/(www\.)?/, '').split('/')[0] + '</div></div><div class="link-arrow" aria-hidden="true">→</div>'; }
+        var names = [].slice.call(box.querySelectorAll('.travel-link')), before = names.find(function (n) { return (n.getAttribute('data-name') || '') > key; });
+        before ? box.insertBefore(a, before) : box.appendChild(a);
+      });
+      if (typeof categoryKeywords !== 'undefined' && categoryKeywords.cars && categoryKeywords.cars.indexOf('flexcar') < 0) categoryKeywords.cars.push('flexcar', 'flex car', 'rent-a-relic', 'rent a relic', 'relic');
+    } catch (e) {}
+  }
+  setTimeout(addCars, 300); setTimeout(addCars, 2500);
+
   // Tania, the travel & city concierge (her own chat bubble)
   try {
     var tsrc = ((document.currentScript && document.currentScript.src) || 'https://taniad2169.github.io/webswan-dagigoia-task/travel-plus/travel-plus.js').replace(/[^/]*$/, '') + 'tania.js';
