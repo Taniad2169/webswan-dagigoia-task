@@ -912,8 +912,8 @@ function checkImport() {
       });
       if (v.route) {
         const send = added.filter(({ l }) => l.status !== 'Do not call' && l.status !== 'Appointment requested' && stateCode(l.state))
-          .map(({ l, x }) => ({ l, agent: /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? (/media network|advertis|billboard|ppc/i.test((x.type || '') + ' ' + (x.notes || '')) ? 'rebecca' : 'monica') : '' })).filter(o => o.agent);
-        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: 'selling', task: '', findings: findingsOf(l), campaign: agent === 'george' ? 'Prospector: lawyers' : agent === 'rebecca' ? 'Prospector: doctors (Media Network ad)' : 'Prospector: doctors (compliance)' })) })
+          .map(({ l, x }) => ({ l, agent: x.noSite ? 'alek' : /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? (/media network|advertis|billboard|ppc/i.test((x.type || '') + ' ' + (x.notes || '')) ? 'rebecca' : 'monica') : '' })).filter(o => o.agent);
+        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: agent === 'alek' ? 'floating' : 'selling', task: agent === 'alek' ? ALEK_NOSITE_TASK : '', findings: findingsOf(l), campaign: agent === 'alek' ? 'No website: The WebSwan (Alek)' : agent === 'george' ? 'Prospector: lawyers' : agent === 'rebecca' ? 'Prospector: doctors (Media Network ad)' : 'Prospector: doctors (compliance)' })) })
           .then(q => { dialQ = q; const g = send.filter(o => o.agent === 'george').length; const rb = send.filter(o => o.agent === 'rebecca').length; toast(`🤖 In the auto-dial queue: ${send.length - g - rb} for Monica, ${rb} for Rebecca, ${g} for George${q.paused ? '. The queue is paused, press Start when you’re ready.' : '.'}`); if (page === 'Campaigns') render(); })
           .catch(e => toast('Imported, but couldn’t add to the auto-dial queue: ' + e.message));
       }
@@ -1108,6 +1108,20 @@ async function liveCall(leadId, prefer) {
   });
   const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
 }
+// Tania, Nov 7: practices with NO website go to Alek, who calls for The WebSwan (custom website + phone app).
+const ALEK_NOSITE_TASK = "You are calling for The WebSwan, Tania Domingue's custom web design company. This practice has no website we could find. Ask for the doctor, attorney or office manager. Say warmly that you looked for the practice online and couldn't find a website, and that most new patients and clients now search on Google and their phone before they call. The WebSwan builds custom websites for doctors and lawyers: ADA accessible, mobile friendly, with online booking, plus a phone application patients and clients can save on their phone. Never quote prices. Goal: book a 10-minute call with our founder, Tania, to show them a free website demo. If they already have a website, apologize, note it, and ask if they'd like a free review of it instead.";
+// Moves Voice Studio still has to apply on the server (queue_move goes live with the next Netlify deploy). Retried on every load until it works.
+async function applyPendingQueueMoves() {
+  let p = []; try { p = JSON.parse(localStorage.getItem('vs_pending_moves') || '[]'); } catch (e) {}
+  if (!p.length) return;
+  const keep = [];
+  for (const m of p) {
+    try { const d = await voiceApi({ action: 'queue_move', ids: m.ids, to: m.to, mode: m.mode, task: m.task, campaign: m.campaign }); if (!d || !d.supported) keep.push(m); else toast('🔁 Moved ' + d.moved + ' queued lead' + (d.moved === 1 ? '' : 's') + ' to ' + m.to[0].toUpperCase() + m.to.slice(1) + '.'); }
+    catch (e) { keep.push(m); }
+  }
+  localStorage.setItem('vs_pending_moves', JSON.stringify(keep));
+}
+setTimeout(() => { applyPendingQueueMoves().catch(() => {}); }, 4000);
 const findingsOf = l => {
   const base = (l && l.scanReport) || ((String((l && l.notes) || '').match(/Findings:\s*([^|\n]+)/i) || [])[1] || '').trim();
   // Rebecca uses her PPC or billboard opener when the lead's notes say how the practice advertises.

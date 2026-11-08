@@ -649,6 +649,22 @@ export default async (req) => {
     return reply(200, { ready: checks.every((c) => c.ok), checks }, origin);
   }
 
+  // ---------- move specific queued leads (by lead id) to another caller, e.g. no-website practices -> Alek for The WebSwan ----------
+  if (b.action === "queue_move") {
+    const to = String(b.to || "").toLowerCase(), ids = new Set((Array.isArray(b.ids) ? b.ids : []).map((x) => String(x)));
+    if (!AGENTS.includes(to) || !ids.size) return reply(400, { error: "Pick the caller and the leads to move." }, origin);
+    const task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
+    if (to === "alek" && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his script." }, origin);
+    const q = (await store.get("queue", { type: "json" })) || { leads: [] };
+    let moved = 0;
+    for (const l of q.leads || []) {
+      if (l.status !== "queued" || !ids.has(String(l.id))) continue;
+      l.agent = to; if (b.mode === "floating") { l.mode = "floating"; l.task = task; } if (b.campaign) l.campaign = String(b.campaign).slice(0, 120); moved++;
+    }
+    await store.setJSON("queue", q);
+    return reply(200, { moved, supported: true }, origin);
+  }
+
   // ---------- move queued leads from one caller to another (e.g. George's attorneys -> Alek for SwanDesk AI) ----------
   if (b.action === "queue_reassign") {
     const from = String(b.from || "").toLowerCase(), to = String(b.to || "").toLowerCase();
