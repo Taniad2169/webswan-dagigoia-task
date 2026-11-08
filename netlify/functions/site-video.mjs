@@ -23,6 +23,7 @@ function sanitize(c) {
     out.sites[s] = {
       on: x.on !== false,
       title: clean(x.title, 90),
+      caption: clean(x.caption, 200),
       video: okVideo(video) ? video : "",
       rachel: okTel(rachel) ? rachel : "",
       rachelLabel: clean(x.rachelLabel, 30),

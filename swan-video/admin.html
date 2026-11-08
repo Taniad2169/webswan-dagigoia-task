@@ -34,12 +34,12 @@ code{display:block;background:#0b1d59;color:#c9f7ee;padding:8px;border-radius:8p
 <body>
 <div class="wrap">
   <h1>🎬 Swan Video · Admin</h1>
-  <p class="muted">Pick which video plays in the video bubble on each site, with one switch per site. Under every video: a swan-colored <b>Call Rachel</b> button and an <b>Intake</b> button that opens your form.</p>
+  <p class="muted">Pick which video plays on each site, with one switch per site. The video opens by itself (muted) a few seconds after someone arrives, with play, sound, replay, full screen and close buttons and your greeting written over it. Under every video: a swan-colored <b>Call Rachel</b> button and an <b>Intake</b> button that opens your form.</p>
   <div class="card" id="signin"><p>Sign in with your Google account (thewebswann@gmail.com) to change the videos.</p><p style="margin-top:10px"><button class="btn" id="go" type="button">Sign in with Google</button></p></div>
   <div id="app" hidden>
     <div class="card">
       <h2>📚 Your videos</h2>
-      <p class="muted">Paste a YouTube link (unlisted is fine) or a direct .mp4 link, and give it a name.</p>
+      <p class="muted">Paste a YouTube link (unlisted is fine; a YouTube Short fits best) or a direct .mp4 link, and give it a name. Record it standing up, like a phone selfie video: the video window is tall, like the attorney site's.</p>
       <div class="lib" id="lib"></div>
       <p style="margin-top:10px"><button class="btn alt" type="button" id="addVid">+ Add a video</button></p>
     </div>
@@ -53,9 +53,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from
 const auth = getAuth(initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" }));
 const API = 'https://webswan-billing.netlify.app/.netlify/functions/site-video';
 const SITES = {
-  wsmn: { name: 'WebSwan Media Network', url: 'ads.webswanmedianetwork.com', d: { title: 'What WebSwan Media Network does for you', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
-  webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'Meet The WebSwan family', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' } },
-  digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'Website compliance can cost you', video: 'https://youtu.be/4EkFN0lj4cw', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' } }
+  wsmn: { name: 'WebSwan Media Network', url: 'ads.webswanmedianetwork.com', d: { title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
+  webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' } },
+  digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'https://youtu.be/4EkFN0lj4cw', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' } }
 };
 const START_VIDEOS = [{ id: 'v1', title: 'Introducing WebSwan Media Network', url: 'https://youtu.be/w5TuDgEbdjg' }, { id: 'v2', title: 'Website compliance can cost you', url: 'https://youtu.be/4EkFN0lj4cw' }, { id: 'v3', title: 'The WebSwan Family', url: 'https://youtu.be/chB9apX6nAk' }];
 let cfg = null;
@@ -73,7 +73,8 @@ function render() {
       <p class="muted">${esc(s.url)}</p>
       <label>Video playing on this site<select data-s="${k}" data-k="video">${cfg.videos.map(v => `<option value="${esc(v.url)}" ${v.url === x.video ? 'selected' : ''}>${esc(v.title)}</option>`).join('')}${cfg.videos.some(v => v.url === x.video) ? '' : `<option value="${esc(x.video)}" selected>${esc(x.video || 'none')}</option>`}</select></label>
       <div class="thumb" style="background-image:url('${id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''}')"></div>
-      <label>Title at the top of the video<input data-s="${k}" data-k="title" value="${esc(x.title)}"></label>
+      <label>Name of the video (for screen readers)<input data-s="${k}" data-k="title" value="${esc(x.title)}"></label>
+      <label>Greeting written over the video<input data-s="${k}" data-k="caption" value="${esc(x.caption)}" placeholder="Hi, welcome to... How can we help you?"></label>
       <label>Rachel's number (button under the video)<input data-s="${k}" data-k="rachel" value="${esc(x.rachel)}" placeholder="+13162486839"></label>
       <label>Number as shown<input data-s="${k}" data-k="rachelLabel" value="${esc(x.rachelLabel)}"></label>
       <label>Intake form (#form-id on the page, or a link)<input data-s="${k}" data-k="intake" value="${esc(x.intake)}"></label>
