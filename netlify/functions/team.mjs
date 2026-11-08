@@ -290,6 +290,8 @@ export default async (req) => {
       let ans;
       try { ans = await within(askAI(b.provider || brainFor(s, agent), AGENTS[agent].system + notesText((await getNotes())[agent]) + VOICE + RP + "\nToday is " + new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles" }) + ".", [...past, user]), Math.max(6000, 25000 - (Date.now() - t0)), "The answer"); }
       catch (e) {
+        // A real error (not slowness): say it right away instead of a silent wait.
+        if (!/took too long/i.test(String(e.message || ""))) return reply(200, { messages: [userMsg, { id: "tmp-err", role: "agent", at: new Date().toISOString(), text: "⚠️ I couldn't answer just now: " + String(e.message || e).slice(0, 200) + ". Please try again in a moment." }] }, origin);
         // Too slow for a live answer: finish it in the background worker (up to 15 minutes); it lands in this chat.
         let started = true; try { await startJobs(["reply_" + agent]); } catch (x) { started = false; }
         return reply(200, { messages: [userMsg, { id: "tmp-wait", role: "agent", at: new Date().toISOString(), text: started ? "⏳ I'm still working on this one. My answer will appear here in a minute or two; refresh my chat to see it." : "⚠️ I couldn't answer just now (" + e.message + "). Please send it again." }] }, origin);

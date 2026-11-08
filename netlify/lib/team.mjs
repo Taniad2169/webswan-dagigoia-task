@@ -174,7 +174,21 @@ export function pickProvider(want) {
 }
 
 // messages: [{ role: "user" | "assistant", content }]
+// If the chosen brain fails (no credit yet, retired model, outage), the next connected brain answers instead,
+// so an agent never sits on "thinking" forever. Tania, Nov 7: Grok has a key but no funds yet → Jimmy falls back.
 export async function askAI(provider, system, messages, maxTokens = 3000) {
+  const first = pickProvider(provider);
+  if (!first) return askOne(provider, system, messages, maxTokens);
+  const ready = providerReady();
+  const order = [first, ...["claude", "chatgpt", "gemini", "deepseek", "grok"].filter((k) => k !== first && ready[k])];
+  let lastErr = null;
+  for (const p of order) {
+    try { return await askOne(p, system, messages, maxTokens); }
+    catch (e) { lastErr = e; console.log("AI brain failed, trying the next one:", p, String(e.message || e).slice(0, 160)); }
+  }
+  throw lastErr || new Error("No AI brain answered.");
+}
+async function askOne(provider, system, messages, maxTokens = 3000) {
   const p = pickProvider(provider);
   if (!p) throw new Error("No AI is connected yet. Add DEEPSEEK_API_KEY (or OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY) in Netlify.");
   const key = process.env[PROVIDERS[p].env];
