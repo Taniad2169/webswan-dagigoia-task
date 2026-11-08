@@ -54,9 +54,9 @@
 
   function intakeAction() {
     var t = String(C.intake || '').trim();
-    if (t.charAt(0) === '#') { var el = document.querySelector(t); if (el) { closeP(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); var f = el.querySelector('input,select,textarea'); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 600); return; } }
+    if (t.charAt(0) === '#') { var el = document.querySelector(t); if (el) { closeP(true); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); var f = [].slice.call(el.querySelectorAll('input:not([type=hidden]),select,textarea')).filter(function (x) { return x.offsetParent !== null && !x.disabled; })[0]; if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 700); return; } }
     if (/^https?:\/\//i.test(t)) { window.open(t, '_blank', 'noopener'); return; }
-    var any = document.querySelector('form'); if (any) { closeP(); any.scrollIntoView({ behavior: 'smooth' }); }
+    var any = document.querySelector('form'); if (any) { closeP(true); any.scrollIntoView({ behavior: 'smooth' }); }
   }
 
   var launch, panel, tip;
@@ -71,10 +71,10 @@
     document.getElementById('sv-media').innerHTML = media();
     document.getElementById('sv-x').focus();
   }
-  function closeP() {
+  function closeP(keepFocus) {
     panel.hidden = true; launch.style.display = '';
     document.getElementById('sv-media').innerHTML = ''; // stops the video
-    launch.focus();
+    if (!keepFocus) launch.focus();
   }
   function thumb() { var v = parseVideo(C.video); return C.photo || (v && v.yt ? 'https://i.ytimg.com/vi/' + v.yt + '/hqdefault.jpg' : BASE + 'tania.jpg'); }
   function mount() {
@@ -90,7 +90,7 @@
       '<div class="sv-note">Calls only on Rachel\'s line. Powered by The WebSwan.</div>';
     document.body.appendChild(launch); document.body.appendChild(panel);
     launch.onclick = openP;
-    document.getElementById('sv-x').onclick = closeP;
+    document.getElementById('sv-x').onclick = function () { closeP(); };
     document.getElementById('sv-intake').onclick = intakeAction;
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) closeP(); });
     try { if (!sessionStorage.getItem('sv-tip')) {
