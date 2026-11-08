@@ -37,11 +37,13 @@
 
   var F = '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif';
   var css =
-    '#sv-mini{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;width:108px;height:150px;border-radius:18px;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59;box-shadow:0 12px 30px rgba(8,42,72,.45);transition:transform .2s}' +
+    '#sv-wrap{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;transition:bottom .25s}' +
+    '#sv-mini{position:relative;width:108px;height:150px;border-radius:18px;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59;box-shadow:0 12px 30px rgba(8,42,72,.45);transition:transform .2s;display:block}' +
     '#sv-mini:hover{transform:scale(1.05)}#sv-mini img{width:100%;height:100%;object-fit:cover;display:block}' +
+    '#sv-gone{position:absolute;top:-10px;' + (SIDE === 'right' ? 'left' : 'right') + ':-10px;width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:#0b1d59;color:#fff;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:2}' +
     '#sv-mini .sv-badge{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(11,29,89,.85);color:#fff;font:800 11px/1.2 ' + F + ';padding:5px 4px;border-radius:9px;text-align:center}' +
-    '#sv-panel{position:fixed;' + SIDE + ':20px;bottom:' + Math.max(16, BOTTOM - 76) + 'px;z-index:99999;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:' + F + '}' +
-    '#sv-stage{position:relative;width:100%;height:min(440px,calc(100vh - 270px));min-height:260px;background:#000}' +
+    '#sv-panel{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99999;display:flex;flex-direction:column;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:' + F + '}' +
+    '#sv-stage{position:relative;width:100%;flex:1 1 auto;height:440px;min-height:200px;background:#000}' +
     '#sv-stage video,#sv-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}' +
     '#sv-ctrl{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:3;pointer-events:none}#sv-ctrl div{display:flex;gap:8px}' +
     '#sv-ctrl button{pointer-events:auto;width:40px;height:40px;border-radius:10px;border:0;background:rgba(40,40,40,.62);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}' +
@@ -52,10 +54,10 @@
     '.sv-rachel small{display:block;font-weight:600;font-size:12px}' +
     '.sv-intake{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:14px;border:2px solid #0b1d59;background:#fff;color:#0b1d59;font-weight:800;font-size:14px;cursor:pointer}' +
     '#sv-pow{font-size:11.5px;color:#94a3b8;text-align:center;padding:0 12px 10px}#sv-pow b{color:#0b1d59}' +
-    '#sv-mini:focus-visible,#sv-panel a:focus-visible,#sv-panel button:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
-    '@media (max-width:600px){#sv-mini{width:84px;height:118px}#sv-panel{' + SIDE + ':12px;bottom:12px}#sv-stage{height:min(360px,calc(100vh - 250px))}}';
+    '#sv-mini:focus-visible,#sv-gone:focus-visible,#sv-panel a:focus-visible,#sv-panel button:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
+    '@media (max-width:600px){#sv-mini{width:84px;height:118px}#sv-wrap,#sv-panel{' + SIDE + ':12px}#sv-panel{width:calc(100vw - 24px)}}';
 
-  var mini, panel, vid, ifr, ytPlaying = true, ytMuted = true;
+  var wrap, mini, panel, vid, ifr, ytPlaying = true, ytMuted = true;
   var V = function () { return parseVideo(C.video); };
   function thumb() { var v = V(); return C.photo || (v && v.yt ? 'https://i.ytimg.com/vi/' + v.yt + '/hqdefault.jpg' : ''); }
   function yt(func, args) { try { ifr && ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: args || [] }), '*'); } catch (e) {} }
@@ -76,15 +78,45 @@
     ytMuted = !!muted; setBtn('sv-snd', muted ? '🔇' : '🔊', muted ? 'Turn sound on' : 'Turn sound off'); setBtn('sv-pp', '❚❚', 'Pause');
   }
   function openP(muted) {
-    mini.style.display = 'none'; panel.hidden = false;
+    wrap.style.display = 'none'; panel.hidden = false; place();
     loadMedia(muted);
     if (!muted) document.getElementById('sv-x').focus();
   }
   function closeP(keepFocus) {
-    panel.hidden = true; mini.style.display = '';
+    panel.hidden = true; wrap.style.display = '';
     document.getElementById('sv-stage').querySelectorAll('video,iframe').forEach(function (n) { n.remove(); }); vid = ifr = null;
     try { sessionStorage.setItem('sv-closed', '1'); } catch (e) {}
     if (!keepFocus) mini.focus();
+  }
+  // Keep clear of the ADA button, cookie banners and anything else pinned to the bottom corner of the page.
+  function obstacleHeight() {
+    var mine = function (el) { return el.closest && el.closest('#sv-wrap,#sv-panel'); };
+    var top = window.innerHeight, xs = [], w = window.innerWidth;
+    for (var dx = 16; dx <= 380 && dx < w; dx += 36) xs.push(SIDE === 'right' ? w - dx : dx);
+    for (var y = window.innerHeight - 4; y > window.innerHeight * 0.45; y -= 14) {
+      for (var i = 0; i < xs.length; i++) {
+        var els = document.elementsFromPoint(xs[i], y) || [];
+        for (var j = 0; j < els.length; j++) {
+          var el = els[j]; if (mine(el) || el === document.body || el === document.documentElement) continue;
+          var n = el, fixed = false;
+          while (n && n !== document.body) { var p = getComputedStyle(n).position; if (p === 'fixed' || p === 'sticky') { fixed = true; break; } n = n.parentElement; }
+          if (fixed) { var r = n.getBoundingClientRect(); if (r.bottom >= window.innerHeight - 140 && r.height < window.innerHeight * 0.5) top = Math.min(top, r.top); }
+        }
+      }
+    }
+    return Math.max(0, window.innerHeight - top);
+  }
+  function place() {
+    if (!wrap) return;
+    var hidden = [wrap, panel].map(function (el) { var d = el.style.visibility; el.style.visibility = 'hidden'; return d; });
+    var b = Math.max(window.innerWidth <= 600 ? 12 : 20, obstacleHeight() + 12);
+    wrap.style.visibility = hidden[0]; panel.style.visibility = hidden[1];
+    var mb = Math.max(b, window.innerWidth <= 600 ? 12 : Math.min(BOTTOM, b + 76));
+    wrap.style.bottom = mb + 'px';
+    panel.style.bottom = b + 'px';
+    var avail = window.innerHeight - b - 16, rest = 190; // room for the buttons under the video
+    document.getElementById('sv-stage').style.height = Math.max(200, Math.min(440, avail - rest)) + 'px';
+    panel.style.maxHeight = avail + 'px';
   }
   function togglePlay() {
     if (vid) { vid.paused ? vid.play() : vid.pause(); return; }
@@ -110,8 +142,14 @@
   function mount() {
     if (!C.on) return;
     var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+    var gone = false; try { gone = !!sessionStorage.getItem('sv-gone'); } catch (e) {}
+    if (gone) return;
+    wrap = document.createElement('div'); wrap.id = 'sv-wrap';
     mini = document.createElement('button'); mini.id = 'sv-mini'; mini.type = 'button'; mini.setAttribute('aria-label', 'Play video: ' + C.title);
     mini.innerHTML = (thumb() ? '<img src="' + esc(thumb()) + '" alt="">' : '') + '<span class="sv-badge">▶ Watch</span>';
+    var x = document.createElement('button'); x.id = 'sv-gone'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove the video from this page');
+    x.onclick = function () { try { sessionStorage.setItem('sv-gone', '1'); } catch (e) {} wrap.remove(); panel.remove(); };
+    wrap.appendChild(mini); wrap.appendChild(x);
     panel = document.createElement('div'); panel.id = 'sv-panel'; panel.hidden = true; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', C.title + ' video');
     panel.innerHTML = '<div id="sv-stage"><div id="sv-ctrl"><div><button type="button" id="sv-pp" aria-label="Pause">❚❚</button><button type="button" id="sv-snd" aria-label="Turn sound on">🔇</button></div>' +
       '<div><button type="button" id="sv-rp" aria-label="Replay with sound">↺</button><button type="button" id="sv-fs" aria-label="Full screen">⛶</button><button type="button" id="sv-x" aria-label="Close video">✕</button></div></div>' +
@@ -119,7 +157,8 @@
       '<div id="sv-acts"><a class="sv-rachel" href="tel:' + esc(C.rachel) + '">📞 <span>Call Rachel for more information<small>' + esc(C.rachelLabel) + ' · she answers day or night</small></span></a>' +
       '<button type="button" class="sv-intake" id="sv-intake">📝 ' + esc(C.intakeLabel || 'Intake') + '</button></div>' +
       '<div id="sv-pow">Powered by <b>The WebSwan</b></div>';
-    document.body.appendChild(mini); document.body.appendChild(panel);
+    document.body.appendChild(wrap); document.body.appendChild(panel);
+    place(); setInterval(function () { if (document.body.contains(wrap)) place(); }, 1500); window.addEventListener('resize', place);
     mini.onclick = function () { openP(false); };
     document.getElementById('sv-pp').onclick = togglePlay;
     document.getElementById('sv-snd').onclick = toggleSound;

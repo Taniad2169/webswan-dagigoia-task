@@ -13,9 +13,9 @@ const okTel = (v) => !v || /^\+\d{10,15}$/.test(v);
 
 function sanitize(c) {
   const out = { videos: [], sites: {} };
-  for (const v of (Array.isArray(c && c.videos) ? c.videos : []).slice(0, 40)) {
+  for (const v of (Array.isArray(c && c.videos) ? c.videos : []).slice(0, 10)) {
     const url = clean(v && v.url, 300), title = clean(v && v.title, 120);
-    if (url && okVideo(url)) out.videos.push({ id: clean(v.id, 40) || Math.random().toString(36).slice(2, 10), title: title || "Video", url });
+    if (url && okVideo(url)) out.videos.push({ id: clean(v.id, 40) || Math.random().toString(36).slice(2, 10), title: title || "Video", url, uploaded: !!(v && v.uploaded) });
   }
   for (const s of SITES) {
     const x = (c && c.sites && c.sites[s]) || {};

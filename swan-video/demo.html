@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Swan Video · Preview · The WebSwan</title>
+<style>
+body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(160deg,#0b1d59,#1b70c2 55%,#77c6e0);min-height:100vh;color:#fff}
+.wrap{max-width:900px;margin:0 auto;padding:28px 18px 260px}
+h1{font-size:clamp(1.8rem,5vw,2.8rem);margin:0 0 10px}
+p{font-size:1.05rem;line-height:1.6;max-width:620px}
+.sel{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.sel a,.sel button{background:#fff;color:#0b1d59;border:0;border-radius:999px;padding:9px 16px;font-weight:800;text-decoration:none;cursor:pointer;font-size:.95rem}
+.sel a[aria-current]{background:#0be0c0}
+#fakeAda{position:fixed;right:22px;bottom:22px;width:62px;height:62px;border-radius:50%;background:#0b1d59;border:3px solid #fff;color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;z-index:9000}
+#fakeCookie{position:fixed;left:0;right:0;bottom:0;background:#fff;color:#17324c;padding:14px 18px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:0 -6px 20px rgba(0,0,0,.2);z-index:9001}
+#fakeCookie button{border:0;border-radius:10px;padding:9px 14px;font-weight:800;background:#0b1d59;color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Swan Video preview</h1>
+  <p>This is how your video greeting looks on a website. On a computer it opens by itself (muted) after a few seconds. On a phone it waits as a small "Watch" thumbnail. The <b>✕ on the thumbnail</b> removes the video from the page for that visit. It always stays above the ADA button and the cookie banner.</p>
+  <div class="sel" id="sel"></div>
+  <div class="sel"><button type="button" id="reset">↺ Show it again (start over)</button><button type="button" id="cookieToggle">Hide / show the cookie banner</button></div>
+  <p style="opacity:.85;font-size:.9rem">The videos here are stand-ins until you upload yours in the admin page.</p>
+</div>
+<div id="fakeAda" role="img" aria-label="Sample ADA button">♿</div>
+<div id="fakeCookie"><span>🍪 Sample cookie banner: this site uses cookies.</span><button type="button" onclick="this.parentNode.remove()">Accept</button></div>
+<script>
+(function () {
+  var site = new URLSearchParams(location.search).get('site') || 'wsmn';
+  var names = { wsmn: 'WebSwan Media Network', webswan: 'The WebSwan', digital: 'Digital Solutions' };
+  document.getElementById('sel').innerHTML = Object.keys(names).map(function (k) { return '<a href="?site=' + k + '"' + (k === site ? ' aria-current="page"' : '') + '>' + names[k] + '</a>'; }).join('');
+  document.getElementById('reset').onclick = function () { try { sessionStorage.removeItem('sv-gone'); sessionStorage.removeItem('sv-closed'); } catch (e) {} location.reload(); };
+  document.getElementById('cookieToggle').onclick = function () { var c = document.getElementById('fakeCookie'); if (c) c.style.display = c.style.display === 'none' ? '' : 'none'; else location.reload(); };
+  var s = document.createElement('script'); s.src = 'swan-video.js?v=' + Date.now(); s.setAttribute('data-site', site); document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

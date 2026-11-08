@@ -25,7 +25,11 @@ input,select{width:100%;padding:8px;border:1.5px solid #cbd5e1;border-radius:9px
 .switch input:checked+.tr{background:#0be0c0}.switch input:checked+.tr::after{left:23px}
 .switch input:focus-visible+.tr{outline:3px solid #ffb703}
 .lib{display:flex;flex-direction:column;gap:8px}
-.lib .row{display:grid;grid-template-columns:1fr 1.4fr auto;gap:8px;align-items:center}
+.lib .row{display:grid;grid-template-columns:72px 1fr 1.3fr auto;gap:8px;align-items:center;border-bottom:1px solid #e6eef5;padding-bottom:8px}
+.lib .row .acts{display:flex;gap:6px;flex-wrap:wrap}
+.lib .mini{width:72px;height:96px;border-radius:10px;background:#0b1d59 center/cover;color:#fff;font-size:.7rem;display:flex;align-items:flex-end;justify-content:center;padding:3px;text-align:center}
+.prog{height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:4px}.prog i{display:block;height:100%;background:linear-gradient(90deg,#77c6e0,#0be0c0);width:0}
+@media (max-width:640px){.lib .row{grid-template-columns:60px 1fr}.lib .row .acts{grid-column:1/-1}}
 .thumb{width:100%;aspect-ratio:16/9;border-radius:10px;background:#0b1d59 center/cover;margin-top:8px}
 code{display:block;background:#0b1d59;color:#c9f7ee;padding:8px;border-radius:8px;font-size:.78rem;word-break:break-all;margin-top:6px}
 #msg{min-height:1.4em;font-weight:700}
@@ -38,10 +42,12 @@ code{display:block;background:#0b1d59;color:#c9f7ee;padding:8px;border-radius:8p
   <div class="card" id="signin"><p>Sign in with your Google account (thewebswann@gmail.com) to change the videos.</p><p style="margin-top:10px"><button class="btn" id="go" type="button">Sign in with Google</button></p></div>
   <div id="app" hidden>
     <div class="card">
-      <h2>📚 Your videos</h2>
-      <p class="muted">Paste a YouTube link (unlisted is fine; a YouTube Short fits best) or a direct .mp4 link, and give it a name. Record it standing up, like a phone selfie video: the video window is tall, like the attorney site's.</p>
+      <h2>📚 Your videos <span class="muted" id="count"></span></h2>
+      <p class="muted">Up to 10 videos. <b>⬆ Upload</b> sends your video file (made with Jimmy in the Video Studio, or from your phone) straight to your YouTube channel as <b>unlisted</b>: free hosting, only people on your sites see it. <b>🔁 Replace</b> swaps in a new file, <b>🗑 Delete</b> removes it (from YouTube too if you uploaded it here). You can also paste a YouTube link. Record standing up, like a phone selfie: the video window is tall. Press <b>💾 Save</b> when you're done.</p>
       <div class="lib" id="lib"></div>
-      <p style="margin-top:10px"><button class="btn alt" type="button" id="addVid">+ Add a video</button></p>
+      <p style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn swan" type="button" id="upNew">⬆ Upload a new video</button><button class="btn alt" type="button" id="addVid">🔗 Add a YouTube link</button></p>
+      <input type="file" id="fileIn" accept="video/*" hidden>
+      <div id="upMsg" class="muted" role="status" style="margin-top:8px"></div>
     </div>
     <div class="grid" id="sites"></div>
     <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn swan" type="button" id="save">💾 Save</button><span id="msg" role="status"></span></div>
@@ -67,7 +73,10 @@ async function api(body) {
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('Error ' + r.status)); return d;
 }
 function render() {
-  $('lib').innerHTML = cfg.videos.map((v, i) => `<div class="row"><input aria-label="Video name" data-v="${i}" data-k="title" value="${esc(v.title)}"><input aria-label="Video link" data-v="${i}" data-k="url" value="${esc(v.url)}" placeholder="https://youtu.be/... or https://.../video.mp4"><button class="btn alt" type="button" data-del="${i}" aria-label="Remove ${esc(v.title)}">🗑</button></div>`).join('') || '<p class="muted">No videos yet.</p>';
+  $('count').textContent = '(' + cfg.videos.length + ' of 10)';
+  $('upNew').disabled = $('addVid').disabled = cfg.videos.length >= 10;
+  $('lib').innerHTML = cfg.videos.map((v, i) => { const id = ytId(v.url);
+    return `<div class="row"><div class="mini" style="background-image:url('${id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''}')">${v.uploaded ? 'uploaded' : ''}</div><input aria-label="Video name" data-v="${i}" data-k="title" value="${esc(v.title)}"><input aria-label="Video link" data-v="${i}" data-k="url" value="${esc(v.url)}" placeholder="https://youtu.be/..."><div class="acts"><button class="btn alt" type="button" data-rep="${i}" aria-label="Replace ${esc(v.title)} with a new file">🔁 Replace</button><button class="btn alt" type="button" data-del="${i}" aria-label="Delete ${esc(v.title)}">🗑 Delete</button>${id ? `<a class="btn alt" style="text-decoration:none" href="https://youtu.be/${id}" target="_blank" rel="noopener">▶ View</a>` : ''}</div></div>`; }).join('') || '<p class="muted">No videos yet.</p>';
   $('sites').innerHTML = Object.entries(SITES).map(([k, s]) => { const x = cfg.sites[k]; const id = ytId(x.video);
     return `<div class="card site"><h2>${esc(s.name)} <label class="switch"><input type="checkbox" data-s="${k}" data-k="on" ${x.on !== false ? 'checked' : ''}><span class="tr"></span><span>${x.on !== false ? 'On' : 'Off'}</span></label></h2>
       <p class="muted">${esc(s.url)}</p>
@@ -87,10 +96,68 @@ document.addEventListener('input', (e) => {
   if (t.dataset.s) { cfg.sites[t.dataset.s][t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox' || t.tagName === 'SELECT') render(); }
 });
 document.addEventListener('change', (e) => { if (e.target.dataset.v !== undefined) render(); });
-document.addEventListener('click', (e) => {
-  const del = e.target.closest('[data-del]'); if (del) { cfg.videos.splice(+del.dataset.del, 1); render(); }
+// ---------- uploads to Tania's YouTube channel (unlisted) ----------
+let ytTok = null, upTarget = null;
+async function ytToken() {
+  if (ytTok && ytTok.exp > Date.now() + 60000) return ytTok.t;
+  const p = new GoogleAuthProvider(); p.addScope('https://www.googleapis.com/auth/youtube'); p.setCustomParameters({ prompt: 'select_account' });
+  const r = await signInWithPopup(auth, p); const cred = GoogleAuthProvider.credentialFromResult(r);
+  if (!cred || !cred.accessToken) throw new Error('Google did not give YouTube access.');
+  ytTok = { t: cred.accessToken, exp: Date.now() + 55 * 60000 }; return ytTok.t;
+}
+function ytErr(t, status) {
+  if (/accessNotConfigured|has not been used|is disabled/i.test(t)) return 'YouTube uploads need one switch turned on in Google Cloud: open https://console.cloud.google.com/apis/library/youtube.googleapis.com?project=webswan-gigoia-task and press Enable, then try again.';
+  if (/youtubeSignupRequired/i.test(t)) return 'This Google account has no YouTube channel yet. Create one at youtube.com (one click), then try again.';
+  if (/quota/i.test(t)) return 'YouTube daily upload limit reached (about 6 uploads a day). Try again tomorrow.';
+  return 'YouTube error ' + status + ': ' + String(t).slice(0, 200);
+}
+async function uploadToYouTube(file, title) {
+  const tok = await ytToken();
+  const init = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': file.type || 'video/mp4', 'X-Upload-Content-Length': String(file.size) },
+    body: JSON.stringify({ snippet: { title: title || file.name.replace(/\.[^.]+$/, ''), description: 'The WebSwan · video for our websites', categoryId: '22' }, status: { privacyStatus: 'unlisted', embeddable: true, selfDeclaredMadeForKids: false } }) });
+  if (!init.ok) throw new Error(ytErr(await init.text(), init.status));
+  const loc = init.headers.get('Location'); if (!loc) throw new Error('YouTube did not start the upload.');
+  return await new Promise((ok, bad) => {
+    const x = new XMLHttpRequest(); x.open('PUT', loc); x.setRequestHeader('Content-Type', file.type || 'video/mp4');
+    x.upload.onprogress = (e) => { if (e.lengthComputable) { const pct = Math.round(e.loaded / e.total * 100); $('upMsg').innerHTML = '⬆ Uploading ' + esc(file.name) + ': ' + pct + '%<div class="prog"><i style="width:' + pct + '%"></i></div>'; } };
+    x.onload = () => { if (x.status >= 200 && x.status < 300) { try { ok(JSON.parse(x.responseText)); } catch (e) { bad(new Error('Upload finished but YouTube sent no video id.')); } } else bad(new Error(ytErr(x.responseText, x.status))); };
+    x.onerror = () => bad(new Error('Upload interrupted. Check your connection and try again.'));
+    x.send(file);
+  });
+}
+async function deleteFromYouTube(url) {
+  const id = ytId(url); if (!id) return;
+  const r = await fetch('https://www.googleapis.com/youtube/v3/videos?id=' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + await ytToken() } });
+  if (!r.ok && r.status !== 404) throw new Error(ytErr(await r.text(), r.status));
+}
+$('upNew').onclick = () => { if (cfg.videos.length >= 10) return; upTarget = null; $('fileIn').value = ''; $('fileIn').click(); };
+$('fileIn').onchange = async () => {
+  const f = $('fileIn').files[0]; if (!f) return;
+  if (f.size > 2 * 1024 * 1024 * 1024) { $('upMsg').textContent = '❌ That file is over 2 GB.'; return; }
+  const row = upTarget == null ? null : cfg.videos[upTarget];
+  const title = row ? row.title : (prompt('Name for this video (e.g. "WSMN welcome")', f.name.replace(/\.[^.]+$/, '')) || f.name);
+  try {
+    const v = await uploadToYouTube(f, title); const url = 'https://youtu.be/' + v.id;
+    if (row) {
+      const old = row.url, wasOurs = row.uploaded;
+      Object.keys(cfg.sites).forEach(k => { if (cfg.sites[k].video === old) cfg.sites[k].video = url; });
+      Object.assign(row, { url, uploaded: true });
+      if (wasOurs) { try { await deleteFromYouTube(old); } catch (e) { $('upMsg').textContent = '⚠️ New video uploaded, but the old one is still on YouTube: ' + e.message; } }
+    } else cfg.videos.push({ id: Math.random().toString(36).slice(2, 10), title, url, uploaded: true });
+    render();
+    $('upMsg').innerHTML = '✅ Uploaded to your YouTube channel as unlisted. YouTube takes a few minutes to finish processing it. Press <b>💾 Save</b> to keep it.';
+  } catch (e) { $('upMsg').textContent = '❌ ' + e.message; }
+};
+document.addEventListener('click', async (e) => {
+  const rp = e.target.closest('[data-rep]'); if (rp) { upTarget = +rp.dataset.rep; $('fileIn').value = ''; $('fileIn').click(); return; }
+  const del = e.target.closest('[data-del]'); if (!del) return;
+  const i = +del.dataset.del, v = cfg.videos[i];
+  const used = Object.entries(cfg.sites).filter(([, x]) => x.video === v.url).map(([k]) => SITES[k].name);
+  if (!confirm('Delete "' + v.title + '"?' + (v.uploaded ? '\nIt will also be deleted from your YouTube channel. This cannot be undone.' : '') + (used.length ? '\nIt is playing on: ' + used.join(', ') + '. Pick another video for those sites.' : ''))) return;
+  try { if (v.uploaded) await deleteFromYouTube(v.url); cfg.videos.splice(i, 1); render(); $('upMsg').textContent = '🗑 Deleted. Press 💾 Save to keep the change.'; }
+  catch (err) { $('upMsg').textContent = '❌ ' + err.message; }
 });
-$('addVid').onclick = () => { cfg.videos.push({ id: Math.random().toString(36).slice(2, 10), title: 'New video', url: '' }); render(); $('lib').querySelector('.row:last-child input[data-k="url"]').focus(); };
+$('addVid').onclick = () => { if (cfg.videos.length >= 10) return; cfg.videos.push({ id: Math.random().toString(36).slice(2, 10), title: 'New video', url: '' }); render(); $('lib').querySelector('.row:last-child input[data-k="url"]').focus(); };
 $('save').onclick = async () => { $('msg').textContent = 'Saving…'; try { const d = await api({ action: 'set', config: cfg }); cfg = fill(d.config); render(); $('msg').textContent = '✅ Saved. Each site shows the new video within a minute.'; } catch (e) { $('msg').textContent = '❌ ' + e.message; } };
 function fill(c) {
   c = c || {}; const out = { videos: Array.isArray(c.videos) && c.videos.length ? c.videos : START_VIDEOS.slice(), sites: {} };
