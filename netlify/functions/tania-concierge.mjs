@@ -45,7 +45,7 @@ async function geocode(city) {
 async function overpass(q) {
   // first mirror that answers wins (they're often busy); short waits so the whole request stays under Netlify's limit
   const hosts = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
-  const tries = hosts.map((host) => fetch(host, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA }, body: "data=" + enc(q), signal: AbortSignal.timeout(5500) })
+  const tries = hosts.map((host) => fetch(host, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA }, body: "data=" + enc(q), signal: AbortSignal.timeout(3500) })
     .then(async (r) => { if (!r.ok) throw new Error(r.status); const j = await r.json(); if (!j.elements) throw new Error("bad"); return j.elements; }));
   try { return await Promise.any(tries); } catch (e) { return []; }
 }
