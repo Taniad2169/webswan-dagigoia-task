@@ -1887,26 +1887,35 @@ async function brLoad(k) {
   try { const r = await voiceApi({ action: 'agent_get', agent: k }); BR.text = r.instructions || ''; } catch (e) { BR.err = e.message; BR.text = ''; }
   BR.loading = false; render();
 }
-async function brSave() {
-  const t = $('brFull').value;
-  if (!confirm('Save this script to ' + BR.agent[0].toUpperCase() + BR.agent.slice(1) + '\'s LIVE Cartesia voice? Her next real call uses it.')) return;
+const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT';
+function brSplit(t) { const i = t.indexOf(BR_S0), j = t.indexOf(BR_S1, i + 1); if (i < 0 || j < i) return { prompt: t.trim(), script: '' }; return { prompt: (t.slice(0, i) + t.slice(j + BR_S1.length)).replace(/\n{3,}/g, '\n\n').trim(), script: t.slice(i + BR_S0.length, j).trim() }; }
+async function brSaveText(t, what) {
+  const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
+  if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;
   try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); } catch (e) { toast(e.message); }
 }
+// Script box: only the words she says. Prompt box: everything else (personality, rules, rebuttals). Saved back as one live prompt.
+function brSaveScript() { const sp = brSplit(BR.text || ''); const sc = $('brScript').value.trim(); brSaveText(sp.prompt + (sc ? '\n\n' + BR_S0 + '\n' + sc + '\n' + BR_S1 : ''), 'her SCRIPT'); }
+function brSavePrompt() { const sp = brSplit(BR.text || ''); brSaveText($('brPrompt').value.trim() + (sp.script ? '\n\n' + BR_S0 + '\n' + sp.script + '\n' + BR_S1 : ''), 'her PROMPT & PERSONALITY'); }
+async function brSave() { brSaveText($('brFull').value, 'this full prompt'); }
 function renderBrain(c) {
   if (!BR.text && !BR.loading && !BR.err) { setTimeout(() => brLoad(BR.agent), 0); }
   const t = BR.text || '';
   const persona = (t.match(/0\. YOUR PERSONALITY:[^\n]*/) || [''])[0].replace(/^0\. YOUR PERSONALITY:\s*/, '');
   const opening = brSection(t, '### COMPLIANCE OPENING (WebSwan)', '### END COMPLIANCE OPENING') || brSection(t, '### REBECCA ADVERTISING RULES (WebSwan)', '### END REBECCA ADVERTISING RULES') || brSection(t, '### RACHEL CALL RULES (WebSwan)', '### END RACHEL RULES');
   const ai = brSection(t, '### AI QUESTION RULE (WebSwan)', '### END AI QUESTION RULE');
+  const SP = brSplit(t), ta = (id, v, h) => `<textarea id="${id}" style="width:100%;min-height:${h}px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfe0ec">${esc(v)}</textarea>`;
+
   const notes = brSection(t, "=== TANIA'S COACHING NOTES", '=== END OF TANIA');
   const box = (title, body, hint) => `<div class="card section"><h2 style="margin:0 0 6px">${title}</h2>${hint ? `<p class="muted" style="margin:0 0 8px;font-size:13px">${hint}</p>` : ''}<div style="white-space:pre-wrap;font-size:14px;line-height:1.5;background:#f7fbfe;border:1px solid #e1edf5;border-radius:10px;padding:12px;max-height:340px;overflow:auto">${body ? esc(body) : '<span class="muted">(none)</span>'}</div></div>`;
   c.innerHTML = `<div class="row section"><p>Everything your phone agents know, straight from their live Cartesia voice. Pick an agent.</p><div class="toolbar">${BR_AGENTS.map(([k, n]) => `<button class="btn ${BR.agent === k ? '' : 'outline'} small" onclick="brLoad('${k}')">${n}</button>`).join('')}<button class="btn outline small" onclick="brLoad(BR.agent)">↻ Refresh</button></div></div>
   ${BR.loading ? '<div class="card empty">Loading her brain…</div>' : BR.err ? `<div class="card empty">⚠️ ${esc(BR.err)}<br><br>Sign in with Google at the top, then press Refresh.</div>` : `
   ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
-  ${box('🎬 Opening and call flow', opening, 'Your final opening and the steps after it. This block wins over anything older in her script.')}
+  <div class="card section"><h2 style="margin:0 0 6px">📜 Script <small class="muted" style="font-weight:400">only what she says</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her conversation, line by line. No instructions here: [PAUSE] = she stops and waits; (yes) / (no) = which line fits their answer. ${SP.script ? '' : '<b>No script block yet: it appears after the next sync.</b>'}</p>${ta('brScript', SP.script, 260)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveScript()">💾 Save script</button></div></div>
   ${box('🤖 If asked "are you AI?"', ai)}
   ${box('🧠 Coaching notes from role plays', notes, 'Only the adjustments you approved; they never change her script or personality.')}<div style="margin:-8px 0 14px"><a class="btn small" href="../team/roleplay.html#notes=${BR.agent}" target="_blank" rel="noopener">✏️ Add, edit or remove coaching notes</a></div>
-  <div class="card section"><h2 style="margin:0 0 6px">📜 Full live script</h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her complete prompt: ${t.length.toLocaleString()} of 30,000 characters. Edit carefully; Save updates her live voice.</p><textarea id="brFull" style="width:100%;min-height:420px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfd8e3">${esc(t)}</textarea><div class="toolbar" style="margin-top:8px"><button class="btn green" onclick="brSave()">💾 Save to live voice</button></div></div>`}`;
+  <div class="card section"><h2 style="margin:0 0 6px">💫 Prompt &amp; personality <small class="muted" style="font-weight:400">how she behaves</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her personality, phone rules, HOW TO RUN YOUR CALL, rebuttals, booking and email rules. She follows these silently while she says the script. ${t.length.toLocaleString()} of 30,000 characters in total.</p>${ta('brPrompt', SP.prompt, 380)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSavePrompt()">💾 Save prompt &amp; personality</button></div></div>
+  <details class="card section"><summary style="cursor:pointer;font-weight:700">🔧 Advanced: the full live prompt as Cartesia receives it</summary>  <div style="margin-top:10px"><p class="muted" style="margin:0 0 8px;font-size:13px">Her complete prompt: ${t.length.toLocaleString()} of 30,000 characters. Edit carefully; Save updates her live voice.</p><textarea id="brFull" style="width:100%;min-height:420px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfd8e3">${esc(t)}</textarea><div class="toolbar" style="margin-top:8px"><button class="btn green" onclick="brSave()">💾 Save to live voice</button></div></div></details>`}`;
 }
 </script>
 </body>

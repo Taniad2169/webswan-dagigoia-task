@@ -4,6 +4,7 @@
 // (default thewebswann@gmail.com).
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript } from "../lib/cal.mjs";
+import { CALL_BLOCKS, restructure } from "../lib/call-scripts.mjs";
 
 export const config = { schedule: "*/5 * * * *" };
 const API = "https://api.cartesia.ai";
@@ -82,6 +83,19 @@ async function syncBlock(agent, start, end, block) {
   const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
   return u.ok ? "updated" : "patch " + u.status;
 }
+// Keep an agent's prompt in the 3-part structure (prompt & personality / YOUR SCRIPT / coaching notes). Only writes when it changed.
+async function syncScript(agent, key) {
+  const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
+  const g = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { headers: hd });
+  if (!g.ok) return "read " + g.status;
+  const d = await g.json(), cur = String(((d.config || (d.agent && d.agent.config)) || {}).instructions || "");
+  if (cur.length < 200) return "ok";
+  const next = restructure(cur, key);
+  if (next === cur) return "ok";
+  if (next.length > 30000) return "too long";
+  const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
+  return u.ok ? "updated" : "patch " + u.status;
+}
 const syncRachelRules = (agent) => syncBlock(agent, RULES_START, RULES_END, RACHEL_RULES);
 // Rachel's opening line (Cartesia initial_message). Tania, Nov 6: no "virtual assistant" in the greeting, ever.
 // Every run puts this exact greeting back if anything else (an old copy) is in the agent.
@@ -115,8 +129,8 @@ export default async () => {
   if (!agent) return new Response("no rachel");
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
   try { rules += " · " + await syncGreeting(agent); } catch (e) { rules += " · greeting error"; }
-  for (const k of ["rebecca", "rebecca_es"]) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, REB_START, REB_END, REBECCA_RULES); } catch (e) { rules += " · " + k + " error"; } } }
-  for (const [k, block] of COMP_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncBlock(id, COMP_START, COMP_END, block); } catch (e) { rules += " · " + k + " error"; } } }
+  // Tania, Nov 8: Monica, George and Rebecca get "HOW TO RUN YOUR CALL" (prompt) + "YOUR SCRIPT" (only the words); old opening blocks are removed.
+  for (const k of Object.keys(CALL_BLOCKS)) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncScript(id, k); } catch (e) { rules += " · " + k + " error"; } } }
   for (const [k, brand] of AI_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · ai " + k + " " + await syncBlock(id, AI_START, AI_END, aiRule(brand)); } catch (e) { rules += " · ai " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
   if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
