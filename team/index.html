@@ -173,7 +173,7 @@ const toast = (t) => { const e = $("toast"); e.textContent = t; e.style.display 
 // Leads come straight from WorkPilot's database (webswan-marketing, the same anonymous sign-in WorkPilot uses);
 // Tania's colors and notes come from WorkPilot's saved edits in this browser. Gmail is not involved at all.
 const WP_FB = { key: "AIzaSyAqhqUzWqpS7YunkODJU_udTBG3pjsJegQ", project: "webswan-marketing" };
-const EVA_WP_RE = /lead|workpilot|work pilot|lavender|purple|audit|hipaa|ada|call|appointment|doctor|dr\.?\s|attorney|lawyer|practice|clinic|chiro|dental|dentist|website|url|draft|email|who|name|brief|morning|today|tomorrow|monday|tuesday|wednesday|thursday|friday|schedule|calendar|note/i;
+const EVA_WP_RE = /lead|workpilot|work pilot|lavender|purple|audit|call|appointment|doctor|dr\.?\s|attorney|lawyer|practice|clinic|chiro|dental|dentist|website|url|draft|who|name|note/i;
 // Tania's own WorkPilot sign-in (same site, saved by WorkPilot in this browser): WorkPilot's leads only open for her account.
 async function wpSavedRefresh() {
   try {
@@ -209,8 +209,24 @@ function fsVal(v) {
   return null;
 }
 let WP_CACHE = { at: 0, text: "" };
+function wpPublished() { try { const o = JSON.parse(localStorage.getItem("webswan_wp_snapshot") || "null"); return o && o.leads && o.leads.length ? o : null; } catch (e) { return null; } }
 async function workpilotSnapshot() {
   if (WP_CACHE.text && Date.now() - WP_CACHE.at < 90e3) return WP_CACHE.text;
+  // WorkPilot saves its own lead list in this browser every time it loads (same site), with Tania's colors and notes: use it first.
+  const pub = wpPublished();
+  if (pub && Date.now() - pub.at < 6 * 3600e3) return wpFromPublished(pub);
+  try { return await workpilotLive(); } catch (e) { if (pub) return wpFromPublished(pub); throw e; }
+}
+function wpFromPublished(pub) {
+  const L = pub.leads, NAMES = { lavender: "LAVENDER (audit ready: Eva drafts the email)", sky: "SKY BLUE (Tania's own appointment with the doctor/attorney)", orange: "ORANGE (hot: email + appointment)" };
+  const line = (l) => "- " + [l.company || "(no practice name)", l.contact, l.phone, l.website && "Website: " + l.website, l.email && "Email: " + l.email, l.state && "State: " + l.state, l.industry, l.color && "Color: " + l.color, l.lavenderAt && "Marked lavender: " + String(l.lavenderAt).slice(0, 10)].filter(Boolean).join(" · ") + (l.notes ? "\n  Notes (Tania's and the call notes, includes ADA/HIPAA findings): " + String(l.notes).replace(/\s+/g, " ").slice(0, 900) : "");
+  let out = "LIVE WORKPILOT LEADS (saved by WorkPilot " + new Date(pub.at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }) + " PT; this IS your WorkPilot access, no Gmail needed). " + L.length + " leads total.\n";
+  ["lavender", "sky", "orange"].forEach((c) => { const g = L.filter((l) => l.color === c); out += "\n## " + NAMES[c] + ": " + g.length + "\n" + (g.map(line).join("\n") || "(none)") + "\n"; });
+  out += "\n## OTHER RECENT LEADS (newest first, up to 120)\n" + L.filter((l) => !["lavender", "sky", "orange"].includes(l.color)).slice(0, 120).map(line).join("\n");
+  WP_CACHE = { at: Date.now(), text: out.slice(0, 38000) };
+  return WP_CACHE.text;
+}
+async function workpilotLive() {
   const tok = await wpToken();
   const r = await fetch(`https://firestore.googleapis.com/v1/projects/${WP_FB.project}/databases/(default)/documents:runQuery`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
     body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "leads" }], orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }], limit: 600 } }) });
@@ -233,11 +249,22 @@ async function workpilotSnapshot() {
   WP_CACHE = { at: Date.now(), text: out.slice(0, 38000) };
   return WP_CACHE.text;
 }
+// Tania, Nov 8: when she asks Eva for research (Monday briefing, compliance, Google, competitors, 2027), start Eva's
+// live-web research job right away; the briefing lands in Eva's chat in about 2 minutes.
+const EVA_RESEARCH_RE = /\b(monday|research|algorithm|competitors?|2027|2028|regulations?|new laws?)\b/i;
+let EVA_RESEARCH_AT = 0;
 async function api(body) {
+  if (body && body.action === "chat" && body.agent === "eva" && !body.roleplay && EVA_RESEARCH_RE.test(String(body.text || "")) && Date.now() - EVA_RESEARCH_AT > 5 * 60e3) {
+    EVA_RESEARCH_AT = Date.now();
+    rawApi({ action: "run", job: "eva_monday" }).then(() => toast("🔎 Eva's live research started: her briefing appears in her chat in about 2 minutes.")).catch(() => {});
+  }
   if (body && body.action === "chat" && body.agent === "eva" && !body.file && !body.roleplay && EVA_WP_RE.test(String(body.text || ""))) {
     try { body = Object.assign({}, body, { file: { name: "WorkPilot leads (live)", text: await workpilotSnapshot() } }); }
     catch (e) { body = Object.assign({}, body, { file: { name: "WorkPilot (couldn't load)", text: "WorkPilot's lead list couldn't be loaded just now (" + e.message + "). Tell Tania plainly that WorkPilot didn't load (this has nothing to do with Gmail) and ask her to try again." } }); }
   }
+  return rawApi(body);
+}
+async function rawApi(body) {
   const tok = await window._auth.token();
   const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
