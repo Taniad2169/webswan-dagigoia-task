@@ -52,7 +52,15 @@ export async function evaMonday() {
   const s = await getSettings();
   const comps = s.competitors.length ? s.competitors : [];
   const research = [];
-  for (const c of comps) research.push(fmtResults("Competitor: " + c, await webSearch(c + " social media YouTube website", 5, "pm")));
+  // Tania, Nov 8: her local competitors are saved as "Name, City (domain)": search the exact name + city, their social pages,
+  // and read their own website, so the brief is about the right company (plain names returned YouTube junk).
+  for (const c of comps) {
+    const name = c.replace(/\(.*?\)/g, "").split(",")[0].trim(), city = (c.split(",")[1] || "").replace(/\(.*?\)/g, "").trim(), dom = (c.match(/\(([^)]+)\)/) || [])[1] || "";
+    const parts = [fmtResults("Competitor: " + c + " (news, reviews, offers)", await webSearch(`"${name}" ${city} web design`, 6)),
+      fmtResults("Competitor: " + name + " (social media)", await webSearch(`"${name}" ${city} Instagram OR Facebook OR LinkedIn OR YouTube`, 5))];
+    if (dom) { try { const pg = await readSite("https://" + dom.replace(/^https?:\/\//, "")); parts.push("### " + name + " website (" + dom + ")\n" + String((pg[0] && pg[0].text) || "").slice(0, 3000)); } catch (e) { parts.push("### " + name + " website: could not open"); } }
+    research.push(parts.join("\n\n"));
+  }
   research.push(fmtResults("Google algorithm", await webSearch("Google search algorithm core update", 6, "pw")));
   research.push(fmtResults("Website compliance and lawsuits", await webSearch("website accessibility ADA lawsuit OR privacy law OR tracking pixel lawsuit small business medical legal ecommerce", 8, "pw")));
   research.push(fmtResults("New state laws and penalties", await webSearch("new state privacy law website penalties effective", 6, "pm")));
