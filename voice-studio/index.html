@@ -704,7 +704,7 @@ function sdrOpener(l, key) {
   const o = OFFERS[key], a = agentFor(key, l), n = greetName(l), b = l.business || 'your practice';
   const fol = M(l).slice().reverse().find(m => FOLLOW[m.text]);
   const back = state.calls.some(x => x.leadId === l.id);
-  const bmp = a && bmFor(a); if (bmp && bmp.opening) return fill(bmp.opening, l, a); // Brain master opening (Tania, Nov 8)
+  const bmp = a && bmFor(a); if (bmp && bmp.opening) { const t = fill(bmp.opening, l, a); return /legal|attorney|law/i.test(String(guessIndustry(l) || '')) ? t.replace(/new patients/g, 'new clients') : t; } // Brain master opening (Tania, Nov 8)
   let s = `Hi ${n}, this is ${a ? a.name : o.agent} with ${o.brand}.`;
   if (back && fol) s += ' ' + FOLLOW[fol.text].replace('{who}', who(l)[0]);
   const f = sdrFinding(l); if (f) s += ' ' + f;
