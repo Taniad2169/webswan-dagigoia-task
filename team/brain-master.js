@@ -23,7 +23,8 @@
     out.prompt = t.trim();
     const p = (t.match(/0\. YOUR PERSONALITY:[^\n]*/) || [""])[0]; out.personality = p.replace(/^0\. YOUR PERSONALITY:\s*/, "");
     // the script as spoken turns: every [PAUSE] ends a turn; labels like (yes) stay so the reader sees the branch
-    out.turns = out.script ? out.script.split(/\n?\s*\[PAUSE\]\s*\n?/).map((s) => s.replace(/^EN ESPAÑOL[\s\S]*$/m, "").trim()).filter(Boolean) : [];
+    const en = out.script.split(/\n\s*EN ESPAÑOL/)[0]; // the Spanish copy of the same lines is for Spanish calls only
+    out.turns = en ? en.split(/\n?\s*\[PAUSE\]\s*\n?/).map((s) => s.trim()).filter(Boolean) : [];
     const first = out.turns[0] || ""; out.opening = (first.match(/"([^"]+)"/) || ["", first.replace(/^\d+\.\s*/, "")])[1];
     return out;
   }
