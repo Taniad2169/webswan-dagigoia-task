@@ -91,7 +91,7 @@ function persona(agent) {
   return "0. YOUR PERSONALITY: confident, calm and authoritative. You run the call: you speak with quiet certainty like a senior compliance professional, you never sound unsure, you never over-explain or beg, and after a question you stop and let the silence work. Polite and respectful, never pushy or rude. " + HUMAN_STYLE + extra;
 }
 // Tania, Nov 7: Eva's emails stay short and never mention ads; Rebecca brings up pay-per-click on the call.
-const REBECCA_PPC = `REBECCA: PAY-PER-CLICK. Say the (PPC) line of YOUR SCRIPT only if this lead's notes ({{findings}}) show they run Google Ads or pay-per-click. If the notes don't mention ads, never bring up pay-per-click.`;
+const REBECCA_PPC = `REBECCA: PAY-PER-CLICK. Use the PPC rebuttal only if this lead's notes ({{findings}}) show they run Google Ads or pay-per-click. If the notes don't mention ads, never bring up pay-per-click.`;
 // Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
 const INBOUND_RULES = `${PHONE_RULES_START}
 {{PERSONA}}

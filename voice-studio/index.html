@@ -139,6 +139,7 @@ function fill(text, lead, agent) {
     .replace(/\[website\]/gi, (lead && (lead.website || (lead.r && lead.r.website))) || 'your website')
     .replace(/\[last name\]/gi, String((lead && lead.name) || 'Smith').replace(/^(dr\.?|doctor|attorney)\s+/i, '').split(/\s+/).pop())
     .replace(/\[email\]/gi, (lead && lead.email) || 'the email they gave')
+    .replace(/\[their name\]/gi, (lead && lead.name) || 'the doctor')
     .replace(/\{\{lead_state\}\}/g, (lead && lead.state) || 'your state');
 }
 /* ---------- 🧠 Brain master: the live script on the Brain page drives practice calls, agent profiles and lead briefs ---------- */
