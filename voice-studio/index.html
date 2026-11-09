@@ -1887,16 +1887,21 @@ async function brLoad(k) {
   try { const r = await voiceApi({ action: 'agent_get', agent: k }); BR.text = r.instructions || ''; } catch (e) { BR.err = e.message; BR.text = ''; }
   BR.loading = false; render();
 }
-const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT';
-function brSplit(t) { const at = (m, f) => { const k = t.indexOf('\n' + m, f || 0); return k < 0 ? (t.startsWith(m) ? 0 : -1) : k + 1; }; const i = at(BR_S0), j = i >= 0 ? at(BR_S1, i + 1) : -1; if (i < 0 || j < i) return { prompt: t.trim(), script: '' }; return { prompt: (t.slice(0, i) + t.slice(j + BR_S1.length)).replace(/\n{3,}/g, '\n\n').trim(), script: t.slice(i + BR_S0.length, j).trim() }; }
+const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT', BR_R0 = '### REBUTTALS (WebSwan)', BR_R1 = '### END REBUTTALS';
+// markers only count at the start of a line (rules may mention a block's name)
+function brAt(t, m, f) { const k = t.indexOf('\n' + m, f || 0); return k < 0 ? (!f && t.startsWith(m) ? 0 : -1) : k + 1; }
+function brTake(t, a, b) { const i = brAt(t, a), j = i >= 0 ? brAt(t, b, i + 1) : -1; if (i < 0 || j < i) return { rest: t, body: '' }; return { rest: (t.slice(0, i) + t.slice(j + b.length)).replace(/\n{3,}/g, '\n\n').trim(), body: t.slice(i + a.length, j).trim() }; }
+function brSplit(t) { const s1 = brTake(t, BR_S0, BR_S1), r1 = brTake(s1.rest, BR_R0, BR_R1); return { prompt: r1.rest.trim(), script: s1.body, rebuttals: r1.body }; }
+function brJoin(p) { return [p.prompt, p.rebuttals ? BR_R0 + '\n' + p.rebuttals + '\n' + BR_R1 : '', p.script ? BR_S0 + '\n' + p.script + '\n' + BR_S1 : ''].filter(Boolean).join('\n\n'); }
 async function brSaveText(t, what) {
   const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
   if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;
   try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); } catch (e) { toast(e.message); }
 }
-// Script box: only the words she says. Prompt box: everything else (personality, rules, rebuttals). Saved back as one live prompt.
-function brSaveScript() { const sp = brSplit(BR.text || ''); const sc = $('brScript').value.trim(); brSaveText(sp.prompt + (sc ? '\n\n' + BR_S0 + '\n' + sc + '\n' + BR_S1 : ''), 'her SCRIPT'); }
-function brSavePrompt() { const sp = brSplit(BR.text || ''); brSaveText($('brPrompt').value.trim() + (sp.script ? '\n\n' + BR_S0 + '\n' + sp.script + '\n' + BR_S1 : ''), 'her PROMPT & PERSONALITY'); }
+// Script box: only the words she says. Rebuttals box: her answers to objections. Prompt box: everything else. Saved back as one live prompt.
+function brSaveScript() { const p = brSplit(BR.text || ''); p.script = $('brScript').value.trim(); brSaveText(brJoin(p), 'her SCRIPT'); }
+function brSaveRebuttals() { const p = brSplit(BR.text || ''); p.rebuttals = $('brRebuttals').value.trim(); brSaveText(brJoin(p), 'her REBUTTALS'); }
+function brSavePrompt() { const p = brSplit(BR.text || ''); p.prompt = $('brPrompt').value.trim(); brSaveText(brJoin(p), 'her PROMPT & PERSONALITY'); }
 async function brSave() { brSaveText($('brFull').value, 'this full prompt'); }
 function renderBrain(c) {
   if (!BR.text && !BR.loading && !BR.err) { setTimeout(() => brLoad(BR.agent), 0); }
@@ -1912,6 +1917,7 @@ function renderBrain(c) {
   ${BR.loading ? '<div class="card empty">Loading her brain…</div>' : BR.err ? `<div class="card empty">⚠️ ${esc(BR.err)}<br><br>Sign in with Google at the top, then press Refresh.</div>` : `
   ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
   <div class="card section"><h2 style="margin:0 0 6px">📜 Script <small class="muted" style="font-weight:400">only what she says</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her conversation, line by line. No instructions here: [PAUSE] = she stops and waits; (yes) / (no) = which line fits their answer. ${SP.script ? '' : '<b>No script block yet: it appears after the next sync.</b>'}</p>${ta('brScript', SP.script, 260)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveScript()">💾 Save script</button></div></div>
+  <div class="card section"><h2 style="margin:0 0 6px">🥊 Rebuttals <small class="muted" style="font-weight:400">her answers to questions and objections</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">One objection per paragraph: the objection in CAPS, then her answer. She uses the one that fits, then goes back to her script. Add any new rebuttal here. ${SP.rebuttals ? '' : '<b>No rebuttals block yet.</b>'}</p>${ta('brRebuttals', SP.rebuttals, 300)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveRebuttals()">💾 Save rebuttals</button></div></div>
   ${box('🤖 If asked "are you AI?"', ai)}
   ${box('🧠 Coaching notes from role plays', notes, 'Only the adjustments you approved; they never change her script or personality.')}<div style="margin:-8px 0 14px"><a class="btn small" href="../team/roleplay.html#notes=${BR.agent}" target="_blank" rel="noopener">✏️ Add, edit or remove coaching notes</a></div>
   <div class="card section"><h2 style="margin:0 0 6px">💫 Prompt &amp; personality <small class="muted" style="font-weight:400">how she behaves</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her personality, phone rules, HOW TO RUN YOUR CALL, rebuttals, booking and email rules. She follows these silently while she says the script. ${t.length.toLocaleString()} of 30,000 characters in total.</p>${ta('brPrompt', SP.prompt, 380)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSavePrompt()">💾 Save prompt &amp; personality</button></div></div>
