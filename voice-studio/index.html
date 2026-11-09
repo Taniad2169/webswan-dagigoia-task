@@ -682,7 +682,12 @@ function sdrOffers(l) {
 function who(l) { const i = guessIndustry(l); return i === 'Doctor / medical' ? ['patients', 'patient'] : i === 'Attorney / legal' ? ['clients', 'client'] : ['customers', 'customer']; }
 function pitchFor(l, key) { const w = who(l); return OFFERS[key].pitch.replace(/\{b\}/g, l.business || 'your practice').replace(/\{who\}/g, w[0]).replace(/\{who1\}/g, w[1]); }
 const FOLLOW = { 'Wants information by email first': 'I’m following up on the information you asked us to send.', 'Was busy: call back at a better time': 'You were busy when we last called, so I’ll be quick.', 'Wants more new patients or clients': 'Last time, you mentioned you’d like more new {who}.', 'Concerned about ADA / compliance': 'Last time, you mentioned website compliance was on your mind.', 'Misses calls or after-hours calls': 'Last time, you mentioned calls sometimes go to voicemail.', 'Unhappy with current website': 'Last time, you mentioned your website could use some love.', 'Showed interest': 'Thank you again for your interest last time.' };
-function agentName(key, l) { if (key === 'wsmn') return 'Rebecca'; return l && guessIndustry(l) === 'Attorney / legal' ? 'George' : 'Monica'; }
+function agentName(key, l) {
+  const ind = l ? String(guessIndustry(l) || '') : '';
+  if (l && !/medic|doctor|dent|chiro|health|legal|attorney|law/i.test(ind)) return 'Alek'; // Tania, Nov 8: every other business goes to Alek
+  if (key === 'wsmn') return 'Rebecca';
+  return /legal|attorney|law/i.test(ind) ? 'George' : 'Monica';
+}
 function agentFor(key, l) { const n = agentName(key, l); return state.agents.find(a => (a.name || '').toLowerCase() === n.toLowerCase()) || state.agents[0]; }
 function sdrFinding(l) {
   const r = R(l), b = l.business || 'your practice';
@@ -991,8 +996,9 @@ function checkImport() {
       });
       if (v.route) {
         const send = added.filter(({ l }) => l.status !== 'Do not call' && l.status !== 'Appointment requested' && stateCode(l.state))
-          .map(({ l, x }) => ({ l, agent: x.noSite ? 'alek' : /legal|attorney/i.test(x.industry || '') ? 'george' : /medical|doctor/i.test(x.industry || '') ? (/media network|advertis|billboard|ppc/i.test((x.type || '') + ' ' + (x.notes || '')) ? 'rebecca' : 'monica') : '' })).filter(o => o.agent);
-        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: agent === 'alek' ? 'floating' : 'selling', task: agent === 'alek' ? ALEK_NOSITE_TASK : '', findings: findingsOf(l), campaign: agent === 'alek' ? 'No website: The WebSwan (Alek)' : agent === 'george' ? 'Prospector: lawyers' : agent === 'rebecca' ? 'Prospector: doctors (Media Network ad)' : 'Prospector: doctors (compliance)' })) })
+          // Tania, Nov 8: Monica / George / Rebecca call ONLY doctors and attorneys; every other business (and no-website practices) goes to Alek.
+          .map(({ l, x }) => ({ l, agent: x.noSite ? 'alek' : /legal|attorney|law/i.test(x.industry || '') ? 'george' : /medical|doctor|dent|chiro|health/i.test(x.industry || '') ? (/media network|advertis|billboard|ppc/i.test((x.type || '') + ' ' + (x.notes || '')) ? 'rebecca' : 'monica') : 'alek', misc: !x.noSite && !/legal|attorney|law|medical|doctor|dent|chiro|health/i.test(x.industry || '') })).filter(o => o.agent);
+        if (send.length) voiceApi({ action: 'queue_set', add: send.map(({ l, agent, misc }) => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent, lang: 'en', mode: agent === 'alek' ? 'floating' : 'selling', task: agent === 'alek' ? (misc ? ALEK_MISC_TASK : ALEK_NOSITE_TASK) : '', findings: findingsOf(l), campaign: agent === 'alek' ? (misc ? 'Other businesses (Alek)' : 'No website: The WebSwan (Alek)') : agent === 'george' ? 'Prospector: lawyers' : agent === 'rebecca' ? 'Prospector: doctors (Media Network ad)' : 'Prospector: doctors (compliance)' })) })
           .then(q => { dialQ = q; const g = send.filter(o => o.agent === 'george').length; const rb = send.filter(o => o.agent === 'rebecca').length; toast(`🤖 In the auto-dial queue: ${send.length - g - rb} for Monica, ${rb} for Rebecca, ${g} for George${q.paused ? '. The queue is paused, press Start when you’re ready.' : '.'}`); if (page === 'Campaigns') render(); })
           .catch(e => toast('Imported, but couldn’t add to the auto-dial queue: ' + e.message));
       }
@@ -1188,6 +1194,7 @@ async function liveCall(leadId, prefer) {
   const sub = document.querySelector('#form button[type=submit]'); if (sub) sub.textContent = '📞 Call now';
 }
 // Tania, Nov 7: practices with NO website go to Alek, who calls for The WebSwan (custom website + phone app).
+const ALEK_MISC_TASK = "You are calling for The WebSwan, Tania Domingue's web design and AI company. This is a local business (not a doctor or attorney office). Ask for the owner or manager. In one or two short sentences, say why you're calling from what the notes show: no website or an outdated one (The WebSwan builds custom websites and the SBPA, an installable phone app for the business), a missing cookie banner or accessibility gaps (a complimentary website review), or missed calls (an AI receptionist that answers 24/7). Goal: a 10-minute call with Tania. Get the best email and the best day and time, and book it with your calendar tools. If they can't set a time, offer Rachel's number, (316) 248-6839. Never quote prices: Tania goes over them on the call.";
 const ALEK_NOSITE_TASK = "You are calling for The WebSwan, Tania Domingue's custom web design company. This practice has no website we could find. Ask for the doctor, attorney or office manager. Say warmly that you looked for the practice online and couldn't find a website, and that most new patients and clients now search on Google and their phone before they call. The WebSwan builds custom websites for doctors and lawyers: ADA accessible, mobile friendly, with online booking, plus a phone application patients and clients can save on their phone. Never quote prices. Goal: book a 10-minute call with our founder, Tania, to show them a free website demo. If they already have a website, apologize, note it, and ask if they'd like a free review of it instead.";
 // Moves Voice Studio still has to apply on the server (queue_move goes live with the next Netlify deploy). Retried on every load until it works.
 async function applyPendingQueueMoves() {
