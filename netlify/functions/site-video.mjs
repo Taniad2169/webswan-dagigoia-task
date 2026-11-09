@@ -1,11 +1,11 @@
 // Swan Video settings: which video Tania's video bubble plays on each WebSwan site, and its buttons.
-//   GET  ?site=wsmn|webswan|digital   -> public, read-only (the widget on each site reads it)
+//   GET  ?site=wsmn|ads|webswan|digital   -> public, read-only (the widget on each site reads it)
 //   POST { action: "get" }            -> owner (Google sign-in): every site + the video library
 //   POST { action: "set", config }    -> owner: save
 import { getStore } from "@netlify/blobs";
 import { verifyOwner, reply, cors } from "../lib/auth.mjs";
 
-const SITES = ["wsmn", "webswan", "digital"];
+const SITES = ["wsmn", "ads", "webswan", "digital"];
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, n);
 const okVideo = (v) => /^[\w-]{11}$/.test(v) || /(youtu\.be\/|youtube\.com\/)/.test(v) || /^https:\/\/\S+\.(mp4|webm|mov)(\?\S*)?$/i.test(v);
 const okIntake = (v) => !v || /^#[\w-]{1,60}$/.test(v) || /^https:\/\/\S{3,300}$/.test(v);

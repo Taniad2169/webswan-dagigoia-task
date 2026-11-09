@@ -6,7 +6,7 @@
  * Best with a vertical (phone-style) video: an .mp4 link or a YouTube Short / YouTube link. By The WebSwan.
  *
  * Embed:  <script src="https://taniad2169.github.io/webswan-dagigoia-task/swan-video/swan-video.js" data-site="wsmn" defer></script>
- * data-site: wsmn | webswan | digital     optional: data-side="left"  data-bottom="96"  data-autoopen="false"
+ * data-site: wsmn | ads | webswan | digital     optional: data-side="left"  data-bottom="96"  data-autoopen="false"
  */
 (function () {
   'use strict';
@@ -21,7 +21,8 @@
 
   // Used until Tania changes them in the admin switch (and whenever the settings can't load).
   var DEFAULTS = {
-    wsmn: { on: true, title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' },
+    wsmn: { on: true, title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '', intakeLabel: 'Intake: see if your practice qualifies' },
+    ads: { on: true, title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' },
     webswan: { on: true, title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' },
     digital: { on: true, title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: '4EkFN0lj4cw', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' }
   };

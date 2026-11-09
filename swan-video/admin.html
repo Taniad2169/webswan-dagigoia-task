@@ -59,7 +59,8 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from
 const auth = getAuth(initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" }));
 const API = 'https://webswan-billing.netlify.app/.netlify/functions/site-video';
 const SITES = {
-  wsmn: { name: 'WebSwan Media Network', url: 'ads.webswanmedianetwork.com', d: { title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
+  wsmn: { name: 'WebSwan Media Network', url: 'www.webswanmedianetwork.com', d: { title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '', intakeLabel: 'Intake: see if your practice qualifies' } },
+  ads: { name: 'WSMN Ads (doctors & attorneys sign-up)', url: 'ads.webswanmedianetwork.com', d: { title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
   webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' } },
   digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'https://youtu.be/4EkFN0lj4cw', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' } }
 };
@@ -78,7 +79,7 @@ function render() {
   $('lib').innerHTML = cfg.videos.map((v, i) => { const id = ytId(v.url);
     return `<div class="row"><div class="mini" style="background-image:url('${id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''}')">${v.uploaded ? 'uploaded' : ''}</div><input aria-label="Video name" data-v="${i}" data-k="title" value="${esc(v.title)}"><input aria-label="Video link" data-v="${i}" data-k="url" value="${esc(v.url)}" placeholder="https://youtu.be/..."><div class="acts"><button class="btn alt" type="button" data-rep="${i}" aria-label="Replace ${esc(v.title)} with a new file">🔁 Replace</button><button class="btn alt" type="button" data-del="${i}" aria-label="Delete ${esc(v.title)}">🗑 Delete</button>${id ? `<a class="btn alt" style="text-decoration:none" href="https://youtu.be/${id}" target="_blank" rel="noopener">▶ View</a>` : ''}</div></div>`; }).join('') || '<p class="muted">No videos yet.</p>';
   $('sites').innerHTML = Object.entries(SITES).map(([k, s]) => { const x = cfg.sites[k]; const id = ytId(x.video);
-    return `<div class="card site"><h2>${esc(s.name)} <label class="switch"><input type="checkbox" data-s="${k}" data-k="on" ${x.on !== false ? 'checked' : ''}><span class="tr"></span><span>${x.on !== false ? 'On' : 'Off'}</span></label></h2>
+    return `<div class="card site" id="site-${k}"><h2>${esc(s.name)} <label class="switch"><input type="checkbox" data-s="${k}" data-k="on" ${x.on !== false ? 'checked' : ''}><span class="tr"></span><span>${x.on !== false ? 'On' : 'Off'}</span></label></h2>
       <p class="muted">${esc(s.url)}</p>
       <label>Video playing on this site<select data-s="${k}" data-k="video">${cfg.videos.map(v => `<option value="${esc(v.url)}" ${v.url === x.video ? 'selected' : ''}>${esc(v.title)}</option>`).join('')}${cfg.videos.some(v => v.url === x.video) ? '' : `<option value="${esc(x.video)}" selected>${esc(x.video || 'none')}</option>`}</select></label>
       <div class="thumb" style="background-image:url('${id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''}')"></div>
@@ -170,6 +171,9 @@ onAuthStateChanged(auth, async (u) => {
   $('signin').hidden = true; $('app').hidden = false;
   try { cfg = fill((await api({ action: 'get' })).config); } catch (e) { cfg = fill(null); $('msg').textContent = '⚠️ ' + e.message + ' (the settings server goes live with the next Netlify update)'; }
   render();
+  // Opened from a WorkPilot button (?site=webswan|wsmn|ads|digital): jump to that site's card.
+  const want = new URLSearchParams(location.search).get('site'), card = want && document.getElementById('site-' + want);
+  if (card) { card.style.outline = '4px solid #0be0c0'; card.style.outlineOffset = '3px'; setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }
 });
 </script>
 </body>
