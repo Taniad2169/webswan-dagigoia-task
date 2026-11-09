@@ -174,7 +174,22 @@ const toast = (t) => { const e = $("toast"); e.textContent = t; e.style.display 
 // Tania's colors and notes come from WorkPilot's saved edits in this browser. Gmail is not involved at all.
 const WP_FB = { key: "AIzaSyAqhqUzWqpS7YunkODJU_udTBG3pjsJegQ", project: "webswan-marketing" };
 const EVA_WP_RE = /lead|workpilot|work pilot|lavender|purple|audit|hipaa|ada|call|appointment|doctor|dr\.?\s|attorney|lawyer|practice|clinic|chiro|dental|dentist|website|url|draft|email|who|name|brief|morning|today|tomorrow|monday|tuesday|wednesday|thursday|friday|schedule|calendar|note/i;
+// Tania's own WorkPilot sign-in (same site, saved by WorkPilot in this browser): WorkPilot's leads only open for her account.
+async function wpSavedRefresh() {
+  try {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open("firebaseLocalStorageDb"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const rows = await new Promise((res) => { try { const q = db.transaction("firebaseLocalStorage", "readonly").objectStore("firebaseLocalStorage").getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => res([]); } catch (e) { res([]); } });
+    const want = (r) => String(r.fbase_key || "").startsWith("firebase:authUser:" + WP_FB.key + ":") && r.value && !r.value.isAnonymous && r.value.stsTokenManager;
+    const hit = rows.filter(want).sort((a, b) => (String(b.fbase_key).endsWith(":telemarketingLeadsApp") ? 1 : 0) - (String(a.fbase_key).endsWith(":telemarketingLeadsApp") ? 1 : 0))[0];
+    return hit ? hit.value.stsTokenManager.refreshToken : null;
+  } catch (e) { return null; }
+}
 async function wpToken() {
+  const own = await wpSavedRefresh();
+  if (own) {
+    const r = await fetch("https://securetoken.googleapis.com/v1/token?key=" + WP_FB.key, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(own) });
+    if (r.ok) return (await r.json()).id_token;
+  }
   let rt = null; try { rt = localStorage.getItem("eva_wp_rt"); } catch (e) {}
   if (rt) {
     const r = await fetch("https://securetoken.googleapis.com/v1/token?key=" + WP_FB.key, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(rt) });
@@ -199,7 +214,7 @@ async function workpilotSnapshot() {
   const tok = await wpToken();
   const r = await fetch(`https://firestore.googleapis.com/v1/projects/${WP_FB.project}/databases/(default)/documents:runQuery`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
     body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "leads" }], orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }], limit: 600 } }) });
-  if (!r.ok) throw new Error("WorkPilot database " + r.status);
+  if (!r.ok) throw new Error(r.status === 403 ? "WorkPilot needs your sign-in on this device: open WorkPilot once in this browser and sign in with Google (thewebswann@gmail.com)" : "WorkPilot database " + r.status);
   const rows = (await r.json()).filter((x) => x.document).map((x) => { const o = { id: x.document.name.split("/").pop() }; Object.entries(x.document.fields || {}).forEach(([k, v]) => o[k] = fsVal(v)); return o; });
   let colors = {}, edits = {}; try { colors = JSON.parse(localStorage.getItem("webswan_tm_colors") || "{}") || {}; edits = JSON.parse(localStorage.getItem("webswan_tm_edits") || "{}") || {}; } catch (e) {}
   const NAMES = { lavender: "LAVENDER (audit ready: Eva drafts the email)", sky: "SKY BLUE (Tania's own appointment with the doctor/attorney)", orange: "ORANGE (hot: email + appointment)", green: "GREEN (got email / sent to Rachel)", yellow: "YELLOW (spoke to a human, call back)", blue: "BLUE (hang up / voicemail)" };
