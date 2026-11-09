@@ -169,7 +169,60 @@ let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const toast = (t) => { const e = $("toast"); e.textContent = t; e.style.display = "block"; clearTimeout(e._t); e._t = setTimeout(() => e.style.display = "none", 3800); };
+// ---- Eva × WorkPilot (Tania, Nov 8): Eva can't open web pages, so the AI Office hands her WorkPilot's live leads itself.
+// Leads come straight from WorkPilot's database (webswan-marketing, the same anonymous sign-in WorkPilot uses);
+// Tania's colors and notes come from WorkPilot's saved edits in this browser. Gmail is not involved at all.
+const WP_FB = { key: "AIzaSyAqhqUzWqpS7YunkODJU_udTBG3pjsJegQ", project: "webswan-marketing" };
+const EVA_WP_RE = /lead|workpilot|work pilot|lavender|purple|audit|hipaa|ada|call|appointment|doctor|dr\.?\s|attorney|lawyer|practice|clinic|chiro|dental|dentist|website|url|draft|email|who|name|brief|morning|today|tomorrow|monday|tuesday|wednesday|thursday|friday|schedule|calendar|note/i;
+async function wpToken() {
+  let rt = null; try { rt = localStorage.getItem("eva_wp_rt"); } catch (e) {}
+  if (rt) {
+    const r = await fetch("https://securetoken.googleapis.com/v1/token?key=" + WP_FB.key, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(rt) });
+    if (r.ok) { const d = await r.json(); return d.id_token; }
+  }
+  const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + WP_FB.key, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ returnSecureToken: true }) });
+  if (!r.ok) throw new Error("WorkPilot sign-in " + r.status);
+  const d = await r.json(); try { localStorage.setItem("eva_wp_rt", d.refreshToken); } catch (e) {}
+  return d.idToken;
+}
+function fsVal(v) {
+  if (!v || typeof v !== "object") return v;
+  if ("stringValue" in v) return v.stringValue; if ("integerValue" in v) return Number(v.integerValue); if ("doubleValue" in v) return v.doubleValue;
+  if ("booleanValue" in v) return v.booleanValue; if ("timestampValue" in v) return v.timestampValue; if ("nullValue" in v) return null;
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(fsVal);
+  if ("mapValue" in v) { const o = {}; Object.entries(v.mapValue.fields || {}).forEach(([k, x]) => o[k] = fsVal(x)); return o; }
+  return null;
+}
+let WP_CACHE = { at: 0, text: "" };
+async function workpilotSnapshot() {
+  if (WP_CACHE.text && Date.now() - WP_CACHE.at < 90e3) return WP_CACHE.text;
+  const tok = await wpToken();
+  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${WP_FB.project}/databases/(default)/documents:runQuery`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "leads" }], orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }], limit: 600 } }) });
+  if (!r.ok) throw new Error("WorkPilot database " + r.status);
+  const rows = (await r.json()).filter((x) => x.document).map((x) => { const o = { id: x.document.name.split("/").pop() }; Object.entries(x.document.fields || {}).forEach(([k, v]) => o[k] = fsVal(v)); return o; });
+  let colors = {}, edits = {}; try { colors = JSON.parse(localStorage.getItem("webswan_tm_colors") || "{}") || {}; edits = JSON.parse(localStorage.getItem("webswan_tm_edits") || "{}") || {}; } catch (e) {}
+  const NAMES = { lavender: "LAVENDER (audit ready: Eva drafts the email)", sky: "SKY BLUE (Tania's own appointment with the doctor/attorney)", orange: "ORANGE (hot: email + appointment)", green: "GREEN (got email / sent to Rachel)", yellow: "YELLOW (spoke to a human, call back)", blue: "BLUE (hang up / voicemail)" };
+  const line = (l) => {
+    const e = edits[String(l.id)] || {}, L = Object.assign({}, l, e), c = colors[String(l.id)] || "";
+    const txt = [L.comment, L.myNotes, L.notes].filter(Boolean).join(" | ");
+    const site = L.website || L.url || ((String(txt).match(/(?:https?:\/\/|www\.)[^\s|,;]+|\b[a-z0-9-]+\.(?:com|net|org|us|co|health|law|dental|clinic)\b[^\s|,;]*/i) || [])[0] || "");
+    return "- " + [L.companyName || L.company || L.business || "(no practice name)", L.contactName || L.name || L.doctor || "", L.phone || "", site && "Website: " + site, L.email && "Email: " + L.email, L.state && "State: " + L.state, L.industry || "", c && "Color: " + c, L.lavenderAt && "Marked lavender: " + String(L.lavenderAt).slice(0, 10), L.timestamp && "Added: " + String(L.timestamp).slice(0, 10)].filter(Boolean).join(" · ") + (txt ? "\n  Notes (Tania's and the call notes, includes ADA/HIPAA findings): " + String(txt).replace(/\s+/g, " ").slice(0, 900) : "");
+  };
+  const by = (col) => rows.filter((l) => (colors[String(l.id)] || "") === col);
+  let out = "LIVE WORKPILOT LEADS (pulled " + new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }) + " PT straight from WorkPilot's database; this IS your WorkPilot access, no Gmail needed). " + rows.length + " leads total.\n";
+  ["lavender", "sky", "orange"].forEach((col) => { const g = by(col); out += "\n## " + NAMES[col] + ": " + g.length + "\n" + (g.map(line).join("\n") || "(none)") + "\n"; });
+  const rest = rows.filter((l) => !["lavender", "sky", "orange"].includes(colors[String(l.id)] || "")).slice(0, 120);
+  out += "\n## OTHER RECENT LEADS (newest first, up to 120)\n" + rest.map(line).join("\n");
+  if (!Object.keys(colors).length) out += "\n\n(Note: Tania's color marks live in her WorkPilot browser and weren't found on this device, so colors may be missing. Ask Tania which practice she means if needed.)";
+  WP_CACHE = { at: Date.now(), text: out.slice(0, 38000) };
+  return WP_CACHE.text;
+}
 async function api(body) {
+  if (body && body.action === "chat" && body.agent === "eva" && !body.file && !body.roleplay && EVA_WP_RE.test(String(body.text || ""))) {
+    try { body = Object.assign({}, body, { file: { name: "WorkPilot leads (live)", text: await workpilotSnapshot() } }); }
+    catch (e) { body = Object.assign({}, body, { file: { name: "WorkPilot (couldn't load)", text: "WorkPilot's lead list couldn't be loaded just now (" + e.message + "). Tell Tania plainly that WorkPilot didn't load (this has nothing to do with Gmail) and ask her to try again." } }); }
+  }
   const tok = await window._auth.token();
   const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
