@@ -120,10 +120,34 @@ const REBECCA_SCRIPT = `${SCRIPT_START}
 7. "Okay. You have a nice rest of your day."
 ${SCRIPT_END}`;
 
+const MONICA_ES = `
+
+EN ESPAÑOL (if the call is in Spanish):
+1. "Hola, habla Monica. No le voy a quitar mucho tiempo. Nuestra técnica de auditoría de cumplimiento hizo una prueba en [website] con WebSwan Digital Solutions. Necesita enviarle este resultado importante al doctor [last name]. Cubre temas de HIPAA, ADA y cumplimiento de cookies. ¿Cuál es el mejor correo electrónico para enviarle el reporte?"
+[PAUSE]
+"Gracias. Es [email], ¿correcto?"
+[PAUSE]
+2. "¿Usted es la persona encargada del cumplimiento de la práctica?"
+[PAUSE]
+(sí) "Perfecto. ¿Cuál es el mejor día y hora para una cita de 10 minutos con Tania?"
+(no) "Muy bien. ¿Con quién debe hablar Tania, y cuál es el mejor día y hora para la cita de 10 minutos?"
+[PAUSE]
+3. (no tienen la agenda o no saben) "Muy bien, no hay problema. Cuando tenga su calendario disponible, puede llamar a Rachel al 316-248-6839. Ella puede contestar cualquier pregunta sobre multas y demandas por cumplimiento de sitios web en {{lead_state}}, y también puede agendar la cita de 10 minutos. ¿Está listo para anotar su número?"
+[PAUSE]
+"Es tres uno seis... dos cuatro ocho... seis ocho tres nueve. ¿Me lo puede repetir, para asegurarnos de que no haya error?"
+[PAUSE]
+(correcto) "Eso es, lo tiene."
+(incorrecto o no lo captó) "Tres uno seis... dos cuatro ocho... seis ocho tres nueve. ¿Lo tiene?"
+[PAUSE]
+4. "¿Tiene alguna pregunta antes de despedirme?"
+[PAUSE]
+5. "Muy bien. Que tenga un excelente resto del día."`;
+const withEs = (block, es) => block.replace("\n" + SCRIPT_END, es + "\n" + SCRIPT_END);
+
 // agent key -> [how block, script block]
 export const CALL_BLOCKS = {
-  monica: [compHow("Monica", "Doctor"), compScript("Monica", "Doctor")],
-  monica_es: [compHow("Monica", "Doctor"), compScript("Monica", "Doctor")],
+  monica: [compHow("Monica", "Doctor"), withEs(compScript("Monica", "Doctor"), MONICA_ES)],
+  monica_es: [compHow("Monica", "Doctor"), withEs(compScript("Monica", "Doctor"), MONICA_ES)],
   george: [compHow("George", "Attorney"), compScript("George", "Attorney")],
   george_es: [compHow("George", "Attorney"), compScript("George", "Attorney")],
   rebecca: [REBECCA_HOW, REBECCA_SCRIPT],
