@@ -47,3 +47,6 @@
 /* Orange "Take me there" announcement banner */
 window.WS_PROMO = {"text": "\u2b50 New: The WebSwan Managed Website Program. A custom website built by a real developer, $899 to start + $499/mo for 12 months.", "link": "https://www.thewebswan.com/pricing#managed-website-program", "cta": "Take me there"};
 (function () { var s = document.createElement('script'); s.src = 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/promo-banner.js'; s.defer = true; document.head.appendChild(s); })();
+
+/* Swan Video: Tania's video bubble on this site (rachel-bot.js loads it). */
+if (window.RACHEL_CONFIG) window.RACHEL_CONFIG.videoSite = 'webswan';

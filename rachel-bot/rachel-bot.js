@@ -254,4 +254,13 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   function mount() { document.body.appendChild(launch); document.body.appendChild(panel); if (location.hash === '#ask-rachel') setTimeout(open, 400); }
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   window.RachelBot = { open: open, close: close, ask: function (q) { open(); ask(q); } };
+
+  /* ---------- Swan Video: Tania's video bubble (right corner; Rachel stays left) ---------- */
+  (function () {
+    var vs = C.videoSite; if (!vs || window.__swanVideo || document.querySelector('script[src*="swan-video.js"]')) return;
+    var s = document.createElement('script');
+    s.src = BASE.replace(/rachel-bot\/$/, 'swan-video/') + 'swan-video.js';
+    s.setAttribute('data-site', vs); s.defer = true;
+    (document.body || document.head).appendChild(s);
+  })();
 })();
