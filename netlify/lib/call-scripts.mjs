@@ -100,7 +100,7 @@ ${HOW_END}`;
 const REBECCA_SCRIPT = `${SCRIPT_START}
 1. "Hi, this is Rebecca. Are you still accepting new patients?"
 [PAUSE]
-2. "Okay, great. I won't take much of your time. WebSwan Digital Solutions runs a platform catered to doctors and lawyers only."
+2. "Okay, great. I won't take much of your time. WebSwan Media Network runs a platform catered to doctors and lawyers only."
 (PPC) "I know you already run PPC advertising on Google search. However, when you run out of funds, being on the WebSwan Media Network platform, you still keep your visibility."
 3. "Clients and patients find your service on our platform. They can either book an appointment directly, or talk to our chatbot about your services, your schedule and more. Our appointment setter then sends an email with the patient's information, so your office can call them, answer their questions and book their appointment."
 4. "Are you the person in charge of the marketing for Doctor [last name]?"
