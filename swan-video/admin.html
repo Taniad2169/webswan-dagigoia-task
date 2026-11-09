@@ -33,6 +33,7 @@ input,select{width:100%;padding:8px;border:1.5px solid #cbd5e1;border-radius:9px
 .thumb{width:100%;aspect-ratio:16/9;border-radius:10px;background:#0b1d59 center/cover;margin-top:8px}
 code{display:block;background:#0b1d59;color:#c9f7ee;padding:8px;border-radius:8px;font-size:.78rem;word-break:break-all;margin-top:6px}
 #msg{min-height:1.4em;font-weight:700}
+.nxbox{border:1px dashed #9ec9e8;border-radius:12px;padding:10px;margin:10px 0}.nx{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px;align-items:center;margin:6px 0}@media(max-width:600px){.nx{grid-template-columns:auto 1fr auto}.nx input{grid-column:2/4}}
 </style>
 </head>
 <body>
@@ -59,10 +60,10 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from
 const auth = getAuth(initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task", appId: "1:970866236717:web:63ddb5c2557d083b8bc7a4" }));
 const API = 'https://webswan-billing.netlify.app/.netlify/functions/site-video';
 const SITES = {
-  wsmn: { name: 'WebSwan Media Network', url: 'www.webswanmedianetwork.com', d: { title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '', intakeLabel: 'Intake: see if your practice qualifies' } },
-  ads: { name: 'WSMN Ads (doctors & attorneys sign-up)', url: 'ads.webswanmedianetwork.com', d: { title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: '#lead-form', intakeLabel: 'Intake: see if your practice qualifies' } },
-  webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: '', intakeLabel: 'Intake: tell us about your project' } },
-  digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://webswan-free-audit.netlify.app/', intakeLabel: 'Intake: get your free website audit' } }
+  wsmn: { name: 'WebSwan Media Network', url: 'www.webswanmedianetwork.com', d: { title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=webswanmedianetwork.com', intakeLabel: 'Start your project' } },
+  ads: { name: 'WSMN Ads (doctors & attorneys sign-up)', url: 'ads.webswanmedianetwork.com', d: { title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'https://youtu.be/w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=ads.webswanmedianetwork.com', intakeLabel: 'Start your project' } },
+  webswan: { name: 'The WebSwan', url: 'thewebswan.com', d: { title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=website&from=thewebswan.com', intakeLabel: 'Start your project' } },
+  digital: { name: 'WebSwan Digital Solutions', url: 'webswandigitalsolutions.com', d: { title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'https://youtu.be/chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=compliance&from=webswandigitalsolutions.com', intakeLabel: 'Start your project' } }
 };
 const START_VIDEOS = [{ id: 'v1', title: 'Introducing WebSwan Media Network', url: 'https://youtu.be/w5TuDgEbdjg' }, { id: 'v2', title: 'Website compliance can cost you', url: 'https://youtu.be/4EkFN0lj4cw' }, { id: 'v3', title: 'The WebSwan Family', url: 'https://youtu.be/chB9apX6nAk' }];
 let cfg = null;
@@ -72,6 +73,14 @@ const ytId = (v) => ((String(v).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]
 async function api(body) {
   const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await auth.currentUser.getIdToken() }, body: JSON.stringify(body) });
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('Error ' + r.status)); return d;
+}
+// "Watch next" queue: up to 6 more videos after the main one (7 in all). The viewer only sees the button when at least one is queued.
+function nextHtml(k, x) {
+  const n = x.next || [];
+  const opts = (sel) => '<option value="">Choose a video…</option>' + cfg.videos.map(v => `<option value="${esc(v.url)}" ${v.url === sel ? 'selected' : ''}>${esc(v.title)}</option>`).join('');
+  return `<div class="nxbox"><label>▶ "Watch next" videos <span class="muted">(holiday specials, offers… the button only shows to visitors when at least one is here)</span></label>
+    ${n.map((it, i) => `<div class="nx"><span class="muted">${i + 2}.</span><select aria-label="Watch next video ${i + 1}" data-n="${k}" data-i="${i}" data-k="video">${opts(it.video)}</select><input aria-label="Button text for video ${i + 1}" data-n="${k}" data-i="${i}" data-k="label" value="${esc(it.label)}" placeholder="Button text, e.g. Holiday special"><button type="button" class="btn alt" data-nxdel="${k}|${i}" aria-label="Remove video ${i + 1} from the queue">✕</button></div>`).join('') || '<p class="muted">No next video: visitors only see the main video.</p>'}
+    ${n.length < 6 ? `<button type="button" class="btn alt" data-nxadd="${k}">➕ Add a "Watch next" video</button>` : '<p class="muted">Queue is full (7 videos in all).</p>'}</div>`;
 }
 function render() {
   $('count').textContent = '(' + cfg.videos.length + ' of 10)';
@@ -89,12 +98,20 @@ function render() {
       <label>Number as shown<input data-s="${k}" data-k="rachelLabel" value="${esc(x.rachelLabel)}"></label>
       <label>Intake form (#form-id on the page, or a link)<input data-s="${k}" data-k="intake" value="${esc(x.intake)}"></label>
       <label>Intake button text<input data-s="${k}" data-k="intakeLabel" value="${esc(x.intakeLabel)}"></label>
+      ${nextHtml(k, x)}
       <label>Embed code for this site</label><code>&lt;script src="https://taniad2169.github.io/webswan-dagigoia-task/swan-video/swan-video.js" data-site="${k}" defer&gt;&lt;/script&gt;</code></div>`; }).join('');
 }
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.dataset.v !== undefined) cfg.videos[+t.dataset.v][t.dataset.k] = t.value;
+  if (t.dataset.n) { cfg.sites[t.dataset.n].next[+t.dataset.i][t.dataset.k] = t.value; return; }
   if (t.dataset.s) { cfg.sites[t.dataset.s][t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'checkbox' || t.tagName === 'SELECT') render(); }
+});
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-nxadd],[data-nxdel]'); if (!a) return;
+  if (a.dataset.nxadd) { const s = cfg.sites[a.dataset.nxadd]; s.next = s.next || []; if (s.next.length < 6) s.next.push({ video: '', label: '' }); }
+  else { const [k, i] = a.dataset.nxdel.split('|'); cfg.sites[k].next.splice(+i, 1); }
+  render(); $('msg').textContent = 'Press 💾 Save to publish the change.';
 });
 document.addEventListener('change', (e) => { if (e.target.dataset.v !== undefined) render(); });
 // ---------- uploads to Tania's YouTube channel (unlisted) ----------
@@ -162,7 +179,7 @@ $('addVid').onclick = () => { if (cfg.videos.length >= 10) return; cfg.videos.pu
 $('save').onclick = async () => { $('msg').textContent = 'Saving…'; try { const d = await api({ action: 'set', config: cfg }); cfg = fill(d.config); render(); $('msg').textContent = '✅ Saved. Each site shows the new video within a minute.'; } catch (e) { $('msg').textContent = '❌ ' + e.message; } };
 function fill(c) {
   c = c || {}; const out = { videos: Array.isArray(c.videos) && c.videos.length ? c.videos : START_VIDEOS.slice(), sites: {} };
-  for (const [k, s] of Object.entries(SITES)) out.sites[k] = Object.assign({ on: true }, s.d, (c.sites || {})[k] || {});
+  for (const [k, s] of Object.entries(SITES)) out.sites[k] = Object.assign({ on: true, next: [] }, s.d, (c.sites || {})[k] || {}); if (!Array.isArray(out.sites[k].next)) out.sites[k].next = [];
   return out;
 }
 $('go').onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => alert(e.message));

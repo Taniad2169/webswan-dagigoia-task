@@ -29,7 +29,9 @@ function sanitize(c) {
       rachelLabel: clean(x.rachelLabel, 30),
       intake: okIntake(intake) ? intake : "",
       intakeLabel: clean(x.intakeLabel, 60),
-      photo: /^https:\/\/\S{3,300}$/.test(photo) ? photo : ""
+      photo: /^https:\/\/\S{3,300}$/.test(photo) ? photo : "",
+      // "Watch next" videos after the main one (up to 6, so 7 in all); the button only shows when there is at least one
+      next: (Array.isArray(x.next) ? x.next : []).map((n) => ({ video: clean(n && n.video, 300), label: clean(n && n.label, 60) })).filter((n) => n.video && okVideo(n.video)).slice(0, 6)
     };
   }
   return out;
