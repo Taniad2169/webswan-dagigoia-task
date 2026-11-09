@@ -1888,7 +1888,7 @@ async function brLoad(k) {
   BR.loading = false; render();
 }
 const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT';
-function brSplit(t) { const i = t.indexOf(BR_S0), j = t.indexOf(BR_S1, i + 1); if (i < 0 || j < i) return { prompt: t.trim(), script: '' }; return { prompt: (t.slice(0, i) + t.slice(j + BR_S1.length)).replace(/\n{3,}/g, '\n\n').trim(), script: t.slice(i + BR_S0.length, j).trim() }; }
+function brSplit(t) { const at = (m, f) => { const k = t.indexOf('\n' + m, f || 0); return k < 0 ? (t.startsWith(m) ? 0 : -1) : k + 1; }; const i = at(BR_S0), j = i >= 0 ? at(BR_S1, i + 1) : -1; if (i < 0 || j < i) return { prompt: t.trim(), script: '' }; return { prompt: (t.slice(0, i) + t.slice(j + BR_S1.length)).replace(/\n{3,}/g, '\n\n').trim(), script: t.slice(i + BR_S0.length, j).trim() }; }
 async function brSaveText(t, what) {
   const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
   if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;

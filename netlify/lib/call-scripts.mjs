@@ -12,7 +12,7 @@ const RACHEL_SPOKEN = "three one six... two four eight... six eight three nine";
 
 const HOW_PARTS = `HOW YOUR INSTRUCTIONS WORK
 - Everything in this prompt OUTSIDE "YOUR SCRIPT" is your prompt and personality: how you behave, your rules, your rebuttals and how to book. Follow it on every call, silently. Never read a rule out loud.
-- YOUR SCRIPT (between "${SCRIPT_START}" and "${SCRIPT_END}") is ONLY what you say, in order. It is standalone: it has no instructions in it. It is your one and only script: if any other opening, greeting or list of steps appears anywhere else in this prompt, YOUR SCRIPT wins.
+- YOUR SCRIPT (the block titled YOUR SCRIPT, at the end of this prompt) is ONLY what you say, in order. It is standalone: it has no instructions in it. It is your one and only script: if any other opening, greeting or list of steps appears anywhere else in this prompt, YOUR SCRIPT wins.
 - Tania's coaching notes (if any) adjust how you say things. They never add a second script and never replace YOUR SCRIPT.
 - [PAUSE] in your script means: stop talking and wait for their full answer. Lines that start with a short label in parentheses, like (yes) or (no), are the line to say for that answer; never say the label.
 - [website], [last name], [email] and the state come from THIS CALL below. Say a website simply, like "smithdental dot com".
@@ -163,7 +163,9 @@ export function restructure(text, key) {
   const blocks = CALL_BLOCKS[key];
   if (!blocks) return text;
   let t = String(text || "");
-  const cut = (s, a, b) => { const i = s.indexOf(a), j = s.indexOf(b, i + 1); return i >= 0 && j > i ? (s.slice(0, i) + s.slice(j + b.length)) : s; };
+  // markers only count at the start of a line (the text of a rule may mention a block's name)
+  const at = (s, m, from = 0) => { if (s.startsWith(m) && from === 0) return 0; const i = s.indexOf("\n" + m, from); return i < 0 ? -1 : i + 1; };
+  const cut = (s, a, b) => { const i = at(s, a), j = i >= 0 ? at(s, b, i + 1) : -1; return i >= 0 && j > i ? (s.slice(0, i) + s.slice(j + b.length)) : s; };
   for (const [a, b] of OLD_BLOCKS) t = cut(t, a, b);
   t = cut(t, HOW_START, HOW_END); t = cut(t, SCRIPT_START, SCRIPT_END);
   // retired sections: from the heading line to the next blank line (or the end)
