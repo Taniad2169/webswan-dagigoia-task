@@ -70,6 +70,7 @@ a{color:#137fae}
 @media(max-width:800px){aside{position:static;width:auto;height:auto;padding:16px}.brand small{margin-bottom:10px}.nav{display:inline-block;width:auto;padding:9px}.asidefoot{display:none}main{margin:0;padding:24px 16px}.two{grid-template-columns:1fr}.banner{display:block}.banner .btn{margin-top:14px}.formgrid{grid-template-columns:1fr}}
 .ws-left{display:flex;align-items:center;gap:14px}.ws-me{width:58px;height:58px;border-radius:50%;object-fit:cover;border:3px solid #93e5fa;flex:none}.ws-logo{height:54px;width:auto;flex:none}.ws-ft{margin-top:48px;padding:18px 0 6px;border-top:1px solid var(--line);text-align:center;font-size:13px;color:#5c6b7a}@media(max-width:800px){.ws-me{width:46px;height:46px}.ws-logo{height:42px}}
 </style>
+<script src="../team/brain-master.js"></script>
 </head>
 <body class="vs-locked">
 <style>body.vs-locked>*:not(#vsGate){visibility:hidden!important}#vsGate{display:none}body.vs-locked #vsGate{display:flex;position:fixed;inset:0;z-index:2147483647;background:#0f1d2e;color:#fff;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-family:system-ui,sans-serif;text-align:center;padding:24px}#vsGate button{background:#fff;color:#0f1d2e;border:0;border-radius:10px;padding:12px 20px;font-size:16px;font-weight:600;cursor:pointer}</style>
@@ -133,7 +134,33 @@ function fill(text, lead, agent) {
     .replace(/\{name\}/gi, greetName(lead))
     .replace(/\{fullname\}/gi, (lead && lead.name) || '')
     .replace(/\{business\}/gi, (lead && lead.business) || 'your business')
-    .replace(/\{agent\}/gi, (agent && agent.name) || 'your WebSwan assistant');
+    .replace(/\{agent\}/gi, (agent && agent.name) || 'your WebSwan assistant')
+    // Brain script placeholders (Tania, Nov 8)
+    .replace(/\[website\]/gi, (lead && (lead.website || (lead.r && lead.r.website))) || 'your website')
+    .replace(/\[last name\]/gi, String((lead && lead.name) || 'Smith').replace(/^(dr\.?|doctor|attorney)\s+/i, '').split(/\s+/).pop())
+    .replace(/\[email\]/gi, (lead && lead.email) || 'the email they gave')
+    .replace(/\{\{lead_state\}\}/g, (lead && lead.state) || 'your state');
+}
+/* ---------- 🧠 Brain master: the live script on the Brain page drives practice calls, agent profiles and lead briefs ---------- */
+const BM = { data: {}, at: 0, busy: false };
+try { BM.data = JSON.parse(localStorage.getItem('vs_brain_master') || '{}') || {}; } catch (e) { BM.data = {}; }
+function bmFor(agent) { return agent && BM.data[String(agent.name || agent || '').trim().split(/\s+/)[0].toLowerCase()] || null; }
+function bmSyncAgents() {
+  let ch = false;
+  (state.agents || []).forEach((a) => { const p = bmFor(a); if (!p || !p.script) return; const op = p.opening || '', sc = (p.turns || []).slice(1).join('\n\n'); if (a.opening !== op || a.script !== sc) { a.opening = op; a.script = sc; a.fromBrain = true; ch = true; } });
+  if (ch) save();
+  return ch;
+}
+async function bmLoad(force) {
+  if (BM.busy || !window.BrainMaster || (!force && Date.now() - BM.at < 120000)) return BM.data;
+  BM.busy = true;
+  try {
+    let ok = 0; for (const k of BrainMaster.MASTER_AGENTS) { try { const r = await voiceApi({ action: 'agent_get', agent: k }); BM.data[k] = BrainMaster.split(r.instructions || ''); ok++; } catch (e) {} }
+    if (!ok) return BM.data; // not signed in yet: try again next time
+    BM.at = Date.now(); try { localStorage.setItem('vs_brain_master', JSON.stringify(BM.data)); } catch (e) {}
+    if (bmSyncAgents() || force) render();
+  } finally { BM.busy = false; }
+  return BM.data;
 }
 
 /* ---------- calling hours (8 AM to 9 PM in the lead's time zone) ---------- */
@@ -217,6 +244,7 @@ function renderOverview(c) {
 
 /* ---------- leads ---------- */
 function renderLeads(c) {
+  bmLoad();
   c.innerHTML = `<div class="row section"><p>Manage your prospects in one place.</p><div class="toolbar"><button class="btn outline" onclick="$('csv').click()">Import CSV</button><button class="btn secondary" onclick="exportLeads()">Export CSV</button><button class="btn" onclick="leadForm()">+ Add lead</button></div></div>
   <div class="note">From Google Sheets: <b>File → Download → Comma-separated values (.csv)</b>, then import it here. Columns recognized: name, business, phone, email, state, line type, consent, status, notes. Data is saved in this browser only, so export a backup now and then.</div>
   <div class="card section"><div class="filters"><div><label for="search" style="margin-top:0">Search</label><input id="search" placeholder="Search name, business, phone or email" oninput="leadsTable()"></div>
@@ -276,10 +304,10 @@ function delItem(list, id) {
 
 /* ---------- agents ---------- */
 const STARTERS = [
-  { name: 'Rebecca', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
-  { name: 'Monica', role: 'WebSwan Digital Solutions: doctors & medical practices', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Do you have a moment?', script: 'We offer medical practices a complimentary website compliance audit: accessibility, cookie consent and privacy.\n\nMany practices have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
-  { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys (backup)', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling for WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
-  { name: 'George', role: 'WebSwan Digital Solutions: attorneys & law firms', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent}, an AI assistant calling on behalf of WebSwan Digital Solutions. Is now a good time for a quick question?', script: 'We help law firms protect their websites from accessibility and privacy complaints, and we start with a complimentary compliance audit.\n\nDo you know if {business}’s website meets current accessibility standards?\n\nWe can check it at no cost and no obligation, and Tania, our founder, can walk you through the results in 10 minutes. Would that be helpful?\n\nThank you, {name}. Have a great day!' }
+  { name: 'Rebecca', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
+  { name: 'Monica', role: 'WebSwan Digital Solutions: doctors & medical practices', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Digital Solutions. Do you have a moment?', script: 'We offer medical practices a complimentary website compliance audit: accessibility, cookie consent and privacy.\n\nMany practices have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
+  { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys (backup)', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
+  { name: 'George', role: 'WebSwan Digital Solutions: attorneys & law firms', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Digital Solutions. Is now a good time for a quick question?', script: 'We help law firms protect their websites from accessibility and privacy complaints, and we start with a complimentary compliance audit.\n\nDo you know if {business}’s website meets current accessibility standards?\n\nWe can check it at no cost and no obligation, and Tania, our founder, can walk you through the results in 10 minutes. Would that be helpful?\n\nThank you, {name}. Have a great day!' }
 ];
 // Tatiana is retired: remove her starter profile and move her campaigns to Rebecca.
 (function migrateTeam() {
@@ -304,6 +332,7 @@ function addStarters() {
 const AGENT_PHOTOS = ['monica', 'rebecca', 'george', 'alek', 'rachel'];
 function agentPhoto(name) { const k = String(name || '').trim().split(/\s+/)[0].toLowerCase(); return AGENT_PHOTOS.includes(k) ? `<img src="../team/img/${k}.jpg" alt="${esc(name)}" width="72" height="72" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;margin:6px 0 4px;border:3px solid #dbeafe" onerror="this.remove()">` : ''; }
 function renderAgents(c) {
+  bmLoad();
   c.innerHTML = `<div class="row section"><p>Create a profile for each member of your AI calling team.</p><div class="toolbar"><button class="btn outline" onclick="addStarters()">+ Add Rebecca, Monica, George &amp; Alek</button><button class="btn" onclick="agentForm()">+ Add agent</button></div></div>
   <div class="grid">${state.agents.map(a => `<div class="card agentcard"><span class="chip">DRAFT</span>${agentPhoto(a.name)}<h2>${esc(a.name)}</h2><p style="margin:0 0 6px">${esc(a.role || 'Voice agent')}</p><small class="muted">Voice: ${esc(a.voice || 'Not described')}${a.provider ? '<br>Planned: ' + esc(a.provider) : ''}</small>
     <div class="actions" style="justify-content:flex-start"><button class="btn secondary small" onclick="previewAgent('${a.id}')">▶ Hear opening</button><button class="btn small" onclick="aiCoachAgent('${a.id}')" title="SDR AI studies this agent’s calls and suggests a better script">✦ Script coach</button><button class="btn outline small" onclick="agentForm('${a.id}')">Edit</button>${a.prev && a.prev.length ? `<button class="btn outline small" onclick="undoScript('${a.id}')">↩ Undo script</button>` : ''}<button class="btn danger small" onclick="delItem('agents','${a.id}')" aria-label="Delete ${esc(a.name)}">🗑</button></div></div>`).join('') || '<div class="card empty" style="grid-column:1/-1">No agents yet. Add your starter team or create your first agent.</div>'}</div>
@@ -315,7 +344,8 @@ function agentForm(id) {
   openForm(id ? 'Edit agent' : 'Add an agent', `<div class="formgrid"><div>${field('Agent name', 'name', x.name || '', 'text', true)}</div><div>${field('Role or campaign', 'role', x.role || '')}</div></div>
   ${field('Voice description', 'voice', x.voice || '', 'text', false, 'Example: warm, confident female, American accent')}
   ${field('Planned AI voice (for later)', 'provider', x.provider || '', 'text', false, 'Example: ElevenLabs “Sarah” or Cartesia “Brooke”')}
-  ${area('Opening line (with AI disclosure)', 'opening', x.opening || 'Hi {name}, this is {agent}, an AI assistant calling on behalf of The WebSwan. Do you have a quick minute?', 'Say it’s an AI assistant and who you’re calling for in the first sentence. Use {name}, {business} and {agent}.')}
+  ${bmFor(x) ? `<div class="note" style="margin:6px 0 10px">🧠 ${esc(x.name)}'s opening, script, rebuttals and prompt come from the <b>Brain</b> (the master). Edit them on the Brain page and every place updates: practice calls, this profile, lead briefs and real calls. <a href="#" onclick="closeModal&&closeModal();nav('Brain');return false">Open the Brain →</a></div>` : ''}
+  ${area('Opening line', 'opening', x.opening || 'Hi {name}, this is {agent} with The WebSwan. Do you have a quick minute?', 'Who you are and who you’re calling for, in the first sentence. Use {name}, {business} and {agent}.')}
   ${area('Script and instructions', 'script', x.script || '', 'Each paragraph becomes one turn in a practice call.')}
   <div class="formgrid"><div><label for="f_previewVoice">Preview voice (this browser)</label><select id="f_previewVoice" name="previewVoice" data-cur="${esc(x.previewVoice || '')}"></select></div>
   <div class="formgrid" style="gap:0 10px"><div>${field('Speed', 'rate', x.rate || 1, 'number')}</div><div>${field('Pitch', 'pitch', x.pitch || 1, 'number')}</div></div></div>
@@ -363,8 +393,55 @@ function practiceCampaign(id) {
 /* ---------- practice call ---------- */
 let practice = { agentId: '', leadId: '', campaignId: '', turn: -1, lines: [] };
 function practiceWith(leadId) { practice = { agentId: practice.agentId || (state.agents[0] && state.agents[0].id) || '', leadId, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
-function turns(agent, lead) { const parts = [(lead && lead.nextScript && lead.nextScript.text) || agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
+function turns(agent, lead) { const parts = [(!bmFor(agent) && lead && lead.nextScript && lead.nextScript.text) || agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
+// Practice call (Tania, Nov 8): 💻 on my laptop (nothing dialed) or 📞 live (the agent really calls the number you type: you, a family
+// member...). Live practice calls are never saved as leads. Both use the agent's master script from the Brain.
 function renderPractice(c) {
+  practice.mode = practice.mode || localStorage.getItem('vs_practice_mode') || 'laptop';
+  if (!practice.agentId || !byId('agents', practice.agentId)) practice.agentId = (state.agents[0] || {}).id || '';
+  bmLoad();
+  const a = byId('agents', practice.agentId), bp = a ? bmFor(a) : null;
+  const tog = (m, l) => `<button class="btn ${practice.mode === m ? '' : 'outline'} small" onclick="practice.mode='${m}';localStorage.setItem('vs_practice_mode','${m}');practice.turn=-1;practice.lines=[];stopSpeech();render()">${l}</button>`;
+  c.innerHTML = `<div class="row section"><p style="margin:0">${practice.mode === 'live' ? 'Live practice: the agent really calls the number you type, with her real script. It is <b>never saved as a lead</b>.' : 'Practice on your laptop: the voice plays here, nothing is dialed.'}</p><div class="toolbar">${tog('laptop', '💻 Practice on my laptop')}${tog('live', '📞 Live practice call')}</div></div><div id="pBody"></div><div id="pBrain"></div>`;
+  if (practice.mode === 'live') renderPracticeLive($('pBody')); else renderPracticeLaptop($('pBody'));
+  const pre = (t) => `<div style="white-space:pre-wrap;font-size:13px;line-height:1.5;background:#f7fbfe;border:1px solid #e1edf5;border-radius:10px;padding:12px;max-height:360px;overflow:auto">${esc(t)}</div>`;
+  $('pBrain').innerHTML = !a ? '' : bp && bp.script ? `<div class="card section"><div class="row"><h2 style="margin:0">🧠 ${esc(a.name)}'s master script and prompt</h2><button class="btn outline small" onclick="bmLoad(true)">↻ Refresh from Brain</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 10px">Straight from the Brain page, the same text her real calls use. Edit it on the Brain page and it updates here, on her profile and in lead briefs.</p>
+    <h3 style="margin:10px 0 6px">📜 Script (only what she says)</h3>${pre(bp.script)}
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🥊 Rebuttals</summary>${pre(bp.rebuttals || 'No rebuttals yet.')}</details>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">💫 Personality</summary>${pre(bp.personality || '')}</details>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🧭 How to run the call + prompt</summary>${pre((bp.how ? bp.how + '\n\n' : '') + bp.prompt)}</details>
+    ${bp.notes ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🧠 Coaching notes</summary>${pre(bp.notes)}</details>` : ''}</div>`
+    : `<p class="note section">${esc(a.name)} doesn't have a master script on the Brain page yet${window.BrainMaster && BrainMaster.MASTER_AGENTS.includes(String(a.name).toLowerCase()) ? ' (loading… press Refresh on the Brain page if it doesn\'t appear)' : ''}.</p>`;
+}
+function renderPracticeLive(c) {
+  let v = {}; try { v = JSON.parse(localStorage.getItem('vs_live_practice') || '{}') || {}; } catch (e) {}
+  const callers = state.agents.filter((x) => ['monica', 'george', 'rebecca', 'alek'].includes(String(x.name).split(/\s+/)[0].toLowerCase()));
+  if (!callers.some((x) => x.id === practice.agentId) && callers[0]) practice.agentId = callers[0].id;
+  const a = byId('agents', practice.agentId), L = practice.live;
+  c.innerHTML = `<div class="card section">
+    <div class="formgrid"><div>${select('Agent', 'lpAgent', callers.map((x) => ({ v: x.id, l: x.name })), practice.agentId)}</div><div>${select('Practice type', 'lpKind', ['Doctor', 'Attorney'], v.kind || 'Doctor')}</div></div>
+    <div class="formgrid"><div>${field('Name of the person she calls', 'lpName', v.name || 'Tania')}</div><div>${field('Phone number to call', 'lpPhone', v.phone || '', 'tel')}</div></div>
+    <div class="formgrid"><div>${field('Practice name (pretend)', 'lpPractice', v.practice || '')}</div><div>${field('State (2 letters)', 'lpState', v.state || 'CA')}</div></div>
+    ${field('Website she mentions (optional)', 'lpSite', v.website || '')}
+    <div class="actions" style="justify-content:flex-start"><button class="btn green" onclick="pLiveCall()">📞 Call this number now</button></div>
+    ${L ? `<p class="note">📞 ${esc(L.agent)} called ${esc(L.to)} at ${esc(new Date(L.at).toLocaleTimeString())}. Ask her to transfer you to Rachel anytime to test the transfer.</p>` : ''}
+    <p class="muted" style="font-size:13px">A real phone call from her real Cartesia voice (same script as live leads), counted in your call budget. Nothing is added to Leads.</p></div>`;
+  $('f_lpAgent').onchange = (ev) => { practice.agentId = ev.target.value; render(); };
+}
+async function pLiveCall() {
+  const a = byId('agents', practice.agentId); if (!a) return toast('Pick an agent.');
+  const v = { name: $('f_lpName').value.trim(), phone: $('f_lpPhone').value.trim(), practice: $('f_lpPractice').value.trim(), kind: $('f_lpKind').value, state: $('f_lpState').value.trim().toUpperCase().slice(0, 2), website: $('f_lpSite').value.trim() };
+  try { localStorage.setItem('vs_live_practice', JSON.stringify(v)); } catch (e) {}
+  if (!digits(v.phone) || digits(v.phone).length < 10) return toast('Type the phone number she should call.');
+  if (!confirm(a.name + ' will really call ' + (v.name || 'this person') + ' at ' + v.phone + ' now. Continue?')) return;
+  const key = String(a.name).split(/\s+/)[0].toLowerCase();
+  try {
+    const r = await voiceApi({ action: 'start', agent: key, phone: v.phone, leadName: v.name, business: v.practice || (v.kind === 'Attorney' ? 'the law office' : 'the practice'), state: v.state || 'CA', findings: v.website ? 'Website: ' + v.website : 'none listed', leadId: 'practice', campaign: 'Practice call (not a lead)', force: true, lang: 'en' });
+    practice.live = { agent: a.name, to: r.to || v.phone, at: Date.now(), callId: r.callId }; toast('📞 ' + a.name + ' is calling ' + (r.to || v.phone) + ' now.'); render();
+  } catch (e) { toast(e.message); }
+}
+function renderPracticeLaptop(c) {
   if (!state.agents.length) { c.innerHTML = `<div class="card section empty">Add an agent first to practice a call.<br><br><button class="btn" onclick="nav('Agents')">Go to Agents</button></div>`; return; }
   if (!practice.agentId || !byId('agents', practice.agentId)) practice.agentId = state.agents[0].id;
   const a = byId('agents', practice.agentId), lead = byId('leads', practice.leadId) || { name: 'Doctor Smith', business: 'Smith Family Practice' };
@@ -377,7 +454,7 @@ function renderPractice(c) {
     <div class="actions" style="justify-content:center"><button class="btn green" onclick="pNext()" id="pNextBtn">${practice.turn < 0 ? '▶ Start call' : practice.turn >= T.length - 1 ? '↻ Restart' : '▶ Next line'}</button><button class="btn outline" onclick="pRepeat()" ${practice.turn < 0 ? 'disabled' : ''}>↺ Repeat</button><button class="btn danger" onclick="stopSpeech()">⏹ Stop voice</button></div>
     <label for="pReply">Prospect says (type what they answer, then press Enter)</label><input id="pReply" placeholder="Example: Sure, what is this about?" ${practice.turn < 0 ? 'disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();pReply()}">
     <div class="actions"><button class="btn" onclick="pFinish()">✔ End & log this call</button></div>
-    <p class="note">Practice mode: the voice plays only on your computer. Nothing is dialed.</p></div>
+    <p class="note">Practice mode: the voice plays only on your computer. Nothing is dialed. Her lines come from the Brain (master script).</p></div>
     <div class="card"><div class="row"><h2>Call script</h2><span class="chip">${T.length} turns</span></div><div class="callog" id="pLog">${practice.lines.length ? practice.lines.map(l => `<div class="line ${l.who}">${l.who === 'agent' ? '<b>' + esc(a.name) + ':</b> ' : '<b>Prospect:</b> '}${esc(l.text)}</div>`).join('') : T.map((s, i) => `<div class="line agent"><b>${i + 1}.</b> ${esc(s)}</div>`).join('')}</div></div></div>`;
   $('f_pAgent').onchange = ev => { practice.agentId = ev.target.value; practice.turn = -1; practice.lines = []; stopSpeech(); render(); };
   $('f_pLead').onchange = ev => { practice.leadId = ev.target.value; practice.turn = -1; practice.lines = []; stopSpeech(); render(); };
@@ -621,7 +698,8 @@ function sdrOpener(l, key) {
   const o = OFFERS[key], a = agentFor(key, l), n = greetName(l), b = l.business || 'your practice';
   const fol = M(l).slice().reverse().find(m => FOLLOW[m.text]);
   const back = state.calls.some(x => x.leadId === l.id);
-  let s = `Hi ${n}, this is ${a ? a.name : o.agent}, an AI assistant calling on behalf of ${o.brand}.`;
+  const bmp = a && bmFor(a); if (bmp && bmp.opening) return fill(bmp.opening, l, a); // Brain master opening (Tania, Nov 8)
+  let s = `Hi ${n}, this is ${a ? a.name : o.agent} with ${o.brand}.`;
   if (back && fol) s += ' ' + FOLLOW[fol.text].replace('{who}', who(l)[0]);
   const f = sdrFinding(l); if (f) s += ' ' + f;
   s += ` We’d love to offer ${pitchFor(l, key)}. Would you be open to a quick 10-minute call with our founder, Tania?`;
@@ -670,6 +748,7 @@ function sdrPause(v) { state.sdr.paused = v; save(); if (v && window.cloudUser &
 /* ---------- page ---------- */
 function sdrOpen(id) { state.sdr.lead = id; page = 'SDR AI'; render(); window.scrollTo(0, 0); }
 function renderSDR(c) {
+  bmLoad();
   const S = state.sdr;
   if (S.lead && byId('leads', S.lead)) return renderBrief(c, byId('leads', S.lead));
   S.lead = '';
@@ -1465,9 +1544,9 @@ window.aiBrain = {
 Return JSON: {"summary": 2-3 sentences, "sentiment": "positive"|"neutral"|"negative", "score": 1-10 for how well the agent handled it,
 "memories": [{"cat": "Need"|"Objection"|"Timing"|"Preference"|"Decision"|"Fact", "text": short fact the prospect revealed}],
 "nextStep": {"action": "call"|"email"|"handoff"|"stop", "inDays": number, "reason": short},
-"callbackScript": the exact opening for the NEXT call to this prospect in the agent's voice (max 80 words; first sentence states the agent's name, that it is an AI assistant, and who it calls for; reference what the prospect said; end with one question). Empty string if the prospect opted out or should not be called,
+"callbackScript": the exact opening for the NEXT call to this prospect in the agent's voice (max 80 words; first sentence follows the agent's master opening from the Brain (agent's first name only, never \"an AI assistant\"); reference what the prospect said; end with one question). Empty string if the prospect opted out or should not be called,
 "coaching": {"worked": [short points], "hurt": [{"line": the agent's exact line that hurt, "why": short, "better": improved line}]},
-"compliance": "OK" or a short warning (missing AI disclosure, ignored opt-out, used "free", made a guarantee, pressure)}.
+"compliance": "OK" or a short warning (ignored opt-out, used "free", made a guarantee, pressure)}.
 Use "handoff" when the prospect is interested or asks for a person. Use "stop" if they opted out.`, d),
   improveScript: d => ask(`Improve this cold-call agent's script using the logged calls (outcomes, notes, transcripts and lines that hurt). If there are no calls, use proven SDR best practice.
 Return JSON: {"diagnosis": 2-3 sentences on what is and isn't working, "weakLines": [{"line": exact current line, "why": short, "better": improved line}],
@@ -1892,11 +1971,16 @@ const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT', BR_R0 
 function brAt(t, m, f) { const k = t.indexOf('\n' + m, f || 0); return k < 0 ? (!f && t.startsWith(m) ? 0 : -1) : k + 1; }
 function brTake(t, a, b) { const i = brAt(t, a), j = i >= 0 ? brAt(t, b, i + 1) : -1; if (i < 0 || j < i) return { rest: t, body: '' }; return { rest: (t.slice(0, i) + t.slice(j + b.length)).replace(/\n{3,}/g, '\n\n').trim(), body: t.slice(i + a.length, j).trim() }; }
 function brSplit(t) { const s1 = brTake(t, BR_S0, BR_S1), r1 = brTake(s1.rest, BR_R0, BR_R1); return { prompt: r1.rest.trim(), script: s1.body, rebuttals: r1.body }; }
-function brJoin(p) { return [p.prompt, p.rebuttals ? BR_R0 + '\n' + p.rebuttals + '\n' + BR_R1 : '', p.script ? BR_S0 + '\n' + p.script + '\n' + BR_S1 : ''].filter(Boolean).join('\n\n'); }
+function brJoin(p) {
+  const blocks = [p.script ? BR_S0 + '\n' + p.script + '\n' + BR_S1 : '', p.rebuttals ? BR_R0 + '\n' + p.rebuttals + '\n' + BR_R1 : ''].filter(Boolean).join('\n\n');
+  // script + rebuttals go right after HOW TO RUN YOUR CALL (near the top, so every tool reads them first)
+  const H = '### END HOW TO RUN YOUR CALL', k = brAt(p.prompt, H);
+  return k >= 0 ? (p.prompt.slice(0, k + H.length) + (blocks ? '\n\n' + blocks : '') + '\n\n' + p.prompt.slice(k + H.length).trim()).trim() : [p.prompt, blocks].filter(Boolean).join('\n\n');
+}
 async function brSaveText(t, what) {
   const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
   if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;
-  try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); } catch (e) { toast(e.message); }
+  try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); bmLoad(true); } catch (e) { toast(e.message); }
 }
 // Script box: only the words she says. Rebuttals box: her answers to objections. Prompt box: everything else. Saved back as one live prompt.
 function brSaveScript() { const p = brSplit(BR.text || ''); p.script = $('brScript').value.trim(); brSaveText(brJoin(p), 'her SCRIPT'); }
