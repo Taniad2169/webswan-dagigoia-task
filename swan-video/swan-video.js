@@ -21,10 +21,10 @@
 
   // Used until Tania changes them in the admin switch (and whenever the settings can't load).
   var DEFAULTS = {
-    wsmn: { on: true, title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'chB9apX6nAk', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=webswanmedianetwork.com', intakeLabel: 'Start your project' },
-    ads: { on: true, title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=ads.webswanmedianetwork.com', intakeLabel: 'Start your project' },
-    webswan: { on: true, title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=website&from=thewebswan.com', intakeLabel: 'Start your project' },
-    digital: { on: true, title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=compliance&from=webswandigitalsolutions.com', intakeLabel: 'Start your project' }
+    wsmn: { on: true, title: 'WebSwan Media Network', caption: 'Hi, welcome to WebSwan Media Network! Here is how we help doctors and attorneys get found.', video: 'chB9apX6nAk', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=webswanmedianetwork.com', intakeLabel: 'Start your project', estimate: 'https://taniad2169.github.io/webswan-project-estimate/' },
+    ads: { on: true, title: 'WebSwan Media Network: advertise your practice', caption: 'Hi doctors and attorneys! Here is how WebSwan Media Network gets your practice found.', video: 'w5TuDgEbdjg', rachel: '+13162486839', rachelLabel: '(316) 248-6839', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=ads&from=ads.webswanmedianetwork.com', intakeLabel: 'Start your project', estimate: 'https://taniad2169.github.io/webswan-project-estimate/' },
+    webswan: { on: true, title: 'The WebSwan', caption: 'Hi, welcome to The WebSwan! Let me show you what we can build for your business.', video: 'chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=website&from=thewebswan.com', intakeLabel: 'Start your project', estimate: 'https://taniad2169.github.io/webswan-project-estimate/' },
+    digital: { on: true, title: 'WebSwan Digital Solutions', caption: 'Hi, welcome to WebSwan Digital Solutions! Is your website compliant? Let me explain.', video: 'chB9apX6nAk', rachel: '+12396670151', rachelLabel: '(239) 667-0151', intake: 'https://taniad2169.github.io/WebSwan-Email-Marketing-Form/?service=compliance&from=webswandigitalsolutions.com', intakeLabel: 'Start your project', estimate: 'https://taniad2169.github.io/webswan-project-estimate/' }
   };
   var C = Object.assign({}, DEFAULTS[SITE] || DEFAULTS.wsmn);
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -55,6 +55,7 @@
     '.sv-rachel{display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;border-radius:14px;text-decoration:none;font-weight:800;font-size:15px;color:#062743;background:linear-gradient(90deg,#77c6e0,#0be0c0);box-shadow:0 6px 16px rgba(11,224,192,.35)}' +
     '.sv-rachel small{display:block;font-weight:600;font-size:12px}' +
     '.sv-next{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:14px;border:0;background:#0b1d59;color:#fff;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 6px 16px rgba(11,29,89,.3)}.sv-next[hidden]{display:none}.sv-next:hover{background:#1b70c2}' +
+    '.sv-est{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:14px;text-decoration:none;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(90deg,#ff6a00,#ff9a1f)}.sv-est:hover{filter:brightness(1.07)}' +
     '.sv-intake{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:14px;border:2px solid #0b1d59;background:#fff;color:#0b1d59;font-weight:800;font-size:14px;cursor:pointer}' +
     '#sv-pow{font-size:11.5px;color:#94a3b8;text-align:center;padding:0 12px 10px}#sv-pow b{color:#0b1d59}' +
     '#sv-mini:focus-visible,#sv-gone:focus-visible,#sv-panel a:focus-visible,#sv-panel button:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
@@ -131,7 +132,7 @@
     var mb = Math.max(b, window.innerWidth <= 600 ? 12 : Math.min(BOTTOM, b + 76));
     wrap.style.bottom = mb + 'px';
     panel.style.bottom = b + 'px';
-    var nb = document.getElementById('sv-next'), avail = window.innerHeight - b - 16, rest = 190 + (nb && !nb.hidden ? 52 : 0); // room for the buttons under the video
+    var nb = document.getElementById('sv-next'), avail = window.innerHeight - b - 16, rest = 190 + (document.querySelector('#sv-panel .sv-est') ? 50 : 0) + (nb && !nb.hidden ? 52 : 0); // room for the buttons under the video
     document.getElementById('sv-stage').style.height = Math.max(200, Math.min(440, avail - rest)) + 'px';
     panel.style.maxHeight = avail + 'px';
   }
@@ -172,7 +173,8 @@
       '<div><button type="button" id="sv-rp" aria-label="Replay with sound">↺</button><button type="button" id="sv-fs" aria-label="Full screen">⛶</button><button type="button" id="sv-x" aria-label="Close video">✕</button></div></div>' +
       (C.caption ? '<div id="sv-cap">' + esc(C.caption) + '</div>' : '') + '</div>' +
       '<div id="sv-acts"><button type="button" class="sv-next" id="sv-next" hidden></button><a class="sv-rachel" href="tel:' + esc(C.rachel) + '">📞 <span>Call Rachel for more information<small>' + esc(C.rachelLabel) + ' · she answers day or night</small></span></a>' +
-      '<button type="button" class="sv-intake" id="sv-intake">📝 ' + esc(C.intakeLabel || 'Intake') + '</button></div>' +
+      '<button type="button" class="sv-intake" id="sv-intake">📝 ' + esc(C.intakeLabel || 'Intake') + '</button>' +
+      (/^https:\/\//.test(C.estimate || '') ? '<a class="sv-est" href="' + esc(C.estimate) + '" target="_blank" rel="noopener">🧮 Estimate my cost</a>' : '') + '</div>' +
       '<div id="sv-pow">Powered by <b>The WebSwan</b></div>';
     document.body.appendChild(wrap); document.body.appendChild(panel);
     place(); setInterval(function () { if (document.body.contains(wrap)) place(); }, 1500); window.addEventListener('resize', place);
@@ -193,7 +195,7 @@
     var done = false, go = function () { if (!done) { done = true; mount(); } };
     setTimeout(go, 2500);
     fetch(API + '?site=' + encodeURIComponent(SITE), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      if (d && d.site && !done) ['on', 'title', 'caption', 'video', 'rachel', 'rachelLabel', 'intake', 'intakeLabel', 'photo'].forEach(function (k) { if (d.site[k] !== undefined && d.site[k] !== '') C[k] = d.site[k]; });
+      if (d && d.site && !done) ['on', 'title', 'caption', 'video', 'rachel', 'rachelLabel', 'intake', 'intakeLabel', 'photo', 'estimate'].forEach(function (k) { if (d.site[k] !== undefined && d.site[k] !== '') C[k] = d.site[k]; });
       if (d && d.site && Array.isArray(d.site.next)) C.next = d.site.next;
       go();
     }).catch(go);
