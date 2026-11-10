@@ -12,7 +12,7 @@
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore } from "../lib/team.mjs";
-import { startJobs } from "../lib/team-daily.mjs";
+import { startJobs } from "./team-daily.mjs";
 import crypto from "node:crypto";
 import { verifyOwner } from "../lib/auth.mjs";
 import { getStore } from "@netlify/blobs";
