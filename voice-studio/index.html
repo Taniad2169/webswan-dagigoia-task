@@ -683,13 +683,27 @@ function sdrOffers(l) {
 function who(l) { const i = guessIndustry(l); return i === 'Doctor / medical' ? ['patients', 'patient'] : i === 'Attorney / legal' ? ['clients', 'client'] : ['customers', 'customer']; }
 function pitchFor(l, key) { const w = who(l); return OFFERS[key].pitch.replace(/\{b\}/g, l.business || 'your practice').replace(/\{who\}/g, w[0]).replace(/\{who1\}/g, w[1]); }
 const FOLLOW = { 'Wants information by email first': 'I’m following up on the information you asked us to send.', 'Was busy: call back at a better time': 'You were busy when we last called, so I’ll be quick.', 'Wants more new patients or clients': 'Last time, you mentioned you’d like more new {who}.', 'Concerned about ADA / compliance': 'Last time, you mentioned website compliance was on your mind.', 'Misses calls or after-hours calls': 'Last time, you mentioned calls sometimes go to voicemail.', 'Unhappy with current website': 'Last time, you mentioned your website could use some love.', 'Showed interest': 'Thank you again for your interest last time.' };
+// ONE routing rule for practice, manual calls, imports and campaigns (Tania, Nov 9):
+//   Monica = doctors WITH a website (compliance) · George = attorneys WITH a website (compliance) · Rebecca = Media Network advertising
+//   Alek = any business with NO website (doctors and attorneys included) and every business that isn't a doctor or attorney.
+const noSiteLead = l => !!(l && l.r && l.r.hasSite === 'No');
+const isPracticeLead = l => /medic|doctor|dent|chiro|health|legal|attorney|law/i.test(String((l && guessIndustry(l)) || ''));
+const alekTaskFor = l => isPracticeLead(l) ? ALEK_NOSITE_TASK : ALEK_MISC_TASK;
 function agentName(key, l) {
   const ind = l ? String(guessIndustry(l) || '') : '';
+  if (noSiteLead(l)) return 'Alek';
   if (l && !/medic|doctor|dent|chiro|health|legal|attorney|law/i.test(ind)) return 'Alek'; // Tania, Nov 8: every other business goes to Alek
   if (key === 'wsmn') return 'Rebecca';
   return /legal|attorney|law/i.test(ind) ? 'George' : 'Monica';
 }
-function agentFor(key, l) { const n = agentName(key, l); return state.agents.find(a => (a.name || '').toLowerCase() === n.toLowerCase()) || state.agents[0]; }
+function agentFor(key, l) {
+  const n = agentName(key, l), a = state.agents.find(x => String(x.name || '').trim().toLowerCase().split(' ')[0] === n.toLowerCase());
+  if (a) return a;
+  // The right agent isn't on the Agents page: say so instead of quietly handing the lead to whoever is first in the list.
+  const fb = state.agents[0];
+  if (fb && agentFor._warned !== n) { agentFor._warned = n; setTimeout(() => toast('⚠️ ' + n + ' should take this lead but isn’t on your Agents page, so ' + fb.name + ' is shown instead. Add ' + n + ' under Agents.'), 0); }
+  return fb;
+}
 function sdrFinding(l) {
   const r = R(l), b = l.business || 'your practice';
   if (r.hasSite === 'No') return `I searched for ${b} online and couldn’t find a website.`;
@@ -930,7 +944,7 @@ async function aiCoachAgent(agentId) {
     <label for="f_cScript">New script (each paragraph is one turn)</label><textarea id="f_cScript" name="script" style="min-height:220px">${esc(r.script || a.script || '')}</textarea>
     ${r.whyBetter ? `<p class="hint">${esc(r.whyBetter)}</p>` : ''}
     <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary small" onclick="speak(fill($('f_cOpen').value,{name:'Doctor Smith',business:'Smith Family Practice'},byId('agents','${a.id}')),byId('agents','${a.id}'))">▶ Hear new opening</button><button type="button" class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
-    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use this script</button></div>`;
+    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use in my practice copy</button></div><p class="hint">This changes Voice Studio’s practice copy only. To change what ${esc(a.name)} says on real calls, paste the lines into 🧠 Brain → Script and save there: the Brain is the master.</p>`;
     $('form').onsubmit = e => { e.preventDefault(); a.prev = a.prev || []; a.prev.unshift({ opening: a.opening, script: a.script, at: Date.now() }); a.prev = a.prev.slice(0, 5); a.opening = $('f_cOpen').value; a.script = $('f_cScript').value; save(); closeModal(); render(); toast(a.name + '’s script updated. You can undo it on the Agents page.'); };
     if (!$('modal').open) $('modal').showModal();
   } catch (e) { console.error(e); toast('Script coach didn’t work: ' + String(e.message || e).slice(0, 140)); }
@@ -1176,8 +1190,8 @@ async function liveCall(leadId, prefer) {
   openForm('📞 Live AI call', `<p style="margin:0"><b>${esc(l.name || '')}</b>${l.business ? ' · ' + esc(l.business) : ''}<br><span class="muted">${esc(l.phone)} · ${esc(e.why)} · ${esc(t.label)}</span></p>
     ${select('Agent', 'agentId', ags.map(a => ({ v: a.id, l: a.name })), cur.id)}
     ${select('Call language', 'lang', [{ v: 'en', l: 'English' }, { v: 'es', l: 'Español (Latinoamérica)' }, { v: 'pt', l: 'Português (Brasil)' }], l.lang || 'en', 'Rebecca, Monica and George: English or Spanish. Alek: English, Spanish or Brazilian Portuguese.')}
-    <div id="alekBox">${select('Alek’s job for this call', 'mode', [{ v: 'selling', l: 'Selling: phone application & e-card' }, { v: 'floating', l: 'Floating: follow my task' }], prefer === 'alek' ? 'floating' : ((state.alek || {}).mode || 'selling'))}
-    ${area('Task or script for this call (floating)', 'task', (state.alek || {}).task || '', 'Tell Alek exactly who he is calling, why, and what to get (example: “Call Mr. Silva to confirm Friday’s 2 PM meeting and ask if he wants the e-card in Portuguese”). He still follows every safety rule.')}</div>
+    <div id="alekBox">${select('Alek’s job for this call', 'mode', [{ v: 'selling', l: 'Selling: phone application & e-card' }, { v: 'floating', l: 'Floating: follow my task' }], prefer === 'alek' || noSiteLead(l) || !isPracticeLead(l) ? 'floating' : ((state.alek || {}).mode || 'selling'))}
+    ${area('Task or script for this call (floating)', 'task', noSiteLead(l) || !isPracticeLead(l) ? alekTaskFor(l) : ((state.alek || {}).task || ''), 'Tell Alek exactly who he is calling, why, and what to get (example: “Call Mr. Silva to confirm Friday’s 2 PM meeting and ask if he wants the e-card in Portuguese”). He still follows every safety rule.')}</div>
     <p class="note">The agent says it is an AI assistant, never leaves a voicemail and hangs up right away on “do not call”. The caller ID rotates between your numbers.</p>`, v => {
     const a = byId('agents', v.agentId) || cur;
     if (!isAlek(a) && v.lang === 'pt') { toast('Only Alek calls in Portuguese.'); return false; }
@@ -1501,7 +1515,12 @@ async function dialAddCampaign(id) {
   const noState = ok.filter(l => !stateCode(l.state)).length, send = ok.filter(l => stateCode(l.state));
   if (!send.length) return toast(noState ? 'Add the state to these leads first (needed for their local calling hours).' : 'No eligible leads in this campaign.');
   try {
-    dialQ = await voiceApi({ action: 'queue_set', add: send.map(l => ({ id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent: agent.split(' ')[0], lang: (l.lang && l.lang !== 'en' ? l.lang : cp.lang) || 'en', mode: cp.mode || 'selling', task: cp.mode === 'floating' ? (cp.task || '') : '', findings: findingsOf(l), campaign: cp.name })) });
+    const toAlek = l => noSiteLead(l) && !/^alek/.test(agent); // routing rule: no website = Alek, whatever the campaign's agent is
+    const moved = send.filter(toAlek).length;
+    dialQ = await voiceApi({ action: 'queue_set', add: send.map(l => toAlek(l)
+      ? { id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent: 'alek', lang: (l.lang && l.lang !== 'en' ? l.lang : cp.lang) || 'en', mode: 'floating', task: alekTaskFor(l), findings: findingsOf(l), campaign: isPracticeLead(l) ? 'No website: The WebSwan (Alek)' : 'Other businesses (Alek)' }
+      : { id: l.id, name: l.name, business: l.business, phone: l.phone, state: stateCode(l.state), agent: agent.split(' ')[0], lang: (l.lang && l.lang !== 'en' ? l.lang : cp.lang) || 'en', mode: cp.mode || 'selling', task: cp.mode === 'floating' ? (cp.task || '') : '', findings: findingsOf(l), campaign: cp.name }) });
+    if (moved) setTimeout(() => toast('🔁 ' + moved + ' lead' + (moved === 1 ? '' : 's') + ' with no website went to Alek instead of ' + (a ? a.name : 'this agent') + '.'), 1500);
     render(); toast(`Sent ${send.length} lead${send.length > 1 ? 's' : ''} to the auto-dialer${noState ? ` (${noState} skipped: no state)` : ''}. Leads already waiting are not added twice.`);
   } catch (e) { toast('Couldn’t add to the auto-dialer: ' + e.message); }
 }
@@ -1763,7 +1782,10 @@ async function teamCoach() {
   const a = state.agents.find(x => String(x.name || '').toLowerCase().startsWith(name.toLowerCase()));
   teamBusy = 'coach'; render();
   try {
-    const d = await teamApi({ action: 'coach', agent: name, second: !!T.second, prompt: a ? (a.script || '').slice(0, 3000) : '', calls: calls.map(x => ({ lead: x.leadName, outcome: x.outcome, endReason: x.live && x.live.endReason, seconds: x.live && x.live.seconds, transcript: linesFromTranscript(x.transcript) })) });
+    let master = '';
+    try { const live = (await voiceApi({ action: 'agent_get', agent: name.toLowerCase().split(' ')[0] })).instructions || ''; const cut = (h, e) => { const i = live.indexOf(h), j = i < 0 ? -1 : live.indexOf(e, i); return j > i ? live.slice(i, j + e.length) : ''; };
+      master = [cut('### YOUR SCRIPT (WebSwan)', '### END YOUR SCRIPT'), cut('### REBUTTALS (WebSwan)', '### END REBUTTALS'), cut('### HOW TO RUN YOUR CALL (WebSwan)', '### END HOW TO RUN YOUR CALL')].filter(Boolean).join('\n\n').slice(0, 14000); } catch (e) {}
+    const d = await teamApi({ action: 'coach', agent: name, second: !!T.second, prompt: master || (a ? (a.script || '').slice(0, 3000) : ''), calls: calls.map(x => ({ lead: x.leadName, outcome: x.outcome, endReason: x.live && x.live.endReason, seconds: x.live && x.live.seconds, transcript: linesFromTranscript(x.transcript) })) });
     T.coach = T.coach || {}; T.coach[name] = { ...d, at: Date.now() }; teamLog('coach'); save();
   } catch (e) { toast(e.message); }
   teamBusy = ''; render(); teamRefresh();
