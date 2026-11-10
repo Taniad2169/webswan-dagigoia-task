@@ -263,15 +263,36 @@ export async function grokImage(prompt, aspect = "1:1") {
   }
   throw new Error("Jimmy (Grok) couldn't make the picture: " + String(last).slice(0, 250));
 }
-// Grok first when its key is set; Gemini as the backup (or the only one when there is no Grok key).
-export async function makeImage(prompt, aspect = "1:1") {
-  let grok = "";
-  if (process.env.XAI_API_KEY) {
-    try { return await grokImage(prompt, aspect); }
-    catch (e) { if (!process.env.GEMINI_API_KEY) throw e; grok = String(e.message || e); console.log("Grok picture failed, using Gemini:", grok); }
+// ---------- Pictures by Gips (OpenAI image API), Tania's choice since Nov 9. Uses the OPENAI_API_KEY already in Netlify. ----------
+// Billed per picture from the OpenAI API balance (not the ChatGPT subscription). Model and quality can be changed in Netlify
+// with OPENAI_IMAGE_MODEL and OPENAI_IMAGE_QUALITY (low / medium / high).
+export async function openaiImage(prompt, aspect = "1:1") {
+  const key = process.env.OPENAI_API_KEY; if (!key) throw new Error("OPENAI_API_KEY is missing in Netlify (webswan-billing).");
+  const models = [process.env.OPENAI_IMAGE_MODEL, "gpt-image-2", "gpt-image-1.5", "gpt-image-1"].filter((m, i, a) => m && a.indexOf(m) === i);
+  const size = aspect === "9:16" ? "1024x1536" : aspect === "16:9" ? "1536x1024" : "1024x1024";
+  const quality = ["low", "medium", "high"].includes(process.env.OPENAI_IMAGE_QUALITY) ? process.env.OPENAI_IMAGE_QUALITY : "medium";
+  let last = "";
+  for (const model of models) {
+    const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt: String(prompt).slice(0, 4000), n: 1, size, quality }) });
+    const j = await r.json().catch(() => ({}));
+    const d = (j.data || [])[0] || {};
+    if (r.ok && d.b64_json) return Buffer.from(d.b64_json, "base64");
+    if (r.ok && d.url) { const im = await fetch(d.url); if (im.ok) return Buffer.from(await im.arrayBuffer()); }
+    const er = `${model} ${r.status}: ${(j.error && (j.error.message || j.error.code)) || "no picture came back"}`;
+    // A model this account can't use: try the next one. Anything else (no balance, bad key, blocked prompt) is the real answer: stop.
+    if (r.status === 404 || (r.status === 400 && /model|does not exist|not supported|verif/i.test(er)) || (r.status === 403 && /model|verif/i.test(er))) { if (!last) last = er; continue; }
+    last = er; break;
   }
-  try { return await geminiImage(prompt); }
-  catch (e) { throw new Error(grok ? (grok + " Then the backup failed too: " + String(e.message || e)).slice(0, 290) : String(e.message || e)); } // show BOTH reasons, not just the backup's
+  throw new Error("Jimmy (Gips) couldn't make the picture: " + String(last).slice(0, 220));
+}
+// Gips first, then Grok, then Gemini: whichever has a key in Netlify. When they all fail, every real reason is shown.
+export async function makeImage(prompt, aspect = "1:1") {
+  const tries = [["OPENAI_API_KEY", () => openaiImage(prompt, aspect)], ["XAI_API_KEY", () => grokImage(prompt, aspect)], ["GEMINI_API_KEY", () => geminiImage(prompt)]].filter(([k]) => process.env[k]);
+  if (!tries.length) throw new Error("No picture maker is connected: add OPENAI_API_KEY in Netlify (webswan-billing).");
+  const errs = [];
+  for (const [, run] of tries) { try { return await run(); } catch (e) { errs.push(String(e.message || e)); console.log("picture maker failed:", errs[errs.length - 1]); } }
+  throw new Error(errs.join(" | ").slice(0, 295));
 }
 const imgMime = (buf) => buf[0] === 0xff && buf[1] === 0xd8 ? "image/jpeg" : buf[0] === 0x52 && buf[1] === 0x49 ? "image/webp" : "image/png";
 const scenePrompt = (it) => `Create a high-quality, realistic, square marketing photograph for a social media post. ${it.scene ? "Scene: " + it.scene : `Topic: ${String(it.headline || it.title || "").replace(/^Blog on Google:\s*/, "")}, for ${it.brand}${it.service ? " (" + it.service + ")" : ""}. Show a believable moment with a doctor, dentist, attorney or their front-desk team, or a phone or laptop in a modern practice.`} Warm, bright, professional lighting, modern clean office, colors leaning to blue and white. Keep the bottom third calm and uncluttered so text can sit on it. Absolutely no text, letters, words, numbers, logos or watermarks anywhere in the image.`;
