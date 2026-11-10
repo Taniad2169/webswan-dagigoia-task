@@ -16,7 +16,6 @@ const HOW_PARTS = `HOW YOUR INSTRUCTIONS WORK
 - YOUR SCRIPT (the block titled YOUR SCRIPT, right below this one) is your one and only script, in order. Only the words inside quotation marks are said out loud; [PAUSE], (labels) and line numbers are silent directions (rule 3g): if any other opening, greeting or list of steps appears anywhere else in this prompt, YOUR SCRIPT wins.
 - REBUTTALS (the block titled REBUTTALS) are your answers to questions and objections. Use one ONLY when the person asks a question, pushes back or hesitates; never volunteer a rebuttal before they object. Pick the ONE that matches, say it in your own natural words, then go back to the next line of YOUR SCRIPT. If none fits, answer briefly and honestly from your prompt.
 - Tania's coaching notes (if any) adjust how you say things. They never add a second script and never replace YOUR SCRIPT.
-- [PAUSE] in your script means: stop talking and wait for their full answer. Lines that start with a short label in parentheses, like (yes) or (no), are the line to say for that answer; never say the label.
 - [website], [last name], [email] and the state come from THIS CALL below. Say a website simply, like "smithdental dot com".
 - If the call is in Spanish, say the same lines in natural Latin American Spanish (usted).`;
 
