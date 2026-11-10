@@ -1730,7 +1730,8 @@ function buyerListHtml(items){
     <span class="muted" style="white-space:nowrap">${x.status==='pending'?'⏳ running':x.status==='error'?'⚠️ failed':'✓'}</span></div>`).join('');
 }
 async function buyerLoadList(){ try{ const d=await officeApi({action:'buyer_report_list'}); T.buyer.list=d.items||[]; if(T.tab==='Buyer') render(); }catch(e){ T.buyer.list=[]; } }
-async function buyerOpen(id){ try{ const d=await officeApi({action:'buyer_report_get',id}); const r=d.report||{}; if(r.status==='done'){ T.buyer.report=r.report; T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; T.buyer.error=''; } else if(r.status==='error'){ T.buyer.error='That report failed: '+(r.error||'unknown'); } else { T.buyer.error='That one is still running.'; } render(); }catch(e){ toast(e.message); } }
+function buyerText(rep){ return rep && typeof rep==='object' ? (rep.text||'') : (rep||''); }
+async function buyerOpen(id){ try{ const d=await officeApi({action:'buyer_report_get',id}); const r=d.report||{}; if(r.status==='done'){ T.buyer.report=buyerText(r.report); T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; T.buyer.error=''; } else if(r.status==='error'){ T.buyer.error='That report failed: '+(r.error||'unknown'); } else { T.buyer.error='That one is still running.'; } render(); }catch(e){ toast(e.message); } }
 async function buyerAsk(){
   const q=$('bq').value.trim(), audience=$('baud').value;
   if(q.length<8) return toast('Type a fuller question first.');
@@ -1742,7 +1743,7 @@ async function buyerAsk(){
   const poll=async()=>{
     if(Date.now()-started>140000){ T.buyer.running=false; T.buyer.error='This is taking longer than usual. Check "Recent reports" in a moment.'; buyerLoadList(); render(); return; }
     try{ const d=await officeApi({action:'buyer_report_get',id}); const r=d.report||{};
-      if(r.status==='done'){ T.buyer.running=false; T.buyer.report=r.report; T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; buyerLoadList(); render(); return; }
+      if(r.status==='done'){ T.buyer.running=false; T.buyer.report=buyerText(r.report); T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; buyerLoadList(); render(); return; }
       if(r.status==='error'){ T.buyer.running=false; T.buyer.error='The research failed: '+(r.error||'unknown')+'. Try rewording, or check Brave/AI keys.'; render(); return; }
     }catch(e){}
     setTimeout(poll,4000);
