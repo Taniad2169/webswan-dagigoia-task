@@ -16,6 +16,7 @@
   var SITE = attr('data-site', 'wsmn');
   var SIDE = attr('data-side', 'right') === 'left' ? 'left' : 'right';
   var BOTTOM = parseInt(attr('data-bottom', '96'), 10) || 96;
+  var BASE = ((me && me.src) || 'https://taniad2169.github.io/webswan-dagigoia-task/swan-video/swan-video.js').replace(/[^/]*$/, '');
   var AUTO = attr('data-autoopen', 'true') !== 'false';
   var API = 'https://webswan-billing.netlify.app/.netlify/functions/site-video';
 
@@ -41,9 +42,11 @@
     '#sv-wrap{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;transition:bottom .25s}' +
     '#sv-mini{position:relative;width:108px;height:150px;border-radius:18px;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59;box-shadow:0 12px 30px rgba(8,42,72,.45);transition:transform .2s;display:block}' +
     '#sv-mini:hover{transform:scale(1.05)}#sv-mini img{width:100%;height:100%;object-fit:cover;display:block}' +
-    '#sv-dot{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;width:58px;height:58px;border-radius:50%;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59 center/cover no-repeat;box-shadow:0 8px 22px rgba(8,42,72,.45);transition:transform .2s}' +
-    '#sv-dot[hidden]{display:none!important}#sv-dot:hover{transform:scale(1.08)}#sv-dot span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,29,89,.35);color:#fff;font-size:20px}' +
+    '#sv-dot{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;display:flex;align-items:center;gap:10px;border:0;cursor:pointer;background:#1b70c2;color:#fff;border-radius:999px;padding:6px 18px 6px 6px;font:800 14px/1.2 Inter,Arial,Helvetica,sans-serif;box-shadow:0 12px 30px rgba(8,42,72,.35);transition:transform .2s}' +
+    '#sv-dot[hidden]{display:none!important}#sv-dot:hover{transform:scale(1.04)}' +
+    '#sv-dot img{width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #fff;display:block;flex:none;background:#0b1d59}' +
     '#sv-dot:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
+    '@media (max-width:600px){#sv-dot .sv-dl{display:none}#sv-dot{padding:5px}}' +
     '#sv-gone{position:absolute;top:-10px;' + (SIDE === 'right' ? 'left' : 'right') + ':-10px;width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:#0b1d59;color:#fff;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:2}' +
     '#sv-mini .sv-badge{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(11,29,89,.85);color:#fff;font:800 11px/1.2 ' + F + ';padding:5px 4px;border-radius:9px;text-align:center}' +
     '#sv-panel{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99999;display:flex;flex-direction:column;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:' + F + '}' +
@@ -172,8 +175,7 @@
     var x = document.createElement('button'); x.id = 'sv-gone'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove the video from this page');
     // The ✕ shrinks the video to a small round bubble in the same corner; tapping the bubble brings it back.
     dot = document.createElement('button'); dot.id = 'sv-dot'; dot.type = 'button'; dot.hidden = true; dot.setAttribute('aria-label', 'Show the video again: ' + C.title);
-    if (thumb()) dot.style.backgroundImage = 'url("' + thumb().replace(/["\\]/g, '') + '")';
-    dot.innerHTML = '<span aria-hidden="true">▶</span>';
+    dot.innerHTML = '<img src="' + esc(C.photo || BASE + 'tania.jpg') + '" alt=""><span class="sv-dl">▶ Watch video</span>';
     function collapse() { try { sessionStorage.setItem('sv-gone', '1'); } catch (e) {} wrap.style.display = 'none'; dot.hidden = false; place(); dot.focus(); }
     function restore() { try { sessionStorage.removeItem('sv-gone'); } catch (e) {} dot.hidden = true; wrap.style.display = ''; place(); mini.focus(); }
     x.setAttribute('aria-label', 'Shrink the video to a small bubble');
