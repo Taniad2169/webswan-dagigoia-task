@@ -944,7 +944,7 @@ async function aiCoachAgent(agentId) {
     <label for="f_cScript">New script (each paragraph is one turn)</label><textarea id="f_cScript" name="script" style="min-height:220px">${esc(r.script || a.script || '')}</textarea>
     ${r.whyBetter ? `<p class="hint">${esc(r.whyBetter)}</p>` : ''}
     <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary small" onclick="speak(fill($('f_cOpen').value,{name:'Doctor Smith',business:'Smith Family Practice'},byId('agents','${a.id}')),byId('agents','${a.id}'))">▶ Hear new opening</button><button type="button" class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
-    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use in my practice copy</button>${BR_AGENTS.some(([k]) => k === String(a.name || '').trim().toLowerCase().split(' ')[0]) ? `<button type="button" class="btn secondary" onclick="brTake('${a.id}')">🧠 Take it to her Brain</button>` : ''}</div><p class="hint">“Use in my practice copy” changes Voice Studio’s practice copy only. “Take it to her Brain” opens ${esc(a.name)}’s Brain with this script next to her live one, so you can review it and save it yourself. Nothing goes live until you press Save there.</p>`;
+    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use in my practice copy</button>${BR_AGENTS.some(([k]) => k === String(a.name || '').trim().toLowerCase().split(' ')[0]) ? `<button type="button" class="btn secondary" onclick="brCoachToBrain('${a.id}')">🧠 Take it to her Brain</button>` : ''}</div><p class="hint">“Use in my practice copy” changes Voice Studio’s practice copy only. “Take it to her Brain” opens ${esc(a.name)}’s Brain with this script next to her live one, so you can review it and save it yourself. Nothing goes live until you press Save there.</p>`;
     $('form').onsubmit = e => { e.preventDefault(); a.prev = a.prev || []; a.prev.unshift({ opening: a.opening, script: a.script, at: Date.now() }); a.prev = a.prev.slice(0, 5); a.opening = $('f_cOpen').value; a.script = $('f_cScript').value; save(); closeModal(); render(); toast(a.name + '’s script updated. You can undo it on the Agents page.'); };
     if (!$('modal').open) $('modal').showModal();
   } catch (e) { console.error(e); toast('Script coach didn’t work: ' + String(e.message || e).slice(0, 140)); }
@@ -2008,7 +2008,7 @@ function brJoin(p) {
   return k >= 0 ? (p.prompt.slice(0, k + H.length) + (blocks ? '\n\n' + blocks : '') + '\n\n' + p.prompt.slice(k + H.length).trim()).trim() : [p.prompt, blocks].filter(Boolean).join('\n\n');
 }
 // A script coach suggestion waiting for Tania's review on the Brain page. Never saved by itself.
-function brTake(agentId) {
+function brCoachToBrain(agentId) {
   const a = byId('agents', agentId); if (!a) return;
   const k = String(a.name || '').trim().toLowerCase().split(' ')[0];
   BR.draft = { agent: k, opening: ($('f_cOpen') || {}).value || '', script: ($('f_cScript') || {}).value || '' };
