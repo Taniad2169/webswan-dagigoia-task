@@ -30,7 +30,7 @@ function sanitize(c) {
       intake: okIntake(intake) ? intake : "",
       intakeLabel: clean(x.intakeLabel, 60),
       photo: /^https:\/\/\S{3,300}$/.test(photo) ? photo : "",
-      estimate: x.estimate === "" ? "" : (/^https:\/\/\S{3,300}$/.test(clean(x.estimate, 300)) ? clean(x.estimate, 300) : "https://taniad2169.github.io/webswan-project-estimate/"),
+      estimate: x.estimate === "" ? "" : (/^https:\/\/\S{3,300}$/.test(clean(x.estimate, 300)) ? clean(x.estimate, 300) : "https://taniad2169.github.io/WebSwan-Project-Estimate/"),
       // "Watch next" videos after the main one (up to 6, so 7 in all); the button only shows when there is at least one
       next: (Array.isArray(x.next) ? x.next : []).map((n) => ({ video: clean(n && n.video, 300), label: clean(n && n.label, 60) })).filter((n) => n.video && okVideo(n.video)).slice(0, 6)
     };

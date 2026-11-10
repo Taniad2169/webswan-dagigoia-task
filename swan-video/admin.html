@@ -98,7 +98,7 @@ function render() {
       <label>Number as shown<input data-s="${k}" data-k="rachelLabel" value="${esc(x.rachelLabel)}"></label>
       <label>Intake form (#form-id on the page, or a link)<input data-s="${k}" data-k="intake" value="${esc(x.intake)}"></label>
       <label>Intake button text<input data-s="${k}" data-k="intakeLabel" value="${esc(x.intakeLabel)}"></label>
-      <label>"Estimate my cost" button link (empty = no button)<input data-s="${k}" data-k="estimate" value="${esc(x.estimate)}" placeholder="https://taniad2169.github.io/webswan-project-estimate/"></label>
+      <label>"Estimate my cost" button link (empty = no button)<input data-s="${k}" data-k="estimate" value="${esc(x.estimate)}" placeholder="https://taniad2169.github.io/WebSwan-Project-Estimate/"></label>
       ${nextHtml(k, x)}
       <label>Embed code for this site</label><code>&lt;script src="https://taniad2169.github.io/webswan-dagigoia-task/swan-video/swan-video.js" data-site="${k}" defer&gt;&lt;/script&gt;</code></div>`; }).join('');
 }
@@ -180,7 +180,7 @@ $('addVid').onclick = () => { if (cfg.videos.length >= 10) return; cfg.videos.pu
 $('save').onclick = async () => { $('msg').textContent = 'Saving…'; try { const d = await api({ action: 'set', config: cfg }); cfg = fill(d.config); render(); $('msg').textContent = '✅ Saved. Each site shows the new video within a minute.'; } catch (e) { $('msg').textContent = '❌ ' + e.message; } };
 function fill(c) {
   c = c || {}; const out = { videos: Array.isArray(c.videos) && c.videos.length ? c.videos : START_VIDEOS.slice(), sites: {} };
-  for (const [k, s] of Object.entries(SITES)) out.sites[k] = Object.assign({ on: true, next: [], estimate: 'https://taniad2169.github.io/webswan-project-estimate/' }, s.d, (c.sites || {})[k] || {}); if (!Array.isArray(out.sites[k].next)) out.sites[k].next = [];
+  for (const [k, s] of Object.entries(SITES)) out.sites[k] = Object.assign({ on: true, next: [], estimate: 'https://taniad2169.github.io/WebSwan-Project-Estimate/' }, s.d, (c.sites || {})[k] || {}); if (!Array.isArray(out.sites[k].next)) out.sites[k].next = [];
   return out;
 }
 $('go').onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch((e) => alert(e.message));
