@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Rachel's Calls · WebSwan Voice Studio</title>
+<style>
+:root{--blue:#339cde;--sky:#93e5fa;--navy:#082a48;--ink:#17324c;--muted:#5f7891;--line:#dce8f1;--bg:#f3f8fc;--ok:#12805c;--bad:#b42318;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0}
+header{background:linear-gradient(120deg,var(--navy),#0d4a7a);color:#fff;padding:18px 20px}
+header .in{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0}header p{margin:2px 0 0;color:var(--sky);font-size:13px}
+header .sp{flex:1}
+a.back{color:#fff;font-size:13px;text-decoration:none;border:1px solid #ffffff55;border-radius:999px;padding:7px 12px}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.sec{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn.small{padding:7px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
+.f{display:flex;flex-direction:column;gap:5px}
+label{font-size:13px;font-weight:700;color:var(--navy)}
+input,select{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink)}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.top b{font-size:17px;color:var(--navy)}
+.meta{color:var(--muted);font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;background:#e8f5fc;color:#0b5c8a}
+.pill.out{background:#eef4e9;color:#2f6b1f}
+.sum{margin:10px 0 0;line-height:1.5;white-space:pre-wrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+audio{width:100%;margin-top:10px}
+.tr{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;font-size:15px;line-height:1.5}
+.tr p{margin:0 0 8px}.tr .r{color:var(--navy);font-weight:700}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.msg{color:var(--bad);font-size:14px;margin-top:8px;min-height:1em}
+#gate{max-width:420px;margin:60px auto;text-align:center}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>📞 Rachel's Calls</h1><p>Every call Rachel answered: call-backs and transfers from Monica, George, Rebecca and Alek. Listen, read, save.</p></div>
+  <span class="sp"></span><span id="who" style="font-size:13px"></span>
+  <a class="back" href="./">← Voice Studio</a>
+</div></header>
+
+<div id="gate" class="card" hidden>
+  <h2 style="margin-top:0;color:var(--navy)">Private page</h2>
+  <p>Sign in with your WebSwan Google account to hear Rachel's calls.</p>
+  <button class="btn" id="signin">Sign in with Google</button>
+  <div class="msg" id="gateMsg" role="alert"></div>
+</div>
+
+<main id="app" hidden>
+  <div class="bar">
+    <div class="f"><label for="range">Show</label><select id="range"><option value="1">Today and yesterday</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></div>
+    <div class="f"><label for="kind">Which calls</label><select id="kind"><option value="all">All of Rachel's calls</option><option value="in">Calls she answered (call-backs and transfers)</option><option value="out">Calls she made</option></select></div>
+    <div class="f" style="flex:1;min-width:200px"><label for="q">Find a caller</label><input id="q" type="search" placeholder="Phone number or a word from the call"></div>
+    <button class="btn" id="refresh">↻ Refresh</button>
+  </div>
+  <div id="count" class="meta" role="status" aria-live="polite" style="margin-bottom:10px"></div>
+  <div id="list"></div>
+</main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+const app = initializeApp({ apiKey: 'AIzaSyDEbrLgE5Bl5bA5znP0R7UL_Lqi_2uERs0', authDomain: 'webswan-voice-studio.firebaseapp.com', projectId: 'webswan-voice-studio', storageBucket: 'webswan-voice-studio.firebasestorage.app', messagingSenderId: '135333947873', appId: '1:135333947873:web:4bd432e3bd6f1779ad8aa0' });
+const auth = getAuth(app);
+const API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const phone = p => { const d = String(p || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (p ? String(p) : 'Unknown number'); };
+let user = null, calls = [];
+
+async function post(body) {
+  const t = await user.getIdToken();
+  return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(body) });
+}
+async function api(body) { const r = await post(body); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ('Error ' + r.status)); return j; }
+
+async function load() {
+  $('gate').hidden = true; $('app').hidden = false; $('count').textContent = 'Loading Rachel\'s calls…'; $('list').innerHTML = '';
+  const since = Date.now() - Number($('range').value) * 864e5 - (Number($('range').value) === 1 ? 864e5 : 0);
+  const all = []; const problems = [];
+  // "rachel" = the line she answers (call-backs and transfers); "rachelout" = calls she places herself.
+  for (const [agent, dir] of [['rachel', 'in'], ['rachelout', 'out']]) {
+    try { const d = await api({ action: 'list', agent, since, limit: 100 }); for (const c of d.calls || []) all.push({ ...c, dir }); if (d.hasMore) problems.push('There are more calls than fit here; pick a shorter range to see them all.'); }
+    catch (e) { if (dir === 'in') problems.push('Rachel\'s answered calls could not be loaded: ' + e.message); }
+  }
+  const seen = new Set();
+  calls = all.filter(c => c.id && !seen.has(c.id) && seen.add(c.id)).sort((a, b) => String(b.start || '').localeCompare(String(a.start || '')));
+  draw(problems.join(' '));
+}
+
+function draw(note) {
+  const kind = $('kind').value, q = $('q').value.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  const list = calls.filter(c => (kind === 'all' || c.dir === kind) && (!q || (qd.length >= 3 && (String(c.from) + String(c.to)).replace(/\D/g, '').includes(qd)) || (String(c.summary || '') + ' ' + c.transcript.map(x => x.text).join(' ')).toLowerCase().includes(q)));
+  $('count').textContent = (note ? note + ' ' : '') + (list.length ? list.length + (list.length === 1 ? ' call' : ' calls') : '');
+  if (!list.length) { $('list').innerHTML = '<div class="card empty">No calls found for this view.<br>Try a longer range, or clear the search box.</div>'; return; }
+  $('list').innerHTML = list.map(c => {
+    const st = c.start ? new Date(c.start) : null, en = c.end ? new Date(c.end) : null;
+    const mins = st && en ? Math.max(0, Math.round((en - st) / 1000)) : null;
+    const len = mins == null ? '' : (mins < 60 ? mins + ' sec' : Math.floor(mins / 60) + ' min ' + (mins % 60) + ' sec');
+    const other = c.dir === 'in' ? c.from : c.to;
+    const when = st ? st.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' Pacific' : 'Time unknown';
+    return `<article class="card" data-id="${esc(c.id)}">
+      <div class="top"><b>${esc(phone(other))}</b><span class="pill ${c.dir === 'out' ? 'out' : ''}">${c.dir === 'in' ? 'Rachel answered' : 'Rachel called'}</span><span class="meta">${esc(when)}${len ? ' · ' + len : ''}${c.endReason ? ' · ended: ' + esc(String(c.endReason).replace(/_/g, ' ')) : ''}</span></div>
+      ${c.summary ? `<p class="sum">${esc(c.summary)}</p>` : '<p class="sum meta">No summary for this call.</p>'}
+      <div class="acts">
+        <button class="btn small" data-play="${esc(c.id)}">▶ Play recording</button>
+        <button class="btn sec small" data-tr="${esc(c.id)}" aria-expanded="false" ${c.transcript.length ? '' : 'disabled'}>${c.transcript.length ? 'Read the conversation' : 'No transcript'}</button>
+        <span class="msg" data-msg="${esc(c.id)}" role="status" aria-live="polite" style="margin:0"></span>
+      </div>
+      <div data-audio="${esc(c.id)}"></div>
+      <div class="tr" data-trbox="${esc(c.id)}" hidden>${c.transcript.filter(x => x.text).map(x => `<p><span class="r">${x.role === 'user' ? 'Caller' : 'Rachel'}:</span> ${esc(x.text)}</p>`).join('')}</div>
+    </article>`;
+  }).join('');
+}
+
+$('list').addEventListener('click', async (e) => {
+  const p = e.target.closest('[data-play]'), t = e.target.closest('[data-tr]');
+  if (t) { const box = document.querySelector(`[data-trbox="${CSS.escape(t.dataset.tr)}"]`); box.hidden = !box.hidden; t.setAttribute('aria-expanded', String(!box.hidden)); t.textContent = box.hidden ? 'Read the conversation' : 'Hide the conversation'; return; }
+  if (!p) return;
+  const id = p.dataset.play, msg = document.querySelector(`[data-msg="${CSS.escape(id)}"]`), slot = document.querySelector(`[data-audio="${CSS.escape(id)}"]`);
+  if (slot.firstChild) { const a = slot.querySelector('audio'); a.paused ? a.play() : a.pause(); return; }
+  p.disabled = true; msg.style.color = 'var(--muted)'; msg.textContent = 'Getting the recording…';
+  try {
+    const r = await post({ action: 'audio', callId: id });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ('Recording not available (' + r.status + ')')); }
+    const url = URL.createObjectURL(await r.blob()), c = calls.find(x => x.id === id) || {};
+    const name = 'rachel-' + String(c.start || '').slice(0, 10) + '-' + String(c.dir === 'in' ? c.from : c.to || '').replace(/\D/g, '').slice(-10) + '.wav';
+    slot.innerHTML = `<audio controls autoplay src="${url}"></audio><a class="btn sec small" style="display:inline-block;margin-top:8px;text-decoration:none" href="${url}" download="${esc(name)}">💾 Save this recording</a>`;
+    msg.textContent = ''; p.textContent = '▶ Play / pause';
+  } catch (err) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; }
+  p.disabled = false;
+});
+$('refresh').onclick = load; $('range').onchange = load; $('kind').onchange = () => draw(''); $('q').oninput = () => draw('');
+
+$('signin').addEventListener('click', async () => {
+  const gp = new GoogleAuthProvider(); gp.setCustomParameters({ prompt: 'select_account' });
+  try { await signInWithPopup(auth, gp); } catch (e) { if (/popup-blocked|operation-not-supported/.test(e.code || '')) return signInWithRedirect(auth, gp); $('gateMsg').textContent = 'Sign-in didn’t work: ' + (e.code || e.message); }
+});
+getRedirectResult(auth).catch(() => {});
+onAuthStateChanged(auth, u => { user = u; $('who').textContent = u ? u.email : ''; if (u) load().catch(err => { $('app').hidden = true; $('gate').hidden = false; $('gateMsg').textContent = err.message; }); else { $('app').hidden = true; $('gate').hidden = false; } });
+</script>
+</body>
+</html>
