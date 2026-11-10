@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WebSwan Meeting Room</title>
+<style>
+  :root { --blue:#1182f0; --navy:#0f2a4a; --ink:#1d2733; --muted:#6b7684; --line:#e6ebf2; --bg:#f6f8fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 "Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
+  header b { font-size:19px; } header a { color:#fff; font-weight:700; text-decoration:none; background:rgba(255,255,255,.18); padding:7px 12px; border-radius:9px; font-size:13px; }
+  main { max-width:1000px; margin:0 auto; padding:18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  h2 { margin:0 0 10px; font-size:17px; }
+  .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+  .ag { border:2px solid var(--line); background:#fff; border-radius:14px; padding:10px 8px; cursor:pointer; text-align:center; position:relative; }
+  .ag img { width:66px; height:66px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 6px; }
+  .ag b { display:block; font-size:14.5px; } .ag small { color:var(--muted); font-size:11.5px; line-height:1.2; display:block; }
+  .ag.on { border-color:var(--blue); background:#eef6ff; box-shadow:0 0 0 3px #cfe6ff; }
+  .ag.on::after { content:"✓"; position:absolute; top:6px; right:8px; color:var(--blue); font-weight:900; }
+  .row { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
+  label { font-weight:700; font-size:14px; }
+  select, input[type=text] { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+  .btn { font:inherit; font-weight:800; border:0; border-radius:12px; padding:11px 16px; cursor:pointer; background:#e8edf3; color:var(--navy); }
+  .btn.pri { background:var(--blue); color:#fff; } .btn.red { background:#d32f2f; color:#fff; } .btn:disabled { opacity:.5; cursor:default; }
+  .mic { width:92px; height:92px; border-radius:50%; font-size:36px; border:0; cursor:pointer; background:var(--blue); color:#fff; }
+  .mic.live { background:#16a34a; animation:pulse 1.4s infinite; } .mic.agent { background:#7c3aed; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(22,163,74,.5)} 70%{box-shadow:0 0 0 20px rgba(22,163,74,0)} 100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} }
+  #state { font-weight:800; font-size:15px; min-height:24px; text-align:center; }
+  #heard { color:#35506a; min-height:20px; text-align:center; font-size:14px; }
+  #log { max-height:440px; overflow-y:auto; }
+  .ln { padding:8px 11px; border-radius:10px; margin:7px 0; } .ln b { display:block; font-size:12px; color:var(--muted); margin-bottom:1px; }
+  .ln.me { background:#e9f3fe; } .ln.ag { background:#f4f6f9; }
+  .hint { color:var(--muted); font-size:13px; }
+  #signin { display:none; }
+  .talkbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  @media (max-width:560px){ .mic{width:76px;height:76px;font-size:30px} }
+</style>
+</head>
+<body>
+<header>
+  <div><b>🏢 WebSwan Meeting Room</b><div style="font-size:12.5px;opacity:.85">Talk live with your whole team — Tania chairs</div></div>
+  <a href="./">← AI Office</a>
+</header>
+<main>
+  <div class="card" id="signin"><p>Sign in with your WebSwan Google account (thewebswann@gmail.com) to start.</p><button class="btn pri" id="signBtn">Sign in with Google</button></div>
+
+  <div class="card">
+    <h2>1. Who's in the meeting?</h2>
+    <div class="agents" id="agents"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="selAll">Select everyone</button>
+      <button class="btn" id="selNone">Clear</button>
+      <label style="margin-left:auto"><input type="checkbox" id="free" style="width:auto"> 🎧 Use each person's real voice (uses Cartesia minutes)</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Run the meeting</h2>
+    <div class="talkbar">
+      <label>You're talking to:
+        <select id="talkTo"><option value="all">🔄 Around the table (everyone answers)</option></select>
+      </label>
+      <span class="hint">Pick one teammate, or let everyone weigh in.</span>
+    </div>
+    <div style="text-align:center;margin:14px 0 6px"><button class="mic" id="mic" title="Hold the mic: tap to talk, tap again to send">🎤</button></div>
+    <div id="state">Pick who's in, then tap the mic or type below.</div>
+    <div id="heard"></div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="box" placeholder="Type to the meeting, or tap the mic…" style="flex:1;min-width:220px">
+      <button class="btn pri" id="send">Send</button>
+      <button class="btn red" id="stop" title="Stop whoever is talking">✋ Stop</button>
+    </div>
+  </div>
+
+  <div class="card"><h2>Meeting transcript</h2><div id="log"><p class="hint">Nothing said yet. Your meeting will appear here, and you can scroll back.</p></div></div>
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  const app = initializeApp({ apiKey: "AIzaSyBxuPZnF8rSZPkmoeqNR_9PQtFUJNKU3JM", authDomain: "webswan-gigoia-task.firebaseapp.com", projectId: "webswan-gigoia-task" });
+  const auth = getAuth(app);
+  window._auth = { signIn: () => signInWithPopup(auth, new GoogleAuthProvider()), token: async () => auth.currentUser ? auth.currentUser.getIdToken() : null };
+  onAuthStateChanged(auth, (u) => { document.getElementById("signin").style.display = u ? "none" : "block"; });
+  document.getElementById("signBtn").onclick = () => window._auth.signIn().catch((e) => alert("Sign-in failed: " + e.message));
+</script>
+<script>
+const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// key, name, role, male, photo
+const TEAM = [
+  { k: "sdr", n: "Coby", r: "Sales coach", male: true, img: "img/sdr.jpg" },
+  { k: "eva", n: "Eva", r: "Executive assistant", male: false, img: "img/eva.jpg" },
+  { k: "tatiana", n: "Tatiana", r: "Content & social", male: false, img: "img/tatiana.jpg" },
+  { k: "jimmy", n: "Jimmy", r: "Graphics & market intel", male: true, img: "img/jimmy.jpg" },
+  { k: "linda", n: "Jonathan", r: "Legal & compliance", male: true, img: "img/jonathan.jpg" },
+  { k: "clara", n: "Clara", r: "Budget strategist", male: false, img: "img/clara.jpg" },
+  { k: "rachel", n: "Rachel", r: "Receptionist", male: false, img: "img/rachel.jpg" },
+  { k: "monica", n: "Monica", r: "Calls · doctors", male: false, img: "img/monica.jpg" },
+  { k: "george", n: "George", r: "Calls · attorneys", male: true, img: "img/george.jpg" },
+  { k: "rebecca", n: "Rebecca", r: "Calls · advertising", male: false, img: "img/rebecca.jpg" },
+  { k: "alek", n: "Alek", r: "Calls · floating", male: true, img: "img/alek.jpg" }
+];
+const NAME = (k) => (TEAM.find((t) => t.k === k) || { n: k }).n;
+const S = { in: new Set(), talkTo: "all", log: [], busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
+try { $("free").checked = localStorage.getItem("wsMeetVoice") === "on"; } catch (e) {}
+$("free").onchange = () => { try { localStorage.setItem("wsMeetVoice", $("free").checked ? "on" : "off"); } catch (e) {} };
+
+function drawAgents() {
+  $("agents").innerHTML = TEAM.map((t) => `<button class="ag ${S.in.has(t.k) ? "on" : ""}" data-k="${t.k}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`).join("");
+}
+function drawTalkTo() {
+  const inList = TEAM.filter((t) => S.in.has(t.k));
+  $("talkTo").innerHTML = `<option value="all">🔄 Around the table (everyone answers)</option>` + inList.map((t) => `<option value="${t.k}" ${S.talkTo === t.k ? "selected" : ""}>${esc(t.n)}</option>`).join("");
+  if (S.talkTo !== "all" && !S.in.has(S.talkTo)) { S.talkTo = "all"; $("talkTo").value = "all"; }
+}
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b) return; const k = b.dataset.k; if (S.in.has(k)) S.in.delete(k); else S.in.add(k); drawAgents(); drawTalkTo(); };
+$("selAll").onclick = () => { TEAM.forEach((t) => S.in.add(t.k)); drawAgents(); drawTalkTo(); };
+$("selNone").onclick = () => { S.in.clear(); drawAgents(); drawTalkTo(); };
+$("talkTo").onchange = () => { S.talkTo = $("talkTo").value; };
+drawAgents(); drawTalkTo();
+
+function say(t) { $("state").textContent = t; }
+function micLook(m) { $("mic").className = "mic" + (m ? " " + m : ""); }
+function addLog(who, text, cls) {
+  S.log.push({ who, text });
+  if (S.log.length === 1) $("log").innerHTML = "";
+  const d = document.createElement("div"); d.className = "ln " + (cls || "ag");
+  d.innerHTML = "<b>" + esc(who) + "</b>" + esc(text);
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
+}
+
+async function api(body) {
+  const tok = await window._auth.token(); if (!tok) throw new Error("Please sign in first.");
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+async function askAgent(k) {
+  const roster = TEAM.filter((t) => S.in.has(t.k)).map((t) => t.n).join(", ");
+  const mtLog = S.log.slice(-40).map((x) => ({ who: x.who, text: x.text }));
+  const r = await api({ action: "chat", agent: k, text: S.log[S.log.length - 1].text, voice: true, meeting: true, roster, mtLog });
+  const m = (r.messages || []).find((x) => x.role === "agent") || (r.messages || [])[1] || {};
+  if (String(m.id || "").startsWith("tmp")) throw new Error("took too long");
+  return String(m.text || "").replace(/^\s*\(?[A-Za-z]+\)?:\s*/, "").trim();
+}
+
+/* ---------- voices (same approach as the Role Play Room) ---------- */
+function chunks(t) { const s = String(t || "").replace(/[*_#`>|]/g, "").replace(/\s+/g, " ").trim(); return (s.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [s]).map((x) => x.trim()).filter(Boolean); }
+async function ttsUrl(text, who) {
+  const r = await api({ action: "tts", agent: who, text: text.slice(0, 2400) });
+  const bin = atob(r.audio), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([u8], { type: r.mime || "audio/mpeg" }));
+}
+function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
+const VOICE_PREF = { male: [/guy|andrew|christopher|eric|brian|roger|steffan/i, /david/i, /mark/i], female: [/aria|jenny|ava|michelle|emma/i, /zira/i, /samantha/i] };
+const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 2], jimmy: ["male", 1], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], rachel: ["female", 0], eva: ["female", 2], tatiana: ["female", 1], clara: ["female", 0] };
+function pickVoice(who, male) {
+  const vs = speechSynthesis.getVoices().filter((v) => v.lang === "en-US" || v.lang === "en_US");
+  const [g, nth] = AGENT_VOICE[who] || [male ? "male" : "female", 0];
+  const list = []; for (const re of VOICE_PREF[g]) for (const v of vs) if (re.test(v.name) && !list.includes(v)) list.push(v);
+  return list[Math.min(nth, list.length - 1)] || list[0] || vs[0] || null;
+}
+function browserSay(text, male, who) { return new Promise((res) => { try { const u = new SpeechSynthesisUtterance(text); const v = pickVoice(who, male); if (v) u.voice = v; u.lang = "en-US"; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); } catch (e) { res(); } }); }
+async function speak(text, who) {
+  const gen = S.gen, parts = chunks(text), t = TEAM.find((x) => x.k === who) || {}, male = !!t.male;
+  const useReal = $("free").checked;
+  S.speaking = text; micLook("agent"); say("🗣️ " + NAME(who) + " is talking…");
+  let next = useReal ? ttsUrl(parts[0], who).catch(() => null) : null;
+  for (let i = 0; i < parts.length; i++) {
+    const url = useReal ? await next : null;
+    if (useReal && i + 1 < parts.length) next = ttsUrl(parts[i + 1], who).catch(() => null);
+    if (gen !== S.gen) break;
+    if (url) { await play(url); URL.revokeObjectURL(url); } else await browserSay(parts[i], male, who);
+    if (gen !== S.gen) break;
+  }
+  S.speaking = ""; S.doneAt = Date.now(); S.audio = null;
+  return gen === S.gen;
+}
+function hush() { S.gen++; try { S.audio && S.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} S.speaking = ""; }
+
+/* ---------- a turn: Tania says something, the chosen teammate(s) answer ---------- */
+async function runTurn(text) {
+  if (S.busy) return;
+  if (!S.in.size) { say("Pick at least one teammate to be in the meeting."); return; }
+  if (!text.trim()) return;
+  addLog("Tania", text.trim(), "me");
+  S.busy = true; $("send").disabled = true;
+  const order = S.talkTo === "all" ? TEAM.filter((t) => S.in.has(t.k)).map((t) => t.k) : [S.talkTo];
+  try {
+    for (const k of order) {
+      say("💭 " + NAME(k) + " is thinking…"); micLook("");
+      let reply;
+      try { reply = await askAgent(k); }
+      catch (e) { reply = "(" + NAME(k) + " couldn't answer just now: " + (e.message || e) + ")"; }
+      addLog(NAME(k), reply, "ag");
+      S.busy = false; // allow Stop to cut speech
+      await speak(reply, k);
+      S.busy = true;
+    }
+  } finally {
+    S.busy = false; $("send").disabled = false; micLook(""); say("Your turn — tap the mic or type.");
+  }
+}
+$("send").onclick = () => { const t = $("box").value.trim(); if (!t) return; $("box").value = ""; runTurn(t); };
+$("box").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("send").click(); } });
+$("stop").onclick = () => { hush(); say("Stopped. Your turn."); micLook(""); };
+
+/* ---------- her mic: tap to talk, tap again to send ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function startListen() {
+  if (!SR) { say("This browser can't hear the mic — use Chrome or Edge, or just type."); return; }
+  if (S.listening) return;
+  hush();
+  const r = new SR(); S.rec = r; r.lang = "en-US"; r.continuous = true; r.interimResults = true; S.buf = "";
+  r.onresult = (e) => { let fin = "", interim = ""; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) fin += x[0].transcript + " "; else interim += x[0].transcript; } if (fin) S.buf += fin; $("heard").textContent = (S.buf + " " + interim).trim(); };
+  r.onerror = (e) => { if (e.error === "not-allowed") say("I need mic permission — allow it in the browser, then tap the mic again."); };
+  r.onend = () => { S.listening = false; };
+  try { r.start(); S.listening = true; micLook("live"); say("🎤 Listening… tap the mic again when you're done."); } catch (e) { say("Couldn't start the mic: " + e.message); }
+}
+function stopListen() {
+  if (!S.rec) return; try { S.rec.stop(); } catch (e) {} S.rec = null; S.listening = false; micLook("");
+  const said = (S.buf || "").trim(); $("heard").textContent = ""; S.buf = "";
+  if (said) runTurn(said); else say("Didn't catch anything — try again or type.");
+}
+$("mic").onclick = () => { if (S.listening) stopListen(); else startListen(); };
+if (speechSynthesis && speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = () => {};
+</script>
+</body>
+</html>
