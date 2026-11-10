@@ -1654,6 +1654,31 @@ async function teamApi(body) {
   if (!r.ok) throw new Error(d.error || ('AI team error ' + r.status));
   return d;
 }
+const OFFICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/team';
+async function officeApi(body){
+  if(!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
+  const t=await window.fbIdToken(); if(!t) throw new Error('Sign in with Google at the top first.');
+  let r; try{ r=await fetch(OFFICE_API,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},body:JSON.stringify(body)}); }
+  catch(e){ throw new Error('The AI Office isn’t reachable.'); }
+  let d={}; try{ d=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(d.error||('Intelligence error '+r.status));
+  return d;
+}
+// tiny, safe markdown for reports (headings, bold, links, lists)
+function mdLite(src){
+  const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const inline=x=>esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[(.+?)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+  const lines=String(src||'').split(/\r?\n/); let out='', inUl=false;
+  const closeUl=()=>{ if(inUl){ out+='</ul>'; inUl=false; } };
+  for(let ln of lines){
+    let m;
+    if((m=ln.match(/^\s*#{1,6}\s+(.*)/))){ closeUl(); out+='<h4 style="margin:14px 0 4px;color:#0f2a4a">'+inline(m[1])+'</h4>'; }
+    else if((m=ln.match(/^\s*[-*]\s+(.*)/))){ if(!inUl){ out+='<ul style="margin:4px 0 4px 18px">'; inUl=true; } out+='<li>'+inline(m[1])+'</li>'; }
+    else if(ln.trim()===''){ closeUl(); out+='<div style="height:6px"></div>'; }
+    else { closeUl(); out+='<p style="margin:4px 0">'+inline(ln)+'</p>'; }
+  }
+  closeUl(); return out;
+}
 const teamLog = (kind, n = 1) => { T.log.push({ at: Date.now(), kind, n }); T.log = T.log.filter(x => Date.now() - x.at < 40 * 864e5); save(); };
 const todayKey = ts => new Date(ts).toLocaleDateString('en-CA');
 const isToday = ts => todayKey(ts) === todayKey(Date.now());
@@ -1667,13 +1692,62 @@ function renderTeam(c) {
     : !S ? `<div class="note">Checking your AI team…</div>`
     : S.error ? `<div class="note">${esc(S.error)} <button class="btn outline small" onclick="teamRefresh()">Try again</button></div>`
     : `<div class="row" style="flex-wrap:wrap;gap:8px">${pill(S.claude, 'Claude · sales manager')}${pill(S.deepseek, 'DeepSeek · research')}${pill(S.brave, 'Brave · search')}${pill(S.gpt, 'ChatGPT · 2nd opinion')}${pill(S.jimmy, 'Jimmy (Gemini) · market intel')}<span class="muted">This month: <b>$${(S.spend && S.spend.usd || 0).toFixed(2)}</b> of $${(S.cap || 10).toFixed(2)} cap</span></div>`;
-  const tabs = ['Research', 'Emails', 'Coach', 'Report', 'Jimmy'];
-  const tabLabel = { Jimmy: '🔭 Jimmy · Market Intel' };
+  const tabs = ['Research', 'Buyer', 'Emails', 'Coach', 'Report', 'Jimmy'];
+  const tabLabel = { Jimmy: '🔭 Jimmy · Market Intel', Buyer: '🧠 Buyer Psychology' };
   c.innerHTML = `<div class="banner"><div><h2>★ Your AI sales team</h2><p>DeepSeek finds practices and our scanner checks their websites. Claude, your sales manager, writes the emails and coaches Rebecca, Monica and George from their real calls. ChatGPT can double-check. Jimmy (Gemini) is your market intelligence researcher: prospects, competitors and revenue opportunities. You approve everything.</p></div></div>
   <div class="card section">${head}<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" style="width:auto" ${T.second ? 'checked' : ''} onchange="teamSet('second', this.checked)"> Ask ChatGPT for a second opinion (a little slower, about a tenth of a cent more)</label></div>
   <div class="toolbar section">${tabs.map(t => `<button class="btn ${T.tab === t ? '' : 'secondary'}" onclick="teamSet('tab','${t}')">${tabLabel[t] || t}${t === 'Emails' && T.drafts.filter(d => !d.sent).length ? ' (' + T.drafts.filter(d => !d.sent).length + ')' : ''}</button>`).join('')}</div>
   <div id="teamBody"></div>`;
-  ({ Research: teamResearchView, Emails: teamEmailsView, Coach: teamCoachView, Report: teamReportView, Jimmy: jimmyView }[T.tab] || teamResearchView)($('teamBody'));
+  ({ Research: teamResearchView, Buyer: teamBuyerView, Emails: teamEmailsView, Coach: teamCoachView, Report: teamReportView, Jimmy: jimmyView }[T.tab] || teamResearchView)($('teamBody'));
+}
+
+/* ----- Buyer Psychology Report (Sales Intelligence, Phase 1) ----- */
+function teamBuyerView(el){
+  T.buyer = T.buyer || {};
+  const b = T.buyer, aud = b.audience || 'auto';
+  const opt = (v,l)=>`<option value="${v}" ${aud===v?'selected':''}>${l}</option>`;
+  el.innerHTML = `<div class="card"><h2>🧠 Buyer Psychology Report</h2>
+    <p class="muted" style="margin:-4px 0 10px">Ask why a buyer resists, and what changes their mind. Live research → findings, sentiment, competitor messaging and a suggested approach. <b>Information only</b> — nothing here touches an agent's brain until you approve it.</p>
+    <label for="bq" style="margin-top:0">Your question</label>
+    <textarea id="bq" rows="2" placeholder="Why are small law firms hesitant to buy AI receptionists, and what messages overcome it?">${esc(b.q||'')}</textarea>
+    <div class="toolbar" style="margin-top:10px;align-items:center;gap:10px">
+      <select id="baud" style="max-width:220px">${opt('auto','Auto-detect the audience')}${opt('doctor','Doctors → Monica')}${opt('attorney','Attorneys → George')}${opt('no-website','No-website → Alek')}</select>
+      <button class="btn" onclick="buyerAsk()" ${b.running?'disabled':''}>${b.running?'Researching…':'🔎 Research'}</button>
+    </div>
+    ${b.running?`<p class="muted" style="margin-top:10px">Researching the live web and writing your report… this takes up to a minute. You can leave this tab; it keeps going.</p>`:''}
+    ${b.error?`<p style="margin-top:10px;color:#b42318">${esc(b.error)}</p>`:''}
+  </div>
+  ${b.report?`<div class="card section"><div class="row" style="justify-content:space-between;align-items:baseline"><h3 style="margin:0;color:#0f2a4a">Report</h3><span class="pill ok">information only</span></div>
+    <p class="muted" style="margin:4px 0 8px">${esc(b.reportQ||'')}${b.reportAgent?` · for ${esc(b.reportAgent)}`:''}</p>
+    <div style="font-size:14px;line-height:1.55">${mdLite(b.report)}</div></div>`:''}
+  <div class="card section"><h3 style="margin:0 0 8px">Recent reports</h3><div id="buyerList">${b.list?buyerListHtml(b.list):'<span class="muted">Loading…</span>'}</div></div>`;
+  if(!b.list) buyerLoadList();
+}
+function buyerListHtml(items){
+  if(!items.length) return '<span class="muted">No reports yet. Ask your first question above.</span>';
+  return items.map(x=>`<div class="row" style="justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line)">
+    <button class="linklike" style="text-align:left;flex:1;background:none;border:0;cursor:pointer;color:#0b5c8a" onclick="buyerOpen('${esc(x.id)}')">${esc(x.question).slice(0,90)}</button>
+    <span class="muted" style="white-space:nowrap">${x.status==='pending'?'⏳ running':x.status==='error'?'⚠️ failed':'✓'}</span></div>`).join('');
+}
+async function buyerLoadList(){ try{ const d=await officeApi({action:'buyer_report_list'}); T.buyer.list=d.items||[]; if(T.tab==='Buyer') render(); }catch(e){ T.buyer.list=[]; } }
+async function buyerOpen(id){ try{ const d=await officeApi({action:'buyer_report_get',id}); const r=d.report||{}; if(r.status==='done'){ T.buyer.report=r.report; T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; T.buyer.error=''; } else if(r.status==='error'){ T.buyer.error='That report failed: '+(r.error||'unknown'); } else { T.buyer.error='That one is still running.'; } render(); }catch(e){ toast(e.message); } }
+async function buyerAsk(){
+  const q=$('bq').value.trim(), audience=$('baud').value;
+  if(q.length<8) return toast('Type a fuller question first.');
+  T.buyer=Object.assign({},T.buyer,{q,audience,running:true,error:'',report:''}); save(); render();
+  let id;
+  try{ const d=await officeApi({action:'buyer_report_start',question:q,audience}); id=d.id; }
+  catch(e){ T.buyer.running=false; T.buyer.error=e.message; render(); return; }
+  const started=Date.now();
+  const poll=async()=>{
+    if(Date.now()-started>140000){ T.buyer.running=false; T.buyer.error='This is taking longer than usual. Check "Recent reports" in a moment.'; buyerLoadList(); render(); return; }
+    try{ const d=await officeApi({action:'buyer_report_get',id}); const r=d.report||{};
+      if(r.status==='done'){ T.buyer.running=false; T.buyer.report=r.report; T.buyer.reportQ=r.question; T.buyer.reportAgent=r.agent; buyerLoadList(); render(); return; }
+      if(r.status==='error'){ T.buyer.running=false; T.buyer.error='The research failed: '+(r.error||'unknown')+'. Try rewording, or check Brave/AI keys.'; render(); return; }
+    }catch(e){}
+    setTimeout(poll,4000);
+  };
+  setTimeout(poll,4000);
 }
 
 /* ----- Research ----- */
