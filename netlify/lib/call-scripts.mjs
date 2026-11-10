@@ -37,9 +37,7 @@ const LISTEN = `LISTEN LIKE A HUMAN
 - When they give you the who and the when, confirm it back, ask only for what's missing, then go to your closing lines.
 
 NAMES
-- Use only names you heard on THIS call or that are listed in THIS CALL. Words in [brackets] in your instructions are placeholders, never real names.
-- Once someone tells you their name, that is their name for the whole call. Never switch to another name, and never mix up the person who answered with the doctor, attorney or manager.
-- If you didn't catch a name or none was given, don't use one. Never guess a name.`;
+- Use only names you heard on THIS call or listed in THIS CALL. Names in examples and words in [brackets] are never real names. Once someone gives their name, it stays their name for the whole call. No name given: don't use one.`;
 
 const CALM = `NEVER REPEAT, NEVER PUSH
 - Say your opening once per call. If they say "Hello?" after you spoke, don't greet again; continue from where you were.
@@ -182,19 +180,7 @@ ADA: "The Americans with Disabilities Act. For websites, it means people with di
 ADA: "The Americans with Disabilities Act. For websites, it means people with disabilities can use the site, with a screen reader or just a keyboard." HIPAA: "It protects patient information. On a website, that includes the forms patients fill out and any tracking tools that could collect their information."`}
 
 "WE DON'T GIVE OUT OUR EMAIL" / "SEND A FAX" / "MAIL IT TO OUR ADDRESS" (Tania, Nov 9)
-Never ask for a fax number or a mailing address: the report is not sent by fax or mail. Say these lines in order:
-"Okay, no worries. We can also set an appointment with ${boss} [last name]. Are you the one in charge of audits for the ${office}?"
-[PAUSE]
-"Okay. So when is the best time to set up the quick 10-minute review with [the ${boss.toLowerCase()} or the manager, by the name they gave]?"
-[PAUSE]
-(they give a day and time) Book it (BOOKING), confirm it back, then say the closing line below.
-(they don't know) "Okay, no problem. Let me give you Rachel's number. She is the tech assistant: she can answer questions about {{lead_state}} penalty and lawsuit concerns, and provide the government agencies so you can verify. Do you have a pen handy?"
-[PAUSE]
-"It's ${RACHEL_SPOKEN}. Can you repeat it back to me?" (ask ONE time only)
-[PAUSE]
-(wrong) "Not quite, let me give it to you again. ${RACHEL_SPOKEN}. Do you have it this time?"
-[PAUSE]
-(closing line) "Okay, thanks for taking my call. Have a great rest of your day." Then wait for their "okay", "bye" or "thank you" before you end the call.
+Never ask for a fax number or a mailing address. "Okay, no worries. We can also set an appointment with ${boss} [last name]. Are you the one in charge of audits for the ${office}?" [PAUSE] "Okay. So when is the best time to set up the quick 10-minute review with [the ${boss.toLowerCase()} or the manager]?" [PAUSE] They give a day and time: book it (BOOKING). They don't know: "Okay, no problem. Let me give you Rachel's number. She's the tech assistant: she can answer questions about {{lead_state}} penalty and lawsuit concerns, and provide the government agencies to verify. Do you have a pen handy?" [PAUSE] Give the number and ask them to repeat it ONCE. Wrong: "Not quite, let me give it to you again." Say it again, then "Do you have it this time?" Then: "Okay, thanks for taking my call. Have a great rest of your day." Wait for their "okay", "bye" or "thank you" before you end the call.
 
 "JUST SEND IT" / "EMAIL IT TO US"
 "Of course. What's the best email?" Then still ask for the 10-minute appointment.
@@ -289,23 +275,24 @@ export const RETIRED_SECTIONS = ["RULES (always)", "USING THE FINDINGS", 'IF THE
   // Nov 9: the older step-by-step call flow ("How are you today?" greeting and its own Rachel hand-off) and the older AI answer competed with YOUR SCRIPT and the AI QUESTION RULE.
   "STEP 1: GREETING", "STEP 2: THE REASON", "STEP 2: THE QUESTION", "STEP 3: CONFIRM THE EMAIL", "STEP 3: WHO YOU ARE", "STEP 4: THE PERSON IN CHARGE", "STEP 5: IF THEY CAN'T BOOK NOW", "IF ASKED WHETHER YOU ARE AN AI"];
 
-// Put the blocks in, take the old ones out, and drop the retired sections. Pure text in, text out.
-// The Brain page is the master (Tania, Nov 9): "prev" is what this sync last wrote for the agent ({ how, script, rebuttals }).
-// A live block that no longer matches it was edited on the Brain page, so it is kept exactly as Tania saved it.
-// The code's version only goes in when the block is missing, was never tracked (first run), or is still untouched.
-const same = (a, b) => String(a || "").replace(/\s+/g, " ").trim() === String(b || "").replace(/\s+/g, " ").trim();
-export const blocksFor = (key) => { const b = CALL_BLOCKS[key]; return b ? { how: b[0], script: b[1], rebuttals: b[2] } : null; };
-export function restructure(text, key, prev) {
+// The Brain page is the master (Tania, Nov 9). This sync NEVER rewrites a script, rebuttals or call-rules block that is
+// already in an agent's live prompt: whatever Tania saved on the Brain page stays exactly as she saved it.
+// When all three blocks are present it changes nothing at all. Only when a block is missing does it put that one in
+// (and clear out the old blocks and retired sections).
+// Changes to the wording below reach an agent only when they are saved on the Brain page.
+export function restructure(text, key) {
   const code = CALL_BLOCKS[key];
   if (!code) return text;
   const blocks = code.slice();
-  if (prev) {
+  {
     const src = String(text || ""), find = (m, from = 0) => { if (from === 0 && src.startsWith(m)) return 0; const i = src.indexOf("\n" + m, from); return i < 0 ? -1 : i + 1; };
-    [[HOW_START, HOW_END, "how"], [SCRIPT_START, SCRIPT_END, "script"], [REB_START, REB_END, "rebuttals"]].forEach(([a, b, name], n) => {
-      const i = find(a), j = i >= 0 ? find(b, i + 1) : -1; if (i < 0 || j <= i) return;
-      const live = src.slice(i, j + b.length);
-      if (prev[name] && !same(live, prev[name])) blocks[n] = live;
+    let have = 0;
+    [[HOW_START, HOW_END], [SCRIPT_START, SCRIPT_END], [REB_START, REB_END]].forEach(([a, b], n) => {
+      const i = find(a), j = i >= 0 ? find(b, i + 1) : -1;
+      if (i >= 0 && j > i) { blocks[n] = src.slice(i, j + b.length); have++; }
     });
+    // All three blocks are there: the prompt is exactly what the Brain page saved. Leave every character alone.
+    if (have === 3) return src;
   }
   let t = String(text || "");
   // markers only count at the start of a line (the text of a rule may mention a block's name)

@@ -4,7 +4,7 @@
 // (default thewebswann@gmail.com).
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript } from "../lib/cal.mjs";
-import { CALL_BLOCKS, restructure, blocksFor } from "../lib/call-scripts.mjs";
+import { CALL_BLOCKS, restructure } from "../lib/call-scripts.mjs";
 
 export const config = { schedule: "*/5 * * * *" };
 const API = "https://api.cartesia.ai";
@@ -84,21 +84,19 @@ async function syncBlock(agent, start, end, block) {
   return u.ok ? "updated" : "patch " + u.status;
 }
 // Keep an agent's prompt in the 3-part structure (prompt & personality / YOUR SCRIPT / coaching notes). Only writes when it changed.
-// "bases" remembers what this sync last wrote per agent, so anything Tania changes on the Brain page afterwards is never overwritten.
-async function syncScript(agent, key, bases) {
+// Brain is the master (Tania, Nov 9): this never rewrites a script, rebuttals or call-rules block that is already in the live prompt.
+// It only fills in a missing block and clears out old blocks. Normally it finds nothing to do and writes nothing.
+async function syncScript(agent, key) {
   const hd = { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ };
   const g = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { headers: hd });
   if (!g.ok) return "read " + g.status;
   const d = await g.json(), cur = String(((d.config || (d.agent && d.agent.config)) || {}).instructions || "");
   if (cur.length < 200) return "ok";
-  const next = restructure(cur, key, bases && bases[agent]);
+  const next = restructure(cur, key);
+  if (next === cur) return "ok";
   if (next.length > 30000) return "too long";
-  if (next !== cur) {
-    const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
-    if (!u.ok) return "patch " + u.status;
-  }
-  if (bases) { const b = blocksFor(key); if (JSON.stringify(bases[agent]) !== JSON.stringify(b)) { bases[agent] = b; bases._changed = true; } }
-  return next !== cur ? "updated" : "ok";
+  const u = await fetch(API + "/v1/agents/" + encodeURIComponent(agent), { method: "PATCH", headers: { ...hd, "Content-Type": "application/json" }, body: JSON.stringify({ config: { instructions: next } }) });
+  return u.ok ? "updated" : "patch " + u.status;
 }
 const syncRachelRules = (agent) => syncBlock(agent, RULES_START, RULES_END, RACHEL_RULES);
 // Rachel's opening line (Cartesia initial_message). Tania, Nov 6: no "virtual assistant" in the greeting, ever.
@@ -134,11 +132,8 @@ export default async () => {
   let rules = ""; try { rules = await syncRachelRules(agent); } catch (e) { rules = "rules: " + String(e.message || e).slice(0, 80); }
   try { rules += " · " + await syncGreeting(agent); } catch (e) { rules += " · greeting error"; }
   // Tania, Nov 8: Monica, George and Rebecca get "HOW TO RUN YOUR CALL" (prompt) + "YOUR SCRIPT" (only the words); old opening blocks are removed.
-  // Tania, Nov 9: the Brain page is the master. Blocks she edits there are kept; the code's version only fills in missing or untouched blocks.
-  let bases = null; try { bases = (await s.get("script-bases", { type: "json" })) || {}; } catch (e) { bases = null; }
-  if (bases) for (const k of Object.keys(CALL_BLOCKS)) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncScript(id, k, bases); } catch (e) { rules += " · " + k + " error"; } } }
-  else rules += " · scripts skipped (couldn't read what was last synced)";
-  if (bases && bases._changed) { delete bases._changed; try { await s.setJSON("script-bases", bases); } catch (e) { rules += " · bases not saved"; } }
+  // Tania, Nov 9: the Brain page is the master. This only fills in a missing block; it never changes what is already there.
+  for (const k of Object.keys(CALL_BLOCKS)) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · " + k + " " + await syncScript(id, k); } catch (e) { rules += " · " + k + " error"; } } }
   for (const [k, brand] of AI_AGENTS) { const id = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (id) { try { rules += " · ai " + k + " " + await syncBlock(id, AI_START, AI_END, aiRule(brand)); } catch (e) { rules += " · ai " + k + " error"; } } }
   const cal = sanitizeCal(await s.get("calendar", { type: "json" })), secret = await s.get("cal-secret");
   if (!cal.scriptUrl || !secret) return new Response("email bridge not connected · rules " + rules);
