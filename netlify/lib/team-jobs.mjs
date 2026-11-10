@@ -386,7 +386,8 @@ export async function c360Push(arg) {
     const targets = accts.filter((a) => servesBrand(map, a, it.brand) && (pic ? IMAGE_OK : TEXT_OK).includes(a.provider));
     if (!targets.length) { it.status = "error"; it.note = "No account is set for " + it.brand + " in Content360 yet (🔗 Content360 accounts)."; continue; }
     try {
-      const mediaIds = pic ? [await uploadMedia(new Blob([pic], { type: "image/png" }), it.id + ".png")] : [];
+      const pm = pic ? imgMime(new Uint8Array(pic)) : ""; // Tania's own pictures arrive as JPEG: send them as what they are
+      const mediaIds = pic ? [await uploadMedia(new Blob([pic], { type: pm }), it.id + (pm === "image/jpeg" ? ".jpg" : pm === "image/webp" ? ".webp" : ".png"))] : [];
       const r = await createPost({ accountIds: targets.map((a) => a.id), providers: targets.map((a) => a.provider), text: it.text, mediaIds, date: it.date, time: it.time, title: it.headline || it.text.slice(0, 80) });
       it.c360Id = r.id; it.status = r.scheduled ? "scheduled" : "c360-draft"; it.note = r.scheduled ? "Scheduled in Content360" : "Saved as a draft in Content360: " + (r.why || ""); r.scheduled ? ok++ : drafts++;
     } catch (e) { it.status = "error"; it.note = String(e.message).slice(0, 300); }
@@ -455,6 +456,28 @@ ${found.length ? found.map((x) => `- ${x.title} | ${x.url} | ${x.snippet}`).join
   await addMessages("tatiana", [{ role: "agent", kind: "linkedin", text: "# LinkedIn: 2 connections for today\n\n" + ans.text.replace(/^#[^\n]*\n+/, ""), provider: ans.provider }]);
   log.seen = log.seen.concat(found.map((x) => x.url.split("?")[0])).slice(-600); log.day = (log.day || 0) + 1;
   await st.setJSON("linkedin-log", log);
+}
+
+// A picture Tania sends in Tatiana's chat goes straight onto a post (Tania, Nov 9: "I want everything automated").
+// Which post: the number she gives ("3", "#3", "post 3", or a file named 3.png) counted through the upcoming posts in date order;
+// with no number, the next upcoming post that doesn't have her own picture yet.
+export async function attachChatPicture(dataUrl, hint) {
+  const m = String(dataUrl || "").match(/^data:image\/[a-z+.-]+;base64,(.+)$/i); if (!m) throw new Error("that picture couldn't be opened");
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const months = [...new Set([today.slice(0, 7), targetMonth()])]; let all = [];
+  for (const mo of months) all = all.concat(((await getPlan(mo)).items || []).filter((x) => x.kind !== "blog" && x.date >= today && !["scheduled", "skip"].includes(x.status)).map((x) => ({ mo, x })));
+  all.sort((a, b) => (a.x.date + a.x.time).localeCompare(b.x.date + b.x.time));
+  if (!all.length) throw new Error("there are no upcoming posts waiting for a picture");
+  const h = String(hint || ""), num = (h.match(/(?:#|\bno\.?\s*|\bnumber\s*|\bpost\s*|\bpic(?:ture)?\s*|\bgraphic\s*|\bimage\s*)(\d{1,2})\b/i) || h.match(/^\s*(\d{1,2})\s*[.)]?\s*$/m) || h.match(/(?:^|[\s_(-])0?(\d{1,2})\s*\)?\.(?:png|jpe?g|webp)\b/i) || [])[1];
+  const pick = num && all[+num - 1] ? all[+num - 1] : all.find((r) => r.x.image !== "own") || null;
+  if (!pick) throw new Error("every upcoming post already has one of your pictures; tell me the post number to replace one");
+  const buf = Buffer.from(m[1], "base64");
+  await videoStore().set("img-" + pick.mo + "-" + pick.x.id, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  const fresh = await getPlan(pick.mo), f = fresh.items.find((x) => x.id === pick.x.id); if (!f) throw new Error("that post was replaced by a newer plan");
+  f.image = "own"; await savePlan(fresh);
+  const n = all.indexOf(pick) + 1, left = all.filter((r) => r.x.image !== "own" && r.x.id !== pick.x.id).length;
+  const when = new Date(pick.x.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return { n, of: all.length, left, label: `${when} at ${pick.x.time} · ${pick.x.brand}: ${String(pick.x.headline || "").slice(0, 70)}` };
 }
 
 // Every morning: tell Tania which posts due today or tomorrow are still waiting for her approval (or have no picture),

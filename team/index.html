@@ -600,7 +600,21 @@ async function fillCards() {
     if (!pairs.length) { box.innerHTML = m.items ? '<p class="hint">These posts were replaced by a newer plan.</p>' : ""; continue; }
     const open = pairs.filter(([, it]) => !["scheduled", "skip"].includes(it.status)).length;
     const noPic = pairs.filter(([, it]) => it.kind !== "blog" && !it.aiImage && !["scheduled", "skip"].includes(it.status) && it.image !== "own");
-    box.innerHTML = `<div class="pcards-top"><b>${pairs.length} posts</b> <span class="hint">${open} waiting for you</span>${noPic.length ? ` <button class="btn pcPics">🎨 Make ${noPic.length} picture${noPic.length > 1 ? "s" : ""} (about ${Math.ceil(noPic.length * 4)}¢)</button>` : ""}${open > 1 ? ` <button class="btn pc-ok pcAll">✅ Approve & schedule all ${open}</button>` : ""}</div>` + pairs.map(([r, it]) => cardHTML(r, it)).join("");
+    box.innerHTML = `<div class="pcards-top"><b>${pairs.length} posts</b> <span class="hint">${open} waiting for you</span>${noPic.length ? ` <button class="btn pcPics">🎨 Make ${noPic.length} picture${noPic.length > 1 ? "s" : ""} (about ${Math.ceil(noPic.length * 4)}¢)</button>` : ""}${open ? ` <label class="btn pcBulkL" style="cursor:pointer" title="Pick all your pictures at once. They go onto the posts in order: 1 to the first post, 2 to the second, and so on.">🖼️ Upload my pictures in order<input type="file" class="pcBulk" accept="image/*" multiple hidden></label>` : ""}${open > 1 ? ` <button class="btn pc-ok pcAll">✅ Approve & schedule all ${open}</button>` : ""}</div>` + pairs.map(([r, it]) => cardHTML(r, it)).join("");
+    // All of Tania's own pictures at once: sorted by the number in each file name, then put on the open posts top to bottom.
+    const bulk = box.querySelector(".pcBulk"); if (bulk) bulk.onchange = async () => {
+      const numOf = (n) => { const m = String(n).match(/(\d+)(?!.*\d)/); return m ? +m[1] : 1e9; };
+      const files = [...bulk.files].sort((a, b) => numOf(a.name) - numOf(b.name) || a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const targets = pairs.filter(([, it]) => it.kind !== "blog" && !["scheduled", "skip"].includes(it.status));
+      if (!files.length || !targets.length) return;
+      const lab = box.querySelector(".pcBulkL"); let ok = 0, bad = "";
+      for (let i = 0; i < Math.min(files.length, targets.length); i++) {
+        const [r, it] = targets[i]; if (lab) lab.firstChild.textContent = `🖼️ Uploading ${i + 1} of ${Math.min(files.length, targets.length)}…`;
+        try { const data = await shrinkImage(files[i]); await api({ action: "plan_image", month: r.m, id: it.id, data, own: true }); it.image = "own"; ok++; } catch (e) { bad = files[i].name + ": " + e.message; }
+      }
+      toast(`${ok} picture${ok === 1 ? "" : "s"} put on the posts in order.${files.length > targets.length ? " " + (files.length - targets.length) + " extra picture(s) had no post left." : ""}${bad ? " ⚠️ " + bad : ""}`);
+      [...new Set(targets.map(([r]) => r.m))].forEach((m) => redraw(m));
+    };
     const pics = box.querySelector(".pcPics"); if (pics) pics.onclick = async () => { pics.disabled = true; pics.textContent = "🎨 Jimmy is painting…"; const ms = [...new Set(noPic.map(([r]) => r.m))];
       try { for (const m of ms) await api({ action: "plan_genimg", month: m }); toast(`Jimmy is making ${noPic.length} pictures. They appear on the cards in a few minutes.`); ms.forEach((m) => { redraw(m, 60000); redraw(m, 150000); redraw(m, 300000); }); } catch (e) { toast(e.message); pics.disabled = false; } };
     box.querySelectorAll(".pcard").forEach((card) => {

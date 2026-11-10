@@ -2004,7 +2004,7 @@ function brSplit(t) { const s1 = brTake(t, BR_S0, BR_S1), r1 = brTake(s1.rest, B
 function brJoin(p) {
   const blocks = [p.script ? BR_S0 + '\n' + p.script + '\n' + BR_S1 : '', p.rebuttals ? BR_R0 + '\n' + p.rebuttals + '\n' + BR_R1 : ''].filter(Boolean).join('\n\n');
   // script + rebuttals go right after HOW TO RUN YOUR CALL (near the top, so every tool reads them first)
-  const H = '### END HOW TO RUN YOUR CALL', k = brAt(p.prompt, H);
+  const H = brAt(p.prompt, '### END HOW TO RUN YOUR CALL') >= 0 ? '### END HOW TO RUN YOUR CALL' : '### END RACHEL RULES', k = brAt(p.prompt, H); // Rachel has no HOW block: hers go after her call rules
   return k >= 0 ? (p.prompt.slice(0, k + H.length) + (blocks ? '\n\n' + blocks : '') + '\n\n' + p.prompt.slice(k + H.length).trim()).trim() : [p.prompt, blocks].filter(Boolean).join('\n\n');
 }
 // A script coach suggestion waiting for Tania's review on the Brain page. Never saved by itself.
