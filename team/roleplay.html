@@ -161,7 +161,10 @@ async function api(body) {
   return j;
 }
 async function ask(agent, text, opt) {
-  const r = await api(Object.assign({ action: "chat", agent, text, voice: true, roleplay: true }, opt || {}));
+  const body = Object.assign({ action: "chat", agent, text, voice: true, roleplay: true }, opt || {});
+  // Only the lines of THIS practice call go along (no coaching asides), so every practice starts clean and names stay the same.
+  if (body.roleplay || body.rpEnd) body.rpLog = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).slice(-60).map((x) => ({ who: x.who === "You" ? "Person on the phone (Tania)" : x.who === "Coby" ? "Person on the phone" : x.who, text: x.text }));
+  const r = await api(body);
   const m = (r.messages || []).find((x) => x.role === "agent" || x.role === "assistant") || (r.messages || [])[1] || {};
   if (String(m.id || "").startsWith("tmp")) throw new Error("took too long to answer, try again");
   return String(m.text || "").replace(/^\s*\(?[A-Z][a-z]+\)?:\s*/, "").trim();
@@ -264,6 +267,14 @@ function yourTurn() { S.turn = "listen"; micLook("live"); say("🎙️ Your turn
 
 /* ---------- Coby as the prospect: they go back and forth on their own ---------- */
 function scene() { return "a " + $("mood").value + " " + $("role").value.replace(/^the /, ""); }
+// One made-up person and office per practice call, picked at the start and kept to the end, so Coby never changes names mid-call.
+const RP_FIRST = ["Karen", "Maria", "Denise", "Angela", "Patricia", "Carol", "Sharon", "Nancy"], RP_LAST = ["Smith", "Miller", "Carter", "Rivera", "Brooks", "Hayes", "Morgan", "Reyes"];
+function newPersona() {
+  const pick = (a) => a[Math.floor(Math.random() * a.length)], last = pick(RP_LAST), law = S.agent === "george", role = $("role").value;
+  const boss = /the (doctor|attorney)$/.test(role);
+  return { name: boss ? (law ? "Attorney " : "Doctor ") + last : pick(RP_FIRST), office: law ? last + " Law Office" : "Doctor " + last + "'s office", boss: (law ? "Attorney " : "Doctor ") + last };
+}
+const who_ = () => { const p = S.persona || (S.persona = newPersona()); return `Your name on this whole call is ${p.name} and you work at ${p.office} (${p.boss} is the ${S.agent === "george" ? "attorney" : "doctor"}). Never use or invent any other name for yourself, the office or the ${S.agent === "george" ? "attorney" : "doctor"}.`; };
 async function cobyLoop() {
   while (S.on && !S.paused && S.cobyTurns < 24) {
     const last = S.log.filter((x) => x.who !== "Tania (coach)").slice(-1)[0];
@@ -271,8 +282,8 @@ async function cobyLoop() {
     const who = cobyNext ? "sdr" : S.agent;
     let text;
     if (who === "sdr") {
-      text = !last ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). ${first(S.agent)} from WebSwan is calling. You just picked up the phone: say only how you'd answer it, like "Good morning, ${S.agent === "george" ? "Miller Law Office" : "Doctor Smith's office"}, this is Karen." Use a realistic office name. One line only, no stage directions.`
-        : `ROLE PLAY: you are still ${scene()}. ${first(S.agent)} just said: "${last.text}". Reply with ONLY your next line as that person (one or two short sentences), the way a real ${$("mood").value} office person would: sometimes ask who's calling or why, push back, or give the email or a time. If ${first(S.agent)} said goodbye, just say goodbye. No stage directions, no coaching.`;
+      text = !last ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). ${first(S.agent)} from WebSwan is calling. You just picked up the phone: ${who_()} Say only how you'd answer it, like "Good morning, ${S.persona.office}, this is ${S.persona.name}." One line only, no stage directions.`
+        : `ROLE PLAY: you are still ${scene()}. ${who_()} ${first(S.agent)} just said: "${last.text}". Reply with ONLY your next line as that person (one or two short sentences), the way a real ${$("mood").value} office person would: sometimes ask who's calling or why, push back, or give the email or a time. If ${first(S.agent)} said goodbye, just say goodbye. No stage directions, no coaching.`;
     } else {
       text = !S.log.some((x) => x.who === first(S.agent))
         ? `Tania wants to role play now. Coby is playing ${$("role").value}. You are calling, they just picked up and said: "${last.text}". Say your opening line.`
@@ -295,7 +306,7 @@ async function cobyLoop() {
 async function start() {
   if (!S.agent) { say("Pick a caller first."); return; }
   if (!(await window._auth.token())) { say("Please sign in first (button above)."); return; }
-  S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; $("log").innerHTML = '<p class="hint">Starting…</p>';
+  S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; S.persona = null; $("log").innerHTML = '<p class="hint">Starting…</p>';
   startRec();
   if (mode() === "coby") return cobyLoop();
   if (S.agent === "rachel") { // Rachel answers the phone, so she speaks first

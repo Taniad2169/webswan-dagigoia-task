@@ -33,8 +33,13 @@ const GOODBYE_RULE = `ENDING THE CALL
 
 const LISTEN = `LISTEN LIKE A HUMAN
 - Remember everything they told you and use it. Never ask for something they already said.
-- Example: Emily says "Susan is the office manager, call her tomorrow morning." Right: "Okay, thank you Emily. I'll call Susan tomorrow morning. Is there a specific time that's best to reach her?" Wrong: "Is she the office manager?" or "Who should I talk to?"
-- When they give you the who and the when, confirm it back, ask only for what's missing, then go to your closing lines.`;
+- Example: the person who answered says "[manager's name] is the office manager, call her tomorrow morning." Right: "Okay, thank you [their name]. I'll call [manager's name] tomorrow morning. Is there a specific time that's best to reach her?" Wrong: "Is she the office manager?" or "Who should I talk to?"
+- When they give you the who and the when, confirm it back, ask only for what's missing, then go to your closing lines.
+
+NAMES
+- Use only names you heard on THIS call or that are listed in THIS CALL. Words in [brackets] in your instructions are placeholders, never real names.
+- Once someone tells you their name, that is their name for the whole call. Never switch to another name, and never mix up the person who answered with the doctor, attorney or manager.
+- If you didn't catch a name or none was given, don't use one. Never guess a name.`;
 
 const CALM = `NEVER REPEAT, NEVER PUSH
 - Say your opening once per call. If they say "Hello?" after you spoke, don't greet again; continue from where you were.
@@ -91,7 +96,7 @@ RUNNING YOUR SCRIPT (Rebecca)
 - Start the moment a live person finishes their greeting. Stay silent during rings, menus, hold music and recordings.
 - Line 1: for a law firm say "new clients" instead of "new patients" (and in line 2, "new clients can find them"). If they are NOT accepting new patients or clients, thank them warmly and end the call.
 - Line 2: if they already said they're the doctor, attorney, owner or office manager, skip "Are you the person in charge" and go to line 3.
-- (no): when they tell you who (the doctor, the attorney, the office manager), use that person's name in line 3 if they give it ("a quick demo with Doctor Lee", "with Susan"). If they give no name, say "with the doctor", "with the attorney" or "with the office manager".
+- (no): when they tell you who (the doctor, the attorney, the office manager), use that person's name in line 3 if they give it ("a quick demo with Doctor [last name]", "with [first name]"). If they give no name, say "with the doctor", "with the attorney" or "with the office manager".
 - When they give a day and time: book the 10-minute demo with your calendar tools (BOOKING), then say line 5 with the real name, day and time, then line 6.
 - If they don't have the schedule: go to line 4 (Rachel). Never keep asking for a day or time.
 - Questions and objections (price, how it works, "we already do Google Ads / PPC", "send me details"...): answer from your REBUTTALS block, then come back to the next script line. If this lead's notes ({{findings}}) show they run Google Ads or pay-per-click and they hesitate, use the PPC rebuttal.
@@ -175,6 +180,21 @@ ADA: "The Americans with Disabilities Act. For websites, it means people with di
 "HIPAA DOESN'T APPLY TO US"
 "You're right, for a law firm it's about client confidentiality, accessibility and the bar's advertising rules. That's what the report covers for your firm."` : `"WHAT DOES ADA MEAN?" / "WHAT DOES HIPAA MEAN?"
 ADA: "The Americans with Disabilities Act. For websites, it means people with disabilities can use the site, with a screen reader or just a keyboard." HIPAA: "It protects patient information. On a website, that includes the forms patients fill out and any tracking tools that could collect their information."`}
+
+"WE DON'T GIVE OUT OUR EMAIL" / "SEND A FAX" / "MAIL IT TO OUR ADDRESS" (Tania, Nov 9)
+Never ask for a fax number or a mailing address: the report is not sent by fax or mail. Say these lines in order:
+"Okay, no worries. We can also set an appointment with ${boss} [last name]. Are you the one in charge of audits for the ${office}?"
+[PAUSE]
+"Okay. So when is the best time to set up the quick 10-minute review with [the ${boss.toLowerCase()} or the manager, by the name they gave]?"
+[PAUSE]
+(they give a day and time) Book it (BOOKING), confirm it back, then say the closing line below.
+(they don't know) "Okay, no problem. Let me give you Rachel's number. She is the tech assistant: she can answer questions about {{lead_state}} penalty and lawsuit concerns, and provide the government agencies so you can verify. Do you have a pen handy?"
+[PAUSE]
+"It's ${RACHEL_SPOKEN}. Can you repeat it back to me?" (ask ONE time only)
+[PAUSE]
+(wrong) "Not quite, let me give it to you again. ${RACHEL_SPOKEN}. Do you have it this time?"
+[PAUSE]
+(closing line) "Okay, thanks for taking my call. Have a great rest of your day." Then wait for their "okay", "bye" or "thank you" before you end the call.
 
 "JUST SEND IT" / "EMAIL IT TO US"
 "Of course. What's the best email?" Then still ask for the 10-minute appointment.
@@ -265,12 +285,28 @@ export const CALL_BLOCKS = {
 
 // Lines in the older base prompts that duplicate or contradict the new structure (removed from the live prompt).
 // Each entry: a heading that starts a section; the section runs until the next blank line followed by a new heading or paragraph.
-export const RETIRED_SECTIONS = ["RULES (always)", "USING THE FINDINGS", 'IF THEY ASK "WHAT FINDINGS?"', "IF THEY HESITATE OR ASK WHY IT MATTERS", "IF THEY ASK WHAT ADA OR HIPAA MEANS", "IF THEY ASK WHAT ADA OR THE ADVERTISING RULES MEAN", "OBJECTIONS", "IF THEY ASK ABOUT LAWSUITS OR PENALTIES", 'IF THEY ASK "IS THIS FREE?"', "IF THEY ASK FOR DETAILS", "IF THEY SAY NO", "OPENING:", "AFTER THE OPENING:", "STEP 5: BEFORE YOU GO", "IF THEY CAN'T SCHEDULE NOW", "GOODBYE", "MEMBERSHIP PLANS (Tania, Nov 7)", "PRICE: see PRICE AND QUALIFICATION"];
+export const RETIRED_SECTIONS = ["RULES (always)", "USING THE FINDINGS", 'IF THEY ASK "WHAT FINDINGS?"', "IF THEY HESITATE OR ASK WHY IT MATTERS", "IF THEY ASK WHAT ADA OR HIPAA MEANS", "IF THEY ASK WHAT ADA OR THE ADVERTISING RULES MEAN", "OBJECTIONS", "IF THEY ASK ABOUT LAWSUITS OR PENALTIES", 'IF THEY ASK "IS THIS FREE?"', "IF THEY ASK FOR DETAILS", "IF THEY SAY NO", "OPENING:", "AFTER THE OPENING:", "STEP 5: BEFORE YOU GO", "IF THEY CAN'T SCHEDULE NOW", "GOODBYE", "MEMBERSHIP PLANS (Tania, Nov 7)", "PRICE: see PRICE AND QUALIFICATION",
+  // Nov 9: the older step-by-step call flow ("How are you today?" greeting and its own Rachel hand-off) and the older AI answer competed with YOUR SCRIPT and the AI QUESTION RULE.
+  "STEP 1: GREETING", "STEP 2: THE REASON", "STEP 2: THE QUESTION", "STEP 3: CONFIRM THE EMAIL", "STEP 3: WHO YOU ARE", "STEP 4: THE PERSON IN CHARGE", "STEP 5: IF THEY CAN'T BOOK NOW", "IF ASKED WHETHER YOU ARE AN AI"];
 
-// Put the new blocks in, take the old ones out, and drop the retired sections. Pure text in, text out.
-export function restructure(text, key) {
-  const blocks = CALL_BLOCKS[key];
-  if (!blocks) return text;
+// Put the blocks in, take the old ones out, and drop the retired sections. Pure text in, text out.
+// The Brain page is the master (Tania, Nov 9): "prev" is what this sync last wrote for the agent ({ how, script, rebuttals }).
+// A live block that no longer matches it was edited on the Brain page, so it is kept exactly as Tania saved it.
+// The code's version only goes in when the block is missing, was never tracked (first run), or is still untouched.
+const same = (a, b) => String(a || "").replace(/\s+/g, " ").trim() === String(b || "").replace(/\s+/g, " ").trim();
+export const blocksFor = (key) => { const b = CALL_BLOCKS[key]; return b ? { how: b[0], script: b[1], rebuttals: b[2] } : null; };
+export function restructure(text, key, prev) {
+  const code = CALL_BLOCKS[key];
+  if (!code) return text;
+  const blocks = code.slice();
+  if (prev) {
+    const src = String(text || ""), find = (m, from = 0) => { if (from === 0 && src.startsWith(m)) return 0; const i = src.indexOf("\n" + m, from); return i < 0 ? -1 : i + 1; };
+    [[HOW_START, HOW_END, "how"], [SCRIPT_START, SCRIPT_END, "script"], [REB_START, REB_END, "rebuttals"]].forEach(([a, b, name], n) => {
+      const i = find(a), j = i >= 0 ? find(b, i + 1) : -1; if (i < 0 || j <= i) return;
+      const live = src.slice(i, j + b.length);
+      if (prev[name] && !same(live, prev[name])) blocks[n] = live;
+    });
+  }
   let t = String(text || "");
   // markers only count at the start of a line (the text of a rule may mention a block's name)
   const at = (s, m, from = 0) => { if (s.startsWith(m) && from === 0) return 0; const i = s.indexOf("\n" + m, from); return i < 0 ? -1 : i + 1; };
