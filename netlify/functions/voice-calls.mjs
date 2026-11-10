@@ -11,7 +11,8 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
-import { askAI } from "../lib/team.mjs";
+import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore } from "../lib/team.mjs";
+import { startJobs } from "../lib/team-daily.mjs";
 import crypto from "node:crypto";
 import { verifyOwner } from "../lib/auth.mjs";
 import { getStore } from "@netlify/blobs";
@@ -189,6 +190,35 @@ export default async (req) => {
   const store = getStore({ name: "voice-studio", consistency: "strong" });
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
+
+  // ===== Buyer Psychology Report (Sales Intelligence, Phase 1). Routed through voice-calls so Voice Studio's own sign-in works. =====
+  if (b.action === "buyer_report_start") {
+    const q = String(b.question || "").slice(0, 400).trim();
+    if (q.length < 8) return reply(400, { error: "Type a buyer question first (at least a sentence)." }, origin);
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const audience = ["doctor", "attorney", "no-website"].includes(b.audience) ? b.audience : "auto";
+    const rec = { id, question: q, audience, at: new Date().toISOString(), status: "pending", trust: "information" };
+    const ts = teamStore();
+    await ts.setJSON("research-" + id, rec);
+    let ix = []; try { ix = (await ts.get("research-index", { type: "json" })) || []; } catch (e) {}
+    ix.unshift({ id, question: q, audience, at: rec.at, status: "pending" });
+    await ts.setJSON("research-index", ix.slice(0, 200));
+    let pend = []; try { pend = (await ts.get("research-pending", { type: "json" })) || []; } catch (e) {}
+    pend.push(id); await ts.setJSON("research-pending", pend.slice(0, 20));
+    let started = true; try { await startJobs(["buyer_report"]); } catch (e) { started = false; }
+    return reply(200, { id, started }, origin);
+  }
+  if (b.action === "buyer_report_get") {
+    const id = String(b.id || "").replace(/[^\w-]/g, "").slice(0, 40);
+    if (!id) return reply(400, { error: "No report id." }, origin);
+    let rec = null; try { rec = await teamStore().get("research-" + id, { type: "json" }); } catch (e) {}
+    if (!rec) return reply(404, { error: "That report wasn't found." }, origin);
+    return reply(200, { report: rec }, origin);
+  }
+  if (b.action === "buyer_report_list") {
+    let ix = []; try { ix = (await teamStore().get("research-index", { type: "json" })) || []; } catch (e) {}
+    return reply(200, { items: ix.slice(0, 40) }, origin);
+  }
 
   // ---------- status: what is connected (never returns secrets) ----------
   if (b.action === "status") {

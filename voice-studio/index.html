@@ -1654,7 +1654,7 @@ async function teamApi(body) {
   if (!r.ok) throw new Error(d.error || ('AI team error ' + r.status));
   return d;
 }
-const OFFICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/team';
+const OFFICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls'; // Buyer Psychology rides the Voice Studio sign-in
 async function officeApi(body){
   if(!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
   const t=await window.fbIdToken(); if(!t) throw new Error('Sign in with Google at the top first.');
