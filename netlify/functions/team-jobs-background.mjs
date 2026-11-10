@@ -11,7 +11,7 @@ export default async (req) => {
   for (const job of (Array.isArray(b.jobs) ? b.jobs : []).filter((j) => JOBS[String(j).split(":")[0]])) {
     const [name, ...rest] = String(job).split(":"); const arg = rest.join(":");
     try { await JOBS[name](/^\d{4}-\d{2}(\|[\w-]{1,60})?$/.test(arg || "") ? arg : undefined); }
-    catch (e) { await addMessages(/^jimmy/.test(name) ? "jimmy" : /^(tatiana|c360)/.test(name) ? "tatiana" : "eva", [{ role: "agent", kind: "error", text: `⚠️ I couldn't finish **${name.replace("_", " ")}**: ${String(e.message || e).slice(0, 300)}` }]); }
+    catch (e) { await addMessages(/^jimmy/.test(name) ? "jimmy" : /^(tatiana|c360|posts)/.test(name) ? "tatiana" : "eva", [{ role: "agent", kind: "error", text: `⚠️ I couldn't finish **${name.replace("_", " ")}**: ${String(e.message || e).slice(0, 300)}` }]); }
   }
   return new Response("ok");
 };

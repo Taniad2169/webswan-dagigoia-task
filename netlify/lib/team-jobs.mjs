@@ -141,8 +141,12 @@ CURRENT WEBSITE TEXT (data):\n${sites}`;
   for (const plan of Object.values(plans)) { delete plan._cleared; plan.items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)); await savePlan(plan); }
   const n = Object.values(plans).reduce((a, p) => a + p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).length, 0);
   const refs = Object.values(plans).flatMap((p) => p.items.filter((x) => String(x.id).startsWith("wk" + stamp.replace(/-/g, ""))).map((x) => ({ m: p.month, id: x.id })));
-  for (const p of Object.values(plans)) { try { await tatianaPics(p.month); } catch (e) { console.log("pictures:", e.message); } } // Jimmy paints each post's picture
-  await addMessages("tatiana", [{ role: "agent", kind: "weekly", items: refs, text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, each with its picture. Read each one below, edit anything, then tap **✅ Approve & schedule**. It goes to Content360 and posts on its date.`, provider: ans.provider }]);
+  let picErr = "";
+  for (const p of Object.values(plans)) { try { await tatianaPics(p.month); } catch (e) { picErr = String(e.message || e); console.log("pictures:", picErr); } } // Jimmy paints each post's picture
+  // Count the pictures that really exist, so the message never says "each with its picture" when Jimmy's step failed.
+  let withPic = 0; for (const p of Object.values(plans)) { const fresh = await getPlan(p.month); withPic += refs.filter((r) => r.m === p.month && (fresh.items.find((x) => x.id === r.id) || {}).aiImage).length; }
+  const picLine = withPic >= n ? "each with its picture" : withPic ? `${withPic} of ${n} have their picture so far` : "⚠️ the pictures are NOT made yet";
+  await addMessages("tatiana", [{ role: "agent", kind: "weekly", items: refs, text: `## 📱 This week's posts are ready (${n})\nOne post for every service, ${slots[0].date} to ${slots[slots.length - 1].date}, ${picLine}. Read each one below, edit anything, then tap **✅ Approve & schedule**. It goes to Content360 and posts on its date.${withPic < n ? `\n\n⚠️ Jimmy couldn't make ${withPic ? "some of the" : "the"} pictures${picErr ? ": " + picErr.slice(0, 240) : ""}. Tap **🎨 Make pictures** above the cards to try again. Without a picture a post goes out as text only and skips Instagram.` : ""}`, provider: ans.provider }]);
 }
 
 // Twice a month (1st and 15th): one blog + its Google Business update per brand, added to the plan so they show
@@ -233,7 +237,7 @@ export async function geminiImage(prompt) {
   for (const m of models) for (const cfg of [{ responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } }, { responseModalities: ["TEXT", "IMAGE"] }]) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { last = `${m} ${r.status}: ${(j.error && j.error.message) || ""}`; if (r.status === 404) break; continue; }
+    if (!r.ok) { const er = `${m} ${r.status}: ${(j.error && j.error.message) || ""}`; if (r.status === 404) { if (!last) last = er; break; } last = er; continue; } // a "model not found" never hides the real reason from another model
     const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
     const part = parts.find((p) => p.inlineData || p.inline_data);
     if (part) return Buffer.from((part.inlineData || part.inline_data).data, "base64");
@@ -261,11 +265,13 @@ export async function grokImage(prompt, aspect = "1:1") {
 }
 // Grok first when its key is set; Gemini as the backup (or the only one when there is no Grok key).
 export async function makeImage(prompt, aspect = "1:1") {
+  let grok = "";
   if (process.env.XAI_API_KEY) {
     try { return await grokImage(prompt, aspect); }
-    catch (e) { if (!process.env.GEMINI_API_KEY) throw e; console.log("Grok picture failed, using Gemini:", e.message); }
+    catch (e) { if (!process.env.GEMINI_API_KEY) throw e; grok = String(e.message || e); console.log("Grok picture failed, using Gemini:", grok); }
   }
-  return geminiImage(prompt);
+  try { return await geminiImage(prompt); }
+  catch (e) { throw new Error(grok ? (grok + " Then the backup failed too: " + String(e.message || e)).slice(0, 290) : String(e.message || e)); } // show BOTH reasons, not just the backup's
 }
 const imgMime = (buf) => buf[0] === 0xff && buf[1] === 0xd8 ? "image/jpeg" : buf[0] === 0x52 && buf[1] === 0x49 ? "image/webp" : "image/png";
 const scenePrompt = (it) => `Create a high-quality, realistic, square marketing photograph for a social media post. ${it.scene ? "Scene: " + it.scene : `Topic: ${String(it.headline || it.title || "").replace(/^Blog on Google:\s*/, "")}, for ${it.brand}${it.service ? " (" + it.service + ")" : ""}. Show a believable moment with a doctor, dentist, attorney or their front-desk team, or a phone or laptop in a modern practice.`} Warm, bright, professional lighting, modern clean office, colors leaning to blue and white. Keep the bottom third calm and uncluttered so text can sit on it. Absolutely no text, letters, words, numbers, logos or watermarks anywhere in the image.`;
@@ -430,10 +436,24 @@ ${found.length ? found.map((x) => `- ${x.title} | ${x.url} | ${x.snippet}`).join
   await st.setJSON("linkedin-log", log);
 }
 
+// Every morning: tell Tania which posts due today or tomorrow are still waiting for her approval (or have no picture),
+// and which ones passed their time without going out. Nothing is posted without her approval, so silence here means missed posts.
+export async function postsReminder() {
+  const day = (off) => new Date(Date.now() + off * 864e5).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const today = day(0), tomorrow = day(1), since = day(-3);
+  const months = [...new Set([since.slice(0, 7), today.slice(0, 7), tomorrow.slice(0, 7)])]; let items = [];
+  for (const m of months) items = items.concat(((await getPlan(m)).items || []).filter((x) => x.kind !== "blog"));
+  const waiting = items.filter((x) => (x.date === today || x.date === tomorrow) && ["draft", "approved", "error", "c360-draft"].includes(x.status));
+  const missed = items.filter((x) => x.date >= since && x.date < today && ["draft", "error", "c360-draft"].includes(x.status));
+  if (!waiting.length && !missed.length) return;
+  const line = (x) => `- ${x.date === today ? "Today" : x.date === tomorrow ? "Tomorrow" : x.date} ${x.time} · ${x.brand}: ${String(x.headline || x.title || "").slice(0, 70)}${x.status === "error" ? " (⚠️ " + String(x.note || "problem").slice(0, 90) + ")" : x.status === "c360-draft" ? " (saved as a draft in Content360, not scheduled)" : x.status === "approved" ? " (approved, not sent yet)" : ""}${!x.aiImage && x.image !== "own" ? " · no picture" : ""}`;
+  await addMessages("tatiana", [{ role: "agent", kind: "reminder", text: `## ⏰ Posts waiting for you${waiting.length ? `\n**${waiting.length} due today or tomorrow are not scheduled yet.** Nothing goes out until you tap ✅ Approve & schedule on the cards above.\n${waiting.slice(0, 12).map(line).join("\n")}` : ""}${missed.length ? `\n\n**${missed.length} from the last 3 days never went out:**\n${missed.slice(0, 12).map(line).join("\n")}\nChange their date on the card and approve them if you still want them.` : ""}` }]);
+}
+
 export function dueJobs(now = new Date()) {
   const wd = now.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/Los_Angeles" });
   const day = Number(now.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/Los_Angeles" }));
-  const jobs = ["eva_daily"];
+  const jobs = ["eva_daily", "posts_reminder"];
   if (wd === "Mon") jobs.push("eva_monday", "tatiana_weekly");
   if (day === 25) jobs.push("tatiana_month");
   if (day === 1 || day === 15) jobs.push("tatiana_blogs");
@@ -457,5 +477,5 @@ async function agentReply(agent) {
   await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), jimmy_make: jimmyMake, c360_videos: c360Videos };
+export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos };
 export { ptHour };

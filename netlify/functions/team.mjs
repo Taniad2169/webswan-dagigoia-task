@@ -215,6 +215,17 @@ export default async (req) => {
       return reply(200, { notes: list, phone: PHONE.includes(agent), live }, origin);
     }
     // Jimmy: make a picture or a video (from his panels, or when Tania asks for one in his chat). Done in the background.
+    // Jimmy + Tatiana (Tania, Nov 9): asking Jimmy for the pictures for Tatiana's posts really starts them. They land on the post cards in Tatiana's chat.
+    if (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && /\b(tatiana|posts?|templates?|content|this week)\b/i.test(String(b.text || "")) && /\b(graphics?|pictures?|images?|photos?|visuals?)\b/i.test(String(b.text || "")) && /\b(all|every|each|\d{1,2}|posts|templates|this week)\b/i.test(String(b.text || "")) && !/\?\s*$/.test(String(b.text || "").trim())) {
+      const text = clean(b.text, 4000).trim(), today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+      const months = [...new Set([today.slice(0, 7), targetMonth()])]; let need = 0; const run = [];
+      for (const m of months) { const n = ((await getPlan(m)).items || []).filter((x) => x.kind !== "blog" && !x.aiImage && x.image !== "own" && !["scheduled", "skip"].includes(x.status) && x.date >= today).length; if (n) { need += n; run.push("tatiana_pics:" + m); } }
+      if (need) {
+        let started = true, why = ""; try { await startJobs(run); } catch (e) { started = false; why = String(e.message || e).slice(0, 160); }
+        const saved = await addMessages("jimmy", [{ role: "user", text }, { role: "agent", text: started ? `🎨 On it. I'm painting the pictures for ${need} of Tatiana's upcoming posts right now, each from the picture idea she wrote for it. They appear on the post cards in Tatiana's chat within a few minutes (about ${Math.ceil(need * 4)}¢ total). If any picture fails, the reason shows up in Tatiana's chat.` : `⚠️ I couldn't start the pictures: ${why}. Please ask me again.` }]);
+        return reply(200, { messages: saved.slice(-2) }, origin);
+      }
+    }
     if (b.action === "jimmy_make" && b.type === "video") return reply(400, { error: "Videos are made in your Gemini app (your subscription covers them). Ask Jimmy for a video idea, then upload the video to schedule it." }, origin);
     if (b.action === "jimmy_make" || (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && jimmyWants(clean(b.text, 4000)))) {
       const text = clean(b.prompt || b.text, 4000).trim(); if (!text) return reply(400, { error: "Tell Jimmy what to make." }, origin);
@@ -344,6 +355,7 @@ export default async (req) => {
           : agent === "rachel" ? "\n\nROLE PLAY IN PROGRESS: Tania is calling in, playing a prospect (a doctor, attorney, office manager or someone who got an email or a call from WebSwan). You are answering a live call: stay fully in character, follow your live script and coaching notes, say only your next line (1 to 3 sentences), then stop and wait. No narration or feedback until she ends the role play."
           : PHONE.includes(agent) ? "\n\nROLE PLAY IN PROGRESS: Tania is playing the person who picks up the phone (receptionist, office manager, doctor, attorney or gatekeeper). You are on a live call: stay fully in character, follow your live call script and coaching notes, say only your next line (1 to 3 sentences), then stop and wait. No narration, no feedback, no stage directions until she ends the role play."
           : "\n\nROLE PLAY IN PROGRESS: act out the scenario Tania describes, stay in character, say only your next line (1 to 3 sentences), then wait. No feedback until she ends the role play.";
+        if (b.roleplay && b.rpNotes) RP += "\nTANIA STEPPED IN DURING THIS PRACTICE CALL AND SAID (apply it for the rest of this call, without mentioning it): " + clean(b.rpNotes, 1500).replace(/\s+/g, " ");
         if (b.roleplay) RP += "\nNAMES IN THIS ROLE PLAY: there is one caller and one person who answered. Each keeps the same name for the whole call: use only the names said in THIS practice call. Names from earlier practice calls, from other chats, or shown as examples or [placeholders] in a script do not exist here; never say them. If no name was given, don't use one.";
       }
       const user = { role: "user", content: text + extra };
@@ -357,6 +369,8 @@ export default async (req) => {
         let started = true; try { await startJobs(["reply_" + agent]); } catch (x) { started = false; }
         return reply(200, { messages: [userMsg, { id: "tmp-wait", role: "agent", at: new Date().toISOString(), text: started ? "⏳ I'm still working on this one. My answer will appear here in a minute or two; refresh my chat to see it." : "⚠️ I couldn't answer just now (" + e.message + "). Please send it again." }] }, origin);
       }
+      // Practice calls are spoken: stage directions from a script ([PAUSE], (yes), "1.") must never be read out.
+      if (b.roleplay) ans.text = String(ans.text || "").replace(/\[[^\]\n]{0,40}\]/g, " ").replace(/(^|[\s"“])\((?:yes|no|s[ií]|correct[^)]{0,20}|wrong[^)]{0,40}|pause[^)]{0,20}|they [^)]{0,60}|if [^)]{0,60})\)\s*/gi, "$1").replace(/(^|\n)\s*\d\.\s+(?=["“])/g, "$1").replace(/[ \t]{2,}/g, " ").trim() || ans.text;
       // Deliver the note to the teammate's chat, and say truthfully whether it got there.
       let outText = ans.text;
       if (mates.to && new RegExp("(?:^|\\n)[*_#>\\s]*TO\\s+" + firstName(mates.to) + "\\s*:", "i").test(outText)) {
