@@ -944,7 +944,7 @@ async function aiCoachAgent(agentId) {
     <label for="f_cScript">New script (each paragraph is one turn)</label><textarea id="f_cScript" name="script" style="min-height:220px">${esc(r.script || a.script || '')}</textarea>
     ${r.whyBetter ? `<p class="hint">${esc(r.whyBetter)}</p>` : ''}
     <div class="actions" style="justify-content:flex-start"><button type="button" class="btn secondary small" onclick="speak(fill($('f_cOpen').value,{name:'Doctor Smith',business:'Smith Family Practice'},byId('agents','${a.id}')),byId('agents','${a.id}'))">▶ Hear new opening</button><button type="button" class="btn outline small" onclick="stopSpeech()">⏹ Stop</button></div>
-    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use in my practice copy</button></div><p class="hint">This changes Voice Studio’s practice copy only. To change what ${esc(a.name)} says on real calls, paste the lines into 🧠 Brain → Script and save there: the Brain is the master.</p>`;
+    <div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Keep my current script</button><button type="submit" class="btn">✔ Use in my practice copy</button>${BR_AGENTS.some(([k]) => k === String(a.name || '').trim().toLowerCase().split(' ')[0]) ? `<button type="button" class="btn secondary" onclick="brTake('${a.id}')">🧠 Take it to her Brain</button>` : ''}</div><p class="hint">“Use in my practice copy” changes Voice Studio’s practice copy only. “Take it to her Brain” opens ${esc(a.name)}’s Brain with this script next to her live one, so you can review it and save it yourself. Nothing goes live until you press Save there.</p>`;
     $('form').onsubmit = e => { e.preventDefault(); a.prev = a.prev || []; a.prev.unshift({ opening: a.opening, script: a.script, at: Date.now() }); a.prev = a.prev.slice(0, 5); a.opening = $('f_cOpen').value; a.script = $('f_cScript').value; save(); closeModal(); render(); toast(a.name + '’s script updated. You can undo it on the Agents page.'); };
     if (!$('modal').open) $('modal').showModal();
   } catch (e) { console.error(e); toast('Script coach didn’t work: ' + String(e.message || e).slice(0, 140)); }
@@ -2007,6 +2007,21 @@ function brJoin(p) {
   const H = '### END HOW TO RUN YOUR CALL', k = brAt(p.prompt, H);
   return k >= 0 ? (p.prompt.slice(0, k + H.length) + (blocks ? '\n\n' + blocks : '') + '\n\n' + p.prompt.slice(k + H.length).trim()).trim() : [p.prompt, blocks].filter(Boolean).join('\n\n');
 }
+// A script coach suggestion waiting for Tania's review on the Brain page. Never saved by itself.
+function brTake(agentId) {
+  const a = byId('agents', agentId); if (!a) return;
+  const k = String(a.name || '').trim().toLowerCase().split(' ')[0];
+  BR.draft = { agent: k, opening: ($('f_cOpen') || {}).value || '', script: ($('f_cScript') || {}).value || '' };
+  closeModal(); nav('Brain'); brLoad(k);
+}
+function brDraftText() { const d = BR.draft || {}; return [d.opening, d.script].map(x => String(x || '').trim()).filter(Boolean).join('\n\n'); }
+function brDraftUse(mode) {
+  const box = $('brScript'); if (!box || !BR.draft) return;
+  box.value = mode === 'replace' ? brDraftText() : (box.value.trim() + '\n\n' + brDraftText()).trim();
+  const p = brSplit(BR.text || ''); p.script = box.value.trim(); const n = brJoin(p).length;
+  box.focus(); toast((mode === 'replace' ? 'The Script box now holds the suggestion.' : 'Added below her current script.') + ' Not saved yet: ' + n.toLocaleString() + ' of 30,000 characters' + (n > 30000 ? ', too long to save. Trim it first.' : '. Review it, then press Save.'));
+}
+function brDraftDrop() { BR.draft = null; render(); }
 async function brSaveText(t, what) {
   const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
   if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;
@@ -2030,6 +2045,7 @@ function renderBrain(c) {
   c.innerHTML = `<div class="row section"><p>Everything your phone agents know, straight from their live Cartesia voice. Pick an agent.</p><div class="toolbar">${BR_AGENTS.map(([k, n]) => `<button class="btn ${BR.agent === k ? '' : 'outline'} small" onclick="brLoad('${k}')">${n}</button>`).join('')}<button class="btn outline small" onclick="brLoad(BR.agent)">↻ Refresh</button></div></div>
   ${BR.loading ? '<div class="card empty">Loading her brain…</div>' : BR.err ? `<div class="card empty">⚠️ ${esc(BR.err)}<br><br>Sign in with Google at the top, then press Refresh.</div>` : `
   ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
+  ${BR.draft && BR.draft.agent === BR.agent && brDraftText() ? `<div class="card section" style="border:2px solid #f3d38a;background:#fffaf0" role="region" aria-label="Script coach suggestion"><h2 style="margin:0 0 6px">✦ Script coach suggestion <small class="muted" style="font-weight:400">not saved, not live</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Compare it with her live script below. Putting it in the Script box does not save it. Her live script uses numbered lines in quotation marks with [PAUSE] between them, and Monica’s also holds the Spanish copy: “Replace” removes those unless you add them back.</p><div style="white-space:pre-wrap;font-size:14px;line-height:1.5;background:#fff;border:1px solid #f3d38a;border-radius:10px;padding:12px;max-height:260px;overflow:auto">${esc(brDraftText())}</div><div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brDraftUse('add')">⬇ Add below her current script</button><button class="btn secondary small" onclick="brDraftUse('replace')">Replace the Script box with this</button><button class="btn outline small" onclick="brDraftDrop()">✕ Dismiss</button></div></div>` : ''}
   <div class="card section"><h2 style="margin:0 0 6px">📜 Script <small class="muted" style="font-weight:400">only what she says</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her conversation, line by line. No instructions here: [PAUSE] = she stops and waits; (yes) / (no) = which line fits their answer. ${SP.script ? '' : '<b>No script block yet: it appears after the next sync.</b>'}</p>${ta('brScript', SP.script, 260)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveScript()">💾 Save script</button></div></div>
   <div class="card section"><h2 style="margin:0 0 6px">🥊 Rebuttals <small class="muted" style="font-weight:400">her answers to questions and objections</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">One objection per paragraph: the objection in CAPS, then her answer. She uses the one that fits, then goes back to her script. Add any new rebuttal here. ${SP.rebuttals ? '' : '<b>No rebuttals block yet.</b>'}</p>${ta('brRebuttals', SP.rebuttals, 300)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveRebuttals()">💾 Save rebuttals</button></div></div>
   ${box('🤖 If asked "are you AI?"', ai)}
