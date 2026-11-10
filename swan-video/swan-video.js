@@ -41,6 +41,9 @@
     '#sv-wrap{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;transition:bottom .25s}' +
     '#sv-mini{position:relative;width:108px;height:150px;border-radius:18px;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59;box-shadow:0 12px 30px rgba(8,42,72,.45);transition:transform .2s;display:block}' +
     '#sv-mini:hover{transform:scale(1.05)}#sv-mini img{width:100%;height:100%;object-fit:cover;display:block}' +
+    '#sv-dot{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99996;width:58px;height:58px;border-radius:50%;border:3px solid #fff;padding:0;cursor:pointer;overflow:hidden;background:#0b1d59 center/cover no-repeat;box-shadow:0 8px 22px rgba(8,42,72,.45);transition:transform .2s}' +
+    '#sv-dot[hidden]{display:none!important}#sv-dot:hover{transform:scale(1.08)}#sv-dot span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,29,89,.35);color:#fff;font-size:20px}' +
+    '#sv-dot:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
     '#sv-gone{position:absolute;top:-10px;' + (SIDE === 'right' ? 'left' : 'right') + ':-10px;width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:#0b1d59;color:#fff;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:2}' +
     '#sv-mini .sv-badge{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(11,29,89,.85);color:#fff;font:800 11px/1.2 ' + F + ';padding:5px 4px;border-radius:9px;text-align:center}' +
     '#sv-panel{position:fixed;' + SIDE + ':20px;bottom:' + BOTTOM + 'px;z-index:99999;display:flex;flex-direction:column;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:' + F + '}' +
@@ -61,7 +64,7 @@
     '#sv-mini:focus-visible,#sv-gone:focus-visible,#sv-panel a:focus-visible,#sv-panel button:focus-visible{outline:3px solid #ffb703;outline-offset:2px}' +
     '@media (max-width:600px){#sv-mini{width:84px;height:118px}#sv-wrap,#sv-panel{' + SIDE + ':12px}#sv-panel{width:calc(100vw - 24px)}}';
 
-  var wrap, mini, panel, vid, ifr, ytPlaying = true, ytMuted = true;
+  var dot, wrap, mini, panel, vid, ifr, ytPlaying = true, ytMuted = true;
   // Playlist: the main video first, then the "Watch next" videos Tania queues in the back office (up to 6 more).
   var cur = 0;
   function playlist() {
@@ -101,14 +104,14 @@
     if (!muted) document.getElementById('sv-x').focus();
   }
   function closeP(keepFocus) {
-    panel.hidden = true; wrap.style.display = '';
+    panel.hidden = true; wrap.style.display = ''; if (dot) dot.hidden = true;
     document.getElementById('sv-stage').querySelectorAll('video,iframe').forEach(function (n) { n.remove(); }); vid = ifr = null;
     try { sessionStorage.setItem('sv-closed', '1'); } catch (e) {}
     if (!keepFocus) mini.focus();
   }
   // Keep clear of the ADA button, cookie banners and anything else pinned to the bottom corner of the page.
   function obstacleHeight() {
-    var mine = function (el) { return el.closest && el.closest('#sv-wrap,#sv-panel'); };
+    var mine = function (el) { return el.closest && el.closest('#sv-wrap,#sv-panel,#sv-dot'); };
     var top = window.innerHeight, xs = [], w = window.innerWidth;
     for (var dx = 16; dx <= 380 && dx < w; dx += 36) xs.push(SIDE === 'right' ? w - dx : dx);
     for (var y = window.innerHeight - 4; y > window.innerHeight * 0.45; y -= 14) {
@@ -126,11 +129,13 @@
   }
   function place() {
     if (!wrap) return;
+    if (dot) dot.style.visibility = 'hidden';
     var hidden = [wrap, panel].map(function (el) { var d = el.style.visibility; el.style.visibility = 'hidden'; return d; });
     var b = Math.max(window.innerWidth <= 600 ? 12 : 20, obstacleHeight() + 12);
     wrap.style.visibility = hidden[0]; panel.style.visibility = hidden[1];
     var mb = Math.max(b, window.innerWidth <= 600 ? 12 : Math.min(BOTTOM, b + 76));
     wrap.style.bottom = mb + 'px';
+    if (dot) { dot.style.visibility = ''; dot.style.bottom = mb + 'px'; }
     panel.style.bottom = b + 'px';
     var nb = document.getElementById('sv-next'), avail = window.innerHeight - b - 16, rest = 190 + (document.querySelector('#sv-panel .sv-est') ? 50 : 0) + (nb && !nb.hidden ? 52 : 0); // room for the buttons under the video
     document.getElementById('sv-stage').style.height = Math.max(200, Math.min(440, avail - rest)) + 'px';
@@ -161,12 +166,18 @@
     if (!C.on) return;
     var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     var gone = false; try { gone = !!sessionStorage.getItem('sv-gone'); } catch (e) {}
-    if (gone) return;
     wrap = document.createElement('div'); wrap.id = 'sv-wrap';
     mini = document.createElement('button'); mini.id = 'sv-mini'; mini.type = 'button'; mini.setAttribute('aria-label', 'Play video: ' + C.title);
     mini.innerHTML = (thumb() ? '<img src="' + esc(thumb()) + '" alt="">' : '') + '<span class="sv-badge">▶ Watch</span>';
     var x = document.createElement('button'); x.id = 'sv-gone'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove the video from this page');
-    x.onclick = function () { try { sessionStorage.setItem('sv-gone', '1'); } catch (e) {} wrap.remove(); panel.remove(); };
+    // The ✕ shrinks the video to a small round bubble in the same corner; tapping the bubble brings it back.
+    dot = document.createElement('button'); dot.id = 'sv-dot'; dot.type = 'button'; dot.hidden = true; dot.setAttribute('aria-label', 'Show the video again: ' + C.title);
+    if (thumb()) dot.style.backgroundImage = 'url("' + thumb().replace(/["\\]/g, '') + '")';
+    dot.innerHTML = '<span aria-hidden="true">▶</span>';
+    function collapse() { try { sessionStorage.setItem('sv-gone', '1'); } catch (e) {} wrap.style.display = 'none'; dot.hidden = false; place(); dot.focus(); }
+    function restore() { try { sessionStorage.removeItem('sv-gone'); } catch (e) {} dot.hidden = true; wrap.style.display = ''; place(); mini.focus(); }
+    x.setAttribute('aria-label', 'Shrink the video to a small bubble');
+    x.onclick = collapse; dot.onclick = restore;
     wrap.appendChild(mini); wrap.appendChild(x);
     panel = document.createElement('div'); panel.id = 'sv-panel'; panel.hidden = true; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', C.title + ' video');
     panel.innerHTML = '<div id="sv-stage"><div id="sv-ctrl"><div><button type="button" id="sv-pp" aria-label="Pause">❚❚</button><button type="button" id="sv-snd" aria-label="Turn sound on">🔇</button></div>' +
@@ -176,7 +187,8 @@
       '<button type="button" class="sv-intake" id="sv-intake">📝 ' + esc(C.intakeLabel || 'Intake') + '</button>' +
       (/^https:\/\//.test(C.estimate || '') ? '<a class="sv-est" href="' + esc(C.estimate) + '" target="_blank" rel="noopener">🧮 Estimate my cost</a>' : '') + '</div>' +
       '<div id="sv-pow">Powered by <b>The WebSwan</b></div>';
-    document.body.appendChild(wrap); document.body.appendChild(panel);
+    document.body.appendChild(wrap); document.body.appendChild(panel); document.body.appendChild(dot);
+    if (gone) { wrap.style.display = 'none'; dot.hidden = false; }
     place(); setInterval(function () { if (document.body.contains(wrap)) place(); }, 1500); window.addEventListener('resize', place);
     mini.onclick = function () { openP(false); };
     document.getElementById('sv-pp').onclick = togglePlay;
@@ -189,7 +201,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) closeP(); });
     // Like Intaker: opens by itself, muted, a few seconds after the page loads (once per visit; not on small phones).
     var closed = false; try { closed = !!sessionStorage.getItem('sv-closed'); } catch (e) {}
-    if (AUTO && !closed && window.innerWidth > 600) setTimeout(function () { if (panel.hidden) openP(true); }, 3500);
+    if (AUTO && !closed && !gone && window.innerWidth > 600) setTimeout(function () { if (panel.hidden) openP(true); }, 3500);
   }
   function start() {
     var done = false, go = function () { if (!done) { done = true; mount(); } };
