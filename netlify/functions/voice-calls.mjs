@@ -185,8 +185,9 @@ export default async (req) => {
 
   let b;
   try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
-  // WorkPilot may play recordings and hand Eva's emailed leads to the callers (eva_handoff), nothing else.
-  if (viaOffice && b.action !== "audio" && b.action !== "eva_handoff" && b.action !== "eva_handoff_list") return reply(403, { error: "This account can only play recordings here." }, origin);
+  // WorkPilot may play recordings, hand Eva's emailed leads to the callers (eva_handoff), and push a lead
+  // straight to an agent's call list (workpilot_call) — nothing else.
+  if (viaOffice && b.action !== "audio" && b.action !== "eva_handoff" && b.action !== "eva_handoff_list" && b.action !== "workpilot_call") return reply(403, { error: "This account can only play recordings here." }, origin);
   const store = getStore({ name: "voice-studio", consistency: "strong" });
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const hasKey = !!process.env.CARTESIA_API_KEY, nums = numberIds();
@@ -361,6 +362,38 @@ export default async (req) => {
     log.push({ at: new Date().toISOString(), by: email, business: item.business, phone, state: st, agent, notBefore: new Date(notBefore).toISOString(), updated: !!same });
     await store.setJSON("eva-handoffs", log.slice(-500));
     return reply(200, { ok: true, agent, notBefore: new Date(notBefore).toISOString(), updated: !!same, paused: !!q.paused }, origin);
+  }
+
+  // ---------- Cold-call hand-off from WorkPilot: Tania pushes a lead straight to an agent's call list ----------
+  // Not a follow-up (no email was sent): the agent runs its normal first-call script with Tania's WorkPilot
+  // notes as context (name, practice, state, phone, comment). Doctors → Monica, attorneys → George,
+  // advertising → Rebecca, Spanish → Alek, but Tania picks the agent in WorkPilot.
+  if (b.action === "workpilot_call") {
+    const x = b.lead || {};
+    const phone = e164(x.phone), st = clean(x.state, 2).toUpperCase();
+    if (!phone) return reply(400, { error: "This lead has no valid US phone number." }, origin);
+    if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the lead's state (2 letters) so the agent calls in their business hours." }, origin);
+    const want = String(x.agent || "").toLowerCase();
+    if (!["monica", "george", "rebecca", "alek"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca or Alek." }, origin);
+    const agent = want, lang = LANGS[x.lang] ? x.lang : "en";
+    const contact = clean(x.contact || x.name, 120), business = clean(x.business, 160);
+    const notes = clean(x.notes || x.findings || x.comment, 820);
+    const facts = [
+      contact && ("Who to ask for: " + contact + "."),
+      notes && ("Tania's notes from WorkPilot (what happened before / what to say): " + notes),
+      "This is a first cold call — no email was sent, so run your normal opening and do not say you are following up on an email.",
+    ].filter(Boolean).join(" ").slice(0, 900);
+    const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
+    const item = { id: clean(x.id, 60) || "wp_" + crypto.randomBytes(4).toString("hex"), name: contact || business, business, phone, state: st, agent, lang, mode: "selling", task: "",
+      findings: facts, campaign: "WorkPilot push (" + agent + ")", status: "queued", addedAt: Date.now() };
+    const same = q.leads.find((l) => l.status === "queued" && e164(l.phone) === phone);
+    if (same) Object.assign(same, item, { id: same.id || item.id }); else q.leads.push(item);
+    if (q.leads.length > 2000) q.leads = q.leads.slice(-2000);
+    await store.setJSON("queue", q);
+    const log = (await store.get("eva-handoffs", { type: "json" })) || [];
+    log.push({ at: new Date().toISOString(), by: email, business, phone, state: st, agent, campaign: "WorkPilot push", updated: !!same });
+    await store.setJSON("eva-handoffs", log.slice(-500));
+    return reply(200, { ok: true, agent, updated: !!same, paused: !!q.paused }, origin);
   }
 
   if (b.action === "queue_get" || b.action === "queue_set") {
