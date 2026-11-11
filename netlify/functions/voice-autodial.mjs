@@ -31,7 +31,7 @@ function clock(tz, d = new Date()) {
 // Tania, Nov 10: Monica 7-8 AM and 11 AM-12, George 8-9 AM and 12-1 PM, Rebecca 9-10 AM and 1-2 PM (one caller per hour,
 // a break from 10 to 11). Alek is not limited (floating, Tania's own calls). Before Nov 10: Monica 7-8 and 1-2, George 8-9, Rebecca 9-10 and 12-1.
 // Voice Studio can override this by saving settings.agentHours.
-const DEFAULT_AGENT_HOURS = { monica: [["07:00", "08:00"], ["11:00", "12:00"]], george: [["08:00", "09:00"], ["12:00", "13:00"]], rebecca: [["09:00", "10:00"], ["13:00", "14:00"]] };
+const DEFAULT_AGENT_HOURS = { monica: [["07:00", "08:00"], ["11:00", "12:00"]], george: [["08:00", "09:00"], ["12:00", "13:00"]], rebecca: [["08:00", "09:00"], ["13:00", "14:00"]] };
 const toMins = (s) => { const m = String(s || "").match(/^(\d{1,2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : -1; };
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
