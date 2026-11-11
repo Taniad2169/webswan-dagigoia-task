@@ -558,6 +558,18 @@ export default async (req) => {
     return reply(200, { copiedFrom: from, to, voiceId, applied }, origin);
   }
 
+  // ---------- list the account's Cartesia phone numbers (for caller-ID registration) ----------
+  if (b.action === "list_numbers") {
+    let list = [];
+    for (const path of ["/v1/phone-numbers", "/v1/phone_numbers", "/v1/telephony/phone-numbers"]) {
+      try { const d = await cartesia("GET", path, V_READ); list = Array.isArray(d) ? d : (d.data || d.phone_numbers || d.phoneNumbers || d.items || []); if (list.length || Array.isArray(d)) break; } catch (e) {}
+    }
+    const assigned = new Set(numberIds());
+    const alek = process.env.CARTESIA_ALEK_NUMBER_ID || "";
+    const numbers = list.map((n) => ({ id: n.id || n.phone_number_id || n.number_id || "", number: n.phone_number || n.number || n.e164 || n.phoneNumber || "", inRotation: assigned.has(n.id || n.phone_number_id || ""), isAlekLine: (n.id || n.phone_number_id) === alek }));
+    return reply(200, { count: numbers.length, numbers, rawSample: list.slice(0, 1) }, origin);
+  }
+
   // ---------- Jennifer's back office: one private profile per virtual-receptionist client ----------
   if (b.action === "client_list" || b.action === "client_set" || b.action === "client_delete" || b.action === "client_preview") {
     const list = (await store.get("clients", { type: "json" })) || [];
