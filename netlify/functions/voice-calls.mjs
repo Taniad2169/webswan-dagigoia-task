@@ -117,18 +117,16 @@ const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : na
 const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
 // Alek has no separate Portuguese agent (plan limit): his one agent switches to Brazilian Portuguese for a pt call
 // and back to English + Mexican Spanish for the next English or Spanish call.
-const ALEK_DEFAULT_LANG = { primary: "en", additional: [{ code: "es-MX" }] };
+// Tania, Nov 11: Alek speaks ONE language per call. Mixing English and Spanish in the same call gets him hung up on,
+// so his agent is set to a single primary language with no extra languages before every call.
+const ALEK_LANGS = { en: { primary: "en", additional: [] }, es: { primary: "es-MX", additional: [] }, pt: { primary: "pt-BR", additional: [] } };
 async function alekLanguage(id, lang, store) {
+  const want = ALEK_LANGS[lang] || ALEK_LANGS.en;
   const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
-  const cur = (d.config || (d.agent && d.agent.config) || {}).language || {};
-  const isPt = String(cur.primary || "").startsWith("pt");
-  if (lang === "pt" && !isPt) {
-    await store.setJSON("alek-lang", cur);
-    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: { primary: "pt-BR", additional: [] } } });
-  } else if (lang !== "pt" && isPt) {
-    const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG;
-    await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig } });
-  }
+  const cur = ((d.config || (d.agent && d.agent.config)) || {}).language || {};
+  const extras = Array.isArray(cur.additional) ? cur.additional.length : 0;
+  if (String(cur.primary || "") === want.primary && !extras) return;
+  await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: want } });
 }
 const MODES = { selling: "Selling: phone application (PWA) and digital e-card", floating: "Floating: follow Tania's task below" };
 const LANG_RULE = {
