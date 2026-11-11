@@ -442,8 +442,8 @@ export default async (req) => {
       if (agent === "eva") {
         const acts = [];
         outText = outText
-          .replace(/\(\(\s*BOOK:\s*([^)]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "book", raw: p }); return ""; })
-          .replace(/\(\(\s*TASK:\s*([^)]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "task", raw: p }); return ""; })
+          .replace(/\(\(\s*BOOK:\s*([\s\S]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "book", raw: p }); return ""; })
+          .replace(/\(\(\s*TASK:\s*([\s\S]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "task", raw: p }); return ""; })
           .replace(/\n{3,}/g, "\n\n").trim();
         for (const a of acts.slice(0, 4)) {
           try {
