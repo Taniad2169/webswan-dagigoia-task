@@ -112,6 +112,7 @@ export default async () => {
 
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
+    if (String(lead.agent || "").toLowerCase() === "alek") continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
     if (lead.notBefore && Date.now() < lead.notBefore) continue; // Eva follow-up: waits 24 hours after her email
     if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
     const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
