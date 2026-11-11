@@ -47,13 +47,16 @@ async function cart(method, path, body) {
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(String(d.message || d.error || "Cartesia " + r.status).slice(0, 200)); return d;
 }
 // Alek's one agent switches to Brazilian Portuguese for pt leads and back for English/Spanish leads.
-const ALEK_DEFAULT_LANG = { primary: "en", additional: [{ code: "es-MX" }] };
+// Tania, Nov 11: Alek speaks ONE language per call. Mixing English and Spanish in the same call gets him hung up on,
+// so his agent is set to a single primary language with no extra languages before every call.
+const ALEK_LANGS = { en: { primary: "en", additional: [] }, es: { primary: "es-MX", additional: [] }, pt: { primary: "pt-BR", additional: [] } };
 async function alekLanguage(id, lang, store) {
+  const want = ALEK_LANGS[lang] || ALEK_LANGS.en;
   const d = await cart("GET", "/v1/agents/" + encodeURIComponent(id));
-  const cur = (d.config || (d.agent && d.agent.config) || {}).language || {};
-  const isPt = String(cur.primary || "").startsWith("pt");
-  if (lang === "pt" && !isPt) { await store.setJSON("alek-lang", cur); await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: { primary: "pt-BR", additional: [] } } }); }
-  else if (lang !== "pt" && isPt) { const orig = (await store.get("alek-lang", { type: "json" }).catch(() => null)) || ALEK_DEFAULT_LANG; await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: String(orig.primary || "").startsWith("pt") ? ALEK_DEFAULT_LANG : orig } }); }
+  const cur = ((d.config || (d.agent && d.agent.config)) || {}).language || {};
+  const extras = Array.isArray(cur.additional) ? cur.additional.length : 0;
+  if (String(cur.primary || "") === want.primary && !extras) return;
+  await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: want } });
 }
 const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
 function e164(p) {
