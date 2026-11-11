@@ -351,7 +351,7 @@ async function sendToAgent(id, to) {
 async function openAgent(k) {
   cur = k; findQ = ""; PLANS = {}; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
-  const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
+  const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🏆 Awards", () => awardPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = tl[b.dataset.t][1]);
   $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / give me a video idea for…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
@@ -800,13 +800,13 @@ function briefPicker() {
   $("vOv").hidden = false; $("vImg").src = "img/eva.jpg"; $("vName").textContent = "Who do you want your briefing with?"; $("vState").textContent = "";
   $("vPick").hidden = false;
   $("vPick").innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px">' + ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k]; return `<button class="btn" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px" data-vp="${k}" aria-label="Voice briefing with ${esc(a.name)}"><img src="${esc(a.photo)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover"><b style="font-size:13px">${esc(a.name.split(" ")[0])}</b></button>`; }).join("") + '</div>';
-  $("vPick").innerHTML += '<label style="display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0 4px;font-weight:700"><input type="checkbox" id="gMode"> 👥 Group meeting: pick several agents</label><button class="btn pri" id="gGo" hidden style="width:100%;margin-top:4px">Start group meeting</button><p class="hint" id="gHelp" hidden style="margin:6px 0 0;text-align:left">Call them by name and that agent answers. Say “Eva, explain to Rachel …” and just those two talk. Ask for “everyone’s opinion” and they answer one at a time. Say “Monica, let’s role play” to practice a call, “end role play” for feedback from everyone, and “add that to your brain” (or “everyone’s brain”) to keep a change.</p>';
+  $("vPick").innerHTML += '<label style="display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0 4px;font-weight:700"><input type="checkbox" id="gMode"> 🧠 Brain Room: pick several agents</label><button class="btn pri" id="gGo" hidden style="width:100%;margin-top:4px">Start the Brain Room</button><p class="hint" id="gHelp" hidden style="margin:6px 0 0;text-align:left">Call them by name and that agent answers. Say “Eva, explain to Rachel …” and just those two talk. Ask for “everyone’s opinion” and they answer one at a time. Say “Monica, let’s role play” to practice a call, “end role play” for feedback from everyone, and “add that to your brain” (or “everyone’s brain”) to keep a change.</p>';
   const sel = new Set();
   $("gMode").onchange = () => { const on = $("gMode").checked; sel.clear(); $("gGo").hidden = !on; $("gHelp").hidden = !on; $("vPick").querySelectorAll("[data-vp]").forEach((b) => { b.style.outline = ""; b.setAttribute("aria-pressed", "false"); }); $("vName").textContent = on ? "Who's in the meeting?" : "Who do you want your briefing with?"; };
   $("gGo").onclick = () => { if (sel.size < 2) return toast("Pick at least two agents."); groupStart(ORDER.filter((k) => sel.has(k))); };
   $("vPick").querySelectorAll("[data-vp]").forEach((b) => b.onclick = async () => {
     const k = b.dataset.vp;
-    if ($("gMode").checked) { if (sel.has(k)) sel.delete(k); else sel.add(k); b.style.outline = sel.has(k) ? "3px solid #1182f0" : ""; b.setAttribute("aria-pressed", sel.has(k) ? "true" : "false"); $("gGo").textContent = "Start group meeting" + (sel.size ? " (" + sel.size + ")" : ""); return; }
+    if ($("gMode").checked) { if (sel.has(k)) sel.delete(k); else sel.add(k); b.style.outline = sel.has(k) ? "3px solid #1182f0" : ""; b.setAttribute("aria-pressed", sel.has(k) ? "true" : "false"); $("gGo").textContent = "Start the Brain Room" + (sel.size ? " (" + sel.size + ")" : ""); return; }
     $("vPick").hidden = true; G.on = false; await openAgent(k); voiceStart(BRIEF[k]);
   });
 }
@@ -817,9 +817,9 @@ const first = (k) => aName(k).split(" ")[0];
 function groupStart(members) {
   G = { on: true, members, last: null, log: [], rp: null };
   $("vPick").hidden = true; $("vImg").src = ((S.agents || FALLBACK)[members[0]] || FALLBACK[members[0]]).photo;
-  $("vName").textContent = "Group meeting: " + members.map(first).join(", "); $("vHeard").textContent = "";
+  $("vName").textContent = "Brain Room: " + members.map(first).join(", "); $("vHeard").textContent = "";
   V.on = true; vSay("Say who you want to hear from, or ask everyone's opinion.");
-  G.log.push({ who: "Tania", text: "(Meeting started with " + members.map(aName).join(", ") + ".)" });
+  G.log.push({ who: "Tania", text: "(Brain Room started with " + members.map(aName).join(", ") + ".)" });
   groupTurn("Everyone, say hi in one short sentence so I know you're here.");
 }
 // Who is named, in the order Tania said them.
@@ -849,7 +849,7 @@ function groupPrompt(k, said, role) {
 async function groupAsk(k, said, role, opt) {
   if (!V.on || !G.on) return "";
   const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
-  $("vImg").src = a.photo; $("vName").textContent = a.name + " · group meeting"; vSay(first(k) + " is thinking…");
+  $("vImg").src = a.photo; $("vName").textContent = a.name + " · Brain Room"; vSay(first(k) + " is thinking…");
   try {
     const r = await api(Object.assign({ action: "chat", agent: k, text: groupPrompt(k, said, role), voice: true }, opt || {}));
     const ans = r.messages[1].text; G.log.push({ who: a.name, text: ans }); G.last = k;
@@ -936,6 +936,32 @@ async function brainPanel(k) {
     $("extra").querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => { if (!confirm("Remove this note from " + first(k) + "'s brain?")) return; try { draw(await api({ action: "brain_remove", agent: k, id: b.dataset.rm })); } catch (e) { toast(e.message); } });
   };
   try { draw(await api({ action: "brain_list", agent: k })); } catch (e) { $("extra").innerHTML = ""; toast(e.message); }
+}
+const AWARDS = ["⭐", "🌟", "🏆", "🥇", "🔥", "💪", "👏", "🎯", "💎", "🚀"];
+async function awardPanel(k) {
+  $("extra").innerHTML = '<div class="card"><p class="hint">Loading…</p></div>';
+  const draw = (r) => {
+    const list = (r.awards || []).slice().reverse();
+    const tot = r.totals || {};
+    const known = (x) => (S.agents || FALLBACK)[x] || FALLBACK[x];
+    const board = Object.keys(tot).filter((x) => tot[x] && known(x)).map((x) => first(x) + " " + tot[x]).join(" · ");
+    $("extra").innerHTML = '<div class="card" style="padding:12px;border:1px solid #c9dcef;border-radius:12px;margin:8px 0">'
+      + '<b>🏆 Awards for ' + esc(aName(k)) + '</b>'
+      + '<p class="hint" style="margin:4px 0 8px">Drop a star for good effort. ' + esc(first(k)) + ' sees them, and Coby uses the board when he coaches in the Brain Room.</p>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">' + AWARDS.map((e) => '<button class="btn" data-aw="' + e + '" title="Give ' + e + '" style="font-size:20px;padding:6px 10px">' + e + '</button>').join("") + '</div>'
+      + '<input id="awNote" placeholder="What did they do well? (optional)" style="width:100%;padding:8px;border:1px solid #c9dcef;border-radius:8px;margin-bottom:8px">'
+      + (board ? '<p class="hint" style="margin:0 0 8px"><b>Board:</b> ' + esc(board) + '</p>' : "")
+      + (list.length ? '<div style="max-height:220px;overflow:auto">' + list.map((x) => '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid #eef4fa"><span style="font-size:18px">' + esc(x.emoji) + '</span><span style="flex:1;font-size:13px">' + esc(x.note || "") + '<br><span class="hint">' + esc(new Date(x.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })) + '</span></span><button class="btn" data-rm="' + esc(x.id) + '" style="padding:2px 8px">✕</button></div>').join("") + '</div>' : '<p class="hint" style="margin:0">No awards yet.</p>')
+      + '</div>';
+    $("extra").querySelectorAll("[data-aw]").forEach((b) => b.onclick = async () => {
+      try { const x = await api({ action: "award_add", agent: k, emoji: b.dataset.aw, note: ($("awNote").value || "").trim() }); draw(x); toast(b.dataset.aw + " given to " + first(k) + "!"); }
+      catch (e) { toast(e.message); }
+    });
+    $("extra").querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => {
+      try { draw(await api({ action: "award_remove", agent: k, id: b.dataset.rm })); } catch (e) { toast(e.message); }
+    });
+  };
+  try { draw(await api({ action: "award_list", agent: k })); } catch (e) { $("extra").innerHTML = ""; toast(e.message); }
 }
 async function voiceStart(firstMsg) {
   const a = (S.agents || FALLBACK)[cur] || FALLBACK[cur];
