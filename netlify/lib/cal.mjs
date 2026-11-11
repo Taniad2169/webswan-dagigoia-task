@@ -141,6 +141,15 @@ function doPost(e) {
       ev.addPopupReminder(10);
       return out({ ok: true, id: ev.getId() });
     }
+    if (b.action === 'task') {
+      var lists = (Tasks.Tasklists.list().items || []);
+      var listId = lists.length ? lists[0].id : '@default';
+      var payload = { title: String(b.title || 'Task').slice(0, 500) };
+      if (b.notes) payload.notes = String(b.notes).slice(0, 2000);
+      if (b.due) { var dd = new Date(b.due); if (!isNaN(dd.getTime())) payload.due = dd.toISOString(); }
+      var t = Tasks.Tasks.insert(payload, listId);
+      return out({ ok: true, id: t.id, list: (lists[0] && lists[0].title) || 'My Tasks' });
+    }
     if (b.action === 'mail') {
       if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(String(b.to || ''))) return out({ error: 'bad recipient' });
       MailApp.sendEmail({ to: b.to, subject: String(b.subject || '').slice(0, 200), htmlBody: String(b.html || '').slice(0, 20000), name: String(b.fromName || 'WebSwan Media Network').slice(0, 80), replyTo: b.replyTo || undefined });
