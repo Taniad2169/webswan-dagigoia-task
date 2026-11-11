@@ -291,6 +291,28 @@ function jsonAfter(h, marker) {
   }
   return null;
 }
+// YouTube stopped handing out caption text without a token, so Gemini watches the video instead when it can.
+async function geminiWatch(link) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return "";
+  const models = [process.env.GEMINI_MODEL, "gemini-flash-latest", "gemini-2.5-flash"].filter((m, i, a) => m && a.indexOf(m) === i);
+  for (const model of models) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(key), {
+        method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Watch this video and write what it actually teaches, in detail: the main points in order, the exact wording of any scripts, openers, objections or rebuttals the speaker gives, and the examples they use. Quote the speaker wherever the exact words matter. No introduction and no praise, just the content." }, { file_data: { file_uri: link } }] }] })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { if (/not found|not supported|unavailable|no longer/i.test((j.error && j.error.message) || "")) continue; return ""; }
+      const c = (j.candidates || [])[0] || {};
+      const text = ((c.content && c.content.parts) || []).map((x) => x.text || "").join("").trim();
+      if (text) return text;
+    } catch (e) { if (e && e.name === "AbortError") return ""; }
+    finally { clearTimeout(t); }
+  }
+  return "";
+}
 export async function readYouTube(raw, max = 9000) {
   const id = YT_ID(raw);
   if (!id) throw new Error("That isn't a YouTube link.");
@@ -305,11 +327,15 @@ export async function readYouTube(raw, max = 9000) {
     const head = "VIDEO: " + (title || link) + (det.author ? "\nChannel: " + det.author : "") + (det.shortDescription ? "\nDescription: " + String(det.shortDescription).replace(/\s+/g, " ").slice(0, 1200) : "");
     const tracks = (((pr.captions || {}).playerCaptionsTracklistRenderer || {}).captionTracks) || [];
     const pick = tracks.find((x) => /^en/i.test(x.languageCode || "")) || tracks[0];
-    if (!pick || !pick.baseUrl) return { url: link, title, text: (head + "\n\n(This video has no captions, so only the title and description could be read. Say that plainly.)").slice(0, max) };
+    const noCaptions = async () => {
+      const g = await geminiWatch(link);
+      return { url: link, title, text: (head + (g ? "\n\nWHAT THE VIDEO TEACHES (watched for you, not a word-for-word transcript):\n" + g : "\n\n(This video's captions are locked and it could not be watched this time, so only the title and description could be read. Say that plainly.)")).slice(0, max) };
+    };
+    if (!pick || !pick.baseUrl) return noCaptions();
     const c = await fetch(pick.baseUrl + "&fmt=json3", { signal: ctl.signal, headers: { "accept-language": "en-US,en;q=0.9" } });
     const j = await c.json().catch(() => null);
     const words = (((j || {}).events) || []).flatMap((e) => (e.segs || []).map((x) => x.utf8 || "")).join("").replace(/\s+/g, " ").trim();
-    if (!words) return { url: link, title, text: (head + "\n\n(The captions could not be read this time.)").slice(0, max) };
+    if (!words) return noCaptions();
     return { url: link, title, text: (head + "\n\nWHAT IS SAID IN THE VIDEO:\n" + words).slice(0, max) };
   } finally { clearTimeout(t); }
 }
