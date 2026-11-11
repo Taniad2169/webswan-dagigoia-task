@@ -513,7 +513,7 @@ export default async (req) => {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
-          system_tools: Object.assign({ end_call: {}, send_dtmf: {}, skip_turn: {}, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
+          system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: {}, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
         // Tania, Nov 6: the "are you still there?" check-in fired after 5 s of ringing/hold. Outbound callers wait much longer.
         let turnNote = "";
@@ -533,6 +533,24 @@ export default async (req) => {
     if (process.env["CARTESIA_AGENT_" + key.toUpperCase()]) return reply(409, { error: "This agent is set in Netlify (CARTESIA_AGENT_" + key.toUpperCase() + "). Remove that variable there and redeploy." }, origin);
     const had = !!EXTRA_IDS[key]; delete EXTRA_IDS[key]; await store.setJSON("agent-ids", EXTRA_IDS);
     return reply(200, { ok: true, removed: had, key }, origin);
+  }
+
+  // ---------- copy one agent's Cartesia voice onto another (e.g. give Alek George's native-Spanish voice) ----------
+  if (b.action === "agent_voice_copy") {
+    const from = String(b.from || "").toLowerCase().split("_")[0], to = String(b.to || "").toLowerCase().split("_")[0];
+    if (!AGENTS.includes(from) || !AGENTS.includes(to)) return reply(400, { error: "Unknown agent (from/to)." }, origin);
+    const srcId = agentId(from); if (!srcId) return reply(400, { error: "No Cartesia agent for " + from + "." }, origin);
+    let voice;
+    try { const src = await cartesia("GET", "/v1/agents/" + encodeURIComponent(srcId), V_READ); voice = ((src.config || (src.agent && src.agent.config)) || {}).voice; }
+    catch (e) { return reply(502, { error: "Couldn't read " + from + "'s voice: " + e.message }, origin); }
+    if (!voice) return reply(502, { error: from + " has no voice set in Cartesia." }, origin);
+    const applied = [];
+    for (const a of (ALLOWED_LANGS[to] || ["en"]).map((l) => agentKey(to, l))) {
+      const id = agentId(a); if (!id) continue;
+      try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { voice } }); applied.push(a + ": ok"); }
+      catch (e) { applied.push(a + ": " + String(e.message || e).slice(0, 80)); }
+    }
+    return reply(200, { copiedFrom: from, to, voice, applied }, origin);
   }
 
   // ---------- Jennifer's back office: one private profile per virtual-receptionist client ----------
