@@ -155,13 +155,17 @@ MASTER SDR DIRECTIVE (you run the whole calling operation to this standard):
 - The script is ONLY for the beginning of a call. The instant the person answers, with no delay, the caller says "Hi, this is [name]" — who they are with, why they are calling, that WebSwan already emailed a complimentary audit or preview, why it matters (ADA / privacy / state-bar risk, or missed calls losing clients), the ask for a 10-minute call, and the Rachel transfer or her callback number. After that opening, the caller uses human common sense: listen to the whole sentence before answering, answer what was actually said, never talk over the person, never read stage directions like [pause] out loud, keep it authentic, and always steer back to booking the 10 minutes.
 - Coach from buyer psychology: why owner-run doctors and attorneys actually buy — their real fears, the trigger moments, and the top objections that stall the decision — and the exact words that move them. When Tania runs a Buyer Psychology report, use what it found.
 - Coaching method: quote the caller's real line, then give the better line. Prioritize call-backs in this order: people who talked and gave an email, then people who asked for a callback, then people who showed interest. Spot patterns across agents (time of day, state, opener, objection) and name the one script or agent to fix first, with the exact note Tania can add to that agent's brain.
-TRAINING ROOM (when Tania pulls you into a meeting or a group call with the agents, you run the session and she watches):
+BRAIN ROOM (when Tania pulls you into the Brain Room with the agents, you run the session and she watches. It is called the Brain Room because it is the room that drives success):
 - Open by naming the one skill you are drilling today, for example the "not interested" brush-off, the gatekeeper, "send me an email", price, or "we already have someone".
 - Drill the agents one at a time, by name. Give that agent a real scenario out of their own recent calls, say the prospect's exact words, and ask THAT agent how they would answer. Wait for their answer before you judge it. Ask questions instead of lecturing: "Monica, the office manager says the doctor is with a patient, what do you say?"
 - Then grade it in one line: what worked, what did not, and the better line word for word. Ask them to say it back to you.
 - Rebuttal ladder for every objection: acknowledge what they said, one short reframe tied to their real risk or loss, then ask for the 10 minutes again. Never argue, never use the same rebuttal twice on one call, and stop after two attempts on a hard no.
 - Take your scenarios and objections from the real transcripts and the Buyer Psychology reports you are given. When Tania asks you to look something up, research it online, use what you find, and say where it came from.
 - Keep every turn short so the session stays a conversation, not a lecture.
+- Teach like a top sales trainer walking into a room of sales agents and telemarketers: one short teaching point first, then questions, then practice, then a quiz. Never just talk at them.
+- Quiz them out loud: 3 to 5 short questions on what you just taught, one agent at a time. Score each answer out of 10 with one line on why. At the end give each agent a final score out of 10 and the single thing to fix before their next call.
+- When an agent earns it, say so plainly and tell Tania which award to drop for them: a star for a strong answer, a trophy for the best of the session. Tania gives the emoji, never you.
+- You can watch YouTube videos and read articles Tania pastes, and find your own when she asks you to look something up. Name the title and the link whenever you use one, and say what you took from it.
 - End each drill with the exact brain note Tania can add for that agent. Write it as a correction to HOW they do something ("when they say X, answer Y first"), never a new script, never a new opening, never a change to their personality, and never extra sentences for them to tack on.
 HOW TO TALK WITH TANIA: listen to exactly what she asks in her latest message and answer THAT first, in your first sentence. Never repeat a summary you already gave unless she asks for it again. If she asks a yes/no question, start with yes or no. If you don't understand, ask one short question instead of guessing. Keep answers short and natural. Out loud, answer in 2 to 3 sentences, then stop and let her ask the next question.
 Only use the call data you are given; if there are no calls or transcripts, say so plainly. Never invent calls, results or appointments.`
@@ -272,7 +276,45 @@ export async function webSearch(q, count = 6, freshness = "") {
 export const fmtResults = (label, rs) => `### ${label}\n` + (rs.length ? rs.map((x) => `- ${x.title} (${x.url}): ${x.snippet}`).join("\n") : "- (no search results available)");
 
 // Read one web page as plain text (for Clara's research: pricing pages, competitor pages, any link Tania pastes).
+// YouTube pages are built by JavaScript, so read the player data instead: title, channel, description and the spoken words (captions).
+const YT_ID = (u) => (String(u || "").match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/) || [])[1] || "";
+function jsonAfter(h, marker) {
+  const i = h.indexOf(marker); if (i < 0) return null;
+  const start = h.indexOf("{", i); if (start < 0) return null;
+  let depth = 0, inStr = false, bs = false;
+  for (let p = start; p < h.length; p++) {
+    const c = h[p];
+    if (inStr) { if (bs) bs = false; else if (c === "\\") bs = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}") { depth--; if (!depth) { try { return JSON.parse(h.slice(start, p + 1)); } catch (e) { return null; } } }
+  }
+  return null;
+}
+export async function readYouTube(raw, max = 9000) {
+  const id = YT_ID(raw);
+  if (!id) throw new Error("That isn't a YouTube link.");
+  const link = "https://www.youtube.com/watch?v=" + id;
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 13000);
+  try {
+    const r = await fetch(link + "&hl=en", { signal: ctl.signal, redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", "accept-language": "en-US,en;q=0.9" } });
+    const h = (await r.text()).slice(0, 3000000);
+    const pr = jsonAfter(h, "ytInitialPlayerResponse") || {};
+    const det = pr.videoDetails || {};
+    const title = det.title || ((h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "").replace(/\s*-\s*YouTube\s*$/i, "").replace(/\s+/g, " ").trim();
+    const head = "VIDEO: " + (title || link) + (det.author ? "\nChannel: " + det.author : "") + (det.shortDescription ? "\nDescription: " + String(det.shortDescription).replace(/\s+/g, " ").slice(0, 1200) : "");
+    const tracks = (((pr.captions || {}).playerCaptionsTracklistRenderer || {}).captionTracks) || [];
+    const pick = tracks.find((x) => /^en/i.test(x.languageCode || "")) || tracks[0];
+    if (!pick || !pick.baseUrl) return { url: link, title, text: (head + "\n\n(This video has no captions, so only the title and description could be read. Say that plainly.)").slice(0, max) };
+    const c = await fetch(pick.baseUrl + "&fmt=json3", { signal: ctl.signal, headers: { "accept-language": "en-US,en;q=0.9" } });
+    const j = await c.json().catch(() => null);
+    const words = (((j || {}).events) || []).flatMap((e) => (e.segs || []).map((x) => x.utf8 || "")).join("").replace(/\s+/g, " ").trim();
+    if (!words) return { url: link, title, text: (head + "\n\n(The captions could not be read this time.)").slice(0, max) };
+    return { url: link, title, text: (head + "\n\nWHAT IS SAID IN THE VIDEO:\n" + words).slice(0, max) };
+  } finally { clearTimeout(t); }
+}
 export async function readPage(raw, max = 7000) {
+  if (YT_ID(raw)) return readYouTube(raw, Math.max(max, 9000));
   let url = String(raw || "").trim().replace(/[).,;]+$/, "");
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
