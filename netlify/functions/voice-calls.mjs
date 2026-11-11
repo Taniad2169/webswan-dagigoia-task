@@ -540,17 +540,22 @@ export default async (req) => {
     const from = String(b.from || "").toLowerCase().split("_")[0], to = String(b.to || "").toLowerCase().split("_")[0];
     if (!AGENTS.includes(from) || !AGENTS.includes(to)) return reply(400, { error: "Unknown agent (from/to)." }, origin);
     const srcId = agentId(from); if (!srcId) return reply(400, { error: "No Cartesia agent for " + from + "." }, origin);
-    let voice;
-    try { const src = await cartesia("GET", "/v1/agents/" + encodeURIComponent(srcId), V_READ); voice = ((src.config || (src.agent && src.agent.config)) || {}).voice; }
+    let voiceId;
+    try { const src = await cartesia("GET", "/v1/agents/" + encodeURIComponent(srcId), V_READ); const c = src.config || (src.agent && src.agent.config) || {}; voiceId = c.audio && c.audio.output && c.audio.output.voice_id; }
     catch (e) { return reply(502, { error: "Couldn't read " + from + "'s voice: " + e.message }, origin); }
-    if (!voice) return reply(502, { error: from + " has no voice set in Cartesia." }, origin);
+    if (!voiceId) return reply(502, { error: from + " has no voice set in Cartesia." }, origin);
     const applied = [];
     for (const a of (ALLOWED_LANGS[to] || ["en"]).map((l) => agentKey(to, l))) {
       const id = agentId(a); if (!id) continue;
-      try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { voice } }); applied.push(a + ": ok"); }
-      catch (e) { applied.push(a + ": " + String(e.message || e).slice(0, 80)); }
+      try {
+        const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+        const audio = JSON.parse(JSON.stringify((d.config || (d.agent && d.agent.config) || {}).audio || {}));
+        audio.output = Object.assign({}, audio.output || {}, { voice_id: String(voiceId) });
+        await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { audio } });
+        applied.push(a + ": ok");
+      } catch (e) { applied.push(a + ": " + String(e.message || e).slice(0, 80)); }
     }
-    return reply(200, { copiedFrom: from, to, voice, applied }, origin);
+    return reply(200, { copiedFrom: from, to, voiceId, applied }, origin);
   }
 
   // ---------- Jennifer's back office: one private profile per virtual-receptionist client ----------
