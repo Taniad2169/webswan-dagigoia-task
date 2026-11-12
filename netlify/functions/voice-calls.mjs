@@ -11,7 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
-import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore } from "../lib/team.mjs";
+import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
 import crypto from "node:crypto";
 import { verifyOwner } from "../lib/auth.mjs";
@@ -846,6 +846,77 @@ export default async (req) => {
     if (!/^[\w-]+$/.test(id)) return reply(400, { error: "Bad call id." }, origin);
     try { return reply(200, { call: slimCall(await cartesia("GET", "/agents/calls/" + encodeURIComponent(id), V_READ)) }, origin); }
     catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+
+
+  // ---------- end-of-cycle report: percentages per outbound agent, the money, and a copy for Clara ----------
+  if (b.action === "cycle_report") {
+    const OUT = ["monica", "george", "rebecca", "alek"];
+    const IVR = /press \d|dial it|listen carefully|remain on the line|your party's extension|press one|press zero/i;
+    const EMAIL = /[A-Za-z0-9._%+-]+\s*(?:@|at)\s*[A-Za-z0-9.-]+\s*(?:\.|dot)\s*[A-Za-z]{2,}/i;
+    const DNC = /take me off|do not call|don'?t call (me|us)|remove (me|us) from|stop calling/i;
+    const since = b.since ? new Date(Number(b.since) || b.since) : null;
+    const per = {}, T = { placed: 0, answered: 0, live: 0, email: 0, hung: 0, dnc: 0, vm: 0 };
+    for (const name of OUT) {
+      const aid = agentId(name);
+      const p = { placed: 0, answered: 0, live: 0, email: 0, hung: 0, dnc: 0, vm: 0 };
+      if (aid) {
+        const q = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript" });
+        if (since && !isNaN(since)) q.set("start_time_gte", since.toISOString());
+        try {
+          const d = await cartesia("GET", "/agents/calls?" + q.toString(), V_READ);
+          for (const raw of (d.data || [])) {
+            const c = slimCall(raw); if (!c) continue;
+            p.placed++;
+            const t = (c.transcript || []).filter((x) => x.text && String(x.text).trim());
+            const ut = t.filter((x) => x.role === "user").map((x) => x.text).join(" ");
+            if (c.endReason === "voicemail_detected" || /leave a message|after the tone/i.test(ut)) { p.vm++; continue; }
+            if (!t.some((x) => x.role === "user")) continue;
+            p.answered++;
+            if (IVR.test(t.filter((x) => x.role === "user").slice(0, 4).map((x) => x.text).join(" "))) continue;
+            p.live++;
+            if (EMAIL.test(ut)) p.email++;
+            if (DNC.test(ut)) p.dnc++;
+            if (c.endReason === "client_hangup") p.hung++;
+          }
+        } catch (e) { p.error = clean(e.message, 120); }
+      }
+      per[name] = p;
+      for (const k of ["placed", "answered", "live", "email", "hung", "dnc", "vm"]) T[k] += p[k];
+    }
+    const bud = budgetSummary(await loadBudget(store));
+    const pct = (x, y) => (y ? Math.round((100 * x) / y) + "%" : "0%");
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const lines = [];
+    lines.push("## End-of-cycle call report - " + (bud.cycle || "this cycle"));
+    lines.push("");
+    lines.push("**Money:** $" + (bud.spentUsd || 0).toFixed(2) + " spent of $" + (bud.stopAt || 0) +
+      " | " + (bud.minutes || 0) + " minutes used, " + (bud.minutesLeft || 0) + " left" +
+      " | appointments booked: " + ((bud.counts && bud.counts.booked) || 0));
+    lines.push("");
+    lines.push("| Agent | Placed | Answered | Voicemail | Real talks | Gave email | Hung up | Do not call |");
+    lines.push("|---|---|---|---|---|---|---|---|");
+    for (const name of OUT) {
+      const p = per[name];
+      lines.push("| " + cap(name) + " | " + p.placed + " | " + pct(p.answered, p.placed) + " | " + pct(p.vm, p.placed) +
+        " | " + p.live + " | " + pct(p.email, p.live) + " | " + pct(p.hung, p.live) + " | " + pct(p.dnc, p.live) + " |");
+    }
+    lines.push("| **All four** | **" + T.placed + "** | **" + pct(T.answered, T.placed) + "** | **" + pct(T.vm, T.placed) +
+      "** | **" + T.live + "** | **" + pct(T.email, T.live) + "** | **" + pct(T.hung, T.live) + "** | **" + pct(T.dnc, T.live) + "** |");
+    lines.push("");
+    lines.push("Appointments are counted by the booking tool, not by the transcript. " +
+      "\"Real talks\" excludes voicemail and calls that only reached a phone menu.");
+    const text = lines.join("\n");
+    let sentToClara = false;
+    if (b.toClara !== false) {
+      try {
+        await addMessages("clara", [{ role: "agent", text: "Tania's end-of-cycle call report:\n\n" + text +
+          "\n\nClara: look at the cost per email and per appointment, and tell Tania plainly whether this cycle was worth the spend and what she should change." }]);
+        sentToClara = true;
+      } catch (e) {}
+    }
+    try { await store.setJSON("cycle-report-last", { at: new Date().toISOString(), text, per, totals: T, budget: bud }); } catch (e) {}
+    return reply(200, { report: text, per, totals: T, budget: bud, sentToClara }, origin);
   }
 
   // ---------- list recent calls for one agent (to backfill the call log) ----------
