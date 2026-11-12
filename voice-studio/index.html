@@ -148,7 +148,7 @@ try { BM.data = JSON.parse(localStorage.getItem('vs_brain_master') || '{}') || {
 function bmFor(agent) { return agent && BM.data[String(agent.name || agent || '').trim().split(/\s+/)[0].toLowerCase()] || null; }
 function bmSyncAgents() {
   let ch = false;
-  (state.agents || []).forEach((a) => { const p = bmFor(a); if (!p || !p.script) return; const op = p.opening || '', sc = (p.turns || []).slice(1).join('\n\n'); if (a.opening !== op || a.script !== sc) { a.opening = op; a.script = sc; a.fromBrain = true; ch = true; } });
+  (state.agents || []).forEach((a) => { const p = bmFor(a); if (!p) return; const op = p.script ? (p.opening || '') : '', sc = p.script ? (p.turns || []).slice(1).join('\n\n') : ''; if (a.opening !== op || a.script !== sc) { a.opening = op; a.script = sc; a.fromBrain = true; ch = true; } });
   if (ch) save();
   return ch;
 }
@@ -394,7 +394,7 @@ function practiceCampaign(id) {
 /* ---------- practice call ---------- */
 let practice = { agentId: '', leadId: '', campaignId: '', turn: -1, lines: [] };
 function practiceWith(leadId) { practice = { agentId: practice.agentId || (state.agents[0] && state.agents[0].id) || '', leadId, campaignId: '', turn: -1, lines: [] }; nav('Practice call'); }
-function turns(agent, lead) { const parts = [(!bmFor(agent) && lead && lead.nextScript && lead.nextScript.text) || agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
+function turns(agent, lead) { const bp0 = bmFor(agent); if (bp0 && !bp0.script) return []; /* freelance: no scripted turns, and never fall back to an old stored script */ const parts = [(!bp0 && lead && lead.nextScript && lead.nextScript.text) || agent.opening, ...String(agent.script || '').split(/\n\s*\n/)].map(s => fill(String(s || '').trim(), lead, agent)).filter(Boolean); return parts; }
 // Practice call (Tania, Nov 8): 💻 on my laptop (nothing dialed) or 📞 live (the agent really calls the number you type: you, a family
 // member...). Live practice calls are never saved as leads. Both use the agent's master script from the Brain.
 function renderPractice(c) {
@@ -406,14 +406,14 @@ function renderPractice(c) {
   c.innerHTML = `<div class="row section"><p style="margin:0">${practice.mode === 'live' ? 'Live practice: the agent really calls the number you type, with her real script. It is <b>never saved as a lead</b>.' : 'Practice on your laptop: the voice plays here, nothing is dialed.'}</p><div class="toolbar">${tog('laptop', '💻 Practice on my laptop')}${tog('live', '📞 Live practice call')}</div></div><div id="pBody"></div><div id="pBrain"></div>`;
   if (practice.mode === 'live') renderPracticeLive($('pBody')); else renderPracticeLaptop($('pBody'));
   const pre = (t) => `<div style="white-space:pre-wrap;font-size:13px;line-height:1.5;background:#f7fbfe;border:1px solid #e1edf5;border-radius:10px;padding:12px;max-height:360px;overflow:auto">${esc(t)}</div>`;
-  $('pBrain').innerHTML = !a ? '' : bp && bp.script ? `<div class="card section"><div class="row"><h2 style="margin:0">🧠 ${esc(a.name)}'s master script and prompt</h2><button class="btn outline small" onclick="bmLoad(true)">↻ Refresh from Brain</button></div>
+  $('pBrain').innerHTML = !a ? '' : bp ? `<div class="card section"><div class="row"><h2 style="margin:0">🧠 ${esc(a.name)}'s master script and prompt</h2><button class="btn outline small" onclick="bmLoad(true)">↻ Refresh from Brain</button></div>
     <p class="muted" style="font-size:13px;margin:6px 0 10px">Straight from the Brain page, the same text her real calls use. Edit it on the Brain page and it updates here, on her profile and in lead briefs.</p>
-    <h3 style="margin:10px 0 6px">📜 Script (only what she says)</h3>${pre(bp.script)}
+    ${bp.script ? `<h3 style="margin:10px 0 6px">📜 Script (only what she says)</h3>${pre(bp.script)}` : `<p class="note" style="margin:10px 0"><b>📜 No script — she is freelance.</b> Her script container is empty on purpose. She runs the call from the prompt, rebuttals and coaching notes below.</p>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🥊 Rebuttals</summary>${pre(bp.rebuttals || 'No rebuttals yet.')}</details>
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">💫 Personality</summary>${pre(bp.personality || '')}</details>
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🧭 How to run the call + prompt</summary>${pre((bp.how ? bp.how + '\n\n' : '') + bp.prompt)}</details>
     ${bp.notes ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">🧠 Coaching notes</summary>${pre(bp.notes)}</details>` : ''}</div>`
-    : `<p class="note section">${esc(a.name)} doesn't have a master script on the Brain page yet${window.BrainMaster && BrainMaster.MASTER_AGENTS.includes(String(a.name).toLowerCase()) ? ' (loading… press Refresh on the Brain page if it doesn\'t appear)' : ''}.</p>`;
+    : `<p class="note section">${esc(a.name)} has not loaded from the Brain page yet${window.BrainMaster && BrainMaster.MASTER_AGENTS.includes(String(a.name).toLowerCase()) ? ' (loading… press Refresh on the Brain page if it doesn\'t appear)' : ''}.</p>`;
 }
 function renderPracticeLive(c) {
   let v = {}; try { v = JSON.parse(localStorage.getItem('vs_live_practice') || '{}') || {}; } catch (e) {}
@@ -447,6 +447,16 @@ function renderPracticeLaptop(c) {
   if (!practice.agentId || !byId('agents', practice.agentId)) practice.agentId = state.agents[0].id;
   const a = byId('agents', practice.agentId), lead = byId('leads', practice.leadId) || { name: 'Doctor Smith', business: 'Smith Family Practice' };
   const T = turns(a, lead), e = lead.id ? eligibility(lead) : null, t = lead.id ? localInfo(lead) : null;
+  if (!T.length) {
+    c.innerHTML = `<div class="card section">
+      <div class="formgrid"><div>${select('Agent', 'pAgent', state.agents.map(x => ({ v: x.id, l: x.name })), practice.agentId)}</div></div>
+      <p class="note" style="margin-top:12px"><b>${esc(a.name)} is freelance.</b> Her script container is empty on purpose, so there are no scripted turns to step through here. Stepping through old lines would train her against a script she does not use any more.</p>
+      <p style="margin:10px 0 0">To hear her real call, use <b>&#128222; Live practice call</b>: she runs it from her live prompt, her knowledge and your coaching notes, exactly as she does with a real lead.</p>
+      <div class="actions" style="justify-content:flex-start"><button class="btn green" onclick="practice.mode='live';localStorage.setItem('vs_practice_mode','live');practice.turn=-1;practice.lines=[];stopSpeech();render()">&#128222; Switch to live practice</button></div>
+      <p class="muted" style="font-size:13px;margin-top:10px">Her prompt, rebuttals, personality and coaching notes are in the panel below.</p></div>`;
+    $('f_pAgent').onchange = ev => { practice.agentId = ev.target.value; practice.turn = -1; practice.lines = []; stopSpeech(); render(); };
+    return;
+  }
   c.innerHTML = `<div class="callbox section"><div class="card">
     <div class="formgrid"><div>${select('Agent', 'pAgent', state.agents.map(x => ({ v: x.id, l: x.name })), practice.agentId)}</div>
     <div>${select('Lead', 'pLead', [{ v: '', l: 'Sample lead (Doctor Smith)' }, ...state.leads.map(x => ({ v: x.id, l: (x.name || '?') + (x.business ? ' · ' + x.business : '') }))], practice.leadId || '')}</div></div>
