@@ -357,7 +357,8 @@ async function openAgent(k) {
   $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…", tatiana: "Ask Tatiana for a post, a reel script, a blog…", jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / give me a video idea for…", linda: "Paste a website or ask about a law, disclaimer or script wording…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
   document.querySelector(".app").classList.add("chat"); drawList();
   $("msgs").innerHTML = '<p class="hint">Loading…</p>';
-  try { msgs = (await api({ action: "history", agent: k })).messages || []; } catch (e) { msgs = []; toast(e.message); }
+  // Same race the other way round: two quick switches could land the first agent's history in the second chat.
+  try { const h = (await api({ action: "history", agent: k })).messages || []; if (cur !== k) return; msgs = h; } catch (e) { if (cur !== k) return; msgs = []; toast(e.message); }
   drawMsgs(); if (k === "eva" && pendingDraft) draftPanel(pendingDraft);
 }
 function showList() { document.querySelector(".app").classList.remove("chat"); }
@@ -392,11 +393,16 @@ $("attIn").onchange = async (e) => {
   } catch (err) { ATT = null; drawAtt(); toast(err.message); }
 };
 async function ask(text) {
+  // Tania, Nov 12: an answer used to land in whichever chat was open when it came back. Open another agent while
+  // one was still thinking and his reply appeared in the new chat, which read as him answering the question
+  // before. An answer now belongs to the agent it was asked of, and nowhere else.
+  const who = cur;
   const file = ATT; ATT = null; drawAtt();
   $("send").disabled = true; msgs.push({ id: "tmp", role: "user", text: (text || "Please read the attached file.") + (file ? "\n📎 " + file.name : ""), at: new Date().toISOString() }); msgs.push({ id: "tmp2", role: "agent", text: "_Thinking…_", at: new Date().toISOString() }); drawMsgs();
-  try { const r = await api(Object.assign({ action: "chat", agent: cur, text, provider: $("prov").value }, file ? { file: { name: file.name, text: file.text ? file.text.slice(0, 60000) : undefined, image: file.image } } : {})); msgs = msgs.filter((m) => !m.id.startsWith("tmp")).concat(r.messages); S.last[cur] = { at: r.messages[1].at, text: r.messages[1].text.slice(0, 140) };
-    if (cur === "jimmy" && /On it!/.test(r.messages[1].text)) { const vid = /video/.test(r.messages[1].text); setTimeout(() => cur === "jimmy" && openAgent("jimmy"), vid ? 180000 : 60000); if (vid) setTimeout(() => cur === "jimmy" && openAgent("jimmy"), 360000); } }
-  catch (e) { msgs = msgs.filter((m) => m.id !== "tmp2"); toast(e.message); }
+  try { const r = await api(Object.assign({ action: "chat", agent: who, text, provider: $("prov").value }, file ? { file: { name: file.name, text: file.text ? file.text.slice(0, 60000) : undefined, image: file.image } } : {})); S.last[who] = { at: r.messages[1].at, text: r.messages[1].text.slice(0, 140) };
+    if (cur === who) msgs = msgs.filter((m) => !m.id.startsWith("tmp")).concat(r.messages); // still in his chat: show it. Otherwise reopening him loads it from the server.
+    if (who === "jimmy" && /On it!/.test(r.messages[1].text)) { const vid = /video/.test(r.messages[1].text); setTimeout(() => cur === "jimmy" && openAgent("jimmy"), vid ? 180000 : 60000); if (vid) setTimeout(() => cur === "jimmy" && openAgent("jimmy"), 360000); } }
+  catch (e) { if (cur === who) msgs = msgs.filter((m) => m.id !== "tmp2"); toast(e.message); }
   $("send").disabled = false; drawMsgs(); drawList();
 }
 async function run(job) { try { await api({ action: "run", job }); toast("Started. It shows up here in a minute or two; refresh this chat then."); setTimeout(() => openAgent(cur), 90000); } catch (e) { toast(e.message); } }
@@ -1027,8 +1033,22 @@ function freeVoice() { try { return localStorage.getItem("wsFreeVoice") !== "off
 function browserSay(text, who) { return new Promise((res) => { const u = new SpeechSynthesisUtterance(text); const vs = speechSynthesis.getVoices().filter((v) => /en-US/.test(v.lang)); const f = MALE[who || cur] ? (vs.find((v) => /natural|online/i.test(v.name) && /guy|andrew|brian|christopher|eric|davis/i.test(v.name)) || vs.find((v) => /\bmale\b|david|guy|mark|daniel|alex|fred/i.test(v.name) && !/female/i.test(v.name))) : (vs.find((v) => /natural|online/i.test(v.name) && /aria|jenny|ava|emma|michelle|sara/i.test(v.name)) || vs.find((v) => /^Google US English$/i.test(v.name)) || vs.find((v) => /female|samantha|zira|aria|jenny/i.test(v.name))); if (f) u.voice = f; u.rate = 1.03; u.onend = res; u.onerror = res; speechSynthesis.speak(u); }); }
 // Interrupt her by just talking: while she speaks, the mic keeps listening. Two or more words that aren't an echo of her own voice stop her and become your next turn.
 // The mic can hear the agent through the speakers. Anything that mostly repeats what the agent just said is her own voice, not Tania.
-function wordsOf(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 2); }
-function isEcho(t) { if (!pref("wsEcho", true)) return false; if (Date.now() - (V.doneAt || 0) > 4000 && !V.speaking) return false; const w = wordsOf(t); if (!w.length) return true; const said = new Set(wordsOf((V.lastAnswer || "") + " " + (V.speaking || ""))); return w.filter((x) => said.has(x)).length / w.length >= 0.5; }
+// Tania, Nov 12: the old filter threw away every word shorter than three letters, so a plain "No" became an
+// empty list and was discarded as an echo. The agent heard nothing and talked on. Three changes: short answers
+// are never an echo, two-letter words count, and an echo has to be long. A real echo of her own voice coming
+// back through the speaker is a long run of words, not someone saying "no".
+const SHORT_ANSWER = /^\s*(no|nope|nah|not really|yes|yeah|yep|yup|sure|ok|okay|stop|wait|hold on|correct|right|wrong|exactly|maybe|sorry|what|who|why|when|how|hello|hi|hey|bye|done|next|speaking|go ahead|not interested|no thanks?|she is|he is|this is)\b/i;
+function wordsOf(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9' ]/g, " ").split(/\s+/).filter((x) => x.length > 1); }
+function isEcho(t) {
+  if (!pref("wsEcho", true)) return false;
+  if (Date.now() - (V.doneAt || 0) > 4000 && !V.speaking) return false;
+  if (SHORT_ANSWER.test(t)) return false;                 // a direct answer, however short
+  const w = wordsOf(t);
+  if (!w.length) return !String(t || "").trim();          // only real silence counts as nothing said
+  if (w.length < 4) return false;                         // too short to be the speaker bleeding back in
+  const said = new Set(wordsOf((V.lastAnswer || "") + " " + (V.speaking || "")));
+  return w.filter((x) => said.has(x)).length / w.length >= 0.5;
+}
 function startBarge() {
   if (!SR) return;
   try { V.barge && V.barge.abort(); } catch (e) {}
@@ -1036,7 +1056,10 @@ function startBarge() {
   let heard = "", fin = "";
   r.onresult = (e) => {
     let t = "", f = ""; for (const x of e.results) { t += x[0].transcript; if (x.isFinal) f += x[0].transcript; } heard = t; fin = f;
-    if (!V.interrupted && t.trim().split(/\s+/).length >= 2 && !isEcho(t)) {
+    // Tania, Nov 12: a one-word "Stop" used to be ignored because two words were required to interrupt.
+    const bw = t.trim().split(/\s+/).filter(Boolean);
+    const cutsIn = bw.length >= 2 || (bw.length === 1 && /^(stop|wait|no|hold|hello|hey|excuse|sorry)$/i.test(bw[0].replace(/[^a-z]/gi, "")));
+    if (!V.interrupted && cutsIn && !isEcho(t)) {
       V.interrupted = true; try { V.audio && V.audio.pause(); } catch (x) {} try { speechSynthesis.cancel(); } catch (x) {} vSay("Listening…");
     }
     if (V.interrupted) { $("vHeard").textContent = "You: " + t; if (e.results[e.results.length - 1].isFinal) { try { r.stop(); } catch (x) {} } }
