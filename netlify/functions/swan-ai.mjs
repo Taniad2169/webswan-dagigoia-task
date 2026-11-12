@@ -13,6 +13,7 @@
 //   SWANPAD_DAILY_CAP   optional, default 400 replies a day. A hard stop so a leaked passphrase cannot run up a bill.
 // Passphrase rotations (a changed SWANPAD_PASS only reaches this function once the site rebuilds):
 //   2026-11-12 - Tania rotated SWANPAD_PASS.
+//   2026-11-12 - rotated again; rebuild so the new value reaches the function.
 import { getStore } from "@netlify/blobs";
 
 const ORIGINS = ["https://taniad2169.github.io"];
