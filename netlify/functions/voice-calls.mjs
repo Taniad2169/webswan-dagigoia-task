@@ -937,6 +937,46 @@ export default async (req) => {
     return reply(200, { report: text, per, totals: T, budget: bud, sentToClara }, origin);
   }
 
+
+  // ---------- re-attach Tania's coaching notes to the live phone agents ----------
+  // The notes live in the AI Office store; the phone prompt only holds a copy, and any full write of the
+  // instructions (Brain editor, agent setup, a prompt rewrite) drops it. This puts the copy back.
+  // NOTE: these two markers must stay identical to the ones in functions/team.mjs.
+  if (b.action === "notes_resync") {
+    const NOTES_START = "=== TANIA'S COACHING NOTES = CORRECTIONS (your brain). Each note corrects HOW you do something in your script. It does not change your script, your opening or your personality, and it is never extra words or sentences to add. Never duplicate a word, a sentence or a question: if a note covers something your script also says, say it once, the corrected way. ===";
+    const NOTES_END = "=== END OF TANIA'S COACHING NOTES ===";
+    const PHONE = ["monica", "george", "rebecca", "alek", "rachel"];
+    const all = (await teamStore().get("brain-notes", { type: "json" })) || {};
+    const only = Array.isArray(b.agents) && b.agents.length
+      ? b.agents.map((x) => String(x).toLowerCase()).filter((x) => PHONE.includes(x))
+      : PHONE;
+    const dry = b.dryRun === true;
+    const out = {};
+    for (const name of only) {
+      const notes = (all[name] || []).filter((n) => n && n.note);
+      const info = { notes: notes.length, updated: 0, skipped: 0, errors: [], text: notes.map((n) => n.note) };
+      const block = notes.length ? NOTES_START + "\n" + notes.map((n) => "- " + n.note).join("\n") + "\n" + NOTES_END : "";
+      for (const lang of ["en", "es", "pt"]) {
+        const id = agentId(agentKey(name, LANGS && LANGS[lang] ? lang : "en"));
+        if (!id) continue;
+        try {
+          const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+          const ins = String(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || "");
+          const a = ins.indexOf(NOTES_START), z = ins.indexOf(NOTES_END);
+          const base = (a >= 0 && z > a ? ins.slice(0, a) + ins.slice(z + NOTES_END.length) : ins).trim();
+          if (base.length < 200) { info.errors.push("prompt looks empty"); continue; }
+          const next = block ? base + "\n\n" + block : base;
+          if (next === ins) { info.skipped++; continue; }
+          if (next.length > 30000) { info.errors.push("would be " + next.length + " characters, over the 30,000 limit"); continue; }
+          if (!dry) await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: next } });
+          info.updated++;
+        } catch (e) { info.errors.push(clean(e.message, 120)); }
+      }
+      out[name] = info;
+    }
+    return reply(200, { dryRun: dry, agents: out }, origin);
+  }
+
   // ---------- list recent calls for one agent (to backfill the call log) ----------
   if (b.action === "list") {
     const name = String(b.agent || "").toLowerCase(), aid = agentId(name);
