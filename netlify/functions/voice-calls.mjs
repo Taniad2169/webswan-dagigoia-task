@@ -544,7 +544,7 @@ export default async (req) => {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
-          system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: {}, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
+          system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: { wait_timeout_secs: 2 }, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
         // Tania, Nov 6: the "are you still there?" check-in fired after 5 s of ringing/hold. Outbound callers wait much longer.
         let turnNote = "";
