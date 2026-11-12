@@ -41,7 +41,30 @@ export const automatedOnly = (said) => { const t = String(said || ""); return !!
 const TO_RACHEL = /transferr?ing you (over )?to rachel|transfer you (over )?to rachel|connect(ing)? you (with|to) rachel|put(ting)? you through to rachel/i;
 const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|zero one five one|oh one five one)|(347|three four seven)\D{0,8}(646|six four six)\D{0,8}(7086|seven zero eight six|seven oh eight six)|(316|three one six)\D{0,8}(248|two four eight)\D{0,8}(6839|six eight three nine)|rachel'?s (number|direct line|line)/i;
 
-function outcome(c, said, booked, agentSaid = "") {
+// Tania, Nov 11: an email only counts when the PERSON said it on the call. Voicemail greetings read their own
+// address out, website names look like addresses, and the word "at" shows up inside a spoken phone number: the
+// loose test used before counted all three as a capture. This is the same detector as the end-of-cycle report,
+// so WorkPilot and Clara's numbers can never disagree again. It also returns the address, so it reaches the
+// email field on the WorkPilot row instead of being buried in the comment.
+function emailFrom(transcript) {
+  const t = transcript || [];
+  const REAL = /[A-Za-z0-9._%+-]+@\s?[A-Za-z0-9.-]+\.\s?[A-Za-z]{2,}/;
+  const SPELLED = /\b[A-Za-z0-9._%+-]{2,}\s+at\s+([A-Za-z][A-Za-z0-9.-]*\.\s?[A-Za-z]{2,})\b/i;
+  const GREETING = /leave a (name|message)|after the tone|you have reached|thank you for calling|currently unavailable|we have missed you|our office hours|please feel free to (visit|reach)|press \d|visit (us|the website)/i;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i].role !== "user") continue;
+    const txt = String(t[i].text || "");
+    if (txt.length > 170 || GREETING.test(txt) || /www\.|https?:/i.test(txt)) continue;
+    if (!t.slice(0, i).some((x) => x.role !== "user" && String(x.text || "").trim())) continue; // nothing said yet: a greeting, not an answer
+    const m1 = txt.match(REAL);
+    if (m1) return m1[0].replace(/\s+/g, "").toLowerCase();
+    const m2 = txt.match(SPELLED);
+    if (m2 && !/^\d/.test(m2[1])) return m2[0].replace(/\s+at\s+/i, "@").replace(/\s+/g, "").toLowerCase();
+  }
+  return "";
+}
+
+function outcome(c, said, booked, agentSaid = "", email = "") {
   const secs = c.start_time && c.end_time ? (new Date(c.end_time) - new Date(c.start_time)) / 1000 : 0;
   const end = String(c.end_reason || c.status || "");
   const t = said.toLowerCase(), all = (said + " " + (c.summary || "")).toLowerCase();
@@ -51,13 +74,13 @@ function outcome(c, said, booked, agentSaid = "") {
   if (automatedOnly(said)) return /leave (a|your) message|mailbox|after the (tone|beep)|not available to take your call/i.test(said) ? "Voicemail" : "Automated (no human)";
   if (/no_answer|busy|failed/.test(end) && !said) return "No answer";
   // Green in WorkPilot: sent to Rachel (transfer or her number), with the email if they gave one too.
-  const gaveEmail = /@| at gmail| dot com| dot net| dot org/.test(t);
+  const gaveEmail = !!email;
   if (said && TO_RACHEL.test(agentSaid)) return gaveEmail ? "Transferred to Rachel · Email captured" : "Transferred to Rachel";
   if (said && RACHEL_NUM.test(agentSaid)) return gaveEmail ? "Got Rachel's number · Email captured" : "Got Rachel's number";
   if (/call (me |us )?back|callback|call later|try (again|later)|not (in|available) (right now|today)|out of the office/.test(all)) return "Call back";
   // Interest: they asked for info, price or a demo, or said yes to it (not "not interested").
   const interested = !/not interested|no thank|no, thank|we'?re (good|all set|fine)/.test(t) && /\binterested\b|sounds (good|great|interesting)|tell me more|send (me|it|us|over)|how much|what('?s| is| are) the (price|cost|fee)|pricing|\bdemo\b|sign (me|us) up|let'?s do it|i'?d like to (know|learn|see|hear)/.test(t);
-  if (/@| at gmail| dot com| dot net| dot org/.test(t)) return interested ? "Email captured (interested)" : "Email captured";
+  if (gaveEmail) return interested ? "Email captured (interested)" : "Email captured";
   if (interested) return "Interested";
   const turns = (c.transcript || []).filter((x) => x.role === "user" && x.text).length;
   if (secs < 30 || turns <= 2) return "Hang up";
@@ -104,7 +127,8 @@ export async function runWorkpilotSync(hours) {
       if (inbound && !said) { done.add(id); continue; } // empty inbound ring
       const agentSaid = (c.transcript || []).filter((x) => x.role !== "user" && x.text).map((x) => x.text).join(" ");
       const booked = bookings.find((b) => b.callId === id);
-      const out = outcome(c, said, booked, agentSaid);
+      const email = (booked && booked.email) || emailFrom(c.transcript);
+      const out = outcome(c, said, booked, agentSaid, email);
       if (out === "Do not call") { done.add(id); continue; } // Tania doesn't want do-not-call leads in WorkPilot
       const start = c.start_time ? new Date(c.start_time) : new Date();
       const secs = c.start_time && c.end_time ? Math.round((new Date(c.end_time) - start) / 1000) : 0;
@@ -124,7 +148,7 @@ export async function runWorkpilotSync(hours) {
         decisionMakerName: lead.name || md.lead || "",
         companyName: lead.business || md.business || "",
         phone: pretty(other),
-        email: booked && booked.email ? booked.email : "",
+        email,
         website: site,
         industry: inbound ? "Inbound call to Rachel" : (lead.campaign || md.campaign || ""),
         category: out,
