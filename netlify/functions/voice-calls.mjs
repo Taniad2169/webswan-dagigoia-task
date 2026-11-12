@@ -888,9 +888,12 @@ export default async (req) => {
             if (c.endReason === "voicemail_detected" || /leave a message|after the tone/i.test(ut)) { p.vm++; continue; }
             if (!t.some((x) => x.role === "user")) continue;
             p.answered++;
-            if (IVR.test(t.filter((x) => x.role === "user").slice(0, 4).map((x) => x.text).join(" "))) continue;
+            // A call can open with a phone menu and still reach a person, so check for the email first:
+            // if someone gave one, it was a real conversation whatever the greeting sounded like.
+            const gotEmail = gaveEmail(t);
+            if (!gotEmail && IVR.test(t.filter((x) => x.role === "user").slice(0, 4).map((x) => x.text).join(" "))) continue;
             p.live++;
-            if (gaveEmail(t)) p.email++;
+            if (gotEmail) p.email++;
             if (DNC.test(ut)) p.dnc++;
             if (c.endReason === "client_hangup") p.hung++;
           }
