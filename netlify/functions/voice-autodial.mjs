@@ -113,6 +113,13 @@ export default async () => {
   // (Media Network = Rebecca, Compliance doctors = Monica, Compliance attorneys = George, Alek on his own), and each
   // caller has her/his own limit per window (Tania, Nov 3: Monica and George each get their own 12).
   const line = (a) => a === "rebecca" ? "media" : a || "other";
+  // Tania, Nov 12: a day of calls was lost to travel agencies. Monica, George and Rebecca sell website compliance
+  // to doctors and attorneys; a travel agency is never their lead. Alek is the only one who calls other businesses,
+  // so this guard is on those three only. Word boundaries matter here: Contour, Detour, Travis and Tourette are
+  // real practice names and must still go through.
+  const TRAVEL = /\b(travel|travels|traveler|travelers|tour|tours|touring|cruise|cruises|vacation|vacations|voyage|voyages|viajes|turismo|safari|safaris|getaway|getaways|airfare|flights|destination management)\b|\btour operator\b|\bagencia de viajes\b/i;
+  const COMPLIANCE_CALLERS = new Set(["monica", "george", "rebecca"]);
+  const looksTravel = (l) => TRAVEL.test([l.business, l.name, l.campaign, l.findings, l.notes, l.industry].filter(Boolean).join(" "));
   const winKey = "win-" + day, winCounts = (await store.get(winKey, { type: "json" })) || {};
   const perWin = Number(s.perWindow) || 0, placedBy = {};
   let placed = 0;
@@ -120,6 +127,9 @@ export default async () => {
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
     if (String(lead.agent || "").toLowerCase() === "alek") continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
+    if (COMPLIANCE_CALLERS.has(String(lead.agent || s.agent || "").toLowerCase()) && looksTravel(lead)) {
+      lead.status = "skipped"; lead.note = "travel agency: not a compliance lead"; continue; // Tania, Nov 12
+    }
     if (lead.notBefore && Date.now() < lead.notBefore) continue; // Eva follow-up: waits 24 hours after her email
     if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
     const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
