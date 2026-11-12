@@ -81,7 +81,7 @@ export default async (req) => {
   if (req.method !== "POST") return reply(405, { error: "POST only." }, origin);
 
   const pass = String(process.env.SWANPAD_PASS || "").trim();
-  if (!pass) return reply(503, { error: "SWANPAD_PASS is not set on webswan-billing in Netlify." }, origin);
+  if (!pass) return reply(503, { error: "SWANPAD_PASS is not readable by this function. In Netlify, open that variable and make sure its Scopes include Functions, and that it applies to the Production context. A variable added after the last deploy only reaches the function once the site redeploys." }, origin);
   if (String(req.headers.get("x-swan-pass") || "").trim() !== pass)
     return reply(401, { error: "Wrong passphrase. Open the key button in SwanPad and enter it again." }, origin);
 
