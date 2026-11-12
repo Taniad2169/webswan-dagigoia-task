@@ -497,8 +497,33 @@ function logCall(leadId, fromPractice) {
     toast('Call logged.' + (v.newStatus === 'Do not call' ? ' Lead marked Do not call.' : ''));
   });
 }
+// End-of-cycle report (Tania, Nov 11): percentages per outbound agent plus the money, and Clara gets her own copy.
+async function cycleReport() {
+  toast('Counting the whole cycle\u2026');
+  let d;
+  try { d = await voiceApi({ action: 'cycle_report' }); }
+  catch (e) { toast('Couldn\u2019t build the report: ' + e.message); return; }
+  const html = (d.report || '')
+    .replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+    .replace(/^## (.+)$/m, '<h3 style="margin:0 0 8px">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .split('\n').filter((l) => l.trim()).map((l) => l.startsWith('|')
+      ? '<div style="font-family:ui-monospace,monospace;font-size:12px;white-space:pre">' + l + '</div>'
+      : '<p style="margin:6px 0">' + l + '</p>').join('');
+  $('modalTitle').textContent = '📊 End-of-cycle report';
+  $('form').innerHTML = '<div style="max-height:60vh;overflow:auto">' + html +
+    '<p style="margin-top:10px">' + (d.sentToClara
+      ? '✅ Clara has this in her chat and will tell you whether the spend was worth it.'
+      : '⚠️ Saved here, but it could not be delivered to Clara. Open her chat and paste it.') + '</p></div>' +
+    '<div class="actions"><button type="button" class="btn outline" onclick="closeModal()">Close</button>' +
+    '<button type="button" class="btn" id="cycleCopy">Copy the report</button></div>';
+  $('form').onsubmit = (e) => { e.preventDefault(); closeModal(); };
+  $('modal').showModal();
+  const cp = document.getElementById('cycleCopy');
+  if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(d.report || ''); toast('Report copied.'); } catch (err) { toast('Select the text and copy it.'); } };
+}
 function renderCalls(c) {
-  c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn green" onclick="liveSync()" title="Bring in results of live AI calls from Cartesia">🔄 Pull live results</button><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button></div></div>
+  c.innerHTML = `<div class="row section"><p>Every practice and manual call you log, newest first.</p><div class="toolbar"><button class="btn green" onclick="liveSync()" title="Bring in results of live AI calls from Cartesia">🔄 Pull live results</button><button class="btn secondary" onclick="exportCalls()" ${state.calls.length ? '' : 'disabled'}>Export CSV</button><button class="btn secondary" onclick="cycleReport()" title="Percentages for the whole cycle, and a copy straight to Clara">📊 End-of-cycle report</button></div></div>
   <div class="card">${state.calls.length ? `<div class="tablewrap"><table><thead><tr><th>WHEN</th><th>LEAD</th><th>TYPE</th><th>OUTCOME</th><th>MOOD</th><th>FOLLOW-UP</th><th>NOTES</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.calls.map(x => `<tr><td>${esc(fmtDate(x.at))}</td><td><b>${esc(x.leadName)}</b><br><small class="muted">${esc(x.business)}${x.agentName ? ' · ' + esc(x.agentName) : ''}</small></td><td>${esc(x.type)}</td><td><span class="chip ${/interested$|Appointment|Email captured/.test(x.outcome) && !/not/i.test(x.outcome) ? 'ok' : /not|Wrong|Asked/i.test(x.outcome) ? 'bad' : ''}">${esc(x.outcome)}</span>${factsLine(x)}</td><td>${moodChip(x)}</td><td>${esc(x.followUp || '—')}</td><td>${esc(x.notes)}${x.transcript ? `<details><summary>Transcript</summary><div class="script">${esc(x.transcript)}</div></details>` : ''}</td><td style="white-space:nowrap">${x.ai ? `<button class="btn secondary small" onclick="aiShowReview('${x.id}')">✦ Review${x.ai.score !== undefined ? ' ' + esc(x.ai.score) + '/10' : ''}</button>` : (x.transcript || x.notes) ? `<button class="btn outline small" onclick="aiReviewCall('${x.id}')">✦ AI review</button>` : ''}${x.live && x.live.callId && x.live.final ? `<button class="btn outline small" onclick="playRec('${x.id}')" title="Listen to the call">▶ Recording</button>` : ''}<button class="btn danger small" onclick="delItem('calls','${x.id}')" aria-label="Delete this call record">🗑</button></td></tr>`).join('')}</tbody></table></div>`
     : '<div class="empty">No call records yet.<br>Practice a call or log one you made, and it will appear here. Live AI call transcripts arrive here automatically, or press 🔄 Pull live results.</div>'}</div>`;
 }
