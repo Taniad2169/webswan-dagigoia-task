@@ -12,7 +12,10 @@ import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 // Wakes every minute 12:00-01:59 UTC, Mon-Sat UTC (covers Monday to Friday daytime in every US time zone).
 // The schedule saved in Voice Studio (days + up to two windows, in Tania's chosen time zone) narrows it to the exact days and hours.
 // (Before Nov 7 this was Tue-Fri UTC, so a Monday checked in the schedule never dialed.)
-export const config = { schedule: "* 12-23,0-1 * * 1-6" };
+// Tania, Nov 12: was every minute, which woke this function ~5,000 times a week and was the single biggest
+// consumer of her Netlify credits. Every 2 minutes costs her nothing: each campaign is capped at perWindow
+// calls per window (12), and a 2-hour window still gives 60 runs to reach that cap.
+export const config = { schedule: "*/2 12-23,0-1 * * 1-6" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
