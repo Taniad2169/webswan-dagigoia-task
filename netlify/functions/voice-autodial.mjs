@@ -64,10 +64,14 @@ function e164(p) {
   if (d.length === 10) d = "1" + d;
   return /^1[2-9]\d{2}[2-9]\d{6}$/.test(d) ? "+" + d : "";
 }
+// Tania, Nov 11: the last call of the day goes out at 4:45 PM in the LEAD's own time zone, never later.
+// That stops East Coast prospects being rung as they walk out, and still leaves the West Coast open.
+const LAST_CALL_MINS = 16 * 60 + 45;
 function leadOpen(lead) {
   const tz = TZ[lead.state]; if (!tz) return false;
   const c = clock(tz); const w = STATE_HOURS[lead.state] || BUSINESS;
-  return DAYS.indexOf(c.day) >= 1 && DAYS.indexOf(c.day) <= 5 && c.hour >= w[0] && c.hour < w[1];
+  const end = Math.min(w[1] * 60, LAST_CALL_MINS);
+  return DAYS.indexOf(c.day) >= 1 && DAYS.indexOf(c.day) <= 5 && c.mins >= w[0] * 60 && c.mins < end;
 }
 
 export default async () => {
