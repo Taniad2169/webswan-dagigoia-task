@@ -20,6 +20,10 @@
   function split(full) {
     let t = String(full || ""); const out = { full: t };
     for (const k of ["script", "rebuttals", "how", "notes"]) { const r = take(t, MK[k]); out[k] = r.body; t = r.rest; }
+    // Tania, Nov 11: a container left "[ EMPTY ON PURPOSE ... ]" means the agent is FREELANCE, not that she has a script.
+    // Treat it as empty everywhere, so practice calls and role play never read the placeholder aloud and never fall
+    // back to an old script that is no longer on her live prompt.
+    for (const k of ["script", "rebuttals", "how"]) { if (/EMPTY ON PURPOSE/i.test(out[k])) out[k] = ""; }
     out.prompt = t.trim();
     const p = (t.match(/0\. YOUR PERSONALITY:[^\n]*/) || [""])[0]; out.personality = p.replace(/^0\. YOUR PERSONALITY:\s*/, "");
     // the script as spoken turns: every [PAUSE] ends a turn; labels like (yes) stay so the reader sees the branch
@@ -32,7 +36,9 @@
   function forRoleplay(p) {
     if (!p || !p.full) return "";
     return [
-      "THIS IS YOUR MASTER SCRIPT FROM YOUR BRAIN: exactly what you use on real calls. Say YOUR SCRIPT lines in order, in your own natural words. Use a REBUTTAL only when the person asks a question or objects, then go back to the next script line. Follow HOW TO RUN YOUR CALL and your prompt. Never invent a different opening.",
+      p.script
+        ? "THIS IS YOUR MASTER SCRIPT FROM YOUR BRAIN: exactly what you use on real calls. Say YOUR SCRIPT lines in order, in your own natural words. Use a REBUTTAL only when the person asks a question or objects, then go back to the next script line. Follow HOW TO RUN YOUR CALL and your prompt. Never invent a different opening."
+        : "YOU ARE FREELANCE ON THIS CALL. Your script container is empty on purpose: there is no word-for-word script and nothing to recite. Run the call from your prompt, your personality, your knowledge of WebSwan and of ADA, HIPAA and cookie-banner rules, and Tania's coaching notes. Open in your own words, listen, answer what you are actually asked, and keep the call moving toward the email, the person who makes the decision, or a 10-minute appointment with Tania. If Tania ever puts lines in your script container, read exactly those and nothing else.",
       p.script && MK.script[0] + "\n" + p.script + "\n" + MK.script[1],
       p.rebuttals && MK.rebuttals[0] + "\n" + p.rebuttals + "\n" + MK.rebuttals[1],
       p.how && MK.how[0] + "\n" + p.how + "\n" + MK.how[1],
@@ -51,5 +57,5 @@
     const p = split(j.instructions || ""); cache[k] = { at: Date.now(), p };
     return p;
   }
-  window.BrainMaster = { split, forRoleplay, get, cache, MASTER_AGENTS: ["monica", "george", "rebecca"] };
+  window.BrainMaster = { split, forRoleplay, get, cache, MASTER_AGENTS: ["monica", "george", "rebecca", "alek", "rachel"] };
 })();
