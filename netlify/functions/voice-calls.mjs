@@ -853,7 +853,22 @@ export default async (req) => {
   if (b.action === "cycle_report") {
     const OUT = ["monica", "george", "rebecca", "alek"];
     const IVR = /press \d|dial it|listen carefully|remain on the line|your party's extension|press one|press zero/i;
-    const EMAIL = /[A-Za-z0-9._%+-]+\s*(?:@|at)\s*[A-Za-z0-9.-]+\s*(?:\.|dot)\s*[A-Za-z]{2,}/i;
+    // Tania, Nov 11: only count an email a LIVE person actually gave the agent. Voicemail greetings read out
+    // their own address, and "at" inside a phone number used to count as one, which inflated the numbers.
+    const REAL_EMAIL = /[A-Za-z0-9._%+-]+@\s?[A-Za-z0-9.-]+\.\s?[A-Za-z]{2,}/;
+    const SPELLED_EMAIL = /\b[A-Za-z0-9._%+-]{2,}\s+at\s+([A-Za-z][A-Za-z0-9.-]*\.\s?[A-Za-z]{2,})\b/i;
+    const GREETING = /leave a (name|message)|after the tone|you have reached|thank you for calling|currently unavailable|we have missed you|our office hours|please feel free to (visit|reach)|press \d|visit (us|the website)/i;
+    const gaveEmail = (t) => {
+      for (let i = 0; i < t.length; i++) {
+        const u = t[i]; if (u.role !== "user") continue;
+        const txt = String(u.text || "");
+        if (txt.length > 170 || GREETING.test(txt) || /www\.|https?:/i.test(txt)) continue;
+        if (!t.slice(0, i).some((x) => x.role === "assistant" && String(x.text || "").trim())) continue;
+        const m1 = txt.match(REAL_EMAIL); if (m1) return true;
+        const m2 = txt.match(SPELLED_EMAIL); if (m2 && !/^\d/.test(m2[1])) return true;
+      }
+      return false;
+    };
     const DNC = /take me off|do not call|don'?t call (me|us)|remove (me|us) from|stop calling/i;
     const since = b.since ? new Date(Number(b.since) || b.since) : null;
     const per = {}, T = { placed: 0, answered: 0, live: 0, email: 0, hung: 0, dnc: 0, vm: 0 };
@@ -875,7 +890,7 @@ export default async (req) => {
             p.answered++;
             if (IVR.test(t.filter((x) => x.role === "user").slice(0, 4).map((x) => x.text).join(" "))) continue;
             p.live++;
-            if (EMAIL.test(ut)) p.email++;
+            if (gaveEmail(t)) p.email++;
             if (DNC.test(ut)) p.dnc++;
             if (c.endReason === "client_hangup") p.hung++;
           }
