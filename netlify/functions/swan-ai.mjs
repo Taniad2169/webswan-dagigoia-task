@@ -82,10 +82,21 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (req.method !== "POST") return reply(405, { error: "POST only." }, origin);
 
-  const pass = String(process.env.SWANPAD_PASS || "").trim();
+  // Tania, Nov 12: a passphrase pasted into Netlify often arrives wrapped in quotes, or with a stray space or
+  // newline. Those are invisible in the dashboard and look exactly like "I typed it right and it still fails".
+  // Both sides are now stripped the same way before comparing.
+  const tidy = (s) => String(s || "").trim().replace(/^["'“‘]+|["'”’]+$/g, "").trim();
+  const pass = tidy(process.env.SWANPAD_PASS);
   if (!pass) return reply(503, { error: "SWANPAD_PASS is not readable by this function. In Netlify, open that variable and make sure its Scopes include Functions, and that it applies to the Production context. A variable added after the last deploy only reaches the function once the site redeploys." }, origin);
-  if (String(req.headers.get("x-swan-pass") || "").trim() !== pass)
-    return reply(401, { error: "Wrong passphrase. Open the key button in SwanPad and enter it again." }, origin);
+  const sent = tidy(req.headers.get("x-swan-pass"));
+  if (sent !== pass)
+    return reply(401, {
+      error: "Wrong passphrase. In SwanPad press Forget on the key button, then type it again.",
+      // No value is ever returned. Only whether the two are the same length, which tells Tania whether she has a
+      // typo in one character or the wrong string entirely.
+      sameLength: sent.length === pass.length,
+      youSent: sent.length + " characters"
+    }, origin);
 
   let b = {};
   try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request body." }, origin); }
