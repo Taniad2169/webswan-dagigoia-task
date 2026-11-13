@@ -454,10 +454,12 @@ export async function addMessages(agent, msgs) {
 }
 // Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
 // Claude is more careful with legal reasoning, so Jonathan defaults to it (falls back to DeepSeek if no Claude key).
-export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", jimmy: "gemini", linda: "deepseek", clara: "chatgpt", rachel: "deepseek", sdr: "chatgpt" };
+export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", jimmy: "gemini", linda: "claude", clara: "chatgpt", rachel: "deepseek", sdr: "claude", jenna: "claude" }; // Tania, Nov 13: Coby and Jenna think like Jonathan (Claude)
 export async function getSettings() {
   const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
+  // Tania, Nov 13: "Coby and Jenna like Jonathan" — move them to Claude once (she can still change it afterwards).
+  if (!s.migratedLeaders) { s.brains.sdr = "claude"; s.brains.jenna = "claude"; s.brains.linda = "claude"; s.migratedLeaders = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
   return s;
 }
 // Tania, Nov 7: Jimmy now runs on Grok (xAI) whenever XAI_API_KEY is set, even if his brain was set to Gemini before.

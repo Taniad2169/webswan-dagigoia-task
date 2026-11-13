@@ -145,7 +145,7 @@
       <label><input type="checkbox" id="vPhones"> 🎧 I'm wearing headphones (I can interrupt)</label>
       <label><input type="checkbox" id="vEcho"> 🔁 Echo filter</label>
     </div>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;font-weight:700;font-size:14px"><input type="checkbox" id="vFree"> 🆓 Free voice for role play (browser voice, no Cartesia credits)</label>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;font-weight:700;font-size:14px"><input type="checkbox" id="vFree"> 🆓 Free voice for role play and the Brain Room (browser voice, no Cartesia credits)</label>
     <p class="hint" style="margin-top:6px">Speak naturally. Interrupt any time by just talking. Every exchange is saved in the chat.</p>
   </div>
 </div>
@@ -260,7 +260,7 @@ async function api(body) {
   }
   if (body && body.action === "chat" && body.agent === "eva" && !body.file && !body.roleplay && EVA_WP_RE.test(String(body.text || ""))) {
     try { body = Object.assign({}, body, { file: { name: "WorkPilot leads (live)", text: await workpilotSnapshot() } }); }
-    catch (e) { body = Object.assign({}, body, { file: { name: "WorkPilot (couldn't load)", text: "WorkPilot's lead list couldn't be loaded just now (" + e.message + "). Tell Tania plainly that WorkPilot didn't load (this has nothing to do with Gmail) and ask her to try again." } }); }
+    catch (e) { /* the server gives Eva the list WorkPilot last sent it (works on any device) */ }
   }
   return rawApi(body);
 }
@@ -806,7 +806,7 @@ const BRIEF = { jimmy: "Give me a quick update: which post pictures you made thi
 function briefPicker() {
   $("vOv").hidden = false; $("vImg").src = "img/eva.jpg"; $("vName").textContent = "Who do you want your briefing with?"; $("vState").textContent = "";
   $("vPick").hidden = false;
-  $("vPick").innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px">' + ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k]; return `<button class="btn" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px" data-vp="${k}" aria-label="Voice briefing with ${esc(a.name)}"><img src="${esc(a.photo)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover"><b style="font-size:13px">${esc(a.name.split(" ")[0])}</b></button>`; }).join("") + '</div>';
+  $("vPick").innerHTML = '<div style="display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,#0f2a4a,#1763a8);color:#fff;border-radius:12px;padding:8px 12px;margin:4px 0 8px"><img src="img/tania-ceo.jpg" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #fff"><div style="text-align:left"><b>Tania Domingue</b><br><small>CEO &amp; Founder · leads the Brain Room, speaks live</small></div></div>' + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px">' + ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k]; return `<button class="btn" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px" data-vp="${k}" aria-label="Voice briefing with ${esc(a.name)}"><img src="${esc(a.photo)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover"><b style="font-size:13px">${esc(a.name.split(" ")[0])}</b></button>`; }).join("") + '</div>';
   $("vPick").innerHTML += '<label style="display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0 4px;font-weight:700"><input type="checkbox" id="gMode"> 🧠 Brain Room: pick several agents</label><button class="btn pri" id="gGo" hidden style="width:100%;margin-top:4px">Start the Brain Room</button><p class="hint" id="gHelp" hidden style="margin:6px 0 0;text-align:left">Call them by name and that agent answers. Say “Eva, explain to Rachel …” and just those two talk. Ask for “everyone’s opinion” and they answer one at a time. Say “Monica, let’s role play” to practice a call, “end role play” for feedback from everyone, and “add that to your brain” (or “everyone’s brain”) to keep a change.</p>';
   const sel = new Set();
   $("gMode").onchange = () => { const on = $("gMode").checked; sel.clear(); $("gGo").hidden = !on; $("gHelp").hidden = !on; $("vPick").querySelectorAll("[data-vp]").forEach((b) => { b.style.outline = ""; b.setAttribute("aria-pressed", "false"); }); $("vName").textContent = on ? "Who's in the meeting?" : "Who do you want your briefing with?"; };
@@ -1024,7 +1024,7 @@ async function ttsUrl(text, who) {
 }
 function playUrl(url) { return new Promise((res) => { const a = new Audio(url); V.audio = a; a.onended = res; a.onerror = res; a.onpause = () => { if (V.interrupted) res(); }; a.play().catch(res); }); }
 // Free practice voice: the browser's own voice (costs nothing). Real phone calls always use each agent's Cartesia voice.
-const MALE = { george: 1, alek: 1, sdr: 1, linda: 1 }; // "linda" is Jonathan's desk key
+const MALE = { george: 1, alek: 1, sdr: 1, linda: 1, jimmy: 1 }; // all the men speak with Jonathan's free browser voice // "linda" is Jonathan's desk key
 const BROWSER_VOICE = { sdr: 1 }; // these agents always use the free browser voice
 // Turn-taking: without headphones the mic stays OFF while the agent talks (the speakers would feed her own voice back).
 // With headphones, talking over her interrupts her. The echo filter can be switched off (rollback) from the voice window.
@@ -1079,7 +1079,7 @@ async function speak(text, who) {
   vSay(pref("wsPhones", false) ? "Speaking… (just talk to interrupt)" : "Speaking… tap ✋ Stop (or press Space) to interrupt"); V.interrupted = false;
   const parts = speechChunks(text); if (!parts.length) return;
   if (pref("wsPhones", false)) startBarge();
-  const free = (freeVoice() && (V.rp || (G.on && G.rp))) || BROWSER_VOICE[who || cur]; // free browser voice for role play, and always for SDR (Tania's choice: no Cartesia cost for her)
+  const free = (freeVoice() && (V.rp || G.on)) || BROWSER_VOICE[who || cur]; // Tania, Nov 13: the free voice box covers the Brain Room too (no Cartesia minutes) // free browser voice for role play, and always for SDR (Tania's choice: no Cartesia cost for her)
   let next = free ? Promise.resolve(null) : ttsUrl(parts[0], who).catch(() => null);
   for (let i = 0; i < parts.length; i++) {
     const url = await next; next = !free && i + 1 < parts.length ? ttsUrl(parts[i + 1], who).catch(() => null) : Promise.resolve(null);

@@ -48,6 +48,7 @@
   <div class="card" id="signin"><p>Sign in with your WebSwan Google account (thewebswann@gmail.com) to start.</p><button class="btn pri" id="signBtn">Sign in with Google</button></div>
 
   <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(120deg,#0f2a4a,#1763a8);color:#fff;border-radius:14px;padding:10px 14px;margin:0 0 12px"><img src="img/tania-ceo.jpg" alt="" style="width:62px;height:62px;border-radius:50%;object-fit:cover;border:3px solid #fff"><div><b style="font-size:16px">Tania Domingue</b><br><small>CEO &amp; Founder · leads every meeting, speaks live</small></div></div>
     <h2>1. Who's in the meeting?</h2>
     <div class="agents" id="agents"></div>
     <div class="row" style="margin-top:10px">
@@ -159,7 +160,7 @@ async function ttsUrl(text, who) {
 }
 function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
 const VOICE_PREF = { male: [/guy|andrew|christopher|eric|brian|roger|steffan/i, /david/i, /mark/i], female: [/aria|jenny|ava|michelle|emma/i, /zira/i, /samantha/i] };
-const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 2], jimmy: ["male", 1], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], jenna: ["female", 2], rachel: ["female", 0], eva: ["female", 2], tatiana: ["female", 1], clara: ["female", 0] };
+const AGENT_VOICE = { george: ["male", 0], alek: ["male", 0], sdr: ["male", 0], jimmy: ["male", 0], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], jenna: ["female", 2], rachel: ["female", 0], eva: ["female", 2], tatiana: ["female", 1], clara: ["female", 0] };
 function pickVoice(who, male) {
   const vs = speechSynthesis.getVoices().filter((v) => v.lang === "en-US" || v.lang === "en_US");
   const [g, nth] = AGENT_VOICE[who] || [male ? "male" : "female", 0];

@@ -105,6 +105,7 @@ const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const CALLERS = [
+  { k: "tania", n: "Tania", r: "CEO & Founder · you make the call, Coby is the prospect", male: false, kind: "doctor", me: true, img: "img/tania-ceo.jpg" },
   { k: "monica", n: "Monica", r: "Compliance · doctors", male: false, kind: "doctor" },
   { k: "george", n: "George", r: "Compliance · attorneys", male: true, kind: "attorney" },
   { k: "rebecca", n: "Rebecca", r: "Media Network", male: false, kind: "doctor" },
@@ -124,13 +125,13 @@ function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).che
 pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", true); // Tania, Nov 6: role plays at no cost by default (browser voices); uncheck to hear the real Cartesia voices // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
 
 function drawAgents() {
-  $("agents").innerHTML = CALLERS.map((c) => `<button class="ag ${S.agent === c.k ? "on" : ""}" data-k="${c.k}"><img src="img/${c.k}.jpg" alt=""><b>${c.n}</b><small>${esc(c.r)}</small></button>`).join("");
+  $("agents").innerHTML = CALLERS.map((c) => `<button class="ag ${S.agent === c.k ? "on" : ""}" data-k="${c.k}"><img src="${c.img || "img/" + c.k + ".jpg"}" alt=""><b>${c.n}</b><small>${esc(c.r)}</small></button>`).join("");
 }
 function drawRoles() {
   const c = CALLERS.find((x) => x.k === S.agent); const list = ROLES[c ? c.kind : "doctor"];
   $("role").innerHTML = list.map((r) => `<option>${esc(r)}</option>`).join("");
 }
-$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); loadNotes(); say("Ready: " + first(S.agent) + ". Press the microphone."); };
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); if (S.agent !== "tania") loadNotes(); say(S.agent === "tania" ? "Ready: you make the call, Coby picks up as the prospect. Press the microphone." : "Ready: " + first(S.agent) + ". Press the microphone."); };
 /* ---------- coaching notes editor (team brain notes; synced into a separate block of the live script) ---------- */
 let NOTES = [], NOTES_ORIG = [];
 function drawNotes() {
@@ -189,7 +190,7 @@ async function ttsUrl(text, who) {
 function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
 // American English browser voices only, a different one per agent when possible (no British or other accents).
 const VOICE_PREF = { male: [/guy|andrew|christopher|eric|brian|roger|steffan/i, /david/i, /mark/i], female: [/aria|jenny|ava|michelle|emma/i, /google us english/i, /zira/i] };
-const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 1], monica: ["female", 0], rebecca: ["female", 1], rachel: ["female", 0] };
+const AGENT_VOICE = { george: ["male", 0], alek: ["male", 0], sdr: ["male", 0], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], rachel: ["female", 0] };
 function pickVoice(who, male) {
   const vs = speechSynthesis.getVoices().filter((v) => v.lang === "en-US" || v.lang === "en_US");
   const [g, nth] = AGENT_VOICE[who] || [male ? "male" : "female", 0];
@@ -250,6 +251,7 @@ function commit() {
   if (S.huddle) return huddleTurn(text);
   if (S.coach) return cobyTurn(text);
   if (/\b(end|stop|finish) (the )?role ?play\b/i.test(text)) return finish();
+  if (S.agent === "tania") { addLog("Tania", text, "me"); return prospectTurn(text); }
   if (mode() === "coby") {
     if (/^\s*(pause|hold on|wait)\b/i.test(text)) { S.paused = true; hush(); say("⏸️ Paused. Say \"continue\" when you're ready."); return; }
     if (/\b(continue|go on|keep going|resume)\b/i.test(text)) { S.paused = false; return cobyLoop(); }
@@ -312,12 +314,27 @@ async function cobyLoop() {
   if (S.on && !S.paused) finish();
 }
 
+/* ---------- Tania makes the call herself; Coby plays the prospect (Tania, Nov 13) ---------- */
+async function prospectTurn(taniaSaid) {
+  S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Coby (the prospect) is thinking…");
+  const gen = ++S.gen;
+  const text = !taniaSaid
+    ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). Tania, the founder of WebSwan, is calling you herself. You just picked up the phone: ${who_()} Say only how you'd answer it, like "Good morning, ${S.persona.office}, this is ${S.persona.name}." One line only.`
+    : `ROLE PLAY: you are still ${scene()}. ${who_()} Tania from WebSwan just said: "${taniaSaid}". Reply with ONLY your next line as that person (one or two short sentences), the way a real ${$("mood").value} office person would: sometimes ask who's calling or why, push back, say the doctor is busy, ask for an email, or agree if she earns it. Never coach, never break character.`;
+  try {
+    const ans = await ask("sdr", text);
+    if (gen !== S.gen || !S.on) return;
+    addLog("Coby (prospect)", ans, "coby"); S.busy = false;
+    const ok = await speak(ans, "sdr"); if (ok) yourTurn();
+  } catch (e) { S.busy = false; say("⚠️ Coby " + e.message); yourTurn(); }
+}
 /* ---------- start / end ---------- */
 async function start() {
   if (!S.agent) { say("Pick a caller first."); return; }
   if (!(await window._auth.token())) { say("Please sign in first (button above)."); return; }
   S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; S.persona = null; S.agreed = []; S.huddle = ""; $("huddle").style.display = "none"; $("log").innerHTML = '<p class="hint">Starting…</p>';
   startRec();
+  if (S.agent === "tania") return prospectTurn(null); // Coby picks up the phone, then Tania talks live (no AI voice for her)
   if (mode() === "coby") return cobyLoop();
   if (S.agent === "rachel") { // Rachel answers the phone, so she speaks first
     S.busy = true; say("💭 Rachel is picking up…");
@@ -329,6 +346,10 @@ async function start() {
 }
 async function finish() {
   if (!S.on) return; hush(); const who = S.agent; S.on = false; S.finishing = true; S.huddle = ""; $("huddle").style.display = "none"; try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); say("📝 Getting feedback…");
+  if (who === "tania") {
+    try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice cold call made by Tania herself (the founder and CEO, a born closer who doesn't love telemarketing). Step out of character and coach her like her SDR: what worked, the one thing to tighten, and the exact line you'd change, in 3 or 4 short spoken sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching for Tania", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {}
+    S.finishing = false; say("Done. Press 🎙️ to go again."); return;
+  }
   try { const fb = await ask(who, "The role play just ended.", { roleplay: false, rpEnd: true }); addLog(first(who) + " · feedback", fb, "fb"); S.on = true; await speak(fb, who); S.on = false; } catch (e) {}
   if (mode() === "coby") { try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice call with " + first(who) + ". Give " + first(who) + " the one most important coaching point to sound more natural and get the email or appointment, in two sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {} }
   S.finishing = false; brainBox(who); say("Done. Save a lesson to " + first(who) + "'s brain below, or press 🎙️ to go again.");
