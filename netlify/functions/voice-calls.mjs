@@ -22,7 +22,9 @@ import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAge
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek", "jennifer", "rachel", "rachelout"];
+const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout"];
+// Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
+const TASKED = (n) => n === "alek" || n === "jenna";
 // Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
 const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
 const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13162486839";
@@ -36,8 +38,8 @@ function rachelTransfers(agent) {
   const plusTania = (list) => (list || []).concat(toTania && !(list || []).some((x) => x.destination.phone_number === tania) ? toTania : []);
   // When both lines are the same (our own Rachel answers both), merge them into one transfer: Cartesia needs unique destinations.
   const both = RACHEL_COMPLIANCE === RACHEL_ADVERTISING ? [{ destination: comp.destination, condition: "The person has questions about website compliance (ADA, privacy, HIPAA, the audit findings or the risk) or about WebSwan Media Network (advertising, visibility, the directory), and agrees to be transferred to Rachel." }] : [comp, ads];
-  const map = { monica: [comp], george: both, rebecca: [ads], alek: both, rachel: toTania };
-  if (["monica", "george", "rebecca", "alek"].includes(agent)) return plusTania(map[agent]);
+  const map = { monica: [comp], george: both, rebecca: [ads], alek: both, jenna: both, rachel: toTania };
+  if (["monica", "george", "rebecca", "alek", "jenna"].includes(agent)) return plusTania(map[agent]);
   return map[agent] || null;
 }
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
@@ -301,9 +303,10 @@ export default async (req) => {
       if (!phone) return reply(400, { error: "Add a valid US phone number." }, origin);
       if (!(when > Date.now() - 6e4)) return reply(400, { error: "Pick a date and time in the future." }, origin);
       if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the person's state (for their local time)." }, origin);
-      if (String(c.script || "").trim().length < 10) return reply(400, { error: "Write what Alek should say (at least a sentence)." }, origin);
-      list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
-        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
+      if (String(c.script || "").trim().length < 10) return reply(400, { error: "Write what the agent should say (at least a sentence)." }, origin);
+      const cbAgent = String(c.agent || "").toLowerCase() === "jenna" ? "jenna" : "alek";
+      list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), agent: cbAgent, name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
+        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
       list = list.slice(-500);
       await store.setJSON("callbacks", list);
     }
@@ -372,10 +375,10 @@ export default async (req) => {
     if (!phone) return reply(400, { error: "This lead has no valid US phone number." }, origin);
     if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the lead's state (2 letters) so the agent calls in their business hours." }, origin);
     const want = String(x.agent || "").toLowerCase();
-    if (!["monica", "george", "rebecca", "alek"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca or Alek." }, origin);
+    if (!["monica", "george", "rebecca", "alek", "jenna"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca, Alek or Jenna." }, origin);
     const agent = want, lang = LANGS[x.lang] ? x.lang : "en";
     const contact = clean(x.contact || x.name, 120), business = clean(x.business, 160);
-    const notes = clean(x.notes || x.findings || x.comment, 820);
+    const notes = clean(x.notes || x.findings || x.comment, TASKED(want) ? 2500 : 820);
     const facts = [
       contact && ("Who to ask for: " + contact + "."),
       notes && ("Tania's notes from WorkPilot (what happened before / what to say): " + notes),
@@ -383,8 +386,22 @@ export default async (req) => {
     ].filter(Boolean).join(" ").slice(0, 900);
     const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
     // Tania, Nov 12: Alek runs on a floating task, and WorkPilot's notes ARE that task. Before this the push said "sent with your notes" and Alek could never dial it ("Give Alek his script").
-    const alekTask = agent === "alek" ? String(notes || "").slice(0, 1500) : "";
-    if (agent === "alek" && alekTask.length < 10) return reply(400, { error: "Alek needs your notes as his task for this call (at least a sentence). Add them on the lead in WorkPilot and push again." }, origin);
+    const alekTask = TASKED(agent) ? String(notes || "").slice(0, agent === "jenna" ? 2500 : 1500) : "";
+    if (TASKED(agent) && alekTask.length < 10) return reply(400, { error: (agent === "jenna" ? "Jenna" : "Alek") + " needs your notes as the brief for this call (at least a sentence). Add them on the lead in WorkPilot and push again." }, origin);
+    // Tania, Nov 12: Jenna (always) and Alek (when she asks for the call now) are dialled from the callback calendar, which runs
+    // every 5 minutes inside calling hours. Neither of them ever sits in the auto-dial queue.
+    if (agent === "jenna" || (agent === "alek" && x.callNow === true)) {
+      const list = (await store.get("callbacks", { type: "json" })) || [];
+      const url = clean(x.url, 200);
+      const cb = { id: "cb_" + crypto.randomBytes(5).toString("hex"), agent, name: contact, business, phone, state: st, lineType: "landline", consent: false, warm: true,
+        callAt: new Date().toISOString(), subject: clean(x.subject, 160) || "Lead from Tania" + (url ? " (website: " + url + ")" : ""), script: alekTask, lang: ["es", "pt"].includes(lang) ? lang : "en", status: "scheduled", createdAt: new Date().toISOString() };
+      list.push(cb);
+      await store.setJSON("callbacks", list.slice(-500));
+      const log0 = (await store.get("eva-handoffs", { type: "json" })) || [];
+      log0.push({ at: new Date().toISOString(), by: email, business, phone, state: st, agent, campaign: "WorkPilot call request", updated: false });
+      await store.setJSON("eva-handoffs", log0.slice(-500));
+      return reply(200, { ok: true, agent, scheduled: true, callbackId: cb.id, callAt: cb.callAt }, origin);
+    }
     const item = { id: clean(x.id, 60) || "wp_" + crypto.randomBytes(4).toString("hex"), name: contact || business, business, phone, state: st, agent, lang, mode: agent === "alek" ? "floating" : "selling", task: alekTask,
       findings: facts, campaign: "WorkPilot push (" + agent + ")", status: "queued", addedAt: Date.now() };
     const same = q.leads.find((l) => l.status === "queued" && e164(l.phone) === phone);
@@ -723,7 +740,7 @@ export default async (req) => {
     const to = String(b.to || "").toLowerCase(), ids = new Set((Array.isArray(b.ids) ? b.ids : []).map((x) => String(x)));
     if (!AGENTS.includes(to) || !ids.size) return reply(400, { error: "Pick the caller and the leads to move." }, origin);
     const task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
-    if (to === "alek" && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his script." }, origin);
+    if (TASKED(to) && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give " + (to === "jenna" ? "Jenna" : "Alek") + " the script." }, origin);
     const q = (await store.get("queue", { type: "json" })) || { leads: [] };
     let moved = 0;
     for (const l of q.leads || []) {
@@ -741,7 +758,7 @@ export default async (req) => {
     if (!AGENTS.includes(from) || !AGENTS.includes(to)) return reply(400, { error: "Pick two callers." }, origin);
     const q = (await store.get("queue", { type: "json" })) || { leads: [] };
     const task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
-    if (to === "alek" && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his script." }, origin);
+    if (TASKED(to) && b.mode === "floating" && task.length < 10) return reply(400, { error: "Give " + (to === "jenna" ? "Jenna" : "Alek") + " the script." }, origin);
     let moved = 0;
     for (const l of q.leads || []) {
       if (l.status !== "queued" || String(l.agent || "").toLowerCase() !== from) continue;
@@ -820,8 +837,8 @@ export default async (req) => {
     const lang = LANGS[b.lang] ? b.lang : "en";
     if (AGENTS.includes(name) && !(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} doesn't call in ${LANGS[lang]}.` }, origin);
     const aid = AGENTS.includes(name) ? callAgentId(name, lang) : "";
-    const mode = b.mode === "floating" ? "floating" : "selling", task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
-    if (name === "alek" && mode === "floating" && task.length < 10) return reply(400, { error: "Give Alek his task or script for this call first." }, origin);
+    const mode = b.mode === "floating" || name === "jenna" ? "floating" : "selling", task = String(b.task || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, 1500);
+    if (TASKED(name) && mode === "floating" && task.length < 10) return reply(400, { error: "Give " + (name === "jenna" ? "Jenna" : "Alek") + " the task or brief for this call first." }, origin);
     if (name === "alek" && aid && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { return reply(502, { error: "Couldn't switch Alek's language: " + e.message }, origin); } }
     if (!aid) return reply(400, { error: lang === "en" ? `No Cartesia agent is set for ${b.agent || "this agent"} (CARTESIA_AGENT_${name.toUpperCase() || "NAME"}).` : `${name}'s ${LANGS[lang]} version isn't created yet (AI Team > Coach > Live Cartesia agents).` }, origin);
     if (!nums.length) return reply(400, { error: "No caller-ID numbers yet (CARTESIA_FROM_NUMBER_IDS)." }, origin);
@@ -835,9 +852,9 @@ export default async (req) => {
     const dialed = (await store.get(dialedKey, { type: "json" })) || [];
     if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
     const counts = (await store.get(countsKey, { type: "json" })) || {};
-    const alekNum = String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim(), camp = nums.filter((id) => id !== alekNum);
+    const alekNum = String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim(), jennaNum = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim(), camp = nums.filter((id) => id !== alekNum && id !== jennaNum);
     const chosen = String(b.fromNumberId || "").trim();
-    const pick = chosen && nums.includes(chosen) ? { id: chosen } : name === "alek" && alekNum ? { id: alekNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
+    const pick = chosen && nums.includes(chosen) ? { id: chosen } : name === "alek" && alekNum ? { id: alekNum } : name === "jenna" && jennaNum ? { id: jennaNum } : (camp.length ? camp : nums).map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((a, b2) => a.n - b2.n)[0];
     if (!pick) return reply(429, { error: `Every number reached today's cap of ${cap()} calls. Try again tomorrow.` }, origin);
 
     const gate = await budgetGate(store, 1, 6);
@@ -848,7 +865,7 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_language: LANGS[lang], call_mode: name === "alek" ? MODES[mode] : "standard", task: name === "alek" && mode === "floating" ? task : "none" } }],
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_language: LANGS[lang], call_mode: TASKED(name) ? MODES[mode] : "standard", task: TASKED(name) && mode === "floating" ? task : "none" } }],
         ringing_timeout_seconds: 30, max_call_duration_minutes: 10
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
@@ -871,7 +888,7 @@ export default async (req) => {
 
   // ---------- end-of-cycle report: percentages per outbound agent, the money, and a copy for Clara ----------
   if (b.action === "cycle_report") {
-    const OUT = ["monica", "george", "rebecca", "alek"];
+    const OUT = ["monica", "george", "rebecca", "alek", "jenna"];
     const IVR = /press \d|dial it|listen carefully|remain on the line|your party's extension|press one|press zero/i;
     // Tania, Nov 11: only count an email a LIVE person actually gave the agent. Voicemail greetings read out
     // their own address, and "at" inside a phone number used to count as one, which inflated the numbers.
@@ -965,7 +982,7 @@ export default async (req) => {
   if (b.action === "notes_resync") {
     const NOTES_START = "=== TANIA'S COACHING NOTES = CORRECTIONS (your brain). Each note corrects HOW you do something in your script. It does not change your script, your opening or your personality, and it is never extra words or sentences to add. Never duplicate a word, a sentence or a question: if a note covers something your script also says, say it once, the corrected way. ===";
     const NOTES_END = "=== END OF TANIA'S COACHING NOTES ===";
-    const PHONE = ["monica", "george", "rebecca", "alek", "rachel"];
+    const PHONE = ["monica", "george", "rebecca", "alek", "jenna", "rachel"];
     const all = (await teamStore().get("brain-notes", { type: "json" })) || {};
     const only = Array.isArray(b.agents) && b.agents.length
       ? b.agents.map((x) => String(x).toLowerCase()).filter((x) => PHONE.includes(x))
@@ -1024,7 +1041,7 @@ export default async (req) => {
   // greeting latency = end of the first person turn -> start of the agent's first audio; reply latency = the same for later turns.
   if (b.action === "latency_report") {
     const since = new Date(Number(b.since) || Date.now() - 6 * 3600e3).toISOString(), until = b.until ? new Date(Number(b.until)).toISOString() : "";
-    const names = (Array.isArray(b.agents) && b.agents.length ? b.agents : ["monica", "george", "rebecca", "alek", "rachelout"]).filter((x) => AGENTS.includes(x));
+    const names = (Array.isArray(b.agents) && b.agents.length ? b.agents : ["monica", "george", "rebecca", "alek", "jenna", "rachelout"]).filter((x) => AGENTS.includes(x));
     const greet = [], reply_ = [], llm = [], ttfb = [], per = []; let calls = 0, humanCalls = 0, noGreeting = 0, interruptedGreeting = 0;
     for (const n of names) { const aid = agentId(n); if (!aid) continue;
       let list = []; try { const q = new URLSearchParams({ agent_id: aid, limit: "100", start_time_gte: since }); list = ((await cartesia("GET", "/agents/calls?" + q, V_READ)).data || []).filter((c) => !until || String(c.start_time || "") < until); } catch (e) { continue; }
