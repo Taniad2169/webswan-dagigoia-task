@@ -4,7 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
-import { actionsHelp, runActions, MAX_HOPS } from "./agent-actions.mjs";
+import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
@@ -620,5 +620,20 @@ async function agentReply(agent, hop = 0) {
   return outText;
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
+// Eva cleans one Gmail category in batches of 25 (Apps Script is slow on big lists), up to 12 minutes, then reports.
+async function evaClean(kind) {
+  const q = CLEAN_Q[kind]; if (!q) return;
+  let moved = 0, rounds = 0; const t0 = Date.now(), samples = [];
+  while (Date.now() - t0 < 12 * 60e3 && rounds < 40) {
+    rounds++;
+    const list = await scriptCall({ action: "inbox", query: q, max: 25 });
+    const em = (list && list.emails) || [], ids = em.map((e) => e.threadId).filter(Boolean);
+    if (!ids.length) break;
+    em.slice(0, 3).forEach((e) => samples.length < 6 && samples.push(String(e.from || "").replace(/<.*>/, "").trim().slice(0, 40)));
+    const r = await scriptCall({ action: "trash", ids });
+    const n = (r && r.moved) || 0; moved += n; if (!n) break;
+  }
+  await addMessages("eva", [{ role: "agent", text: moved ? `🧹 Cleaned **${kind}**: moved **${moved}** emails to Trash (Gmail keeps them 30 days if you need one back). I skipped anything starred, important, from banks or payments, invoices, receipts, contracts, audits and appointments.${samples.length ? " Senders included: " + [...new Set(samples)].join(", ") + "." : ""}` : `✨ Nothing to clean in **${kind}**.` }]);
+}
+export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
 export { ptHour };

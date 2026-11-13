@@ -5,6 +5,9 @@
 //    Drafts are never sent: Tania reviews and sends. Trash keeps emails 30 days; nothing is deleted forever.
 import { AGENTS, addMessages } from "./team.mjs";
 
+// Tania, Nov 13: never touch starred/important mail, clients, leads, banks, invoices or appointments.
+const SAFE = " -is:starred -is:important -subject:(invoice OR receipt OR payment OR statement OR appointment OR contract OR audit OR proposal) -from:(bank OR chase OR wellsfargo OR stripe OR paypal OR netlify OR google.com)";
+export const CLEAN_Q = { spam: "in:spam", promotions: "category:promotions in:inbox older_than:2d" + SAFE, social: "category:social in:inbox older_than:2d" + SAFE, old: "in:inbox is:read older_than:30d" + SAFE };
 const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").slice(0, n);
 export const MAX_HOPS = 4; // a conversation between agents stops after this many back-and-forths
 const first = (k) => String((AGENTS[k] || {}).name || k).split(" ")[0];
@@ -62,14 +65,12 @@ export async function runActions(agent, text, ctx) {
           const r = await scriptCall({ action: "trash", ids });
           done.push("🧹 Moved **" + ((r && r.moved) || 0) + "** of " + ids.length + " emails to Trash (Gmail keeps them 30 days).");
         } else if (op === "clean") {
-          const Q = { spam: "in:spam", junk: "in:spam", promotions: "category:promotions in:inbox older_than:2d", social: "category:social in:inbox older_than:2d", old: "in:inbox is:read older_than:30d -is:starred -is:important" };
-          const kind = (parts[1] || "").toLowerCase().trim(), q = Q[kind];
-          if (!q) { done.push("❌ I can clean spam, promotions, social or old read emails."); continue; }
-          const list = await scriptCall({ action: "inbox", query: q, max: 100 });
-          const ids = ((list && list.emails) || []).map((e) => e.threadId).filter(Boolean);
-          if (!ids.length) { done.push("✨ Nothing to clean in " + kind + "."); continue; }
-          const r = await scriptCall({ action: "trash", ids });
-          done.push("🧹 Cleaned **" + kind + "**: moved " + ((r && r.moved) || 0) + " emails to Trash (kept 30 days).");
+          // Listing and trashing in one chat request runs past Netlify's 30 seconds, so cleaning runs as a background job in small batches.
+          const kind = (parts[1] || "").toLowerCase().trim().replace("junk", "spam");
+          if (!CLEAN_Q[kind]) { done.push("❌ I can clean spam, promotions, social or old read emails."); continue; }
+          if (!startJobs) { done.push("❌ Cleaning couldn't start here."); continue; }
+          await startJobs(["eva_clean:" + kind]);
+          done.push("🧹 Cleaning **" + kind + "** now in the background; I'll post how many I moved to Trash in a few minutes.");
         } else done.push("❌ I don't know the Gmail action \"" + clean(op, 30) + "\".");
       }
     } catch (e) { done.push("❌ That didn't go through (" + clean(e.message || e, 140) + ")."); }

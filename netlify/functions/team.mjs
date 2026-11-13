@@ -658,9 +658,10 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
     }
     if (b.action === "eva_queue_run") { await startJobs(["eva_queue"]); return reply(200, { ok: true }, origin); }
     // Eva: inbox clean-up. List first; Tania ticks; then the ticked threads move to Trash (Gmail keeps them 30 days).
+    if (b.action === "eva_clean_run") { const k = String(b.kind || ""); if (!/^(spam|promotions|social|old)$/.test(k)) return reply(400, { error: "Pick spam, promotions, social or old." }, origin); await startJobs(["eva_clean:" + k]); return reply(200, { started: k }, origin); }
     if (b.action === "eva_cleanup_list") {
       const Q = { spam: "in:spam", promotions: "category:promotions in:inbox older_than:2d", social: "category:social in:inbox older_than:2d", old: "in:inbox is:read older_than:30d -is:starred -is:important" };
-      const r = await scriptCall({ action: "inbox", query: Q[b.kind] || Q.promotions, max: 100 });
+      const r = await scriptCall({ action: "inbox", query: Q[b.kind] || Q.promotions, max: 40 });
       return reply(200, { emails: (r.emails || []).map((e) => ({ threadId: e.threadId, from: clean(e.from, 120), subject: clean(e.subject, 160), date: e.date })) }, origin);
     }
     if (b.action === "eva_trash") {
