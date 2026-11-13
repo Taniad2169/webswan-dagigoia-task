@@ -308,6 +308,7 @@ const STARTERS = [
   { name: 'Rebecca', role: 'WebSwan Media Network: doctors & attorneys', voice: 'Warm, confident female, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Media Network. Do you have a quick minute?', script: 'I’m reaching out because we help doctors and attorneys get found online with a professional directory profile on WebSwan Media Network.\n\nIs getting more new patients or clients something {business} is focused on this year?\n\nGreat. Tania, our founder, would love to show you how it works in a quick 10-minute call. Would tomorrow morning or afternoon work better?\n\nThank you so much, {name}. Have a wonderful day!' },
   { name: 'Monica', role: 'WebSwan Digital Solutions: doctors & medical practices', voice: 'Calm, professional female, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Digital Solutions. Do you have a moment?', script: 'We offer medical practices a complimentary website compliance audit: accessibility, cookie consent and privacy.\n\nMany practices have an accessibility button or cookie banner but don’t know if it actually works. Would you like us to check {business}’s website at no cost and no obligation?\n\nWonderful. What’s the best email to send your audit results to?\n\nThank you, {name}. Have a great day!' },
   { name: 'Alek', role: 'WebSwan Media Network: doctors & attorneys (backup)', voice: 'Friendly, upbeat male, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Media Network. Did I catch you at an OK time?', script: 'I’ll be quick. We help medical and legal practices like {business} get extra visibility online through a professional directory built for Google and AI search.\n\nWould it be worth a 10-minute call with our founder Tania to see if it’s a fit?\n\nPerfect. What’s the best day and time for you?\n\nThanks, {name}. Talk soon!' },
+  { name: 'Jenna', role: 'WebSwan Intelligence Director (ID-DER) — market testing & sales, outbound', voice: "Rachel's voice (Jacqueline) — warm, poised female, American accent", opening: 'Hi {name}, this is {agent} with WDS. Do you have a quick minute?', script: 'Jenna never works from a fixed script. She calls with the brief you write for that one call — put your notes on the lead and push it to her, and those notes become her instructions. She is the only agent authorised to sell. Benefits before features, never quote a price on the phone.' },
   { name: 'George', role: 'WebSwan Digital Solutions: attorneys & law firms', voice: 'Warm, steady male, American accent', opening: 'Hi {name}, this is {agent} with WebSwan Digital Solutions. Is now a good time for a quick question?', script: 'We help law firms protect their websites from accessibility and privacy complaints, and we start with a complimentary compliance audit.\n\nDo you know if {business}’s website meets current accessibility standards?\n\nWe can check it at no cost and no obligation, and Tania, our founder, can walk you through the results in 10 minutes. Would that be helpful?\n\nThank you, {name}. Have a great day!' }
 ];
 // Tatiana is retired: remove her starter profile and move her campaigns to Rebecca.
@@ -323,6 +324,9 @@ const STARTERS = [
   const geo = state.agents.find(a => /^george$/i.test(a.name || ''));
   if (geo && /The WebSwan: websites & WSBPA/.test(geo.role || '')) Object.assign(geo, { role: STARTERS[3].role, opening: STARTERS[3].opening, script: STARTERS[3].script });
   if (old && !state.agents.some(a => /^monica$/i.test(a.name || ''))) state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...STARTERS[1] });
+  // Tania, Nov 13: Jenna is new — add her for everyone, not only on "add starter agents".
+  { const jn = STARTERS.find(x => x.name === 'Jenna');
+    if (jn && !state.agents.some(a => /^jenna$/i.test(a.name || ''))) state.agents.push({ id: uid(), rate: 1, pitch: 1, previewVoice: '', provider: '', ...jn }); }
   save();
 })();
 function addStarters() {
@@ -330,7 +334,7 @@ function addStarters() {
   save(); render(); toast(n ? `${n} starter agent${n > 1 ? 's' : ''} added. Edit their scripts any time.` : 'Your starter agents are already here.');
 }
 // Agent photos live in the AI Office folder (team/img/<first name>.jpg).
-const AGENT_PHOTOS = ['monica', 'rebecca', 'george', 'alek', 'rachel'];
+const AGENT_PHOTOS = ['monica', 'rebecca', 'george', 'alek', 'rachel', 'jenna'];
 function agentPhoto(name) { const k = String(name || '').trim().split(/\s+/)[0].toLowerCase(); return AGENT_PHOTOS.includes(k) ? `<img src="../team/img/${k}.jpg" alt="${esc(name)}" width="72" height="72" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;margin:6px 0 4px;border:3px solid #dbeafe" onerror="this.remove()">` : ''; }
 function renderAgents(c) {
   bmLoad();
@@ -417,7 +421,7 @@ function renderPractice(c) {
 }
 function renderPracticeLive(c) {
   let v = {}; try { v = JSON.parse(localStorage.getItem('vs_live_practice') || '{}') || {}; } catch (e) {}
-  const callers = state.agents.filter((x) => ['monica', 'george', 'rebecca', 'alek'].includes(String(x.name).split(/\s+/)[0].toLowerCase()));
+  const callers = state.agents.filter((x) => ['monica', 'george', 'rebecca', 'alek', 'jenna'].includes(String(x.name).split(/\s+/)[0].toLowerCase()));
   if (!callers.some((x) => x.id === practice.agentId) && callers[0]) practice.agentId = callers[0].id;
   const a = byId('agents', practice.agentId), L = practice.live;
   c.innerHTML = `<div class="card section">
