@@ -14,6 +14,7 @@
 // Passphrase rotations (a changed SWANPAD_PASS only reaches this function once the site rebuilds):
 //   2026-11-12 - Tania rotated SWANPAD_PASS.
 //   2026-11-12 - rotated again; rebuild so the new value reaches the function.
+//   2026-11-13 - rotated for Tania; this line is the rebuild that carries the new value through.
 import { getStore } from "@netlify/blobs";
 
 const ORIGINS = ["https://taniad2169.github.io"];
