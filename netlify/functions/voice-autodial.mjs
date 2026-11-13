@@ -42,7 +42,7 @@ const cap = () => Math.max(1, Math.min(300, parseInt(process.env.VOICE_DAILY_CAP
 // Campaign caller IDs. Rachel's line (CARTESIA_ALEK_NUMBER_ID: Rachel answers it, Alek calls out on it) stays out of the
 // campaign rotation so it never gets flagged as spam and is always free for inbound calls.
 const ALEK_NUM = () => String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim();
-const numberIds = () => { const all = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean), out = all.filter((id) => id !== ALEK_NUM()); return out.length ? out : all; };
+const numberIds = () => { const all = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean), out = all.filter((id) => id !== ALEK_NUM() && id !== String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim()); return out.length ? out : all; };
 let EXTRA_IDS = {};
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 async function cart(method, path, body) {
@@ -129,7 +129,7 @@ export default async () => {
 
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
-    if (String(lead.agent || "").toLowerCase() === "alek") continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
+    if (["alek", "jenna"].includes(String(lead.agent || "").toLowerCase())) continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
     if (COMPLIANCE_CALLERS.has(String(lead.agent || s.agent || "").toLowerCase()) && looksTravel(lead)) {
       lead.status = "skipped"; lead.note = "travel agency: not a compliance lead"; continue; // Tania, Nov 12
     }
