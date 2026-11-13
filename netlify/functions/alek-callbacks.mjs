@@ -24,6 +24,9 @@ export default async () => {
   const alek = process.env.CARTESIA_AGENT_ALEK || ids.alek;
   const from = process.env.CARTESIA_ALEK_NUMBER_ID || String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean)[0];
   if (!alek || !from) return new Response("Alek or his number not connected");
+  // Tania, Nov 12: Jenna (WebSwan Intelligence Director) is dialled from the same calendar, on her own line when CARTESIA_JENNA_NUMBER_ID is set.
+  const jenna = process.env.CARTESIA_AGENT_JENNA || ids.jenna;
+  const fromJenna = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim() || from;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
   for (const c of due.slice(0, 2)) {
     const to = e164(c.phone);
@@ -33,16 +36,18 @@ export default async () => {
     if (h < 8 || h >= 20) continue; // waits for 8 AM their time
     const g = await budgetGate(store, 1, 10);
     if (!g.ok) { c.note = "waiting: monthly call budget reached"; continue; }
-    const task = `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
+    const who = c.agent === "jenna" ? "jenna" : "alek", aid = who === "jenna" ? jenna : alek;
+    if (!aid) { c.status = "error"; c.note = "Jenna is not connected to Cartesia yet"; continue; }
+    const task = who === "jenna" ? `LEAD FROM TANIA. ${c.subject ? "Subject: " + c.subject + ". " : ""}${c.name ? "Ask for: " + c.name + ". " : ""}Her brief for this call: ${c.script}`.slice(0, 2500) : `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
     try {
       const r = await fetch(API + "/agents/calls", { method: "POST", headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: alek, from_number_id: from,
-          outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: "Alek callback", by: "callback-calendar" },
+        body: JSON.stringify({ agent_id: aid, from_number_id: who === "jenna" ? fromJenna : from,
+          outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: who === "jenna" ? "Jenna: lead from Tania" : "Alek callback", by: "callback-calendar" },
             dynamic_variables: { lead_id: c.id, lead_name: c.name || "", business: c.business || "", lead_state: c.state || "", findings: "none listed", lead_language: c.lang === "es" ? "Latin American Spanish" : c.lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: "Floating: follow Tania's task below", task } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
-      await budgetRecord(store, { id: c0.agent_call_id, agent: "alek", by: "callback-calendar", maxMin: 10 });
+      await budgetRecord(store, { id: c0.agent_call_id, agent: who, by: "callback-calendar", maxMin: 10 });
       c.status = "called"; c.callId = c0.agent_call_id; c.calledAt = new Date().toISOString(); c.note = "";
     } catch (e) { c.status = "error"; c.note = String(e.message || e).slice(0, 160); }
   }
