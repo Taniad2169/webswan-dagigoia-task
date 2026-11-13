@@ -351,7 +351,7 @@ export default async (req) => {
       "Goal: confirm they received the email, then book the 10-minute appointment with Tania (Alek can also set it up). If they have questions about the report, offer Rachel."
     ].filter(Boolean).join(" ");
     const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
-    const item = { id: clean(x.id, 60) || "eva_" + crypto.randomBytes(4).toString("hex"), name: clean(x.contact || x.spokeWith, 120), business: clean(x.business, 160), phone, state: st, agent, lang: "en", mode: "selling", task: "",
+    const item = { id: clean(x.id, 60) || "eva_" + crypto.randomBytes(4).toString("hex"), name: clean(x.contact || x.spokeWith, 120), business: clean(x.business, 160), phone, state: st, agent, lang: "en", mode: agent === "alek" ? "floating" : "selling", task: agent === "alek" ? facts.slice(0, 1500) : "",
       findings: facts.slice(0, 900), campaign: "Eva follow-up (" + agent + ")", status: "queued", addedAt: Date.now(), notBefore, followup: true, emailSentAt: new Date(sentAt).toISOString() };
     const same = q.leads.find((l) => l.status === "queued" && e164(l.phone) === phone);
     if (same) Object.assign(same, item, { id: same.id || item.id }); else q.leads.push(item);
@@ -382,7 +382,10 @@ export default async (req) => {
       "This is a first cold call — no email was sent, so run your normal opening and do not say you are following up on an email.",
     ].filter(Boolean).join(" ").slice(0, 900);
     const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
-    const item = { id: clean(x.id, 60) || "wp_" + crypto.randomBytes(4).toString("hex"), name: contact || business, business, phone, state: st, agent, lang, mode: "selling", task: "",
+    // Tania, Nov 12: Alek runs on a floating task, and WorkPilot's notes ARE that task. Before this the push said "sent with your notes" and Alek could never dial it ("Give Alek his script").
+    const alekTask = agent === "alek" ? String(notes || "").slice(0, 1500) : "";
+    if (agent === "alek" && alekTask.length < 10) return reply(400, { error: "Alek needs your notes as his task for this call (at least a sentence). Add them on the lead in WorkPilot and push again." }, origin);
+    const item = { id: clean(x.id, 60) || "wp_" + crypto.randomBytes(4).toString("hex"), name: contact || business, business, phone, state: st, agent, lang, mode: agent === "alek" ? "floating" : "selling", task: alekTask,
       findings: facts, campaign: "WorkPilot push (" + agent + ")", status: "queued", addedAt: Date.now() };
     const same = q.leads.find((l) => l.status === "queued" && e164(l.phone) === phone);
     if (same) Object.assign(same, item, { id: same.id || item.id }); else q.leads.push(item);
@@ -410,6 +413,9 @@ export default async (req) => {
       if (typeof b.paused === "boolean") { q.paused = b.paused; if (!b.paused) delete q.pauseReason; }
       if (b.clear === "all") q.leads = [];
       if (b.clear === "done") q.leads = q.leads.filter((l) => l.status === "queued");
+      // Tania, Nov 12: targeted removal, so one agent's queue can be cleaned without touching the others'.
+      if (Array.isArray(b.removeIds) && b.removeIds.length) { const rm = new Set(b.removeIds.slice(0, 2000).map((v) => String(v))); q.leads = q.leads.filter((l) => !rm.has(String(l.id))); }
+      if (b.clearAgent) { const ag = String(b.clearAgent).toLowerCase(); if (AGENTS.includes(ag)) q.leads = q.leads.filter((l) => !(l.status === "queued" && String(l.agent || "").toLowerCase() === ag)); }
       if (Array.isArray(b.add)) {
         const have = new Set(q.leads.filter((l) => l.status === "queued").map((l) => e164(l.phone)));
         for (const x of b.add.slice(0, 1000)) {
@@ -785,11 +791,25 @@ export default async (req) => {
   if (b.action === "agent_prompt") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
     if (!id) return reply(400, { error: "No Cartesia agent is linked for " + (b.agent || "that agent") + "." }, origin);
-    const ins = withPhoneRules(String(b.instructions || "").trim(), name);
-    if (ins.length < 50 || ins.length > 30000) return reply(400, { error: "The prompt looks empty or too long." }, origin);
+    let ins = withPhoneRules(String(b.instructions || "").trim(), name);
+    if (ins.length < 50) return reply(400, { error: "The prompt looks empty." }, origin);
+    // Tania, Nov 12: a full write must never drop the coaching notes. Their source of truth is the AI Office store
+    // (brain-notes); the prompt only holds a copy. So every write re-attaches that copy before it lands. Markers match notes_resync.
+    let notesKept = 0;
+    {
+      const NS = "=== TANIA'S COACHING NOTES = CORRECTIONS (your brain). Each note corrects HOW you do something in your script. It does not change your script, your opening or your personality, and it is never extra words or sentences to add. Never duplicate a word, a sentence or a question: if a note covers something your script also says, say it once, the corrected way. ===";
+      const NE = "=== END OF TANIA'S COACHING NOTES ===";
+      const a = ins.indexOf(NS), z = ins.indexOf(NE);
+      const base = (a >= 0 && z > a ? ins.slice(0, a) + ins.slice(z + NE.length) : ins).trim();
+      let notes = [];
+      try { const all = (await teamStore().get("brain-notes", { type: "json" })) || {}; notes = (all[name] || []).filter((n) => n && n.note); } catch (e) {}
+      if (notes.length) { ins = base + "\n\n" + NS + "\n" + notes.map((n) => "- " + n.note).join("\n") + "\n" + NE; notesKept = notes.length; }
+      else ins = base;
+    }
+    if (ins.length > 30000) return reply(400, { error: "The prompt" + (notesKept ? " plus " + name + "'s " + notesKept + " coaching notes" : "") + " would be " + ins.length + " characters, over the 30,000 limit. Trim it by " + (ins.length - 30000) + "." }, origin);
     try {
       await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } });
-      return reply(200, { ok: true, agent: name, chars: ins.length }, origin);
+      return reply(200, { ok: true, agent: name, chars: ins.length, notesKept }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
