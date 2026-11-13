@@ -111,7 +111,7 @@
 </style>
 </head>
 <body>
-<header class="ws-hd"><img class="ws-me" src="img/tania.jpg" alt="Tania Domingue"><div class="ws-t"><b>WebSwan AI Office</b><small>Your team, your rules</small></div><img class="ws-logo" src="img/webswan-logo.webp" alt="The WebSwan logo"></header>
+<header class="ws-hd"><img class="ws-me" src="img/tania.jpg" alt="Tania Domingue"><div class="ws-t"><b>WebSwan AI Office</b><small>Your team, your rules</small></div><button id="notifBell" class="btn sec" style="display:none;margin-left:auto;margin-right:8px;white-space:nowrap" title="Get a popup on this laptop whenever a teammate writes you, even on another tab">🔔 Enable alerts</button><img class="ws-logo" src="img/webswan-logo.webp" alt="The WebSwan logo"></header>
 <div id="gate" class="gate"><div class="logo" style="margin:0 auto 10px;width:48px;height:48px;border-radius:12px;background:#1182f0;color:#fff;display:grid;place-items:center;font-weight:800">WS</div>
   <h2 style="margin:6px 0">WebSwan AI Office</h2><p class="hint">Eva, Tatiana, Jonathan and Rachel. Sign in with your WebSwan Google account.</p>
   <button class="btn pri" onclick="_auth.signIn()">Sign in with Google</button><p id="gateMsg" class="hint"></p></div>
@@ -349,7 +349,7 @@ async function sendToAgent(id, to) {
   await openAgent(to); await ask(text);
 }
 async function openAgent(k) {
-  cur = k; findQ = ""; PLANS = {}; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
+  cur = k; findQ = ""; notifSeenNow(k); PLANS = {}; drawProviders(); const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
   $("tImg").src = a.photo; $("tName").textContent = a.name; $("tRole").textContent = a.role;
   const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🏆 Awards", () => awardPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
@@ -790,6 +790,42 @@ window.addEventListener("message", (e) => {
 });
 if (location.hash === "#draft" && window.opener) window.opener.postMessage({ type: "eva-ready" }, PROSPECTOR);
 
+/* ---------- Desktop popup alerts: a Notification for any teammate's new message, click to open her chat (Tania, Nov 13) ---------- */
+const NOTIF_KEY = "webswan_notif_seen";
+function notifSeen() { try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || "{}"); } catch (e) { return {}; } }
+function notifSave(m) { try { localStorage.setItem(NOTIF_KEY, JSON.stringify(m)); } catch (e) {} }
+function notifSeenNow(k) { const m = notifSeen(); const l = S.last && S.last[k]; if (l) { m[k] = l.at; notifSave(m); } }
+async function notifPoll() {
+  if (Notification.permission !== "granted") return;
+  let st; try { st = await api({ action: "status" }); } catch (e) { return; }
+  const seen = notifSeen();
+  for (const [k, l] of Object.entries(st.last || {})) {
+    if (!l || l.role !== "agent") continue;
+    const last = seen[k];
+    if (last && l.at <= last) continue;
+    if (!last) { seen[k] = l.at; continue; } // first sight of this agent: baseline only, no notification
+    seen[k] = l.at;
+    if (k === cur && !document.hidden) continue; // already looking at her chat
+    const a = (S.agents || FALLBACK)[k] || FALLBACK[k];
+    try {
+      const n = new Notification(a.name + " · WebSwan AI Office", { body: l.text, icon: a.photo, tag: "ws-" + k });
+      n.onclick = () => { window.focus(); n.close(); if (!$("gate").hidden) return; openAgent(k); };
+    } catch (e) {}
+  }
+  notifSave(seen);
+  S.last = Object.assign(S.last || {}, st.last || {});
+}
+function notifStart() {
+  $("notifBell").style.display = "none";
+  notifPoll(); setInterval(notifPoll, 15000);
+}
+function notifInit() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") return notifStart();
+  if (Notification.permission === "denied") return;
+  $("notifBell").style.display = "inline-block";
+  $("notifBell").onclick = async () => { try { if ((await Notification.requestPermission()) === "granted") { toast("🔔 Desktop alerts are on."); notifStart(); } } catch (e) {} };
+}
 window.addEventListener("auth", async (e) => {
   const { user, ok } = e.detail;
   if (!ok) { $("gate").hidden = false; $("app").hidden = true; $("gateMsg").textContent = user ? "This account isn't allowed. Use thewebswann@gmail.com." : ""; return; }
@@ -797,6 +833,7 @@ window.addEventListener("auth", async (e) => {
   try { const st = await api({ action: "status" }); S = Object.assign(S, st); } catch (err) { toast(err.message); }
   drawProviders(); drawList(); openAgent(location.hash === "#draft" || pendingDraft ? "eva" : (ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "eva"));
   if (location.hash === "#brief") setTimeout(briefPicker, 300);
+  notifInit();
 });
 
 /* ---------- Voice office: talk with Eva, Clara, Tatiana, Jonathan or Rachel ---------- */
