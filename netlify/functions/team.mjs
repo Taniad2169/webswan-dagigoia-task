@@ -1,7 +1,8 @@
 // WebSwan AI Office API (owner only): chat with Eva, Tatiana, Jonathan and Rachel's desk,
 // Jonathan's website legal review, Eva's Gmail drafts (with the audit PDF attached) and briefings on demand.
+import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
-import { reply, cors, verifyOwner, ALLOWED_ORIGINS } from "../lib/auth.mjs";
+import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, webSearch, fmtResults, readPage, researchWeb, readImage } from "../lib/team.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
@@ -124,12 +125,54 @@ async function deskFiles(msgs, skipId, max = 2) {
 }
 const notesText = (list) => list && list.length ? "\n\nTANIA'S COACHING NOTES (she asked you to keep these permanently; follow them):\n" + list.map((n) => "- " + n.note).join("\n") : "";
 
+// Tania, Nov 13: Eva could not be reached from WorkPilot or Voice Studio.
+// Root cause: there are TWO Firebase projects. The AI Office signs in to "webswan-gigoia-task";
+// Voice Studio and WorkPilot sign in to "webswan-voice-studio". verifyOwner() only ever accepted
+// the first, so every call from WorkPilot came back 401 "Please sign in with your WebSwan Google
+// account." voice-calls.mjs already accepts both; this gives the office the same two-door check,
+// so Eva's inbox, drafts, replies and calendar work from WorkPilot with the same owner account.
+const VS_PROJECT_ID = "webswan-voice-studio";
+const VS_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+let vsJwks = { keys: null, at: 0 };
+const vsJson = (x) => JSON.parse(Buffer.from(x, "base64url").toString("utf8"));
+
+async function verifyVoiceStudioOwner(req) {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const parts = token.split(".");
+  if (parts.length !== 3) throw new Error("bad token");
+  const header = vsJson(parts[0]), payload = vsJson(parts[1]);
+  if (header.alg !== "RS256" || !header.kid) throw new Error("bad token header");
+  if (!vsJwks.keys || Date.now() - vsJwks.at > 3600e3) {
+    const r = await fetch(VS_JWKS_URL);
+    if (!r.ok) throw new Error("cannot load Google keys");
+    vsJwks = { keys: (await r.json()).keys, at: Date.now() };
+  }
+  const jwk = vsJwks.keys.find((k) => k.kid === header.kid);
+  if (!jwk) throw new Error("unknown key");
+  const key = crypto.createPublicKey({ key: jwk, format: "jwk" });
+  if (!crypto.verify("RSA-SHA256", Buffer.from(parts[0] + "." + parts[1]), key, Buffer.from(parts[2], "base64url"))) throw new Error("bad signature");
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.aud !== VS_PROJECT_ID || payload.iss !== "https://securetoken.google.com/" + VS_PROJECT_ID) throw new Error("wrong project");
+  if (!(payload.exp > now) || !(payload.iat <= now + 60) || !payload.sub) throw new Error("expired");
+  if (!payload.email_verified) throw new Error("email not verified");
+  const email = String(payload.email || "").toLowerCase();
+  // Same owner list as the office. A voice-studio token is never a wider key than a gigoia one.
+  if (!OWNERS.includes(email)) throw new Error("not owner");
+  return email;
+}
+
+// Either project, same owners. The office door and the Voice Studio / WorkPilot door.
+async function verifyOwnerEither(req) {
+  try { return await verifyOwner(req); }
+  catch (e) { return await verifyVoiceStudioOwner(req); }
+}
+
 export default async (req) => {
   const origin = req.headers.get("origin") || "";
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" }, origin);
   if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
-  try { await verifyOwner(req); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
+  try { await verifyOwnerEither(req); } catch (e) { return reply(401, { error: "Please sign in with your WebSwan Google account." }, origin); }
   let b; try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
   const agent = AGENTS[b.agent] ? b.agent : "";
 
