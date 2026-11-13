@@ -1,3 +1,4 @@
+import { AUDIT_KNOWLEDGE } from "./audit-knowledge.mjs";
 // WebSwan AI Office: Tania's text-only AI team (Eva, Tatiana, Jonathan) plus Rachel's desk.
 // One brain per message, chosen by Tania: DeepSeek, ChatGPT (Gips), Gemini (Jimmy) or Claude.
 // Keys live in Netlify env only: DEEPSEEK_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY.
@@ -502,3 +503,6 @@ export async function readImage(dataUrl, ask = "") {
 
 // Tania, Nov 13: Jonathan's way of talking (human, follows the conversation, never repeats) for every man outside role play.
 export const LIKE_JONATHAN = "\nHOW TO TALK WITH TANIA (like Jonathan): listen to exactly what she just said and answer THAT first. Follow the conversation like a real person: build on what was just said, never repeat a summary or a point already made, start yes/no answers with yes or no, ask one short question if unsure. Short, warm, natural sentences.";
+
+// Jonathan knows Tania's audit software.
+AGENTS.linda.system += AUDIT_KNOWLEDGE;

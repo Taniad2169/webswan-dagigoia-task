@@ -562,16 +562,23 @@ async function evaQueue() {
       const pkg = (await st.get("evaq-" + it.id, { type: "json" })) || {};
       const pdf = (await st.get("evaq-pdf-" + it.id)) || "";
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pkg.to || "")) throw new Error("no valid email address for " + (pkg.practice || "this lead"));
+      // Jonathan adds the compliance paragraph first (Tania, Nov 13), then Eva writes the email with it.
+      let legal = "";
+      try {
+        const jq = `Eva is writing Tania's audit email to ${pkg.practice || "this practice"} (${pkg.state || "state unknown"}, website ${pkg.website || "unknown"}). Measured findings: ${pkg.findings || "(none listed)"}. Tania's notes: ${pkg.notes || "(none)"}. Write ONLY the 2 to 3 sentence compliance paragraph for the email (why these findings matter here), following your Audit Command Center rules. No greeting, no sign-off.`;
+        legal = String((await askAI(brainFor(s, "linda"), AGENTS.linda.system, [{ role: "user", content: jq }], 400)).text || "").trim().slice(0, 1200);
+      } catch (e) { legal = ""; }
       const ask = `Tania handed you this lead (light grey in WorkPilot). Finish the email; it goes into her Gmail Drafts${pdf ? " with the audit report PDF attached" : ""}.
 Practice: ${pkg.practice || ""} | Contact: ${pkg.contact || "unknown"} | Email: ${pkg.to} | State: ${pkg.state || ""} | Website: ${pkg.website || ""}
 Findings Tania checked: ${pkg.findings || "(none listed)"}
 TANIA'S NOTES (follow them exactly; they win over everything else): ${pkg.notes || "(no notes: polish the draft as is)"}
+${legal ? "JONATHAN'S COMPLIANCE PARAGRAPH (Legal & Compliance; put it in the email as written, right after the findings, unless Tania's notes say otherwise):\n" + legal : ""}
 CURRENT DRAFT FROM WORKPILOT (edit it; don't start over unless it's empty):
 Subject: ${pkg.subject || ""}
 Body:
 ${pkg.body || ""}
-Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as separators, under 180 words, mention 2 or 3 findings in plain words, invite them to book a 10-minute review with Tania (https://calendar.app.google/V5vTgj1L22g4YvTq5) or reply to this email. No signature block (Gmail adds Tania's signature). Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
-      const ans = await askAI(brainFor(s, "eva"), AGENTS.eva.system, [{ role: "user", content: ask }], 1400);
+Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as separators, under 230 words, mention 2 or 3 findings in plain words, invite them to book a 10-minute review with Tania (https://calendar.app.google/V5vTgj1L22g4YvTq5) or reply to this email. No signature block (Gmail adds Tania's signature). Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
+      const ans = await askAI(brainFor(s, "eva"), AGENTS.eva.system, [{ role: "user", content: ask }], 1600);
       const m = String(ans.text || "").match(/\{[\s\S]*\}/); let j = {}; try { j = JSON.parse(m ? m[0] : ans.text); } catch (e) {}
       const subject = String(j.subject || pkg.subject || "Your website audit report").slice(0, 200), body = String(j.body || pkg.body || "").slice(0, 30000).trim();
       if (!body) throw new Error("the email came out empty");
@@ -582,7 +589,7 @@ Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as s
       const fu = (await st.get("followups", { type: "json" })) || [];
       fu.push({ to: pkg.to, practice: pkg.practice || "", phone: pkg.phone || "", state: pkg.state || "", at: new Date().toISOString(), done: false });
       await st.setJSON("followups", fu.slice(-1000));
-      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
+      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph." : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
     } catch (e) {
       Object.assign(it, { status: "error", error: String(e.message || e).slice(0, 200), doneAt: new Date().toISOString() });
       await addMessages("eva", [{ role: "agent", kind: "error", text: "⚠️ I couldn't finish the light grey email for **" + (it.practice || it.id) + "**: " + it.error + ". It stays in my queue; press Ready for Eva again in WorkPilot once it's fixed." }]);
