@@ -2115,7 +2115,7 @@ function teamAgentsCard() {
 <script>
 /* ---------- 🧠 Brain: each phone agent's live Cartesia script, split into the parts Tania cares about ---------- */
 const BR = { agent: 'monica', text: '', loading: false, err: '' };
-const BR_AGENTS = [['monica', 'Monica'], ['george', 'George'], ['rebecca', 'Rebecca'], ['alek', 'Alek'], ['rachel', 'Rachel']];
+const BR_AGENTS = [['monica', 'Monica'], ['george', 'George'], ['rebecca', 'Rebecca'], ['alek', 'Alek'], ['jenna', 'Jenna'], ['rachel', 'Rachel']];
 function brSection(t, start, end) { const i = t.indexOf(start); if (i < 0) return ''; const j = t.indexOf(end, i + start.length); return t.slice(i + start.length, j > i ? j : undefined).trim(); }
 async function brLoad(k) {
   BR.agent = k; BR.loading = true; BR.err = ''; render();

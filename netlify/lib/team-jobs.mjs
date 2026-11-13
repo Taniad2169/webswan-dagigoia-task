@@ -4,6 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
+import { actionsHelp, runActions, MAX_HOPS } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
@@ -548,7 +549,59 @@ export function dueJobs(now = new Date()) {
   return jobs;
 }
 // A chat answer that took too long for the live request: finish it here and post it in the agent's chat.
-async function agentReply(agent) {
+// Eva's light grey queue (Tania, Nov 13): Tania presses "Ready for Eva" in WorkPilot, which sends the lead, her notes, the
+// current draft and the audit PDF here. Eva edits the email from Tania's notes and saves it to Gmail Drafts with the PDF.
+// WorkPilot then turns the lead light green. Nothing is ever sent: Tania reviews and sends from Gmail.
+async function evaQueue() {
+  const st = teamStore(), s = await getSettings();
+  const idx = (await st.get("evaq-index", { type: "json" })) || [];
+  let changed = false;
+  for (const it of idx.filter((x) => x.status === "pending").slice(0, 10)) {
+    changed = true;
+    try {
+      const pkg = (await st.get("evaq-" + it.id, { type: "json" })) || {};
+      const pdf = (await st.get("evaq-pdf-" + it.id)) || "";
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pkg.to || "")) throw new Error("no valid email address for " + (pkg.practice || "this lead"));
+      const ask = `Tania handed you this lead (light grey in WorkPilot). Finish the email; it goes into her Gmail Drafts${pdf ? " with the audit report PDF attached" : ""}.
+Practice: ${pkg.practice || ""} | Contact: ${pkg.contact || "unknown"} | Email: ${pkg.to} | State: ${pkg.state || ""} | Website: ${pkg.website || ""}
+Findings Tania checked: ${pkg.findings || "(none listed)"}
+TANIA'S NOTES (follow them exactly; they win over everything else): ${pkg.notes || "(no notes: polish the draft as is)"}
+CURRENT DRAFT FROM WORKPILOT (edit it; don't start over unless it's empty):
+Subject: ${pkg.subject || ""}
+Body:
+${pkg.body || ""}
+Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as separators, under 180 words, mention 2 or 3 findings in plain words, invite them to book a 10-minute review with Tania (https://calendar.app.google/V5vTgj1L22g4YvTq5) or reply to this email. No signature block (Gmail adds Tania's signature). Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
+      const ans = await askAI(brainFor(s, "eva"), AGENTS.eva.system, [{ role: "user", content: ask }], 1400);
+      const m = String(ans.text || "").match(/\{[\s\S]*\}/); let j = {}; try { j = JSON.parse(m ? m[0] : ans.text); } catch (e) {}
+      const subject = String(j.subject || pkg.subject || "Your website audit report").slice(0, 200), body = String(j.body || pkg.body || "").slice(0, 30000).trim();
+      if (!body) throw new Error("the email came out empty");
+      const html = body.split(/\n{2,}/).map((p) => "<p>" + p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") + "</p>").join("");
+      const r = await scriptCall({ action: "draft", to: pkg.to, subject, text: body, html, pdfBase64: pdf, filename: String(pkg.filename || "Website-Audit-Report.pdf").slice(0, 120), fromName: "Tania | WebSwan Digital Solutions" });
+      if (!r || !r.ok) throw new Error((r && r.error) || "Gmail gave no confirmation");
+      Object.assign(it, { status: "done", subject, draftId: r.draftId || "", doneAt: new Date().toISOString(), error: "" });
+      const fu = (await st.get("followups", { type: "json" })) || [];
+      fu.push({ to: pkg.to, practice: pkg.practice || "", phone: pkg.phone || "", state: pkg.state || "", at: new Date().toISOString(), done: false });
+      await st.setJSON("followups", fu.slice(-1000));
+      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
+    } catch (e) {
+      Object.assign(it, { status: "error", error: String(e.message || e).slice(0, 200), doneAt: new Date().toISOString() });
+      await addMessages("eva", [{ role: "agent", kind: "error", text: "⚠️ I couldn't finish the light grey email for **" + (it.practice || it.id) + "**: " + it.error + ". It stays in my queue; press Ready for Eva again in WorkPilot once it's fixed." }]);
+    }
+  }
+  if (changed) await st.setJSON("evaq-index", idx.slice(-400));
+}
+// A teammate message (Tania, Nov 13): "to" answers the note waiting in their chat, carries out any actions, and the answer
+// goes back to "from"'s chat; then "from" continues. Each hop is counted so two agents can't loop forever.
+async function relay(arg) {
+  const [to, from, h] = String(arg || "").split("|"), hop = Math.max(1, Math.min(9, parseInt(h, 10) || 1));
+  if (!AGENTS[to]) return;
+  const text = await agentReply(to, hop);
+  if (!text || !from || !AGENTS[from] || hop >= MAX_HOPS) return;
+  await addMessages(from, [{ role: "user", kind: "agentmsg", from: to, hop: hop + 1, text: "📨 Reply from " + String(AGENTS[to].name).split(" ")[0] + ":\n\n" + String(text).slice(0, 8000) }]);
+  const { startJobs } = await import("../functions/team-daily.mjs");
+  await startJobs(["relay:" + from + "||" + (hop + 1)]); // "from" picks it up and continues (no automatic bounce back)
+}
+async function agentReply(agent, hop = 0) {
   const s = await getSettings(), st = teamStore();
   const hist = (await st.get("chat-" + agent, { type: "json" })) || [];
   const last = hist[hist.length - 1]; if (!last || last.role !== "user") return;
@@ -560,9 +613,12 @@ async function agentReply(agent) {
     try { extra += "\n\nGOOGLE CALENDAR AND TASKS, next 7 days (data, UTC times; say them in Pacific time):\n" + JSON.stringify(await scriptCall({ action: "agenda", from: now.toISOString(), to: new Date(now.getTime() + 7 * 864e5).toISOString() })).slice(0, 9000); } catch (e) { extra += "\n\n(Calendar: " + e.message + ")"; }
   }
   const notes = (((await st.get("brain-notes", { type: "json" })) || {})[agent] || []).map((n) => "- " + n.note).join("\n");
-  const ans = await askAI(brainFor(s, agent), AGENTS[agent].system + (notes ? "\n\nTANIA'S COACHING NOTES:\n" + notes : "") + "\nToday is " + ptDate() + ".", [...past, { role: "user", content: String(last.text || "") + extra }]);
-  await addMessages(agent, [{ role: "agent", text: ans.text, provider: ans.provider }]);
+  const ans = await askAI(brainFor(s, agent), AGENTS[agent].system + (notes ? "\n\nTANIA'S COACHING NOTES:\n" + notes : "") + actionsHelp(agent) + (last.kind === "agentmsg" ? "\n\nThe last message is from a TEAMMATE, not Tania. Answer them directly and completely (your answer goes back to them automatically). Do your part now; ask another teammate only if you truly need them." : "") + "\nToday is " + ptDate() + ".", [...past, { role: "user", content: String(last.text || "") + extra }]);
+  let outText = ans.text;
+  try { const { startJobs } = await import("../functions/team-daily.mjs"); outText = (await runActions(agent, outText, { scriptCall, startJobs, hop })).text; } catch (e) { outText += "\n\n❌ An action didn't go through (" + String(e.message || e).slice(0, 120) + ")."; }
+  await addMessages(agent, [{ role: "agent", text: outText, provider: ans.provider }]);
+  return outText;
 }
 const REPLY_JOBS = Object.fromEntries(Object.keys(AGENTS).map((a) => ["reply_" + a, () => agentReply(a)]));
-export const JOBS = { ...REPLY_JOBS,  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
+export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
 export { ptHour };

@@ -57,5 +57,5 @@
     const p = split(j.instructions || ""); cache[k] = { at: Date.now(), p };
     return p;
   }
-  window.BrainMaster = { split, forRoleplay, get, cache, MASTER_AGENTS: ["monica", "george", "rebecca", "alek", "rachel"] };
+  window.BrainMaster = { split, forRoleplay, get, cache, MASTER_AGENTS: ["monica", "george", "rebecca", "alek", "jenna", "rachel"] };
 })();

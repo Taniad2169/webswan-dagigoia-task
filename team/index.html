@@ -162,8 +162,8 @@
 <script>
 const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
-const ORDER = ["eva", "tatiana", "jimmy", "linda", "clara", "rachel", "sdr", "monica", "george", "rebecca", "alek"];
-const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Jonathan", role: "Legal & Compliance", photo: "img/jonathan.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Coby", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
+const ORDER = ["eva", "tatiana", "jimmy", "linda", "clara", "rachel", "sdr", "jenna", "monica", "george", "rebecca", "alek"];
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Jonathan", role: "Legal & Compliance", photo: "img/jonathan.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, jenna: { name: "Jenna", role: "Market Intelligence Director", photo: "img/jenna.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Coby", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
 let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini", claude: "Claude", grok: "Grok (Jimmy)" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
 let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
@@ -439,7 +439,8 @@ function draftPanel(d) {
   <p style="margin:10px 0 0"><button class="btn pri" id="dGo">Create Gmail draft</button> <span class="hint">It waits in your Drafts. Nothing is sent.</span></p></div>`;
   $("dGo").onclick = async () => {
     $("dGo").disabled = true; $("dGo").textContent = "Writing…";
-    try { await api({ action: "eva_draft", provider: $("prov").value, to: $("dTo").value.trim(), practice: $("dPr").value.trim(), state: $("dSt").value.trim(), findings: $("dNote").value.trim(), website: d.website || "", contact: d.contact || "", phone: d.phone || "", pdfBase64: d.pdfBase64 || "", filename: d.filename || "" });
+    try { const dr = await api({ action: "eva_draft", provider: $("prov").value, to: $("dTo").value.trim(), practice: $("dPr").value.trim(), state: $("dSt").value.trim(), findings: $("dNote").value.trim(), website: d.website || "", contact: d.contact || "", phone: d.phone || "", pdfBase64: d.pdfBase64 || "", filename: d.filename || "" });
+      if (!dr || !dr.draftId) throw new Error("Gmail didn't confirm the draft (no draft ID came back). Nothing was saved; check Connections.");
       pendingDraft = null; toast("Draft saved in Gmail ✅"); openAgent("eva"); }
     catch (e) { toast(e.message); $("dGo").disabled = false; $("dGo").textContent = "Create Gmail draft"; }
   };

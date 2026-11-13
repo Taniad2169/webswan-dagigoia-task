@@ -103,7 +103,8 @@ const TEAM = [
   { k: "monica", n: "Monica", r: "Calls · doctors", male: false, img: "img/monica.jpg" },
   { k: "george", n: "George", r: "Calls · attorneys", male: true, img: "img/george.jpg" },
   { k: "rebecca", n: "Rebecca", r: "Calls · advertising", male: false, img: "img/rebecca.jpg" },
-  { k: "alek", n: "Alek", r: "Calls · floating", male: true, img: "img/alek.jpg" }
+  { k: "alek", n: "Alek", r: "Calls · floating", male: true, img: "img/alek.jpg" },
+  { k: "jenna", n: "Jenna", r: "Market intelligence", male: false, img: "img/jenna.jpg" }
 ];
 const NAME = (k) => (TEAM.find((t) => t.k === k) || { n: k }).n;
 const S = { in: new Set(), talkTo: "all", log: [], busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
@@ -158,7 +159,7 @@ async function ttsUrl(text, who) {
 }
 function play(url) { return new Promise((res) => { const a = new Audio(url); S.audio = a; a.onended = res; a.onerror = res; a.onpause = res; a.play().catch(res); }); }
 const VOICE_PREF = { male: [/guy|andrew|christopher|eric|brian|roger|steffan/i, /david/i, /mark/i], female: [/aria|jenny|ava|michelle|emma/i, /zira/i, /samantha/i] };
-const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 2], jimmy: ["male", 1], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], rachel: ["female", 0], eva: ["female", 2], tatiana: ["female", 1], clara: ["female", 0] };
+const AGENT_VOICE = { george: ["male", 0], alek: ["male", 1], sdr: ["male", 2], jimmy: ["male", 1], linda: ["male", 0], monica: ["female", 0], rebecca: ["female", 1], jenna: ["female", 2], rachel: ["female", 0], eva: ["female", 2], tatiana: ["female", 1], clara: ["female", 0] };
 function pickVoice(who, male) {
   const vs = speechSynthesis.getVoices().filter((v) => v.lang === "en-US" || v.lang === "en_US");
   const [g, nth] = AGENT_VOICE[who] || [male ? "male" : "female", 0];
