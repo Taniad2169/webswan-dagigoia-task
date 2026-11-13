@@ -242,7 +242,7 @@ export async function askAI(provider, system, messages, maxTokens = 3000) {
   const first = pickProvider(provider);
   if (!first) return askOne(provider, system, messages, maxTokens);
   const ready = providerReady();
-  const order = [first, ...["claude", "chatgpt", "gemini", "deepseek", "grok"].filter((k) => k !== first && ready[k])];
+  const order = [first, ...["claude", "chatgpt", "deepseek", "gemini", "grok"].filter((k) => k !== first && ready[k])];
   let lastErr = null;
   for (const p of order) {
     try { return await askOne(p, system, messages, maxTokens); }
@@ -454,12 +454,13 @@ export async function addMessages(agent, msgs) {
 }
 // Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
 // Claude is more careful with legal reasoning, so Jonathan defaults to it (falls back to DeepSeek if no Claude key).
-export const DEFAULT_BRAINS = { eva: "deepseek", tatiana: "deepseek", jimmy: "gemini", linda: "claude", clara: "chatgpt", rachel: "deepseek", sdr: "claude", jenna: "claude", george: "claude", alek: "claude" }; // Nov 13: the men think and talk like Jonathan // Tania, Nov 13: Coby and Jenna think like Jonathan (Claude)
+export const DEFAULT_BRAINS = { eva: "claude", tatiana: "chatgpt", jimmy: "claude", linda: "claude", clara: "chatgpt", rachel: "chatgpt", sdr: "claude", jenna: "claude", george: "claude", alek: "claude" }; // Nov 13: the men think and talk like Jonathan // Tania, Nov 13: Coby and Jenna think like Jonathan (Claude)
 export async function getSettings() {
   const s = Object.assign({ provider: "deepseek", competitors: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
   // Tania, Nov 13: "Coby and Jenna like Jonathan" — move them to Claude once (she can still change it afterwards).
   if (!s.migratedLeaders) { s.brains.sdr = "claude"; s.brains.jenna = "claude"; s.brains.linda = "claude"; s.migratedLeaders = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
+  if (!s.migratedTrusted) { Object.assign(s.brains, { jimmy: "claude", eva: "claude", tatiana: "chatgpt", clara: "chatgpt", rachel: "chatgpt" }); s.migratedTrusted = true; try { await teamStore().setJSON("settings", s); } catch (e) {} } // Tania, Nov 13: Claude and ChatGPT lead, DeepSeek backs them up
   if (!s.migratedMen) { s.brains.george = "claude"; s.brains.alek = "claude"; s.migratedMen = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
   return s;
 }
