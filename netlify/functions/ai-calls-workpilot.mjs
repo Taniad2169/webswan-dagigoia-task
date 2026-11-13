@@ -48,7 +48,17 @@ const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|z
 // email field on the WorkPilot row instead of being buried in the comment.
 function emailFrom(transcript) {
   const t = transcript || [];
-  const REAL = /[A-Za-z0-9._%+-]+@\s?[A-Za-z0-9.-]+\.\s?[A-Za-z]{2,}/;
+  const REAL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  // Tania, Nov 12: a captured address must survive these or it is noise, not a lead.
+  const JUNK_LOCAL = /^(abc|test|testing|example|sample|noreply|no-reply|donotreply|email|name|yourname|info@example)$/i;
+  const ok = (e) => {
+    e = String(e || "").replace(/[.,;:!?)]+$/, "").toLowerCase();
+    if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(e)) return "";
+    if (/\d{7,}/.test(e)) return "";                       // a phone number parsed as an address
+    if (JUNK_LOCAL.test(e.split("@")[0])) return "";        // test or placeholder addresses
+    if (/example\.(com|net|org)$/.test(e)) return "";
+    return e;
+  };
   const SPELLED = /\b[A-Za-z0-9._%+-]{2,}\s+at\s+([A-Za-z][A-Za-z0-9.-]*\.\s?[A-Za-z]{2,})\b/i;
   const GREETING = /leave a (name|message)|after the tone|you have reached|thank you for calling|currently unavailable|we have missed you|our office hours|please feel free to (visit|reach)|press \d|visit (us|the website)/i;
   for (let i = 0; i < t.length; i++) {
@@ -57,9 +67,9 @@ function emailFrom(transcript) {
     if (txt.length > 170 || GREETING.test(txt) || /www\.|https?:/i.test(txt)) continue;
     if (!t.slice(0, i).some((x) => x.role !== "user" && String(x.text || "").trim())) continue; // nothing said yet: a greeting, not an answer
     const m1 = txt.match(REAL);
-    if (m1) return m1[0].replace(/\s+/g, "").toLowerCase();
+    if (m1) { const e = ok(m1[0]); if (e) return e; }
     const m2 = txt.match(SPELLED);
-    if (m2 && !/^\d/.test(m2[1])) return m2[0].replace(/\s+at\s+/i, "@").replace(/\s+/g, "").toLowerCase();
+    if (m2 && !/^\d/.test(m2[1])) { const e = ok(m2[0].replace(/\s+at\s+/i, "@").replace(/\s+/g, "")); if (e) return e; }
   }
   return "";
 }
