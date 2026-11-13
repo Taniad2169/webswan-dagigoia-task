@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
-import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, webSearch, fmtResults, readPage, researchWeb, readImage } from "../lib/team.mjs";
+import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN } from "../lib/team.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -545,7 +545,7 @@ export default async (req) => {
       const VOICE = b.voice ? "\n\nVOICE CONVERSATION: Tania is talking to you out loud and your answer will be spoken. Answer like a person on a call: warm, natural, short sentences, no markdown, no lists, no links, no emojis, under 120 words unless she asks for detail. For a briefing, give the 3 to 5 most important things first." : "";
       const FLOW = (!b.roleplay && !b.rpEnd && !meeting) ? "\n\nHOW YOU TALK WITH TANIA: have a natural, flowing conversation like a real person. Answer only what she just asked. Do NOT restate or summarize what you already told her, do not repeat earlier answers, and never pile question 1 + question 2 + question 3 together — just answer the latest thing she said. If she didn't ask for something and it isn't an urgent update she needs right now, don't bring it up again. Keep the conversation moving." : "";
       let ans;
-      try { ans = await within(askAI(b.provider || brainFor(s, agent), AGENTS[agent].system + notesText((await getNotes())[agent]) + VOICE + FLOW + RP + (b.roleplay || b.rpEnd || meeting || b.voice ? "" : actionsHelp(agent)) + "\nToday is " + new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles" }) + ".", [...past, user]), Math.max(6000, 25000 - (Date.now() - t0)), "The answer"); }
+      try { ans = await within(askAI(b.provider || brainFor(s, agent), AGENTS[agent].system + notesText((await getNotes())[agent]) + VOICE + FLOW + RP + ((["george","alek","jimmy","sdr","linda"].includes(agent) && !b.roleplay) ? LIKE_JONATHAN : "") + (b.roleplay || b.rpEnd || meeting || b.voice ? "" : actionsHelp(agent)) + "\nToday is " + new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles" }) + ".", [...past, user]), Math.max(6000, 25000 - (Date.now() - t0)), "The answer"); }
       catch (e) {
         // A real error (not slowness): say it right away instead of a silent wait.
         if (!/took too long/i.test(String(e.message || ""))) return reply(200, { messages: [userMsg, { id: "tmp-err", role: "agent", at: new Date().toISOString(), text: "⚠️ I couldn't answer just now: " + String(e.message || e).slice(0, 200) + ". Please try again in a moment." }] }, origin);
