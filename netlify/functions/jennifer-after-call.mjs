@@ -4,9 +4,11 @@
 import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript } from "../lib/cal.mjs";
 
-// Tania, Nov 14: pulled off 24/7 to cut Netlify credit burn -- narrowed to the team's working window,
-// Mon-Fri 8am-8pm Eastern (no weekend work). Move back to "*/5 * * * *" once this needs round-the-clock coverage.
-export const config = { schedule: "*/5 13-23,0 * * 1-5" };
+// Tania, Nov 14: Jennifer/SwanDesk AI isn't live yet, so this sweep is dormant -- no schedule at all, costs zero
+// Netlify credits while off. To wake her back up, restore a schedule, e.g.:
+//   export const config = { schedule: "*/5 13-23,0 * * 1-5" };  // Mon-Fri 8am-8pm Eastern
+//   export const config = { schedule: "*/5 * * * *" };          // full 24/7 coverage
+export const config = {};
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
