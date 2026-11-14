@@ -39,7 +39,9 @@ function rachelTransfers(agent) {
   // When both lines are the same (our own Rachel answers both), merge them into one transfer: Cartesia needs unique destinations.
   const both = RACHEL_COMPLIANCE === RACHEL_ADVERTISING ? [{ destination: comp.destination, condition: "The person has questions about website compliance (ADA, privacy, HIPAA, the audit findings or the risk) or about WebSwan Media Network (advertising, visibility, the directory), and agrees to be transferred to Rachel." }] : [comp, ads];
   const map = { monica: [comp], george: both, rebecca: [ads], alek: both, jenna: both, rachel: toTania };
-  if (["monica", "george", "rebecca", "alek", "jenna"].includes(agent)) return plusTania(map[agent]);
+  // Tania, Nov 13: Jenna NEVER blind-transfers to Tania — she keeps the prospect engaged and books the calendar instead (see her chat briefing). Still fine for Rachel (compliance/ads).
+  if (["monica", "george", "rebecca", "alek"].includes(agent)) return plusTania(map[agent]);
+  if (agent === "jenna") return map.jenna;
   return map[agent] || null;
 }
 // Jennifer is the AI receptionist for WSMN clients: she gets the directory lookup tool, not Tania's onboarding calendar.
