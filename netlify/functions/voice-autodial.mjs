@@ -15,7 +15,10 @@ import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 // Tania, Nov 12: was every minute, which woke this function ~5,000 times a week and was the single biggest
 // consumer of her Netlify credits. Every 2 minutes costs her nothing: each campaign is capped at perWindow
 // calls per window (12), and a 2-hour window still gives 60 runs to reach that cap.
-export const config = { schedule: "*/2 12-23,0-1 * * 1-6" };
+// Tania, Nov 14: trimmed the end of the window from ~9 PM to 8 PM Eastern, the team's new standard stop time.
+// The ACTUAL dialing days/hours still come from the schedule saved in Voice Studio (settings.days/start/end) --
+// this cron is only the outer wake-up window, so check that saved schedule too if 8 PM needs to be enforced there.
+export const config = { schedule: "*/2 12-23,0 * * 1-6" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";

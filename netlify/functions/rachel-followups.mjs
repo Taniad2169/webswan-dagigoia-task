@@ -7,7 +7,9 @@ import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
 
-export const config = { schedule: "*/15 13-23,0-1 * * 1-5" };
+// Tania, Nov 14: the internal rule below already cuts calls off at 6 PM New York, so waking past that was
+// pure wasted credit -- trimmed the cron window to stop at the same 6 PM Eastern cutoff.
+export const config = { schedule: "*/15 13-22 * * 1-5" };
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const e164 = (p) => { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return /^1[2-9]\d{2}[2-9]\d{6}$/.test(d) ? "+" + d : ""; };

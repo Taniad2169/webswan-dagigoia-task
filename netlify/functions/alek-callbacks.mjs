@@ -1,12 +1,14 @@
 // Alek's callback calendar: calls people back at the date and time Tania scheduled
 // ("call me back in 2 weeks", "end of the week"), with the subject and script she wrote.
-// Runs every 5 minutes on weekdays. Only calls 8 AM to 8 PM in the person's own time zone AND before 6 PM New York time (Tania, Nov 7),
+// Runs every 5 minutes on weekdays. Only calls 8 AM to 8 PM in the person's own time zone AND before 8 PM New York time (Tania, Nov 14; was 6 PM Nov 7),
 // never on the Do Not Call list, and only when VOICE_CALLING_ENABLED is on.
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
 
-export const config = { schedule: "*/5 13-23,0-3 * * 1-6" };
+// Tania, Nov 14: trimmed off Saturday (the internal rule below already rejected every Saturday wake-up anyway,
+// so that was pure wasted credit) and the cron now stops waking at 8 PM Eastern instead of running past it.
+export const config = { schedule: "*/5 13-23,0 * * 1-5" };
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const e164 = (p) => { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return /^1[2-9]\d{2}[2-9]\d{6}$/.test(d) ? "+" + d : ""; };
@@ -15,8 +17,8 @@ const localHour = (tz) => Number(new Intl.DateTimeFormat("en-US", { timeZone: tz
 export default async () => {
   if (String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() !== "on" || !process.env.CARTESIA_API_KEY) return new Response("off");
   const store = getStore({ name: "voice-studio", consistency: "strong" });
-  // Tania's hard rule (Nov 7): nothing goes out after 6 PM New York time, and never on weekends.
-  { const nyH = localHour("America/New_York"), nyD = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date()); if (nyH >= 18 || nyD === "Sat" || nyD === "Sun") return new Response("after 6 PM New York time"); }
+  // Tania's hard rule (Nov 14, was 6 PM Nov 7): nothing goes out after 8 PM New York time, and never on weekends.
+  { const nyH = localHour("America/New_York"), nyD = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date()); if (nyH >= 20 || nyD === "Sat" || nyD === "Sun") return new Response("after 8 PM New York time"); }
   const list = (await store.get("callbacks", { type: "json" })) || [];
   const due = list.filter((c) => c.status === "scheduled" && Date.parse(c.callAt) <= Date.now());
   if (!due.length) return new Response("nothing due");
