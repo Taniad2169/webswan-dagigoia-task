@@ -214,9 +214,13 @@ async function runTurn(text) {
       try { reply = await askAgent(k); }
       catch (e) { reply = "(" + NAME(k) + " couldn't answer just now: " + (e.message || e) + ")"; }
       addLog(NAME(k), reply, "ag");
-      S.busy = false; // allow Stop to cut speech
+      // Keep the Send button's disabled attribute in sync with S.busy. A disabled button
+      // silently swallows clicks (the browser never fires the click handler, no error, no
+      // feedback) - that's the bug where a message sat typed and unsent during live voice
+      // playback while S.busy itself briefly said "not busy". Re-enable both together.
+      S.busy = false; $("send").disabled = false; // allow Stop to cut speech, and let Tania send the next line while this one is still being spoken
       await speak(reply, k);
-      S.busy = true;
+      S.busy = true; $("send").disabled = true;
     }
   } finally {
     S.busy = false; $("send").disabled = false; micLook(""); say("Your turn — tap the mic or type.");
