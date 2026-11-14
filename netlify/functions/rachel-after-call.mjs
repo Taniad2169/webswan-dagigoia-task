@@ -6,7 +6,10 @@ import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript } from "../lib/cal.mjs";
 import { CALL_BLOCKS, restructure } from "../lib/call-scripts.mjs";
 
-export const config = { schedule: "*/5 * * * *" };
+// Tania, Nov 14: pulled off 24/7 to cut Netlify credit burn — we're not a plumber, nothing needs round-the-clock
+// monitoring yet. Now matches the team's actual calling window (same as Alek's callback sweep): Mon-Sat, 13-23 and
+// 0-3 UTC (roughly 8am-11pm Eastern). Move back to "*/5 * * * *" once revenue justifies true 24/7 coverage.
+export const config = { schedule: "*/5 13-23,0-3 * * 1-6" };
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
