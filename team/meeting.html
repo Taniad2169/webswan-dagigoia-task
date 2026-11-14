@@ -185,6 +185,15 @@ async function speak(text, who) {
 }
 function hush() { S.gen++; try { S.audio && S.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} S.speaking = ""; }
 
+/* ---------- who did Tania actually address? decided here, before any agent is asked ---------- */
+function detectAddressee(text) {
+  const m = String(text || "").trim().match(/^(?:hey|hi|ok|okay)?\s*([A-Za-z]+)\s*[,:]/i);
+  if (!m) return null;
+  const cand = m[1].toLowerCase();
+  const hit = TEAM.find((t) => t.n.toLowerCase() === cand);
+  return hit ? hit.k : null;
+}
+
 /* ---------- a turn: Tania says something, the chosen teammate(s) answer ---------- */
 async function runTurn(text) {
   if (S.busy) return;
@@ -192,7 +201,12 @@ async function runTurn(text) {
   if (!text.trim()) return;
   addLog("Tania", text.trim(), "me");
   S.busy = true; $("send").disabled = true;
-  const order = S.talkTo === "all" ? TEAM.filter((t) => S.in.has(t.k)).map((t) => t.k) : [S.talkTo];
+  // The controller decides who's up BEFORE anyone is asked. Even in "around the table"
+  // mode, if Tania named one teammate by name ("Jenna, ..."), only that person is asked —
+  // everyone else stays silent, listening, rather than each agent being trusted to self-select.
+  const addressed = S.talkTo === "all" ? detectAddressee(text) : null;
+  const order = (addressed && S.in.has(addressed)) ? [addressed]
+    : (S.talkTo === "all" ? TEAM.filter((t) => S.in.has(t.k)).map((t) => t.k) : [S.talkTo]);
   try {
     for (const k of order) {
       say("💭 " + NAME(k) + " is thinking…"); micLook("");
