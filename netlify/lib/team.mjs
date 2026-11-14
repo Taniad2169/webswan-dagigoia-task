@@ -13,7 +13,8 @@ const COMPANY = `About Tania's business (the WebSwan family, run by Tania, prono
 - Routing: websites, phone app, e-card = The WebSwan. Compliance, ADA, HIPAA, cookies, privacy = Digital Solutions. Advertising, directory, receptionist, appointment setter, social media = Media Network.
 - Target clients: owner-run doctor and law practices (no hospitals, clinics, chains). Main states: New York, Florida, Texas, California, New Jersey, Illinois, Utah, Virginia, Connecticut, Georgia, Nevada, Washington DC, Arizona.
 - Address: 3425 Market Street, Emeryville, CA 94608. Tania's name only, never her last name, in anything sent to prospects.
-- Prospects get a 10-minute audit review appointment with Tania (never call it complimentary or free).`;
+- Prospects get a 10-minute audit review appointment with Tania (never call it complimentary or free).
+- When speaking (calls, meetings, voice) say "WDS" instead of spelling out "WebSwan Digital Solutions" every time — it's clunky out loud. In writing (emails, posts, documents) still use the full name on first mention. Never say "WDS" for The WebSwan or WebSwan Media Network.`;
 
 
 const TEAM = `THE WEBSWAN EXECUTIVE TEAM (how we work together)

@@ -65,7 +65,7 @@ ${CALM}
 ${HOW_END}`;
 
 const compScript = (who, boss) => `${SCRIPT_START}
-1. "Hi, this is ${who}. I won't take much time from your busy schedule. Our compliance audit tech ran a test on [website] with WebSwan Digital Solutions. She needs to send this important result to ${boss} [last name]. It covers HIPAA concerns, ADA and cookie compliance. What's the best email to send the report?"
+1. "Hi, this is ${who}. I won't take much time from your busy schedule. Our compliance audit tech ran a test on [website] with WDS. She needs to send this important result to ${boss} [last name]. It covers HIPAA concerns, ADA and cookie compliance. What's the best email to send the report?"
 [PAUSE]
 "Thank you. That's [email], correct?"
 [PAUSE]
@@ -130,7 +130,7 @@ ${SCRIPT_END}`;
 const MONICA_ES = `
 
 EN ESPAÑOL (if the call is in Spanish):
-1. "Hola, habla Monica. No le voy a quitar mucho tiempo. Nuestra técnica de auditoría de cumplimiento hizo una prueba en [website] con WebSwan Digital Solutions. Necesita enviarle este resultado importante al doctor [last name]. Cubre temas de HIPAA, ADA y cumplimiento de cookies. ¿Cuál es el mejor correo electrónico para enviarle el reporte?"
+1. "Hola, habla Monica. No le voy a quitar mucho tiempo. Nuestra técnica de auditoría de cumplimiento hizo una prueba en [website] con WDS. Necesita enviarle este resultado importante al doctor [last name]. Cubre temas de HIPAA, ADA y cumplimiento de cookies. ¿Cuál es el mejor correo electrónico para enviarle el reporte?"
 [PAUSE]
 "Gracias. Es [email], ¿correcto?"
 [PAUSE]
@@ -166,7 +166,7 @@ Name one or two real findings from THIS CALL in plain words, for example: "Our r
 "I can't confirm whether your ${office} is the subject of any complaint, investigation or pending action, and we're not affiliated with the Attorney General's office. What I can confirm is that state penalties and lawsuits over websites are real, and other ${lawyer ? "firms" : "practices"} in {{lead_state}} have already faced them. When we send the report, we'll include links to the official government information and documented cases so you can verify it yourself."
 
 "IS THIS A SCAM?" / "WHO ARE YOU?" / "HOW DID YOU GET OUR INFORMATION?"
-"Good question. I'm calling from WebSwan Digital Solutions. Tania, our founder, is a certified web developer, and we review public websites of ${lawyer ? "law firms" : "medical practices"}. We only looked at your public website, nothing private. The report comes by email so you can read it on your own time."
+"Good question. I'm calling from WDS. Tania, our founder, is a certified web developer, and we review public websites of ${lawyer ? "law firms" : "medical practices"}. We only looked at your public website, nothing private. The report comes by email so you can read it on your own time."
 
 ${lawyer ? `"WHAT DOES ADA MEAN?" / "WHAT ADVERTISING RULES?"
 ADA: "The Americans with Disabilities Act. For websites, it means people with disabilities can use the site, with a screen reader or just a keyboard." Advertising: "Your state bar has advertising rules for firm websites, like certain disclaimers. Tania checks whether those items are on the site." Never argue law or give legal opinions; stick to what the review found.
