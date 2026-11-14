@@ -379,8 +379,62 @@ function campaignLeads(cp) {
   const pool = state.leads.filter(l => !cp.statusFilter || (l.status || 'New') === cp.statusFilter);
   return { pool, ok: pool.filter(l => eligibility(l).ok), skipped: pool.filter(l => !eligibility(l).ok) };
 }
+function weekBoundsPT() {
+  // Mon 00:00 through Sat 00:00, reckoned in Pacific time (Tania, Nov 13: Jenna's week is Mon-Thu calling, Fri is the meeting).
+  const now = new Date(), p = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const dow = p.getDay(); // 0 Sun..6 Sat
+  const mon = new Date(p); mon.setDate(p.getDate() - ((dow + 6) % 7)); mon.setHours(0, 0, 0, 0);
+  const sat = new Date(mon); sat.setDate(mon.getDate() + 5);
+  const off = now.getTime() - p.getTime();
+  return { start: mon.getTime() + off, end: sat.getTime() + off };
+}
+function scorecardData() {
+  const { start, end } = weekBoundsPT();
+  const calls = state.calls.filter(x => x.at >= start && x.at < end);
+  const groups = {};
+  const nameFor = (x) => { if (x.campaignId) { const cp = byId('campaigns', x.campaignId); if (cp) return cp.name; } return x.campaign || 'Uncategorized'; };
+  calls.forEach(x => {
+    const key = x.campaignId || nameFor(x);
+    (groups[key] = groups[key] || { name: nameFor(x), n: 0, answered: 0, scoreSum: 0, scoreN: 0, interested: 0, appts: 0 });
+    const g = groups[key]; g.n++;
+    if (x.outcome && x.outcome !== 'No answer') g.answered++;
+    if (x.ai && x.ai.score !== undefined) { g.scoreSum += Number(x.ai.score) || 0; g.scoreN++; }
+    if (x.outcome === 'Spoke: interested' || x.outcome === 'Appointment requested') g.interested++;
+    if (x.outcome === 'Appointment requested') g.appts++;
+  });
+  return { start, end, rows: Object.values(groups).sort((a, b) => b.n - a.n) };
+}
+function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
+function weeklyScorecard() {
+  const { start, end, rows } = scorecardData();
+  const when = `${fmtDate(start)} \u2013 ${fmtDate(end - 86400000)}`;
+  if (!rows.length) {
+    openForm('\ud83d\udcca Weekly Campaign Scorecard', `<p class="muted">${esc(when)}</p><p>No calls logged this week yet \u2014 nothing to score. Log calls against a campaign and this fills in on its own.</p>`, () => true);
+    return;
+  }
+  const body = rows.map(g => `<div class="card" style="margin-bottom:10px">
+    <div class="row"><strong>${esc(g.name)}</strong><span class="chip">${g.n} call${g.n === 1 ? '' : 's'}</span></div>
+    <p style="margin:6px 0 0">Call quality: ${g.scoreN ? (g.scoreSum / g.scoreN).toFixed(1) + '/10' : '\u2014'} <span class="muted">(from ${g.scoreN} scored call${g.scoreN === 1 ? '' : 's'})</span></p>
+    <p style="margin:4px 0 0">Reached a person: ${pct(g.answered, g.n)}% <span class="muted">(${g.answered} of ${g.n})</span></p>
+    <p style="margin:4px 0 0">Interested: ${pct(g.interested, g.n)}% <span class="muted">(${g.interested} of ${g.n})</span></p>
+    <p style="margin:4px 0 0">Appointments: ${pct(g.appts, g.n)}% <span class="muted">(${g.appts} of ${g.n})</span></p>
+  </div>`).join('');
+  openForm('\ud83d\udcca Weekly Campaign Scorecard', `<p class="muted">${esc(when)} \u00b7 real call data only, raw counts shown next to every percentage</p>${body}
+  <p class="note">Nothing here is invented \u2014 every number comes from logged calls this week.</p>`, () => true, () => {
+    $('form').insertAdjacentHTML('beforeend', `<div class="actions" style="justify-content:flex-start;margin-top:10px"><button type="button" class="btn secondary small" onclick="sendScorecardToJenna()">\ud83d\udce4 Send to Jenna for Friday's meeting</button></div>`);
+  });
+}
+async function sendScorecardToJenna() {
+  const { start, end, rows } = scorecardData();
+  if (!rows.length) { toast('Nothing to send yet \u2014 no calls logged this week.'); return; }
+  const when = `${fmtDate(start)} \u2013 ${fmtDate(end - 86400000)}`;
+  const lines = rows.map(g => `- ${g.name}: ${g.n} calls, quality ${g.scoreN ? (g.scoreSum / g.scoreN).toFixed(1) + '/10 (' + g.scoreN + ' scored)' : 'not scored'}, interested ${pct(g.interested, g.n)}% (${g.interested}/${g.n}), appointments ${pct(g.appts, g.n)}% (${g.appts}/${g.n})`).join('\n');
+  const text = `Here is this week's campaign scorecard (${when}), real call data only:\n\n${lines}\n\nReview it and tell me, in your own words, which market or audience is converting best this week, which is weakest, and what you'd push Monday \u2014 call out anywhere a percentage is riding on a small number of calls.`;
+  try { await brainApi({ action: 'chat', agent: 'jenna', text }); toast('Sent to Jenna \u2014 check her chat in the AI Office.'); }
+  catch (e) { toast('Could not reach the AI Office: ' + e.message); }
+}
 function renderCampaigns(c) {
-  c.innerHTML = `${dialCard()}<div class="row section"><p>Organize outreach and prepare your calling schedule.</p><button class="btn" onclick="campaignForm()">+ Create campaign</button></div>
+  c.innerHTML = `${dialCard()}<div class="row section"><p>Organize outreach and prepare your calling schedule.</p><button class="btn" onclick="campaignForm()">+ Create campaign</button><button class="btn secondary" onclick="weeklyScorecard()">\ud83d\udcca Weekly scorecard</button></div>
   <div class="card">${state.campaigns.map(x => { const a = byId('agents', x.agentId); const L = campaignLeads(x);
     return `<div class="listitem row"><div><strong>${esc(x.name)}</strong><small>Agent: ${esc(a ? a.name : (x.agent || 'Not assigned'))} · ${esc(x.schedule || 'Schedule not set')} · Leads: ${esc(x.statusFilter || 'all statuses')}</small><br><small><span class="chip ok">${L.ok.length} ready</span> <span class="chip ${L.skipped.length ? 'warn' : ''}">${L.skipped.length} skipped</span>${x.goal ? ' · Goal: ' + esc(x.goal) : ''}</small></div>
     <div class="toolbar"><span class="chip">Draft</span><button class="btn green small" onclick="dialAddCampaign('${x.id}')" ${L.ok.length ? '' : 'disabled'} title="Send this campaign's eligible leads to the auto-dialer">🤖 Auto-dial</button><button class="btn secondary small" onclick="practiceCampaign('${x.id}')" ${L.ok.length && a ? '' : 'disabled'}>🎙 Practice next lead</button><button class="btn outline small" onclick="campaignForm('${x.id}')">Edit</button><button class="btn danger small" onclick="delItem('campaigns','${x.id}')" aria-label="Delete ${esc(x.name)}">🗑</button></div></div>`; }).join('') || '<div class="empty">No campaigns yet. Create a draft when you are ready.</div>'}</div>
@@ -1083,6 +1137,16 @@ window.addEventListener('hashchange', checkImport);
 /* ---------- live AI calls: Cartesia through the WebSwan Netlify bridge ----------
    The Cartesia key stays in Netlify. This page only sends your Google sign-in token. */
 const VOICE_API = 'https://webswan-billing.netlify.app/.netlify/functions/voice-calls';
+// Tania, Nov 13: the AI Office (Jenna, Coby, Jonathan…) — separate from the AI Team (lead research) and OFFICE_API (Buyer Psychology) below. Same sign-in works on both projects.
+const BRAIN_API = 'https://webswan-billing.netlify.app/.netlify/functions/team';
+async function brainApi(body) {
+  if (!window.fbIdToken) throw new Error('Cloud sign-in is still loading. Try again in a moment.');
+  const t = await window.fbIdToken(); if (!t) throw new Error('Sign in with Google at the top first.');
+  const r = await fetch(BRAIN_API, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify(body) });
+  let d = {}; try { d = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(d.error || ('AI Office error ' + r.status));
+  return d;
+}
 let liveStatus = null, liveTimer = null;
 // ---------- Alek's callback calendar: "call me back in 2 weeks" → Alek calls at that date and time with your script ----------
 let cbList = null;
