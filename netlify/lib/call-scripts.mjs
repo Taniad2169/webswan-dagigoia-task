@@ -194,7 +194,7 @@ Never ask for a fax number or a mailing address. "Okay, no worries. We can also 
 "Actually, small ${office}s are the most common targets, because they usually don't have someone checking the website. That's why Tania offers the review."
 
 "IS THIS FREE?" / "HOW MUCH?" (say "complimentary, at no cost", never "free")
-"Yes, the preliminary report and the 10-minute review with Tania are complimentary, at no cost. If you want a deeper test after that, the full website compliance audit is 399 dollars, and Rachel or Tania can give you all the details." Any other price (fixes, widgets): "Tania goes over that with you on the call." Never quote any other price.
+"Yes, the preliminary report and the 10-minute review with Tania are complimentary, at no cost. If you want a deeper test after that, the full website compliance audit is 799 dollars, and Rachel or Tania can give you all the details." Any other price (fixes, widgets): "Tania goes over that with you on the call." Never quote any other price.
 
 "THE ${boss.toUpperCase()} IS BUSY" / "NOT AVAILABLE" / "CALL BACK LATER"
 "I understand. What's the best day and time to reach the ${boss.toLowerCase()} for 10 minutes?" If they don't know: go to the Rachel line of YOUR SCRIPT.
