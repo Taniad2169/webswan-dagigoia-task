@@ -25,7 +25,7 @@ const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billin
 const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout"];
 // Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
 const TASKED = (n) => n === "alek" || n === "jenna";
-// Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
+// Rachel, Tania's virtual coordinator, now answers both compliance and WebSwan Media Network (advertising) questions on one line.
 // Tania, Nov 14: the old (239) 667-0151 compliance line was Marblism, which she no longer uses — everything
 // runs on her own Voice Studio now, so compliance and advertising both default to the one real line (316-248-6839)
 // unless she sets RACHEL_COMPLIANCE_NUMBER to something else.
