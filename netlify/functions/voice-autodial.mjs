@@ -9,16 +9,19 @@
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
-// Wakes every minute 12:00-01:59 UTC, Mon-Sat UTC (covers Monday to Friday daytime in every US time zone).
-// The schedule saved in Voice Studio (days + up to two windows, in Tania's chosen time zone) narrows it to the exact days and hours.
+// Wakes every 2 minutes 12-23,0 UTC, Mon-Thu only -- no outbound calling Fri/Sat/Sun.
+// The schedule saved in Voice Studio (days + up to two windows, in Tania's chosen time zone) narrows it to the exact days and hours;
+// that schedule is already set to Mon-Thu only, so this outer cron just stops wasting wake-ups on days it would reject anyway.
 // (Before Nov 7 this was Tue-Fri UTC, so a Monday checked in the schedule never dialed.)
 // Tania, Nov 12: was every minute, which woke this function ~5,000 times a week and was the single biggest
 // consumer of her Netlify credits. Every 2 minutes costs her nothing: each campaign is capped at perWindow
 // calls per window (12), and a 2-hour window still gives 60 runs to reach that cap.
-// Tania, Nov 14: trimmed the end of the window from ~9 PM to 8 PM Eastern, the team's new standard stop time.
+// Tania, Nov 14 (8pm cutoff): trimmed the end of the window from ~9 PM to 8 PM Eastern, the team's new standard stop time.
+// Tania, Nov 14 (no Friday calling): dropped Friday too -- the dialer only runs Mon-Thu now; Rachel's own
+// follow-up/after-call sweeps are separate and still run through Friday until 6 PM (see rachel-after-call.mjs, rachel-followups.mjs).
 // The ACTUAL dialing days/hours still come from the schedule saved in Voice Studio (settings.days/start/end) --
-// this cron is only the outer wake-up window, so check that saved schedule too if 8 PM needs to be enforced there.
-export const config = { schedule: "*/2 12-23,0 * * 1-6" };
+// this cron is only the outer wake-up window, so check that saved schedule too if these hours change again.
+export const config = { schedule: "*/2 12-23,0 * * 1-4" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
