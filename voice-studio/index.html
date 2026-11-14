@@ -1576,7 +1576,7 @@ async function liveSync(quiet) {
 
 /* ---------- auto-dialer (Netlify dials the queue every minute inside the schedule) ---------- */
 let dialQ = null;
-const DIAL_DAYS = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu']]; // Tania, Nov 7: Monday to Thursday only (doctors leave early or are off on Fridays)
+const DIAL_DAYS = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri']]; // Tania, Nov 7: Monday to Thursday only (doctors leave early or are off on Fridays). Tania, Nov 14: added Fri as a selectable option so it's no longer missing from this list -- the team's own schedule still runs Mon-Thu, so leave it unchecked.
 async function dialRefresh(quiet) {
   try { dialQ = await voiceApi({ action: 'queue_get' }); } catch (e) { dialQ = { error: e.message }; }
   if (page === 'Campaigns') render(); else if (!quiet) toast(dialQ.error || 'Auto-dialer updated.');
