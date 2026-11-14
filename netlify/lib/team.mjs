@@ -472,6 +472,16 @@ export const brainFor = (s, agent) => {
   return b || s.provider || "deepseek";
 };
 
+// Read the text out of a lead's audit-report PDF (base64), so Jonathan can ground his compliance paragraph in the real scan, not just Tania's typed notes.
+export async function readPdfText(base64) {
+  if (!base64) return "";
+  try {
+    const { default: pdfParse } = await import("pdf-parse");
+    const buf = Buffer.from(String(base64).replace(/^data:application\/pdf;base64,/, ""), "base64");
+    const out = await pdfParse(buf);
+    return String(out.text || "").replace(/\s+\n/g, "\n").trim().slice(0, 8000);
+  } catch (e) { return ""; }
+}
 // Read a picture Tania attaches in a chat (logo, flyer, screenshot, document photo): Gemini describes it and copies any text.
 export async function readImage(dataUrl, ask = "") {
   const m = String(dataUrl || "").match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i); if (!m) throw new Error("That picture couldn't be read.");

@@ -2,7 +2,7 @@
 // Tatiana's Monday social content and twice-monthly blogs + Google Business Profile posts,
 // and the 3-day "time to call" reminders after an audit email.
 import { getStore } from "@netlify/blobs";
-import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb } from "./team.mjs";
+import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb, readPdfText } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
 import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
@@ -562,10 +562,11 @@ async function evaQueue() {
       const pkg = (await st.get("evaq-" + it.id, { type: "json" })) || {};
       const pdf = (await st.get("evaq-pdf-" + it.id)) || "";
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pkg.to || "")) throw new Error("no valid email address for " + (pkg.practice || "this lead"));
-      // Jonathan adds the compliance paragraph first (Tania, Nov 13), then Eva writes the email with it.
+      // Jonathan adds the compliance paragraph first (Tania, Nov 13), reading the real audit PDF when there is one, not just the typed findings.
+      const pdfText = pdf ? await readPdfText(pdf) : "";
       let legal = "";
       try {
-        const jq = `Eva is writing Tania's audit email to ${pkg.practice || "this practice"} (${pkg.state || "state unknown"}, website ${pkg.website || "unknown"}). Measured findings: ${pkg.findings || "(none listed)"}. Tania's notes: ${pkg.notes || "(none)"}. Write ONLY the 2 to 3 sentence compliance paragraph for the email (why these findings matter here), following your Audit Command Center rules. No greeting, no sign-off.`;
+        const jq = `Eva is writing Tania's audit email to ${pkg.practice || "this practice"} (${pkg.state || "state unknown"}, website ${pkg.website || "unknown"}). Measured findings Tania typed: ${pkg.findings || "(none listed)"}.${pdfText ? "\nTHE ACTUAL AUDIT REPORT PDF (read this closely; it is the real scan, more complete than Tania's typed notes):\n" + pdfText : "\n(No audit PDF attached to this lead.)"} Tania's notes: ${pkg.notes || "(none)"}. Write ONLY the 2 to 3 sentence compliance paragraph for the email (why these findings matter here), following your Audit Command Center rules. No greeting, no sign-off.`;
         legal = String((await askAI(brainFor(s, "linda"), AGENTS.linda.system, [{ role: "user", content: jq }], 400)).text || "").trim().slice(0, 1200);
       } catch (e) { legal = ""; }
       const ask = `Tania handed you this lead (light grey in WorkPilot). Finish the email; it goes into her Gmail Drafts${pdf ? " with the audit report PDF attached" : ""}.
@@ -589,7 +590,7 @@ Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as s
       const fu = (await st.get("followups", { type: "json" })) || [];
       fu.push({ to: pkg.to, practice: pkg.practice || "", phone: pkg.phone || "", state: pkg.state || "", at: new Date().toISOString(), done: false });
       await st.setJSON("followups", fu.slice(-1000));
-      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph." : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
+      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph" + (pdfText ? " (he read the attached audit PDF)." : ".") : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
     } catch (e) {
       Object.assign(it, { status: "error", error: String(e.message || e).slice(0, 200), doneAt: new Date().toISOString() });
       await addMessages("eva", [{ role: "agent", kind: "error", text: "⚠️ I couldn't finish the light grey email for **" + (it.practice || it.id) + "**: " + it.error + ". It stays in my queue; press Ready for Eva again in WorkPilot once it's fixed." }]);
