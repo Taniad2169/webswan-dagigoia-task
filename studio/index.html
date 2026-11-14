@@ -824,7 +824,7 @@ h1{font-family:var(--display);margin:0;font-size:26px}h2{font-family:var(--displ
 .box{background:#fff;border:1px solid #d9e1ea;border-radius:12px;overflow:hidden}
 .pad{padding:18px}table{border-collapse:collapse;width:100%}td{padding:8px 10px;border-bottom:1px solid #e6eaef}td:last-child{font-weight:600}
 ${SITE_CSS}</style></head><body><main>
-<header><h1>Prepared for ${who}</h1><p class="by">${new Date().toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})} · The WebSwan · Call 239-667-0151</p></header>
+<header><h1>Prepared for ${who}</h1><p class="by">${new Date().toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})} · The WebSwan · Call (415) 877-0687</p></header>
 ${m ? `<section><h2>Website demo</h2><p class="by">The WebSwan. A first look at layout and wording, not the finished site.</p><div class="box"><div class="site" style="--m:${esc(m.color)};--a:${esc(m.accent||m.color)};--at:${textOn(m.accent||m.color)};--s:${esc(m.second||m.color)};--st:${textOn(m.second||m.color)}">${siteHTML(m)}</div></div></section>` : ""}
 <section><h2>Website review</h2><p class="by">WebSwan Digital Solutions. Observations from your public website. This is not legal advice.</p><div class="box pad"><table>${rows}</table>${c.notes ? `<p style="margin:14px 0 0;white-space:pre-wrap">${esc(c.notes)}</p>` : ""}</div></section>
 ${m ? `<section><h2>Directory listing preview</h2><p class="by">WebSwan Media Network. How your listing could appear.</p><div class="box"><div class="site" style="--m:${esc(m.color)};--a:${esc(m.accent||m.color)};--at:${textOn(m.accent||m.color)};--s:${esc(m.second||m.color)};--st:${textOn(m.second||m.color)}">${listingHTML(m)}</div></div></section>` : ""}

@@ -37,7 +37,9 @@ const BOT = /(i'?m an? (ai|automated|virtual|digital)|i am an? (ai|automated|vir
 const HUMAN = /(who'?s calling|who is (this|calling)|can i ask who|may i ask who|what is (this|it) (about|regarding)|what'?s this (about|regarding)|(she|he)'?s (not (in|here|available)|with a patient|busy)|the doctor (is|isn'?t)|hold on|one moment|let me (check|see|transfer|get)|not interested|we'?re (good|all set)|i'?m the (office )?manager)/i;
 export const automatedOnly = (said) => { const t = String(said || ""); return !!t && (BOT.test(t) || (IVR.test(t) && !HUMAN.test(t))); };
 
-// The agent sent them to Rachel: a live transfer, or gave Rachel's number to call ((239) 667-0151 or (347) 646-7086).
+// The agent sent them to Rachel: a live transfer, or gave Rachel's number to call. (316) 248-6839 is the current
+// Voice Studio line; 239-667-0151 and 347-646-7086 were the old Marblism lines (retired Nov 2026) — kept in the
+// pattern below only so older call transcripts that mention them still get classified correctly.
 const TO_RACHEL = /transferr?ing you (over )?to rachel|transfer you (over )?to rachel|connect(ing)? you (with|to) rachel|put(ting)? you through to rachel/i;
 const RACHEL_NUM = /(239|two three nine)\D{0,8}(667|six six seven)\D{0,8}(0151|zero one five one|oh one five one)|(347|three four seven)\D{0,8}(646|six four six)\D{0,8}(7086|seven zero eight six|seven oh eight six)|(316|three one six)\D{0,8}(248|two four eight)\D{0,8}(6839|six eight three nine)|rachel'?s (number|direct line|line)/i;
 

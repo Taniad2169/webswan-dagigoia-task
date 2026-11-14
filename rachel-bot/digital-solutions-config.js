@@ -1,6 +1,6 @@
 /* Rachel for webswandigitalsolutions.com (replaces SwanGuard AI, keeps all of its answers). */
 (function () {
-  var R = '<a href="tel:+12396670151">(239) 667-0151</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
+  var R = '<a href="tel:+13162486839">(316) 248-6839</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
   var AUDIT = '<a href="/#wsc-audit">request your complimentary audit</a>';
   window.RACHEL_CONFIG = {
     name: 'Rachel Bennet',

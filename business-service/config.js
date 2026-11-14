@@ -2,7 +2,7 @@
 // Edit this file to change prices. Government fees were checked Oct 2026 and can change at any time.
 window.WSBS_CONFIG = {
   brand: "WebSwan Business Service",
-  phone: "(239) 667-0151",
+  phone: "(415) 877-0687",
   email: "designs@thewebswan.com",
   disclosureVersion: "2026-10-14",
   services: [

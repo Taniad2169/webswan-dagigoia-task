@@ -26,8 +26,11 @@ const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rac
 // Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
 const TASKED = (n) => n === "alek" || n === "jenna";
 // Rachel, Tania's virtual coordinator: 239 answers compliance questions, 347 answers WebSwan Media Network (advertising) questions.
-const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || "+12396670151";
+// Tania, Nov 14: the old (239) 667-0151 compliance line was Marblism, which she no longer uses — everything
+// runs on her own Voice Studio now, so compliance and advertising both default to the one real line (316-248-6839)
+// unless she sets RACHEL_COMPLIANCE_NUMBER to something else.
 const RACHEL_ADVERTISING = process.env.RACHEL_ADVERTISING_NUMBER || "+13162486839";
+const RACHEL_COMPLIANCE = process.env.RACHEL_COMPLIANCE_NUMBER || RACHEL_ADVERTISING;
 function rachelTransfers(agent) {
   const comp = { destination: { type: "phone", phone_number: RACHEL_COMPLIANCE }, condition: "The person has questions about website compliance, ADA, privacy, HIPAA, the audit findings or the risk, and agrees to be transferred to Rachel, WebSwan Digital Solutions' compliance coordinator." };
   const ads = { destination: { type: "phone", phone_number: RACHEL_ADVERTISING }, condition: "The person wants more information about WebSwan Media Network, advertising, visibility or being added to the directory, and agrees to be transferred to Rachel, the advertising coordinator." };
