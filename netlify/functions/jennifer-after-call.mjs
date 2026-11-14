@@ -5,8 +5,8 @@ import { getStore } from "@netlify/blobs";
 import { sanitizeCal, callScript } from "../lib/cal.mjs";
 
 // Tania, Nov 14: pulled off 24/7 to cut Netlify credit burn -- narrowed to the team's working window,
-// Mon-Sat 8am-8pm Eastern. Move back to "*/5 * * * *" once this needs true round-the-clock coverage.
-export const config = { schedule: "*/5 13-23,0 * * 1-6" };
+// Mon-Fri 8am-8pm Eastern (no weekend work). Move back to "*/5 * * * *" once this needs round-the-clock coverage.
+export const config = { schedule: "*/5 13-23,0 * * 1-5" };
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

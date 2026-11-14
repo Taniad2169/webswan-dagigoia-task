@@ -7,9 +7,9 @@ import { sanitizeCal, callScript } from "../lib/cal.mjs";
 import { CALL_BLOCKS, restructure } from "../lib/call-scripts.mjs";
 
 // Tania, Nov 14: pulled off 24/7 to cut Netlify credit burn — we're not a plumber, nothing needs round-the-clock
-// monitoring yet. Rachel's own cutoff is 6pm Eastern (stricter than the rest of the team's 8pm), Mon-Sat.
+// monitoring yet. Rachel's own cutoff is 6pm Eastern (stricter than the rest of the team's 8pm), Mon-Fri, no weekends.
 // Move back to "*/5 * * * *" once revenue justifies true 24/7 coverage.
-export const config = { schedule: "*/5 13-22 * * 1-6" };
+export const config = { schedule: "*/5 13-22 * * 1-5" };
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
