@@ -110,7 +110,7 @@ ${HOW_END}`;
 const REBECCA_SCRIPT = `${SCRIPT_START}
 1. "Hi, this is Rebecca. I won't take much of your time. Are you still accepting new patients?"
 [PAUSE]
-2. "Okay, great. I'm with WebSwan Media Network. We have a platform that gives doctors and lawyers visibility, so new patients can find them. Are you the person in charge to discuss that with?"
+2. "Okay, great. I'm with WSMN. We have a platform that gives doctors and lawyers visibility, so new patients can find them. Are you the person in charge to discuss that with?"
 [PAUSE]
 (no) "Okay. Who do I need to talk to?"
 [PAUSE]
