@@ -945,28 +945,42 @@ const RP_OPEN = "Let's role play a real call. I'm the person who picks up the ph
 const RP_RACHEL = "Let's role play. I'm calling you as a prospect. Answer the phone with your greeting now.";
 const RP_START = /\b(role[- ]?play|let'?s practice|practice (the|your|a|this) (call|script|pitch))\b/i;
 const RP_END = /\b(stop|end|finish|pause|done with|that'?s it for|cut|break) (the |this |our )?(role[- ]?play|practice|scene)\b|\bhow did (i|you|we) do\b|\bout of character\b/i;
-const BRAIN = /\b(add|put|save|write|keep|store) (that|this|it|these|those|the change|the changes|the adjustment)( change| changes| adjustment| line| part)? (to|in|into|on) (your|their|his|her|the|everyone'?s) (brains?|memory|script|notes)\b|\bremember (that|this) (from now on|for good|permanently|always)\b/i;
+const BRAIN = /\b(add|put|save|write|keep|store|replace|update)\b(?:\s+(?:that|this|it|these|those|the change|the changes|the adjustment)(?:\s+(?:change|changes|adjustment|line|part))?)?\s+(?:to|in|into|on)\s+(?:your|their|his|her|the|everyone'?s|my)\s+(?:brains?|memory|script|notes)\b|\bremember (?:that|this) (?:from now on|for good|permanently|always)\b/i;
+const BRAIN_REPLACE = /\b(replace|update|overwrite|swap)\b/i;
 async function brainVoice(targets, said) {
   V.busy = true;
+  const isReplace = BRAIN_REPLACE.test(said);
   const ctx = G.on ? G.log.slice(-12).map((m) => m.who + ": " + m.text).join("\n") : "";
   const drafts = [];
   for (const k of targets) {
     vSay(first(k) + " is writing the note…");
-    try { const r = await api({ action: "brain_draft", agent: k, said, context: ctx }); if (r.note) drafts.push([k, r.note]); } catch (e) { toast(first(k) + ": " + e.message); }
+    try {
+      const r = await api({ action: "brain_draft", agent: k, said, context: ctx });
+      if (r.note) {
+        let old = [];
+        if (isReplace) { try { old = ((await api({ action: "brain_list", agent: k })).notes || []); } catch (e) {} }
+        drafts.push([k, r.note, old]);
+      }
+    } catch (e) { toast(first(k) + ": " + e.message); }
   }
   V.busy = false;
   if (!drafts.length) { vSay("I couldn't write the note. Try again."); return listen(); }
   $("vPick").hidden = false;
-  $("vPick").innerHTML = '<p style="font-weight:800;margin:4px 0">🧠 Add to their brain?</p>' + drafts.map(([k, n], i) => `<div style="text-align:left;margin:8px 0"><b>${esc(aName(k))}</b><textarea id="bn${i}" rows="4" style="width:100%;margin-top:4px;border:1px solid #c9dcef;border-radius:10px;padding:8px;font:inherit">${esc(n)}</textarea></div>`).join("") + '<div style="display:flex;gap:8px"><button class="btn pri" id="bnSave" style="flex:1">Save to brain</button><button class="btn" id="bnNo">Cancel</button></div><p class="hint" style="margin:6px 0 0">Edit the wording first if you want. For Monica, George, Rebecca, Alek, Jenna and Rachel this also updates their live phone script.</p>';
+  $("vPick").innerHTML = '<p style="font-weight:800;margin:4px 0">🧠 ' + (isReplace ? "Replace what's in their brain?" : "Add to their brain?") + '</p>' + drafts.map(([k, n, old], i) => `<div style="text-align:left;margin:8px 0"><b>${esc(aName(k))}</b>` + (old && old.length ? `<p class="hint" style="margin:4px 0">Tick any old note this replaces, so it doesn't sit alongside the new one:</p>` + old.map((o) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:4px 0;font-size:13px"><input type="checkbox" class="bnOld${i}" value="${esc(o.id)}" checked><span>${esc(o.note)}</span></label>`).join("") : "") + `<textarea id="bn${i}" rows="4" style="width:100%;margin-top:4px;border:1px solid #c9dcef;border-radius:10px;padding:8px;font:inherit">${esc(n)}</textarea></div>`).join("") + '<div style="display:flex;gap:8px"><button class="btn pri" id="bnSave" style="flex:1">Save to brain</button><button class="btn" id="bnNo">Cancel</button></div><p class="hint" style="margin:6px 0 0">Edit the wording first if you want. For Monica, George, Rebecca, Alek, Jenna and Rachel this also updates their live phone script.</p>';
   const done = () => { $("vPick").hidden = true; $("vPick").innerHTML = ""; if (V.on) listen(); };
   $("bnNo").onclick = () => { vSay("Okay, nothing saved."); done(); };
   $("bnSave").onclick = async () => {
     $("bnSave").disabled = true; const okN = [];
     for (let i = 0; i < drafts.length; i++) {
       const k = drafts[i][0], note = $("bn" + i).value.trim(); if (!note) continue;
-      try { const r = await api({ action: "brain_add", agent: k, note }); okN.push(first(k) + (r.phone ? (r.live.updated ? " (live script updated)" : " (saved; live script not updated" + (r.live.errors[0] ? ": " + r.live.errors[0] : "") + ")") : "")); } catch (e) { toast(first(k) + ": " + e.message); }
+      const toRemove = Array.from($("vPick").querySelectorAll(".bnOld" + i + ":checked")).map((c) => c.value);
+      try {
+        for (const id of toRemove) { try { await api({ action: "brain_remove", agent: k, id }); } catch (e) {} }
+        const r = await api({ action: "brain_add", agent: k, note });
+        okN.push(first(k) + (r.phone ? (r.live.updated ? " (live script updated)" : " (saved; live script not updated" + (r.live.errors[0] ? ": " + r.live.errors[0] : "") + ")") : ""));
+      } catch (e) { toast(first(k) + ": " + e.message); }
     }
-    if (okN.length) { toast("Saved to " + okN.join(", ")); vSay("Saved to " + okN.join(", ")); await speak("Got it. It's in " + (okN.length > 1 ? "their brains" : "my brain") + " now.", drafts[0][0]); }
+    if (okN.length) { toast((isReplace ? "Replaced for " : "Saved to ") + okN.join(", ")); vSay((isReplace ? "Replaced for " : "Saved to ") + okN.join(", ")); await speak("Got it. It's in " + (okN.length > 1 ? "their brains" : "my brain") + " now.", drafts[0][0]); }
     done();
   };
   vSay("Check the note, then press Save.");
