@@ -507,7 +507,7 @@ async function pLiveCall() {
   if (!confirm(a.name + ' will really call ' + (v.name || 'this person') + ' at ' + v.phone + ' now. Continue?')) return;
   const key = String(a.name).split(/\s+/)[0].toLowerCase();
   try {
-    const r = await voiceApi({ action: 'start', agent: key, phone: v.phone, leadName: v.name, business: v.practice || (v.kind === 'Attorney' ? 'the law office' : 'the practice'), state: v.state || 'CA', findings: v.website ? 'Website: ' + v.website : 'none listed', leadId: 'practice', campaign: 'Practice call (not a lead)', force: true, lang: 'en' });
+    const r = await voiceApi({ action: 'start', agent: key, phone: v.phone, leadName: v.name, business: v.practice || (v.kind === 'Attorney' ? 'the law office' : 'the practice'), state: v.state || 'CA', findings: v.website ? 'Website: ' + v.website : 'none listed', leadId: 'practice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), campaign: 'Practice call (not a lead)', force: true, lang: 'en' });
     practice.live = { agent: a.name, to: r.to || v.phone, at: Date.now(), callId: r.callId }; toast('📞 ' + a.name + ' is calling ' + (r.to || v.phone) + ' now.'); render();
   } catch (e) { toast(e.message); }
 }
