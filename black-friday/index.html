@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Black Friday Website Special — The WebSwan</title>
-<meta name="description" content="Black Friday website special for doctors and attorneys: $499 setup, $299/month for life. ADA and HIPAA compliant, done for you.">
+<meta name="description" content="A Black Friday website special for doctors and attorneys, live November 23-30, 2026. ADA and HIPAA compliant, done for you.">
 <link rel="icon" href="ws-logo.png">
 <style>
   :root{--blue:#3898f5;--blue2:#6aa8e6;--aqua:#48d6fa;--ink:#17324c;--line:#e1ebf2;--bg:#f3f8fc}
@@ -38,6 +38,10 @@
   .note{text-align:center;font-size:13px;opacity:.65;max-width:620px;margin:10px auto 0}
   footer{text-align:center;padding:30px 20px 50px;font-size:13px;opacity:.65}
   .limited{text-align:center;font-weight:700;color:#d2410a;margin-top:18px}
+  .countdown{font-size:15px;opacity:.9;margin-bottom:6px}
+  /* --- BF_STATE_STYLE: controls which block (teaser vs live) shows. The Nov 23 job flips this. --- */
+  .bf-live{display:none}
+  .bf-teaser{display:block}
 </style>
 </head>
 <body>
@@ -50,20 +54,36 @@
   <div class="badge">Limited to doctors &amp; attorneys</div>
   <h1>Black Friday Website Special</h1>
   <p class="sub">A custom, done-for-you website — built ADA and HIPAA compliant from day one — at the lowest setup fee and monthly rate we offer all year.</p>
-  <div class="dates">November 23 – 30, 2026 only</div>
+  <div class="dates">November 23 – 30, 2026</div>
 
-  <div class="pricecard">
-    <div class="row">
-      <div>One-time setup</div>
-      <div><span class="was">$899</span> <span class="now">$499</span></div>
+  <!-- ============ TEASER STATE (now through Nov 22) ============ -->
+  <div class="bf-teaser" id="bfTeaser">
+    <div class="pricecard">
+      <p class="countdown">Pricing unlocks November 23rd</p>
+      <div class="row" style="border-bottom:none;justify-content:center;padding:18px 0">
+        <div style="font-size:22px;font-weight:800;color:var(--blue)">🔒 Offer details revealed on 11/23</div>
+      </div>
+      <p style="margin:0 0 14px;opacity:.75;font-size:14px">The steepest one-time discount and the lowest locked-in monthly rate we run all year. Reserve your spot now — the window is short and spots are limited.</p>
+      <a class="cta" href="tel:+13162486839" style="margin-top:10px;width:100%">📞 Call (316) 248-6839 to reserve your spot</a>
     </div>
-    <div class="row">
-      <div>Monthly, for the life of your site</div>
-      <div><span class="was">$499</span> <span class="now">$299<span>/mo</span></span></div>
-    </div>
-    <a class="cta" href="tel:+13162486839" style="margin-top:22px;width:100%">📞 Call (316) 248-6839 to claim your spot</a>
+    <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
   </div>
-  <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
+
+  <!-- ============ LIVE STATE (Nov 23-30) — hidden until the scheduled job flips .bf-teaser/.bf-live ============ -->
+  <div class="bf-live" id="bfLive">
+    <div class="pricecard">
+      <div class="row">
+        <div>One-time setup</div>
+        <div><span class="was">$899</span> <span class="now">$499</span></div>
+      </div>
+      <div class="row">
+        <div>Monthly, for the life of your site</div>
+        <div><span class="was">$499</span> <span class="now">$299<span>/mo</span></span></div>
+      </div>
+      <a class="cta" href="tel:+13162486839" style="margin-top:22px;width:100%">📞 Call (316) 248-6839 to claim your spot</a>
+    </div>
+    <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
+  </div>
 </div>
 
 <section>
@@ -73,9 +93,10 @@
     <li>ADA accessibility compliance built in</li>
     <li>Cookie consent banner, built in</li>
     <li>Hosting, maintenance and security — handled for you</li>
-    <li>Your $299/month rate is locked in for as long as your account is active</li>
+    <li class="bf-live">Your $299/month rate is locked in for as long as your account is active</li>
+    <li class="bf-teaser">Your rate is locked in for as long as your account is active</li>
   </ul>
-  <p class="note">Standard plan for comparison: $899 setup, $499/month for the first 12 months, then $299/month after. The Black Friday rate starts at $299/month from day one.</p>
+  <p class="note bf-live">Standard plan for comparison: $899 setup, $499/month for the first 12 months, then $299/month after. The Black Friday rate starts at $299/month from day one.</p>
 </section>
 
 <section>
@@ -83,17 +104,20 @@
   <div class="grid3">
     <div class="card">
       <div>🎨 AI-Powered Logo Design</div>
-      <div class="amt">$199</div>
+      <div class="amt bf-live">$199</div>
+      <div class="amt bf-teaser">Revealed 11/23</div>
       <div>A custom logo concept, designed and reviewed for your practice.</div>
     </div>
     <div class="card">
       <div>🌐 Language Translator</div>
-      <div class="amt">$150</div>
+      <div class="amt bf-live">$150</div>
+      <div class="amt bf-teaser">Revealed 11/23</div>
       <div>Let patients and clients read your site in their own language.</div>
     </div>
     <div class="card">
       <div>🤖 AI-Powered Website</div>
-      <div class="amt">$499</div>
+      <div class="amt bf-live">$499</div>
+      <div class="amt bf-teaser">Revealed 11/23</div>
       <div>An AI assistant built into your site to answer questions and help visitors.</div>
     </div>
   </div>
