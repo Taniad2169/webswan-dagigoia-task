@@ -3,7 +3,9 @@
 //    chat, the teammate answers in the background, and the answer comes back to the asker's chat, who then continues.
 //  - Eva can act on Tania's Gmail herself: drafts, replies (drafts), moving junk to Trash, cleaning spam/promotions/social.
 //    Drafts are never sent: Tania reviews and sends. Trash keeps emails 30 days; nothing is deleted forever.
-import { AGENTS, addMessages } from "./team.mjs";
+//  - Tania, Nov 14: ANY agent can schedule a task (its own, or shared with a teammate like Tatiana + Jenna) to start
+//    automatically at a day/hour she gives, even if nobody is there: ((SCHEDULE: ...)). See scheduleAssignment() below.
+import { AGENTS, addMessages, teamStore } from "./team.mjs";
 
 // Tania, Nov 13: never touch starred/important mail, clients, leads, banks, invoices or appointments.
 const SAFE = " -is:starred -is:important -subject:(invoice OR receipt OR payment OR statement OR appointment OR contract OR audit OR proposal) -from:(bank OR chase OR wellsfargo OR stripe OR paypal OR netlify OR google.com)";
@@ -24,7 +26,24 @@ export function actionsHelp(agent) {
   const mates = Object.keys(AGENTS).filter((k) => k !== agent).map((k) => first(k) + " (" + clean(AGENTS[k].role, 60) + ")").join(", ");
   let t = "\n\nTALK TO YOUR TEAMMATES YOURSELF (no need for Tania in the middle). When you need a teammate's part (legal review from Jonathan, cost from Clara, a picture from Jimmy, a post from Tatiana, email or calendar from Eva, call coaching from Coby...), end your answer with ONE line in exactly this form:\n((ASK: <teammate first name> | <the complete, standalone message: what you need, all the details and any text they must review>))\nTheir answer comes back to your chat automatically and you continue from it. Tell Tania in one short line that you asked them. Only ask when you truly need them; never ask about something you can do yourself. Teammates: " + mates + ".";
   if (agent === "eva") t += "\n\nTANIA'S GMAIL: YOU CAN ACT ON IT YOURSELF. When Tania asks (or it is clearly part of the job she gave you), end your answer with one line per action:\n((GMAIL: draft | <to email> | <subject> | <full email body>))  saves a draft in Tania's Gmail (never sent; Tania reviews and sends)\n((GMAIL: reply | <threadId> | <full reply body>))  saves a reply draft in that thread\n((GMAIL: trash | <threadId>, <threadId>, ...))  moves those emails to Trash (Gmail keeps them 30 days)\n((GMAIL: clean | spam))  or promotions, social, old: clears that whole category to Trash\nUse threadIds from the email data you were given. Never claim it is done before the confirmation line appears; the system adds ✅ or ❌ after each action. Never trash an email from a lead, a client, a payment or a security notice.";
+  t += "\n\nSTART A TASK AT A GIVEN DAY/HOUR, EVEN WITH NOBODY AROUND: when Tania gives you a task (yours alone, or a weekly/shared assignment with a teammate like Jenna or Tatiana) and tells you the day and time to start, end your answer with ONE line in exactly this form:\n((SCHEDULE: <your own first name>[, <teammate first name>, ...] | <YYYY-MM-DD HH:MM> | <the complete, standalone task: what to do, for whom, and any detail a cold start would need>))\nAlways resolve the day to an actual calendar date yourself (you were told today's date above) and use 24-hour Pacific time, e.g. a Monday 9am becomes \"2026-11-17 09:00\". At that moment, each teammate you listed gets this task dropped into their own chat and wakes up on it automatically, with no one needing to prompt them; if you listed more than one teammate, each starts at the same time and should message the other with ((ASK: ...)) for whatever part is theirs, exactly like a normal handoff. Tell Tania in one short line what you scheduled and for when (Pacific time). Only use this when she actually gave a day/time to start; for \"right now\" work, just do it.";
   return t;
+}
+// Tania, Nov 14: stores a scheduled assignment; team-schedule.mjs wakes the listed agent(s) up at runAt, automatically,
+// by dropping the task into each one's own chat (as if Tania had just typed it) and triggering their reply job.
+export async function scheduleAssignment({ agents, runAt, task }) {
+  const st = teamStore(), list = (await st.get("team-assignments", { type: "json" })) || [];
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  list.push({ id, agents, runAt, task, createdAt: new Date().toISOString(), status: "pending" });
+  await st.setJSON("team-assignments", list.slice(-200));
+  return id;
+}
+// "2026-11-17 09:00" (Pacific wall-clock) -> the correct UTC instant, without a timezone library.
+function ptToUtc(dateStr, timeStr) {
+  const guess = new Date(`${dateStr}T${timeStr}:00Z`);
+  if (isNaN(guess)) return null;
+  const asPT = new Date(guess.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  return new Date(guess.getTime() + (guess.getTime() - asPT.getTime()));
 }
 
 // Pull the action lines out of an agent's answer and carry them out. Returns the cleaned text plus the result lines.
@@ -34,6 +53,7 @@ export async function runActions(agent, text, ctx) {
   let out = String(text || "")
     .replace(/\(\(\s*ASK:\s*([\s\S]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "ask", raw: p }); return ""; })
     .replace(/\(\(\s*GMAIL:\s*([\s\S]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "gmail", raw: p }); return ""; })
+    .replace(/\(\(\s*SCHEDULE:\s*([\s\S]*?)\s*\)\)/gi, (m, p) => { acts.push({ kind: "schedule", raw: p }); return ""; })
     .replace(/\n{3,}/g, "\n\n").trim();
   const done = [];
   for (const a of acts.slice(0, 6)) {
@@ -46,6 +66,20 @@ export async function runActions(agent, text, ctx) {
         await addMessages(to, [{ role: "user", kind: "agentmsg", from: agent, hop: hop + 1, text: "📨 From " + first(agent) + " (teammate):\n\n" + msg }]);
         let started = true; try { await startJobs(["relay:" + to + "|" + agent + "|" + (hop + 1)]); } catch (e) { started = false; }
         done.push(started ? "📨 Asked " + first(to) + ". Their answer will appear here in a minute or two." : "📨 Left the message in " + first(to) + "'s chat, but they couldn't be woken up automatically (" + "background worker unavailable" + ").");
+      } else if (a.kind === "schedule") {
+        const parts = a.raw.split("|").map((x) => x.trim());
+        const names = (parts[0] || "").split(",").map((x) => agentKeyByName(x)).filter(Boolean);
+        if (!names.includes(agent)) names.unshift(agent); // the agent writing this is always in on it
+        const uniq = [...new Set(names)];
+        const when = (parts[1] || "").match(/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+        const task = clean(parts.slice(2).join("|"), 4000).trim();
+        if (!uniq.length) { done.push("⚠️ I couldn't tell who this was for, so nothing was scheduled."); continue; }
+        if (!when || !task) { done.push("⚠️ I need a clear date, time and task to schedule this, so nothing was saved."); continue; }
+        const runAt = ptToUtc(when[1], when[2].padStart(2, "0") + ":" + when[3]);
+        if (!runAt || isNaN(runAt) || runAt.getTime() < Date.now() - 5 * 60e3) { done.push("⚠️ That date/time didn't make sense, so nothing was scheduled."); continue; }
+        await scheduleAssignment({ agents: uniq, runAt: runAt.toISOString(), task });
+        const whenLabel = runAt.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+        done.push("📅 Scheduled for " + uniq.map(first).join(" + ") + " — starts automatically on " + whenLabel + " PT, no one needs to be around.");
       } else if (a.kind === "gmail") {
         if (agent !== "eva") { done.push("⚠️ Only Eva works in Tania's Gmail."); continue; }
         const parts = a.raw.split("|").map((x) => x.trim()), op = (parts[0] || "").toLowerCase();
