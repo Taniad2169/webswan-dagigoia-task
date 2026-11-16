@@ -1,4 +1,4 @@
-// Jennifer Kennedy after-call emails: every 5 minutes, finds Jennifer's finished calls,
+// Jennifer Moreau after-call emails: every 5 minutes, finds Jennifer's finished calls,
 // matches each one to the client whose line was dialed, emails that client's own notification
 // email (never Tania's), and logs the minutes for that client's monthly allowance.
 import { getStore } from "@netlify/blobs";

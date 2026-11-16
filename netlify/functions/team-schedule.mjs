@@ -40,4 +40,5 @@ export default async () => {
   await st.setJSON("team-assignments", list.slice(-200));
   return new Response("dispatched " + due.length + "; scripts cleared: " + scriptSweep.cleared);
 };
-export const config = { schedule: "*/15 * * * *" };
+// Tania, Nov 16: not all night -- every 30 minutes, 5am to 8:30pm Pacific. Assignments/script expiries due overnight start at 5am.
+export const config = { schedule: "*/30 13-23,0-4 * * *" };

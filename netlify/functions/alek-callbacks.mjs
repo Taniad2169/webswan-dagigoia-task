@@ -8,7 +8,7 @@ import { STATE_TZ } from "../lib/cal.mjs";
 
 // Tania, Nov 14: trimmed off Saturday (the internal rule below already rejected every Saturday wake-up anyway,
 // so that was pure wasted credit) and the cron now stops waking at 8 PM Eastern instead of running past it.
-export const config = { schedule: "*/5 13-23,0 * * 1-5" };
+export const config = { schedule: "*/10 13-23,0 * * 1-5" }; // Nov 16: every 10 min (was 5) to save credits
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
 const e164 = (p) => { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return /^1[2-9]\d{2}[2-9]\d{6}$/.test(d) ? "+" + d : ""; };

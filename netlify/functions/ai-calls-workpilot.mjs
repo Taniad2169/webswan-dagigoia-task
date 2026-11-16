@@ -7,7 +7,9 @@
 // Netlify env (set by Tania): WORKPILOT_FIREBASE_KEY (same value as in webswan-lead-prospector).
 import { getStore } from "@netlify/blobs";
 
-export const config = { schedule: "*/15 * * * *" }; // every 15 minutes, all day and night, so evening and late-night calls reach WorkPilot too
+// Tania, Nov 16: no more all-night runs (Netlify credits). Weekdays 6am-4pm Pacific (14-23 UTC); each run looks back 72 hours,
+// so calls after the last run (evenings, Friday) still reach WorkPilot the next weekday morning.
+export const config = { schedule: "*/15 14-23 * * 1-5" };
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
@@ -113,7 +115,7 @@ export async function runWorkpilotSync(hours) {
   const q = (await s.get("queue", { type: "json" }).catch(() => null)) || { leads: [] };
   const byPhone = new Map(); for (const l of q.leads || []) if (l.phone) byPhone.set(digits(l.phone), l);
   const bookings = (await s.get("bookings", { type: "json" }).catch(() => null)) || [];
-  const since = new Date(Date.now() - (hours || 24) * 3600e3).toISOString();
+  const since = new Date(Date.now() - (hours || 72) * 3600e3).toISOString();
   let token = null, sent = 0, errors = 0, lastErr = "";
   for (const [a, label] of AGENTS) {
     const aid = process.env["CARTESIA_AGENT_" + a.toUpperCase()] || ids[a];

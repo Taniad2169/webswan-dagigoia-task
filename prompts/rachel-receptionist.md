@@ -1,6 +1,6 @@
 # Rachel Bennett: inbound receptionist on the 5th Cartesia number
 
-Turn Jennifer's Cartesia agent into Rachel Bennett (female voice; rename the agent "Rachel Bennett - WebSwan Receptionist"). Assign her the 5th number for inbound calls and paste the prompt below as her instructions. (Jennifer Kennedy is saved for the new client platform.)
+Turn Jennifer's Cartesia agent into Rachel Bennett (female voice; rename the agent "Rachel Bennett - WebSwan Receptionist"). Assign her the 5th number for inbound calls and paste the prompt below as her instructions. (Jennifer Moreau is saved for the new client platform.)
 Alek calls out from this same number (Netlify setting `CARTESIA_ALEK_NUMBER_ID`), so anyone who calls it back reaches Rachel.
 Keep this number OUT of the campaign rotation, so it is never used for the Tue/Wed/Thu outreach and stays clean.
 

@@ -152,7 +152,7 @@ function formatProviders(list) {
     "\n\nShare only what is listed here. Never discuss symptoms, medical conditions, injuries or legal case details, and never give medical or legal advice. If something isn't listed (like exact office hours), say the office will confirm."
 }
 
-// ---------- Jennifer Kennedy: the office profile for the line that was dialed ----------
+// ---------- Jennifer Moreau: the office profile for the line that was dialed ----------
 // Matched ONLY by the number the caller dialed (system__called_number), so Jennifer can never load another practice.
 // Plan rules are enforced here: on the $299 basic plan she receives name, practice, phone, hours, greeting and script only.
 async function clientInfo(store, called) {

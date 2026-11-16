@@ -5,7 +5,8 @@ import { budgetStore, budgetSync, allAgentIds } from "../lib/budget.mjs";
 
 // Tania, Nov 12: was every 5 minutes around the clock (~2,000 wakeups a week). The budget gate re-checks on
 // every call anyway, so a 15-minute refresh is plenty and costs a third of the credits.
-export const config = { schedule: "*/15 * * * *" };
+// Tania, Nov 16: weekdays only, during calling hours, every 30 minutes (the budget gate re-checks before each call anyway).
+export const config = { schedule: "*/30 14-23 * * 1-5" };
 
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");

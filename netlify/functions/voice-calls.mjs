@@ -1139,6 +1139,14 @@ export default async (req) => {
   }
 
   // ---------- read an agent's full config (no instructions text) to check speed settings ----------
+  // Tania, Nov 16: keep each agent's name in Cartesia matching the last names she set (display only, nothing the caller hears).
+  if (b.action === "agent_rename") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
+    const label = clean(b.label, 120);
+    if (!id || label.length < 3) return reply(400, { error: "Pick an agent and a name." }, origin);
+    try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { name: label }); return reply(200, { ok: true, agent: name, label }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
   if (b.action === "agent_raw") {
     const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(name) : "";
     if (!id) return reply(400, { error: "Unknown agent." }, origin);

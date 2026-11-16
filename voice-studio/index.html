@@ -2128,7 +2128,7 @@ async function teamAgentFormLoad(name) {
     newAgentForm.voices = v.voices || [];
     if (/^alek$/i.test(name)) {
       const r = await voiceApi({ action: 'agent_get', agent: 'rebecca' });
-      newAgentForm.instructions = String(r.instructions || '').replace(/Rebecca Steins/g, 'Alek').replace(/Rebecca/g, 'Alek');
+      newAgentForm.instructions = String(r.instructions || '').replace(/Rebecca (Steins|Verna)/g, 'Alek Reid').replace(/Rebecca/g, 'Alek');
     } else newAgentForm.instructions = '';
   } catch (e) { toast(e.message); }
   newAgentForm.loading = false; render();

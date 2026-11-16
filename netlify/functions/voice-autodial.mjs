@@ -21,7 +21,8 @@ import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 // follow-up/after-call sweeps are separate and still run through Friday until 6 PM (see rachel-after-call.mjs, rachel-followups.mjs).
 // The ACTUAL dialing days/hours still come from the schedule saved in Voice Studio (settings.days/start/end) --
 // this cron is only the outer wake-up window, so check that saved schedule too if these hours change again.
-export const config = { schedule: "*/2 12-23,0 * * 1-4" };
+// Tania, Nov 16: dialing window is 7am-2pm Pacific, Mon-Thu -- only wake inside it (14-21 UTC covers both PST and PDT).
+export const config = { schedule: "*/2 14-21 * * 1-4" };
 
 const API = "https://api.cartesia.ai";
 const V_CREATE = process.env.CARTESIA_VERSION || "2026-03-01";
