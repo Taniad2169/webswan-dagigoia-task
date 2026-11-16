@@ -40,7 +40,7 @@ export default async () => {
     if (!g.ok) { c.note = "waiting: monthly call budget reached"; continue; }
     const who = c.agent === "jenna" ? "jenna" : "alek", aid = who === "jenna" ? jenna : alek;
     if (!aid) { c.status = "error"; c.note = "Jenna is not connected to Cartesia yet"; continue; }
-    const task = who === "jenna" ? `LEAD FROM TANIA. ${c.subject ? "Subject: " + c.subject + ". " : ""}${c.name ? "Ask for: " + c.name + ". " : ""}Her brief for this call: ${c.script}`.slice(0, 2500) : `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
+    const task = who === "jenna" ? `LEAD FROM TANIA. ${c.subject ? "Subject: " + c.subject + ". " : ""}${c.name ? "Ask for: " + c.name + ". " : ""}Her brief for this call: ${c.script}`.slice(0, 9000) /* Nov 16: room for an attached document */ : `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
     try {
       const r = await fetch(API + "/agents/calls", { method: "POST", headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
         body: JSON.stringify({ agent_id: aid, from_number_id: who === "jenna" ? fromJenna : from,

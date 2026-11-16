@@ -424,7 +424,10 @@ export default async (req) => {
     ].filter(Boolean).join(" ").slice(0, 900);
     const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
     // Tania, Nov 12: Alek runs on a floating task, and WorkPilot's notes ARE that task. Before this the push said "sent with your notes" and Alek could never dial it ("Give Alek his script").
-    const alekTask = TASKED(agent) ? String(notes || "").slice(0, agent === "jenna" ? 2500 : 1500) : "";
+    // Tania, Nov 16: a document attached in WorkPilot (its text, read there) goes into Jenna's brief for this call.
+    const doc = agent === "jenna" && x.doc && typeof x.doc === "object" ? { name: clean(x.doc.name, 120) || "document", text: String(x.doc.text || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 6000) } : null;
+    const docPart = doc && doc.text.length >= 20 ? "\n\nDOCUMENT TANIA ATTACHED FOR THIS CALL (\u201c" + doc.name + "\u201d). Read it before you dial and use what it says as facts for this call; never read it aloud word for word and never invent anything it does not say:\n" + doc.text : "";
+    const alekTask = TASKED(agent) ? (String(notes || "").slice(0, agent === "jenna" ? 2500 : 1500) + docPart) : "";
     if (TASKED(agent) && alekTask.length < 10) return reply(400, { error: (agent === "jenna" ? "Jenna" : "Alek") + " needs your notes as the brief for this call (at least a sentence). Add them on the lead in WorkPilot and push again." }, origin);
     // Tania, Nov 12: Jenna (always) and Alek (when she asks for the call now) are dialled from the callback calendar, which runs
     // every 5 minutes inside calling hours. Neither of them ever sits in the auto-dial queue.
@@ -432,13 +435,13 @@ export default async (req) => {
       const list = (await store.get("callbacks", { type: "json" })) || [];
       const url = clean(x.url, 200);
       const cb = { id: "cb_" + crypto.randomBytes(5).toString("hex"), agent, name: contact, business, phone, state: st, lineType: "landline", consent: false, warm: true,
-        callAt: new Date().toISOString(), subject: clean(x.subject, 160) || "Lead from Tania" + (url ? " (website: " + url + ")" : ""), script: alekTask, lang: ["es", "pt"].includes(lang) ? lang : "en", status: "scheduled", createdAt: new Date().toISOString() };
+        callAt: new Date().toISOString(), subject: clean(x.subject, 160) || "Lead from Tania" + (url ? " (website: " + url + ")" : ""), script: alekTask, docName: docPart ? doc.name : undefined, lang: ["es", "pt"].includes(lang) ? lang : "en", status: "scheduled", createdAt: new Date().toISOString() };
       list.push(cb);
       await store.setJSON("callbacks", list.slice(-500));
       const log0 = (await store.get("eva-handoffs", { type: "json" })) || [];
       log0.push({ at: new Date().toISOString(), by: email, business, phone, state: st, agent, campaign: "WorkPilot call request", updated: false });
       await store.setJSON("eva-handoffs", log0.slice(-500));
-      return reply(200, { ok: true, agent, scheduled: true, callbackId: cb.id, callAt: cb.callAt }, origin);
+      return reply(200, { ok: true, agent, scheduled: true, callbackId: cb.id, callAt: cb.callAt, docAttached: docPart ? doc.name : null }, origin);
     }
     const item = { id: clean(x.id, 60) || "wp_" + crypto.randomBytes(4).toString("hex"), name: contact || business, business, phone, state: st, agent, lang, mode: agent === "alek" ? "floating" : "selling", task: alekTask,
       findings: facts, campaign: "WorkPilot push (" + agent + ")", status: "queued", addedAt: Date.now() };
