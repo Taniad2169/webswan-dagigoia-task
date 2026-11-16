@@ -11,7 +11,8 @@ export const config = { schedule: "*/15 * * * *" }; // every 15 minutes, all day
 const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
-const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
+// Nov 16: Jenna was missing here, so her calls never reached WorkPilot even though WorkPilot can send her leads.
+const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["jenna", "Jenna"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
 const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 // Tania's own phones: test calls to these never go to WorkPilot.
 const TEST_PHONES = new Set(["4156189200", "4158770687", "5166100203"]);
