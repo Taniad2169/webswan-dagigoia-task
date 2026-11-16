@@ -36,11 +36,14 @@ function clock(tz, d = new Date()) {
   const g = (t) => (p.find((x) => x.type === t) || {}).value;
   return { day: String(g("weekday")).slice(0, 3).toLowerCase(), mins: Number(g("hour")) * 60 + Number(g("minute")), hour: Number(g("hour")) };
 }
-// Each agent's own calling hours inside the dialing windows, in the schedule's time zone (Tania, Nov 6):
-// Tania, Nov 10: Monica 7-8 AM and 11 AM-12, George 8-9 AM and 12-1 PM, Rebecca 9-10 AM and 1-2 PM (one caller per hour,
-// a break from 10 to 11). Alek is not limited (floating, Tania's own calls). Before Nov 10: Monica 7-8 and 1-2, George 8-9, Rebecca 9-10 and 12-1.
-// Voice Studio can override this by saving settings.agentHours.
-const DEFAULT_AGENT_HOURS = { monica: [["07:00", "08:00"], ["11:00", "12:00"]], george: [["08:00", "09:00"], ["12:00", "13:00"]], rebecca: [["08:00", "09:00"], ["13:00", "14:00"]] };
+// Each agent's own calling hours inside the dialing windows, in the schedule's time zone.
+// Tania, Nov 6-10: Monica 7-8 AM and 11 AM-12, George 8-9 AM and 12-1 PM, Rebecca 9-10 AM and 1-2 PM (one caller
+// per hour, a break from 10 to 11). Alek is not limited (floating, Tania's own calls).
+// Tania, Nov 16: opened this up -- Monica, George and Rebecca can each call anywhere across the full saved
+// dialing window now, instead of a narrow one-hour turn, so the window itself (set in Voice Studio) is what
+// paces them, not this list. Voice Studio can still override per-agent with settings.agentHours if she ever
+// wants the staggered turns back.
+const DEFAULT_AGENT_HOURS = { monica: [["00:00", "23:59"]], george: [["00:00", "23:59"]], rebecca: [["00:00", "23:59"]] };
 const toMins = (s) => { const m = String(s || "").match(/^(\d{1,2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : -1; };
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const liveOn = () => String(process.env.VOICE_CALLING_ENABLED || "").toLowerCase() === "on";
