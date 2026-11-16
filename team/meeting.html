@@ -185,6 +185,62 @@ async function speak(text, who) {
 }
 function hush() { S.gen++; try { S.audio && S.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} S.speaking = ""; }
 
+/* ---------- coaching notes: nothing reaches an agent's brain without Tania approving or editing it first ----------
+   Same gate as the Brain Room and the Role Play Room: Coby only ever PROPOSES a note (either by saying
+   "add that to X's brain" herself, or by writing "PROPOSED NOTE FOR <agent>: ..." when he scores a call/role
+   play). Either way this draws an editable textarea with Save/Cancel — brain_add (the only call that writes
+   to brain-notes and pushes the agent's live Cartesia script) never fires until she presses Save. */
+const BRAIN = /\b(add|put|save|write|keep|store|replace|update)\b(?:\s+(?:that|this|it|these|those|the change|the changes|the adjustment)(?:\s+(?:change|changes|adjustment|line|part))?)?\s+(?:to|in|into|on)\s+(?:your|their|his|her|the|everyone'?s|my)\s+(?:brains?|memory|script|notes)\b|\bremember (?:that|this) (?:from now on|for good|permanently|always)\b/i;
+const BRAIN_REPLACE = /\b(replace|update|overwrite|swap)\b/i;
+const PROPOSED_RE = /PROPOSED NOTE FOR\s+([A-Za-z]+)\s*:\s*([\s\S]+?)(?:\s*-\s*$|\n\n|$)/i;
+function teamKeyByName(n) { const hit = TEAM.find((t) => t.n.toLowerCase() === String(n || "").toLowerCase()); return hit ? hit.k : ""; }
+function approveNoteBox(k, draftNote, oldNotes) {
+  const old = document.getElementById("bnWrap"); if (old) old.remove();
+  const d = document.createElement("div"); d.className = "ln fb"; d.id = "bnWrap";
+  d.innerHTML = `<b>🧠 Add to ${esc(NAME(k))}'s brain?</b>` +
+    (oldNotes && oldNotes.length ? `<p class="hint" style="margin:4px 0">Tick any old note this replaces:</p>` + oldNotes.map((o) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:4px 0;font-size:13px"><input type="checkbox" class="bnOld" value="${esc(o.id)}" checked><span>${esc(o.note)}</span></label>`).join("") : "") +
+    `<textarea id="bnNote" rows="4" style="width:100%;margin:6px 0;font:inherit;padding:8px;border-radius:8px;border:1px solid #c9dcef">${esc(draftNote)}</textarea><button class="btn pri" id="bnSave">✅ Approve and save</button> <button class="btn" id="bnCancel">Cancel</button><div class="hint" style="margin-top:4px">Nothing reaches ${esc(NAME(k))}'s live script until you press Approve. Edit the wording first if you want.</div>`;
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
+  $("bnCancel").onclick = () => d.remove();
+  $("bnSave").onclick = async () => {
+    $("bnSave").disabled = true;
+    const note = $("bnNote").value.trim(); if (!note) { d.remove(); return; }
+    const toRemove = Array.from(d.querySelectorAll(".bnOld:checked")).map((c) => c.value);
+    try {
+      for (const id of toRemove) { try { await api({ action: "brain_remove", agent: k, id }); } catch (e) {} }
+      const r = await api({ action: "brain_add", agent: k, note });
+      d.innerHTML = "✅ Saved to " + esc(NAME(k)) + "'s brain." + (r.phone ? (r.live && r.live.updated ? " Her live script is updated." : " (live script not updated" + (r.live && r.live.errors && r.live.errors[0] ? ": " + r.live.errors[0] : "") + ")") : "");
+    } catch (e) { $("bnSave").disabled = false; toast(e.message); }
+  };
+}
+async function proposeAndApprove(k, said, oldNotes) {
+  try {
+    const ctx = S.log.slice(-12).map((m) => m.who + ": " + m.text).join("\n");
+    const r = await api({ action: "brain_draft", agent: k, said, context: ctx });
+    if (r.note) approveNoteBox(k, r.note, oldNotes);
+  } catch (e) { toast(NAME(k) + ": " + e.message); }
+}
+// Coby wrote "PROPOSED NOTE FOR <agent>: ..." while scoring a call or a role play — draft it properly and show the approve box.
+function maybeProposedNote(text) {
+  const m = String(text || "").match(PROPOSED_RE);
+  if (!m) return;
+  const k = teamKeyByName(m[1]);
+  if (k) proposeAndApprove(k, "Coby proposed this after reviewing a call: " + m[2].trim());
+}
+// Tania said "add/save/remember that to X's (or everyone's) brain" out loud or typed it — same approve gate.
+async function brainVoiceCommand(text) {
+  const named = TEAM.filter((t) => S.in.has(t.k) && new RegExp("\\b" + t.n + "\\b", "i").test(text)).map((t) => t.k);
+  const everyone = /\b(everyone|everybody|all of you|their brains|everyone'?s|the team)\b/i.test(text);
+  const targets = everyone ? [...S.in] : (named.length ? named : (detectAddressee(text) ? [detectAddressee(text)] : []));
+  if (!targets.length) { say("Say whose brain — for example \"add that to Monica's brain.\""); return; }
+  const isReplace = BRAIN_REPLACE.test(text);
+  for (const k of targets) {
+    let old = [];
+    if (isReplace) { try { old = (await api({ action: "brain_list", agent: k })).notes || []; } catch (e) {} }
+    await proposeAndApprove(k, text, old);
+  }
+}
+
 /* ---------- who did Tania actually address? decided here, before any agent is asked ---------- */
 function detectAddressee(text) {
   const m = String(text || "").trim().match(/^(?:hey|hi|ok|okay)?\s*([A-Za-z]+)\s*[,:]/i);
@@ -200,6 +256,7 @@ async function runTurn(text) {
   if (!S.in.size) { say("Pick at least one teammate to be in the meeting."); return; }
   if (!text.trim()) return;
   addLog("Tania", text.trim(), "me");
+  if (BRAIN.test(text)) { S.busy = true; try { await brainVoiceCommand(text.trim()); } finally { S.busy = false; $("send").disabled = false; say("Your turn — tap the mic or type."); } return; }
   S.busy = true; $("send").disabled = true;
   // The controller decides who's up BEFORE anyone is asked. Even in "around the table"
   // mode, if Tania named one teammate by name ("Jenna, ..."), only that person is asked —
@@ -214,6 +271,7 @@ async function runTurn(text) {
       try { reply = await askAgent(k); }
       catch (e) { reply = "(" + NAME(k) + " couldn't answer just now: " + (e.message || e) + ")"; }
       addLog(NAME(k), reply, "ag");
+      if (k === "sdr") maybeProposedNote(reply);
       // Keep the Send button's disabled attribute in sync with S.busy. A disabled button
       // silently swallows clicks (the browser never fires the click handler, no error, no
       // feedback) - that's the bug where a message sat typed and unsent during live voice
