@@ -1042,7 +1042,7 @@
       <div>
         <div class="card" id="wsmn-card" style="border:1.5px solid #339cde;">
           <div class="card-title"><span class="dot"></span> 🦢 WebSwan Media Network · Provider package</div>
-          <p class="b-note"><b>$689 today</b> ($400 setup + $289 annual membership, first year), then the plan’s monthly fee (<b id="w-plan-fee">choose a plan</b>) starting in 30 days. One checkout, the client enters their card once. Saved under WebSwan Media Network in your Residual list.</p>
+          <p class="b-note"><b>$289 today</b>, renewing automatically at $289/year — no setup fee, no monthly fee, no contract. This is the holiday price (good through Dec 31, 2026); your client keeps $289/year for life once they lock it in. One checkout, card saved for the renewal. Saved under WebSwan Media Network in your Residual list.</p>
           <div class="field-row">
             <div class="field"><label>Doctor / attorney name</label><input type="text" id="w-name" placeholder="Dr. Jane Smith" autocomplete="off"></div>
             <div class="field"><label>Practice</label><input type="text" id="w-company" placeholder="Smith Family Dental" autocomplete="off"></div>
@@ -1051,7 +1051,6 @@
             <div class="field"><label>✉️ Email (optional)</label><input type="email" id="w-email" placeholder="doctor@example.com" autocomplete="off"></div>
             <div class="field"><label>📱 Phone (optional)</label><input type="tel" id="w-phone" placeholder="(555) 123-4567" autocomplete="off"></div>
           </div>
-          <div class="field"><label>📋 Membership plan</label><select id="w-plan"><option value="">Choose a plan</option><option value="found">Found: $49/month</option><option value="leads">Found + Leads: $69/month</option><option value="premium">Premium: $149/month</option></select></div>
           <div class="field"><label>🔑 Billing security key</label><input type="password" id="w-key" placeholder="Your billing key" autocomplete="off" maxlength="64"></div>
           <button type="button" class="btn-blue" id="w-create" style="width:100%;padding:.85rem;font-size:1rem;">💳 Create provider payment link</button>
           <div id="w-result" style="display:none;margin-top:.7rem;">
@@ -2288,31 +2287,26 @@ ${b.brand}`;
       } catch (e) { console.error(e); if (loud) showToast(e.message, true); renderBilling(); }
     }
 
-    /* ── WebSwan Media Network provider package ($400 setup + $289 first year today, then $29/mo after 30 days) ── */
-    const WSMN = { brand: "WebSwan Media Network", planName: "WebSwan Media Network Membership", setup: 400, annual: 289, recur: 49, delayDays: 30 };
-    const WSMN_PLANS = { found: { label: "Found", recur: 49 }, leads: { label: "Found + Leads", recur: 69 }, premium: { label: "Premium", recur: 149 } };
-    function wsmnPickPlan() { const p = WSMN_PLANS[($("w-plan") || {}).value]; const fee = $("w-plan-fee"); if (!p) { if (fee) fee.textContent = "choose a plan"; return null; } WSMN.recur = p.recur; WSMN.planName = "WebSwan Media Network Membership - " + p.label; if (fee) fee.textContent = "$" + p.recur + "/month"; return p; }
-    if ($("w-plan")) $("w-plan").addEventListener("change", wsmnPickPlan);
+    /* ── WebSwan Media Network provider package ($289/year only, no setup fee, no contract — holiday price through Dec 31 2026, locked in for life) ── */
+    const WSMN = { brand: "WebSwan Media Network", planName: "WebSwan Media Network Membership ($289/yr)", setup: 0, annual: 289, recur: 289, delayDays: 0 };
     const SIGNUPS_ENDPOINT = "https://webswan-billing.netlify.app/.netlify/functions/wsmn-signups";
     const w = { name: $("w-name"), company: $("w-company"), email: $("w-email"), phone: $("w-phone"), key: $("w-key"), create: $("w-create"),
       result: $("w-result"), url: $("w-url"), pay: $("w-pay"), copy: $("w-copy"), text: $("w-text"), mail: $("w-mail"), sync: $("w-sync"), syncMsg: $("w-sync-msg") };
     let wLast = null;
     const wsmnResidual = (o) => ({
-      clientName: o.clientName || "", companyName: o.company || "", projectName: "WSMN Provider Package", amount: WSMN.recur, plan: "Monthly",
-      setupFee: WSMN.setup + WSMN.annual, annualFee: WSMN.annual, phone: o.phone || "", email: o.email || "", brand: WSMN.brand, studioRef: null
+      clientName: o.clientName || "", companyName: o.company || "", projectName: "WSMN Provider Package", amount: WSMN.recur, plan: "Yearly",
+      setupFee: WSMN.setup, annualFee: WSMN.annual, phone: o.phone || "", email: o.email || "", brand: WSMN.brand, studioRef: null
     });
     w.create.addEventListener("click", async () => {
       const f = { clientName: w.name.value.trim(), company: w.company.value.trim(), email: w.email.value.trim(), phone: w.phone.value.trim() };
       if (!f.clientName && !f.company) return showToast("Add the doctor/attorney name or practice.", true);
       if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return showToast("That email doesn't look right.", true);
-      if (!wsmnPickPlan()) return showToast("Choose the membership plan first.", true);
       if (!w.key.value) return showToast("Enter your billing security key.", true);
       w.create.disabled = true; w.create.textContent = "Creating link…";
       try {
         const token = await window._fbAuth.token(); if (!token) throw new Error("Please sign in with Google first.");
         const body = { brand: WSMN.brand, clientName: f.clientName, company: f.company, email: f.email, phone: f.phone, planName: WSMN.planName,
-          setup: WSMN.setup, recur: WSMN.recur, interval: "month", delayDays: WSMN.delayDays,
-          extras: [{ name: "WebSwan Media Network Annual Membership (First Year)", amount: WSMN.annual }] };
+          setup: WSMN.setup, recur: WSMN.recur, interval: "year", delayDays: WSMN.delayDays };
         const res = await fetch(BILLING_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "X-Billing-Key": w.key.value }, body: JSON.stringify(body) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.url) throw new Error(data.error || "Stripe did not return a link.");
@@ -2330,13 +2324,13 @@ ${b.brand}`;
       } catch (err) { console.error(err); showToast(err.message || "Could not create the link.", true); }
       finally { w.create.disabled = false; w.create.textContent = "💳 Create provider payment link"; }
     });
-    const wMsg = () => message(wLast) + "\n\nToday: $400 setup + $289 annual membership (first year) = $689. Then $" + WSMN.recur + "/month (" + WSMN.planName.replace(/^.* - /, "") + " plan), starting in 30 days.";
+    const wMsg = () => message(wLast) + "\n\nToday: $289 (annual membership) — renews automatically at $289/year, no setup fee, no contract. Holiday price, locked in for life.";
     w.pay.addEventListener("click", () => wLast && window.open(wLast.url, "_blank", "noopener"));
     w.copy.addEventListener("click", () => wLast && copyText(wLast.url, "Link copied!"));
     w.text.addEventListener("click", () => {
       if (!wLast) return;
       const first = (wLast.clientName || "").split(" ").filter(x => !/^dr\.?$/i.test(x))[0] || "there";
-      const txt = `Hi ${first}, it's Tania from WebSwan Media Network. Here is your secure link to join: ${wLast.url} ($689 today, then $29/mo starting in 30 days). Questions? Call (316) 248-6839.`;
+      const txt = `Hi ${first}, it's Tania from WebSwan Media Network. Here is your secure link to join: ${wLast.url} ($289 today, then $289/year automatically — no setup fee, locked in for life at the holiday price). Questions? Call (316) 248-6839.`;
       location.href = "sms:" + String(wLast.phone || "").replace(/[^0-9+]/g, "") + "?&body=" + encodeURIComponent(txt);
     });
     w.mail.addEventListener("click", () => {

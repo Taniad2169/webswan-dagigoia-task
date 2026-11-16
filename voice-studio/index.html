@@ -690,7 +690,7 @@ const INDUSTRIES = ['Doctor / medical', 'Attorney / legal', 'Other business'];
 const OFFERS = {
   site: { name: 'Custom website or redesign', short: 'a new website', agent: 'Monica', brand: 'WDS', pitch: 'a complimentary demo of a new custom website for {b}, at no cost and no obligation' },
   audit: { name: 'Complimentary compliance audit', short: 'a complimentary compliance audit', agent: 'Monica', brand: 'WDS', pitch: 'a complimentary accessibility, cookie consent and privacy audit of {b}’s website' },
-  wsmn: { name: 'WSMN profile ($289/yr + $49/month)', short: 'a WebSwan Media Network profile', agent: 'Rebecca', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
+  wsmn: { name: 'WSMN profile ($289/yr, holiday price through Dec 31 2026)', short: 'a WebSwan Media Network profile', agent: 'Rebecca', brand: 'WebSwan Media Network', pitch: 'a professional profile on WebSwan Media Network so more new {who} find {b}' },
   recep: { name: 'AI receptionist (Rachel)', short: 'an AI receptionist', agent: 'Monica', brand: 'WDS', pitch: 'an AI receptionist that answers {b}’s calls 24/7, so no new {who1} goes to voicemail' }
 };
 const SEQ = [
@@ -719,7 +719,7 @@ const LEARN = [
 ];
 const TIPS = {
   'Already has a website or vendor': 'Keep it friendly: ask if their site has a working accessibility tool and cookie consent, then offer the complimentary audit. No need to replace anyone.',
-  'Asked about price / budget': 'Lead with the low entry: WSMN is $49/month after setup, with no contract, and the audit is complimentary. Then ask what a new patient or client is worth to them.',
+  'Asked about price / budget': 'Lead with the low entry: WSMN is $289/year, no setup fee, no contract, and it’s the holiday price through Dec 31 2026 — lock it in and keep $289/year for life. The audit is complimentary. Then ask what a new patient or client is worth to them.',
   'Not the decision maker: needs owner, partner or manager': 'Ask for the decision maker’s name and the best time to reach them, and offer to email a one-page summary they can pass along.',
   'Wants information by email first': 'Send the email draft today, then call 2 days later and ask “did you get a chance to look?”',
   'Was busy: call back at a better time': 'Ask “is morning or afternoon better?” and set a follow-up date before hanging up.',
@@ -1664,7 +1664,7 @@ const MODELS = ['gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-flash-l
 const RULES = `You coach AI cold-calling agents for Tania Domingue's three companies:
 - The WebSwan: custom websites and WSBPA small business phone apps.
 - WDS (WebSwan Digital Solutions): website compliance (ADA/WCAG accessibility, cookie consent, privacy). The entry offer is a complimentary compliance audit. Monica calls doctors, George calls attorneys. On calls, agents say "WDS", never the spelled-out name.
-- WebSwan Media Network (WSMN): directory profiles and advertising for doctors and attorneys at ads.webswanmedianetwork.com, $400 setup + $289/year + $49/month, no contract. Rebecca and Alek call for WSMN.
+- WebSwan Media Network (WSMN): directory profiles and advertising for doctors and attorneys at ads.webswanmedianetwork.com, $289/year only (holiday price through Dec 31 2026, locked in for life), no setup fee, no monthly fee, no contract. Rebecca and Alek call for WSMN.
 The goal of every call is a 10-minute call with Tania, the founder.
 House rules: the agent must say it is an AI assistant and who it calls for in the first sentence; say "complimentary", never "free"; never guarantee rankings or results; no pressure tactics; honor every opt-out immediately; keep lines short, warm and human; one question at a time.
 Never include phone numbers, emails or personal data in your output. Always answer with valid JSON only.`;
