@@ -6,15 +6,21 @@
 // scheduleAssignment() and actionsHelp() in ../lib/agent-actions.mjs.
 import { AGENTS, addMessages, teamStore } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
+import { sweepExpiredScripts } from "./voice-calls.mjs";
 
 const first = (k) => String((AGENTS[k] || {}).name || k).split(" ")[0];
 
 export default async () => {
+  // Tania, Nov 15: clear any phone agent's campaign SCRIPT block whose 24h-1 week window is up (personality/
+  // prompt/rebuttals untouched). Runs every 15 min alongside the assignment sweep below.
+  let scriptSweep = { cleared: 0, checked: 0 };
+  try { scriptSweep = await sweepExpiredScripts(); } catch (e) {}
+
   const st = teamStore();
   const list = (await st.get("team-assignments", { type: "json" })) || [];
   const now = Date.now();
   const due = list.filter((a) => a.status === "pending" && Date.parse(a.runAt) <= now);
-  if (!due.length) return new Response("nothing due");
+  if (!due.length) return new Response("nothing due; scripts cleared: " + scriptSweep.cleared);
   for (const a of due) {
     a.status = "dispatched"; a.dispatchedAt = new Date().toISOString();
     const mates = (a.agents || []).filter((k) => AGENTS[k]);
@@ -32,6 +38,6 @@ export default async () => {
     }
   }
   await st.setJSON("team-assignments", list.slice(-200));
-  return new Response("dispatched " + due.length);
+  return new Response("dispatched " + due.length + "; scripts cleared: " + scriptSweep.cleared);
 };
 export const config = { schedule: "*/15 * * * *" };

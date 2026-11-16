@@ -2180,12 +2180,15 @@ function teamAgentsCard() {
 
 <script>
 /* ---------- 🧠 Brain: each phone agent's live Cartesia script, split into the parts Tania cares about ---------- */
-const BR = { agent: 'monica', text: '', loading: false, err: '' };
+const BR = { agent: 'monica', text: '', loading: false, err: '', scriptExpiry: null, scriptExpireHours: 0 };
 const BR_AGENTS = [['monica', 'Monica'], ['george', 'George'], ['rebecca', 'Rebecca'], ['alek', 'Alek'], ['jenna', 'Jenna'], ['rachel', 'Rachel']];
+// Tania, Nov 15: how long a freshly-saved campaign script stays live before it clears itself (script box only —
+// personality, rebuttals and the rest of the prompt are never touched). 0 = no expiry (stays until she changes it).
+const BR_SCRIPT_TTL = [[0, 'No expiry'], [24, '24 hours'], [48, '48 hours'], [72, '72 hours'], [168, '1 week']];
 function brSection(t, start, end) { const i = t.indexOf(start); if (i < 0) return ''; const j = t.indexOf(end, i + start.length); return t.slice(i + start.length, j > i ? j : undefined).trim(); }
 async function brLoad(k) {
-  BR.agent = k; BR.loading = true; BR.err = ''; render();
-  try { const r = await voiceApi({ action: 'agent_get', agent: k }); BR.text = r.instructions || ''; } catch (e) { BR.err = e.message; BR.text = ''; }
+  BR.agent = k; BR.loading = true; BR.err = ''; BR.scriptExpiry = null; BR.scriptExpireHours = 0; render();
+  try { const r = await voiceApi({ action: 'agent_get', agent: k }); BR.text = r.instructions || ''; BR.scriptExpiry = r.scriptExpiry || null; } catch (e) { BR.err = e.message; BR.text = ''; }
   BR.loading = false; render();
 }
 const BR_S0 = '### YOUR SCRIPT (WebSwan)', BR_S1 = '### END YOUR SCRIPT', BR_R0 = '### REBUTTALS (WebSwan)', BR_R1 = '### END REBUTTALS';
@@ -2214,13 +2217,14 @@ function brDraftUse(mode) {
   box.focus(); toast((mode === 'replace' ? 'The Script box now holds the suggestion.' : 'Added below her current script.') + ' Not saved yet: ' + n.toLocaleString() + ' of 30,000 characters' + (n > 30000 ? ', too long to save. Trim it first.' : '. Review it, then press Save.'));
 }
 function brDraftDrop() { BR.draft = null; render(); }
-async function brSaveText(t, what) {
+async function brSaveText(t, what, extra) {
   const nm = BR.agent[0].toUpperCase() + BR.agent.slice(1);
   if (!confirm('Save ' + what + ' to ' + nm + '\'s LIVE voice? Her next real call uses it.')) return;
-  try { const r = await voiceApi({ action: 'agent_prompt', agent: BR.agent, instructions: t }); toast('Saved: ' + r.chars + ' characters (limit 30,000).'); brLoad(BR.agent); bmLoad(true); } catch (e) { toast(e.message); }
+  try { const r = await voiceApi(Object.assign({ action: 'agent_prompt', agent: BR.agent, instructions: t }, extra || {})); toast('Saved: ' + r.chars + ' characters (limit 30,000).' + (extra && 'scriptExpireHours' in extra ? (r.scriptExpiry ? ' Script clears in ' + r.scriptExpiry.hours + ' hours.' : ' No expiry set.') : '')); brLoad(BR.agent); bmLoad(true); } catch (e) { toast(e.message); }
 }
 // Script box: only the words she says. Rebuttals box: her answers to objections. Prompt box: everything else. Saved back as one live prompt.
-function brSaveScript() { const p = brSplit(BR.text || ''); p.script = $('brScript').value.trim(); brSaveText(brJoin(p), 'her SCRIPT'); }
+// Only the Script save sends scriptExpireHours (0 = no expiry) — Rebuttals/Prompt saves never touch a pending script expiry.
+function brSaveScript() { const p = brSplit(BR.text || ''); p.script = $('brScript').value.trim(); const hrs = Number(($('brScriptTtl') || {}).value) || 0; brSaveText(brJoin(p), 'her SCRIPT', { scriptExpireHours: hrs }); }
 function brSaveRebuttals() { const p = brSplit(BR.text || ''); p.rebuttals = $('brRebuttals').value.trim(); brSaveText(brJoin(p), 'her REBUTTALS'); }
 function brSavePrompt() { const p = brSplit(BR.text || ''); p.prompt = $('brPrompt').value.trim(); brSaveText(brJoin(p), 'her PROMPT & PERSONALITY'); }
 async function brSave() { brSaveText($('brFull').value, 'this full prompt'); }
@@ -2238,7 +2242,7 @@ function renderBrain(c) {
   ${BR.loading ? '<div class="card empty">Loading her brain…</div>' : BR.err ? `<div class="card empty">⚠️ ${esc(BR.err)}<br><br>Sign in with Google at the top, then press Refresh.</div>` : `
   ${box('💫 Personality', persona, 'How she sounds on every call (tone, confidence, natural delivery).')}
   ${BR.draft && BR.draft.agent === BR.agent && brDraftText() ? `<div class="card section" style="border:2px solid #f3d38a;background:#fffaf0" role="region" aria-label="Script coach suggestion"><h2 style="margin:0 0 6px">✦ Script coach suggestion <small class="muted" style="font-weight:400">not saved, not live</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Compare it with her live script below. Putting it in the Script box does not save it. Her live script uses numbered lines in quotation marks with [PAUSE] between them, and Monica’s also holds the Spanish copy: “Replace” removes those unless you add them back.</p><div style="white-space:pre-wrap;font-size:14px;line-height:1.5;background:#fff;border:1px solid #f3d38a;border-radius:10px;padding:12px;max-height:260px;overflow:auto">${esc(brDraftText())}</div><div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brDraftUse('add')">⬇ Add below her current script</button><button class="btn secondary small" onclick="brDraftUse('replace')">Replace the Script box with this</button><button class="btn outline small" onclick="brDraftDrop()">✕ Dismiss</button></div></div>` : ''}
-  <div class="card section"><h2 style="margin:0 0 6px">📜 Script <small class="muted" style="font-weight:400">only what she says</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her conversation, line by line. No instructions here: [PAUSE] = she stops and waits; (yes) / (no) = which line fits their answer. ${SP.script ? '' : '<b>No script block yet: it appears after the next sync.</b>'}</p>${ta('brScript', SP.script, 260)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveScript()">💾 Save script</button></div></div>
+  <div class="card section"><h2 style="margin:0 0 6px">📜 Script <small class="muted" style="font-weight:400">only what she says</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her conversation, line by line. No instructions here: [PAUSE] = she stops and waits; (yes) / (no) = which line fits their answer. ${SP.script ? '' : '<b>No script block yet: it appears after the next sync.</b>'}</p>${ta('brScript', SP.script, 260)}<div class="actions" style="justify-content:flex-start;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn small" onclick="brSaveScript()">💾 Save script</button><label style="font-size:13px;display:flex;align-items:center;gap:6px">Clears after:<select id="brScriptTtl" style="font-size:13px;padding:4px 6px;border-radius:6px;border:1px solid #cfe0ec">${BR_SCRIPT_TTL.map(([h, label]) => `<option value="${h}" ${h === (BR.scriptExpiry ? BR.scriptExpiry.hours : 0) ? 'selected' : ''}>${label}</option>`).join('')}</select></label>${BR.scriptExpiry ? `<span class="chip" style="font-size:12px">⏳ Clears ${esc(new Date(BR.scriptExpiry.expiresAt).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))} PT — back to no script</span>` : ''}</div></div>
   <div class="card section"><h2 style="margin:0 0 6px">🥊 Rebuttals <small class="muted" style="font-weight:400">her answers to questions and objections</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">One objection per paragraph: the objection in CAPS, then her answer. She uses the one that fits, then goes back to her script. Add any new rebuttal here. ${SP.rebuttals ? '' : '<b>No rebuttals block yet.</b>'}</p>${ta('brRebuttals', SP.rebuttals, 300)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSaveRebuttals()">💾 Save rebuttals</button></div></div>
   ${box('🤖 If asked "are you AI?"', ai)}
   ${box('🧠 Coaching notes from role plays', notes, 'Only the adjustments you approved; they never change her script or personality.')}<div style="margin:-8px 0 14px"><a class="btn small" href="../team/roleplay.html#notes=${BR.agent}" target="_blank" rel="noopener">✏️ Add, edit or remove coaching notes</a></div>

@@ -174,6 +174,39 @@ function slimCall(c) {
   };
 }
 
+// Tania, Nov 15: self-expiring campaign scripts. Markers must match voice-studio/index.html's BR_S0/BR_S1 exactly —
+// that's the one place that writes this block; this only ever erases it once its 24h-1 week window is up.
+const SCRIPT_S0 = "### YOUR SCRIPT (WebSwan)", SCRIPT_S1 = "### END YOUR SCRIPT";
+function scriptMarkerAt(t, m, from) { const k = t.indexOf("\n" + m, from || 0); return k < 0 ? (!from && t.startsWith(m) ? 0 : -1) : k + 1; }
+function clearScriptBlock(t) {
+  const i = scriptMarkerAt(t, SCRIPT_S0), j = i >= 0 ? scriptMarkerAt(t, SCRIPT_S1, i + 1) : -1;
+  if (i < 0 || j < i) return { changed: false, text: t };
+  return { changed: true, text: (t.slice(0, i) + t.slice(j + SCRIPT_S1.length)).replace(/\n{3,}/g, "\n\n").trim() };
+}
+// Called every 15 min from team-schedule.mjs. For any agent whose script expiry has passed, fetches her live
+// Cartesia prompt, clears only the SCRIPT block (personality/rebuttals/prompt untouched), and writes it back.
+export async function sweepExpiredScripts() {
+  const st = teamStore();
+  const exp = (await st.get("script-expiry", { type: "json" })) || {};
+  const now = Date.now();
+  const due = Object.keys(exp).filter((k) => exp[k] && exp[k].expiresAt <= now);
+  if (!due.length) return { cleared: 0, checked: 0 };
+  let cleared = 0;
+  for (const name of due) {
+    try {
+      const id = AGENTS.includes(name) ? agentId(agentKey(name, "en")) : "";
+      if (!id) { delete exp[name]; continue; }
+      const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
+      const cfg = d.config || (d.agent && d.agent.config) || {};
+      const { changed, text } = clearScriptBlock(String(cfg.instructions || ""));
+      if (changed) { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: text } }); cleared++; }
+      delete exp[name];
+    } catch (e) { /* leave it queued; try again next sweep in 15 min */ }
+  }
+  await st.setJSON("script-expiry", exp);
+  return { cleared, checked: due.length };
+}
+
 export default async (req) => {
   const origin = req.headers.get("origin") || "";
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
@@ -829,9 +862,21 @@ export default async (req) => {
       else ins = base;
     }
     if (ins.length > 30000) return reply(400, { error: "The prompt" + (notesKept ? " plus " + name + "'s " + notesKept + " coaching notes" : "") + " would be " + ins.length + " characters, over the 30,000 limit. Trim it by " + (ins.length - 30000) + "." }, origin);
+    // Tania, Nov 15: a campaign script (the SCRIPT box only — never personality, rebuttals or the rest of the prompt)
+    // can self-expire 24h-1 week after it's saved. Only a Save-script call sends scriptExpireHours; prompt/rebuttal
+    // saves leave whatever expiry is already queued alone. A scheduled sweep (sweepExpiredScripts, below) clears it.
+    let scriptExpiry = null;
+    if (Object.prototype.hasOwnProperty.call(b, "scriptExpireHours")) {
+      const st = teamStore();
+      const exp = (await st.get("script-expiry", { type: "json" })) || {};
+      const hrs = Number(b.scriptExpireHours);
+      if (hrs > 0) { const clamped = Math.min(168, Math.max(24, hrs)); exp[name] = { expiresAt: Date.now() + clamped * 3600000, hours: clamped }; scriptExpiry = exp[name]; }
+      else delete exp[name];
+      await st.setJSON("script-expiry", exp);
+    }
     try {
       await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { instructions: ins } });
-      return reply(200, { ok: true, agent: name, chars: ins.length, notesKept }, origin);
+      return reply(200, { ok: true, agent: name, chars: ins.length, notesKept, scriptExpiry }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
@@ -1038,7 +1083,8 @@ export default async (req) => {
     try {
       const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
       const cfg = d.config || (d.agent && d.agent.config) || {};
-      return reply(200, { agent: name, id, name: d.name || "", instructions: cfg.instructions || "", language: cfg.language || null, voiceId: (cfg.audio && cfg.audio.output && cfg.audio.output.voice_id) || "" }, origin);
+      const exp = (await teamStore().get("script-expiry", { type: "json" }).catch(() => null)) || {};
+      return reply(200, { agent: name, id, name: d.name || "", instructions: cfg.instructions || "", language: cfg.language || null, voiceId: (cfg.audio && cfg.audio.output && cfg.audio.output.voice_id) || "", scriptExpiry: exp[name] || null }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
