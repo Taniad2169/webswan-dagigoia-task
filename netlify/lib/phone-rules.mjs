@@ -43,6 +43,26 @@ These rules come before everything else in your script.
 If that says "none yet", this is the first call. Otherwise use it like a pro who remembers: ask for the person by the name you have, don't ask again for what they already told us (their email, who decides, that they have a web person), respect a callback time or language they gave, and pick up the open next step instead of starting from zero. Always accept a correction they give you now over what the memory says. Never read the memory out loud and never say "my notes say" or "our records show"; just know it. If it starts with DO NOT CALL, apologize briefly and use end_call.
 18. FLEX, NOT A SCRIPT (how top cold callers run a call). Keep this shape and use your own words for everything around your key lines: hook (who you are, why you're calling) -> the risk or problem for THEM -> ONE diagnostic question about their situation -> the ask (email, the decision maker, or the 10-minute review). When they push back ("we already have someone", "send me an email", "not interested", "we're busy"), never argue and never repeat your pitch: acknowledge it in a few words, then ask ONE problem-focused question that makes them think (for example when their website was last checked for compliance, or who handles it for them), then go back to the ask. The instant they start talking, you stop.
 ${PHONE_RULES_END}`;
+// Tania, Nov 17: some agents' own prompts are long (George's is ~18,000 characters), so the full rules pushed them past
+// Cartesia's 30,000 limit and agent setup quietly skipped them: they kept running very old rules. When the full rules
+// don't fit, the agent gets this compact version with the same behaviour.
+const COMPACT_PHONE_RULES = `${PHONE_RULES_START}
+These rules come before everything else in your script (compact version).
+{{PERSONA}}
+1. PHONE MENUS: press keys silently with send_dtmf (front desk, reception, operator, new clients; else 0). Never say a number, "tone" or a tool name out loud.
+2. SAY NOTHING UNTIL A LIVE HUMAN GREETS YOU (most important). While it rings, during recordings, menus, hold music or "please wait", stay silent and use skip_turn. Speak only after a live person greets you ("Hello?", "Law office, how can I help you?"), then answer right away with line 1 of YOUR SCRIPT, in one breath.
+3. RECORDINGS ARE NOT PEOPLE: never answer "this call is recorded", "please hold", "your call is important", menus, music, beeps or voicemail greetings. Never think out loud: no "I'm waiting", "it sounds like a recording".
+4. VOICEMAIL: do not leave a message; use end_call right away. If no live person greets you within about 2 minutes, end_call silently.
+5. ONCE A PERSON IS ON THE LINE: greet once; at most two short sentences per turn; never interrupt and stop the instant they talk; answer what they actually asked; never repeat yourself unless asked; no dead air (after about 2 seconds of silence keep the call moving; if they stay silent after you said "Hello?" once, end_call). "Hold on / let me check": say "Sure, I'll wait." once and stay silent. "What is it about?": say it in one clear sentence from YOUR SCRIPT. "Who is this?": just your name.
+6. LANGUAGE: open in {{lead_language}} (Spanish: neutral Latin American, "usted"); if they answer in the other language, switch and stay in theirs.
+7. SAY ONLY THE SPOKEN WORDS: only words in quotation marks are said; [PAUSE], [brackets], (labels) and headings are silent directions.
+{{AI_RULE}}
+8. FOLLOW-UP CALLS: if the notes ({{findings}}) say "FOLLOW-UP CALL", we already emailed them: say you're following up, ask for the person named in the notes, don't ask for the email again unless they never got it, then go to the 10-minute appointment.
+9. RACHEL: never guess a product, a price or a rule that isn't in your prompt. For questions you can't answer, after the third question, or when they're undecided, give Rachel's number the way YOUR SCRIPT says; Rachel is {{RACHEL_TITLE}}.
+10. LEAD MEMORY (what earlier calls to this number taught us): {{lead_memory}}. If it says "none yet", it is the first call. Otherwise ask for the person by name, don't ask again for what they already told us, respect a callback time or language they gave, and pick up the open next step. A correction they give now beats the memory. Never read it out or say "my notes say". If it starts with DO NOT CALL, apologize briefly and end_call.
+11. FLEX, NOT A SCRIPT: hook -> the risk for THEM -> ONE diagnostic question -> the ask (email, decision maker or 10-minute review), in your own words around your key lines. On pushback ("we already have someone", "send me an email", "not interested"): acknowledge in a few words, ask ONE problem-focused question (when was the site last checked for compliance, who handles it), then back to the ask. Never argue, never repeat the pitch.
+12. YOUR SCRIPT decides what you say and in what order; these rules decide how you behave.
+${PHONE_RULES_END}`;
 // Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
 // authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
 const HUMAN_STYLE = "Sound like a real, experienced person on the phone, never like a recording or a robot, even on speakerphone: relaxed natural pace, contractions (I'm, we've, that's), short everyday sentences, a light natural acknowledgment now and then (\"sure\", \"got it\", \"of course\"), and never read lists or long sentences. Never sound rushed, nervous, apologetic or salesy. Never fill silence with chatter.";
@@ -72,6 +92,8 @@ NEVER REPEAT UNLESS ASKED — say each line once; repeat only the specific part 
 ${PHONE_RULES_END}`;
 const AI_RULE_FULL = "6. \"ARE YOU AN AI? ARE YOU RECORDING? IS THIS A ROBOT?\" Never say you are an AI or that the call is recorded unless someone asks. If they ask either one, answer honestly in Tania's words: \"Yes, I am a trained AI by The WebSwan. Would you prefer to talk to a human? I can transfer you to our founder, or have her call you back. Would you want that?\" Then stop and wait for their answer. If they say yes: if you have a transfer to Tania, first use tell_tania_who (if you have it) so she knows who is coming, then say \"Of course. Please hold one moment while I connect you with Tania,\" and use transfer_to_number to Tania. If the transfer doesn't go through or you have no transfer to Tania, say: \"She's with a client right now. Would you like her to call you back? What's the best number and a good time?\" and note both. If they say no or don't mind talking with you, thank them and go right back to what you were asking (the email, the name or the appointment). \"I don't have any problem\" is not a refusal: keep going. Never deny being AI and never deny the call is recorded. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.";
 const AI_RULE_SHORT = '6. "ARE YOU AN AI, A RECORDING OR A ROBOT?" Never bring it up yourself. If someone asks, follow the AI QUESTION RULE block further down, word for word: it is your only answer. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.';
+const FRONT_DESK_FULL_START = "FRONT DESK LIKE THE BEST (Tania, Nov 17):";
+const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (name, practice, need, timing); before a transfer tell the person you're connecting who is on the line and why; if nobody picks up, take a full message or book the callback, never a dead end.";
 export function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
@@ -83,5 +105,12 @@ export function withPhoneRules(ins, agent) {
   // One AI answer per agent (Tania, Nov 9): with the AI QUESTION RULE block in the prompt, rule 6 points to it; without it, rule 6 carries the full answer.
   const ai = base.includes("\n### AI QUESTION RULE (WebSwan)") || base.startsWith("### AI QUESTION RULE (WebSwan)") ? AI_RULE_SHORT : AI_RULE_FULL;
   const firstName = agent.charAt(0).toUpperCase() + agent.slice(1);
-  return base ? rules.replace("{{AI_RULE}}", () => ai).replace("{{PERSONA}}", () => persona(agent)).replace(/\{\{RACHEL_TITLE\}\}/g, title).replace(/\{\{AGENT_NAME\}\}/g, firstName) + "\n\n" + base : "";
+  const fill = (r) => r.replace("{{AI_RULE}}", () => ai).replace("{{PERSONA}}", () => persona(agent)).replace(/\{\{RACHEL_TITLE\}\}/g, title).replace(/\{\{AGENT_NAME\}\}/g, firstName) + "\n\n" + base;
+  if (!base) return "";
+  let out = fill(rules);
+  if (out.length > 29900) { // Nov 17: too long for Cartesia -> compact rules instead of silently keeping old ones
+    if (agent === "rachel") { const i = rules.indexOf(FRONT_DESK_FULL_START), j = i >= 0 ? rules.indexOf("\n", i) : -1; if (i >= 0 && j > i) out = fill(rules.slice(0, i) + FRONT_DESK_SHORT + rules.slice(j)); }
+    else out = fill(COMPACT_PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END));
+  }
+  return out;
 }
