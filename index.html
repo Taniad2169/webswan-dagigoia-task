@@ -597,6 +597,7 @@
     }
     .cal-cell.selected      { background: var(--teal); color: var(--navy); font-weight: 700; }
     .cal-cell.selected:hover{ background: var(--teal-dark); }
+    .cal-cell.disabled { opacity:.25; cursor:not-allowed; pointer-events:none; }
     .cal-cell.has-task::before {
       content:''; position:absolute; top:3px; right:3px;
       width:5px; height:5px; border-radius:50%; background:#f9c74f;
@@ -1001,14 +1002,25 @@
           </div>
           <div class="field">
             <label>📆 First recurring charge</label>
-            <select id="b-delay">
-              <option value="0">Today, with the setup fee</option>
-              <option value="7">In 7 days</option>
-              <option value="14">In 14 days</option>
-              <option value="30">In 30 days</option>
-              <option value="60">In 60 days</option>
-              <option value="90">In 90 days</option>
-            </select>
+            <div class="calendar-wrap" id="fc-wrap">
+              <button type="button" class="cal-trigger" id="fc-trigger" aria-haspopup="dialog">
+                <span id="fc-display">Today, with the setup fee</span><span>▾</span>
+              </button>
+              <div class="cal-dropdown" id="fc-dropdown" role="dialog" aria-label="Pick the first recurring charge date">
+                <div class="cal-header">
+                  <button type="button" class="cal-nav" id="fc-prev" aria-label="Previous month">‹</button>
+                  <span id="fc-month-label"></span>
+                  <button type="button" class="cal-nav" id="fc-next" aria-label="Next month">›</button>
+                </div>
+                <div class="cal-grid">
+                  <div class="cal-days-header"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+                  <div class="cal-cells" id="fc-cells"></div>
+                  <button type="button" class="btn-ghost" id="fc-today" style="width:100%;margin-top:.5rem;padding:.4rem;font-size:.75rem;">Charge today, with the setup fee</button>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" id="b-delay" value="0">
+            <input type="hidden" id="b-first-date" value="">
           </div>
         </div>
         <label style="display:flex;gap:.5rem;align-items:center;font-size:.8rem;color:var(--text-light);margin:.2rem 0 .8rem;">
@@ -2035,14 +2047,15 @@
         planName: el.planName.value.trim(),
         setup: Math.round((parseFloat(el.setup.value) || 0) * 100) / 100,
         recur: interval === "none" ? 0 : Math.round((parseFloat(el.recur.value) || 0) * 100) / 100,
-        interval, delayDays: interval === "none" ? 0 : parseInt(el.delay.value, 10) || 0
+        interval, delayDays: interval === "none" ? 0 : (window.wsFirstChargeDays ? window.wsFirstChargeDays() : (parseInt(el.delay.value, 10) || 0)),
+        firstChargeDate: interval === "none" ? null : ($("b-first-date").value || null)
       };
     }
     function updateSummary() {
       const f = readForm();
       if (!f.planName || (!f.setup && !f.recur)) { el.summary.textContent = ""; return; }
       let s = `${f.clientName || f.company || "Your client"} pays ${money(f.setup)} today`;
-      if (f.recur) s += f.delayDays ? `, then ${money(f.recur)} every ${f.interval} starting in ${f.delayDays} days` : ` plus ${money(f.recur)} every ${f.interval} starting today`;
+      if (f.recur) s += f.delayDays ? `, then ${money(f.recur)} every ${f.interval} starting ${f.firstChargeDate ? new Date(f.firstChargeDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "in " + f.delayDays + " days"}` : ` plus ${money(f.recur)} every ${f.interval} starting today`;
       el.summary.textContent = s + ` (${f.brand}).`;
     }
     ["input", "change"].forEach(ev => [el.name, el.company, el.planName, el.setup, el.recur, el.interval, el.delay].forEach(x => x.addEventListener(ev, updateSummary)));
@@ -2082,10 +2095,10 @@
         if (el.addRes.checked && !el.pick.value) {
           try {
             const resRef = await window._fb.saveResidual({
-              clientName: f.clientName, companyName: f.company, projectName: f.planName, amount: f.recur, paymentDay: "",
+              clientName: f.clientName, companyName: f.company, projectName: f.planName, amount: f.recur, paymentDay: f.firstChargeDate ? String(parseInt(f.firstChargeDate.slice(8, 10), 10)) : "",
               notes: "Payment link sent " + new Date().toLocaleDateString() + ": " + url, phone: f.phone || "", email: f.email,
-              brand: f.brand, plan: f.interval === "year" ? "Yearly" : "Monthly", setupFee: f.setup, setupDate: null, startDate: null,
-              status: "Link sent", studioRef: null, paymentDate: "2026-99"
+              brand: f.brand, plan: f.interval === "year" ? "Yearly" : "Monthly", setupFee: f.setup, setupDate: null, startDate: f.firstChargeDate || null,
+              status: "Link sent", studioRef: null, paymentDate: "2026-" + (f.firstChargeDate ? f.firstChargeDate.slice(8, 10) : "99")
             });
             rec.residualId = resRef.id;
             if (typeof refreshResiduals === "function") refreshResiduals();
@@ -2129,6 +2142,7 @@
     function firstChargeText(b, fromMs) {
       if (!b.recur) return "";
       if (!b.delayDays) return "starting today";
+      if (b.firstChargeDate) return "first charge " + fmtDate(new Date(b.firstChargeDate + "T12:00:00").getTime());
       const d = new Date(fromMs); d.setDate(d.getDate() + b.delayDays); return "first charge " + fmtDate(d.getTime());
     }
     function docHTML(b, kind) {
@@ -2402,6 +2416,61 @@ ${b.brand}`;
   rec.addEventListener('click',function(){ mode(false); });
   pick.addEventListener('change',function(){ setTimeout(function(){ if(pick.value) mode(iv.value==='none'); },0); });
   mode(true);
+})();
+</script>
+<script>
+/* ── First recurring charge: popup calendar + prefill link (Billing tab) ── */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  if(!$('fc-trigger')) return;
+  var MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var view=new Date(), chosen=null;
+  function iso(y,m,d){ return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0"); }
+  function todayMid(){ var t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+  function parse(i){ var p=i.split("-"); return new Date(+p[0],+p[1]-1,+p[2]); }
+  function days(i){ return Math.max(0,Math.round((parse(i)-todayMid())/86400000)); }
+  window.wsFirstChargeDays=function(){ return chosen?days(chosen):0; };
+  function fire(){ ["b-delay","b-first-date"].forEach(function(id){ $(id).dispatchEvent(new Event("change",{bubbles:true})); }); $('b-plan-name').dispatchEvent(new Event("input",{bubbles:true})); }
+  function setChosen(i){
+    chosen=i||null; $('b-first-date').value=chosen||""; $('b-delay').value=chosen?days(chosen):0;
+    $('fc-display').textContent=chosen?parse(chosen).toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric"}):"Today, with the setup fee";
+    if(chosen) view=new Date(parse(chosen).getFullYear(),parse(chosen).getMonth(),1);
+    fire();
+  }
+  window.wsSetFirstCharge=setChosen;
+  function render(){
+    var y=view.getFullYear(), m=view.getMonth(), first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), t=todayMid(), cells=$('fc-cells');
+    $('fc-month-label').textContent=MN[m]+" "+y; cells.innerHTML="";
+    for(var i=0;i<first;i++){ var e=document.createElement("div"); e.className="cal-cell other-month disabled"; cells.appendChild(e); }
+    for(var d=1; d<=dim; d++){
+      (function(d){
+        var c=document.createElement("div"), key=iso(y,m,d), dt=new Date(y,m,d);
+        c.className="cal-cell"; c.textContent=d; c.setAttribute("role","button"); c.setAttribute("aria-label",MN[m]+" "+d+", "+y);
+        if(dt<t) c.classList.add("disabled");
+        if(dt.getTime()===t.getTime()) c.classList.add("today");
+        if(chosen===key) c.classList.add("selected");
+        c.addEventListener("click",function(ev){ ev.stopPropagation(); setChosen(key); close(); });
+        cells.appendChild(c);
+      })(d);
+    }
+  }
+  function close(){ $('fc-dropdown').classList.remove("open"); $('fc-trigger').classList.remove("open"); }
+  $('fc-trigger').addEventListener("click",function(e){ e.stopPropagation(); var o=$('fc-dropdown').classList.toggle("open"); this.classList.toggle("open",o); render(); });
+  $('fc-prev').addEventListener("click",function(e){ e.stopPropagation(); view=new Date(view.getFullYear(),view.getMonth()-1,1); render(); });
+  $('fc-next').addEventListener("click",function(e){ e.stopPropagation(); view=new Date(view.getFullYear(),view.getMonth()+1,1); render(); });
+  $('fc-today').addEventListener("click",function(e){ e.stopPropagation(); setChosen(null); close(); });
+  document.addEventListener("click",function(e){ if(!$('fc-wrap').contains(e.target)) close(); });
+
+  /* Prefill link: ?tab=billing&bname=..&bcompany=..&bemail=..&bphone=..&bfirst=YYYY-MM-DD&bplan=..  (opens after unlock + Google sign-in) */
+  var Q=new URLSearchParams(location.search);
+  if(Q.get("bname")||Q.get("bcompany")||Q.get("bfirst")){
+    var set=function(id,k){ if(Q.get(k)!==null && $(id)){ $(id).value=Q.get(k); $(id).dispatchEvent(new Event("input",{bubbles:true})); } };
+    set("b-name","bname"); set("b-company","bcompany"); set("b-email","bemail"); set("b-phone","bphone"); set("b-plan-name","bplan");
+    if(Q.get("bsetup")) set("b-setup","bsetup");
+    if(Q.get("brecur")) set("b-recur","brecur");
+    $('b-recurring').click();
+    var f=Q.get("bfirst"); if(f && /^\d{4}-\d{2}-\d{2}$/.test(f) && parse(f)>=todayMid()) setChosen(f);
+  }
 })();
 </script>
 <script>
