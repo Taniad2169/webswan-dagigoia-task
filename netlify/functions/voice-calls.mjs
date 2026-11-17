@@ -10,6 +10,7 @@
 //   CARTESIA_AGENT_GEORGE     Cartesia agent ID for George  (also _REBECCA, _MONICA, _ALEK, _TATIANA)
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
+import { startWatch } from "../lib/call-watch.mjs";
 import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -608,12 +609,21 @@ export default async (req) => {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
-          system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: { wait_timeout_secs: 2 }, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
+          system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: { wait_timeout_secs: 30 }, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
         // Tania, Nov 6: the "are you still there?" check-in fired after 5 s of ringing/hold. Outbound callers wait much longer.
+        // Tania, Nov 16: agents were still talking while the phone rang and answering recordings ("this call is recorded").
+        // An initial_message made the agent speak the moment the line connected, before any human: outbound callers now have
+        // NO initial message (they wait for the person to speak first). voice-watch-background hangs up any call where no
+        // human greeted within 2 minutes.
         let turnNote = "";
         if (!a.startsWith("rachel") || a.startsWith("rachelout")) {
-          for (const secs of [30, 20]) { try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { turn: { inactivity_check_in_secs: secs, inactivity_end_call_secs: 120 } } }); turnNote = " · quiet during rings (" + secs + " s)"; break; } catch (e) { turnNote = " · ring wait not changed: " + String(e.message || e).slice(0, 80); } }
+          // Tania, Nov 16 (later): with check-ins OFF the agent had no cue to keep talking when a live person went quiet
+          // (after "how's it going?"), so it sat in silence and people hung up. Check-in is back at Cartesia's minimum (5 s):
+          // before a human speaks the rules make the agent skip_turn silently (and skip_turn stretches the wait to 30 s
+          // during hold); after a human speaks it moves on with the script.
+          try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { initial_message: null, turn: { inactivity_check_in_secs: 5, inactivity_end_call_secs: 120 } } }); turnNote = " · silent until a human says hello · no dead air after"; }
+          catch (e2) { turnNote = " · ring silence NOT set: " + String(e2.message || e2).slice(0, 80); }
         }
         report.agents[a] = (ins.length > 200 ? "connected · phone-menu & voicemail rules on" : "connected (rules not added: no script found)") + turnNote;
       } catch (e) { report.agents[a] = "error: " + e.message; }
@@ -927,6 +937,7 @@ export default async (req) => {
     counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
     await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
     await budgetRecord(store, { id: r0.agent_call_id, agent: name, by: email, maxMin: 6 });
+    await startWatch(r0.agent_call_id, name);
     return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name, lang }, origin);
   }
 
@@ -1136,7 +1147,7 @@ export default async (req) => {
     const done = [];
     for (const n of names) for (const k of [n, n + "_es", n + "_pt"]) { const id = agentId(k); if (!id) continue;
       const cfg = { model: { id: model, fallback_strategy: { type: "auto" } } };
-      if (b.turn) cfg.turn = { inactivity_check_in_secs: Math.max(3, Math.min(20, Number(b.turn.checkIn) || 8)), inactivity_end_call_secs: Math.max(30, Math.min(600, Number(b.turn.endCall) || 240)) };
+      if (b.turn) cfg.turn = { inactivity_check_in_secs: Math.max(5, Math.min(60, Number(b.turn.checkIn) || 5)), inactivity_end_call_secs: Math.max(20, Math.min(240, Number(b.turn.endCall) || 120)) }; // Nov 16: 5 s check-in = no dead air once a person is talking; the rules keep it silent before that
       try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: cfg }); done.push(k); } catch (e) { done.push(k + ": " + e.message.slice(0, 80)); } }
     return reply(200, { done }, origin);
   }

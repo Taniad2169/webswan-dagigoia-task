@@ -17,10 +17,23 @@ export default async () => {
   try { scriptSweep = await sweepExpiredScripts(); } catch (e) {}
 
   const st = teamStore();
+  // Tania, Nov 16: Eva's reminders. Anything due (or due in the next 30 minutes, since this runs every 30) is posted in
+  // Eva's chat as a reminder, once. The Google Calendar event Eva created already pings Tania's phone at the exact minute.
+  let reminded = 0;
+  try {
+    const rem = (await st.get("tania-reminders", { type: "json" })) || [];
+    const soon = Date.now() + 30 * 60000;
+    const dueR = rem.filter((r) => r.status === "pending" && Date.parse(r.at) <= soon);
+    if (dueR.length) {
+      await addMessages("eva", dueR.map((r) => ({ role: "agent", kind: "reminder", text: "## ⏰ Reminder for Tania\n**" + r.what + "** — " + new Date(r.at).toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", hour: "numeric", minute: "2-digit" }) + " PT" })));
+      dueR.forEach((r) => { r.status = "sent"; r.sentAt = new Date().toISOString(); }); reminded = dueR.length;
+      await st.setJSON("tania-reminders", rem.slice(-300));
+    }
+  } catch (e) {}
   const list = (await st.get("team-assignments", { type: "json" })) || [];
   const now = Date.now();
   const due = list.filter((a) => a.status === "pending" && Date.parse(a.runAt) <= now);
-  if (!due.length) return new Response("nothing due; scripts cleared: " + scriptSweep.cleared);
+  if (!due.length) return new Response("nothing due; reminders sent: " + reminded + "; scripts cleared: " + scriptSweep.cleared);
   for (const a of due) {
     a.status = "dispatched"; a.dispatchedAt = new Date().toISOString();
     const mates = (a.agents || []).filter((k) => AGENTS[k]);

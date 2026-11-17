@@ -117,19 +117,40 @@ export async function runWorkpilotSync(hours) {
   const bookings = (await s.get("bookings", { type: "json" }).catch(() => null)) || [];
   const since = new Date(Date.now() - (hours || 72) * 3600e3).toISOString();
   let token = null, sent = 0, errors = 0, lastErr = "";
-  for (const [a, label] of AGENTS) {
-    const aid = process.env["CARTESIA_AGENT_" + a.toUpperCase()] || ids[a];
-    if (!aid) continue;
+  // Tania, Nov 16: "my recorded calls are not being sent to WorkPilot consistently." Two causes:
+  // (1) only each caller's ENGLISH agent was read: George's / Monica's Spanish agents (george_es, monica_es) and Alek's
+  //     Spanish and Portuguese agents (alek_es, alek_pt) are separate Cartesia agents, so none of those calls ever came over;
+  // (2) only the first page (100 calls) was read, so on a busy day older calls in the 72-hour look-back were skipped.
+  // Now every language version of every caller is read, page by page.
+  // (3) Netlify stops a scheduled function after about 30 seconds, and the "already sent" list was only saved at the very end,
+  // so a busy run that timed out saved nothing and the next run hit the same wall. Now it stops itself at ~22 s and saves
+  // its progress every few calls; the next run (15 min later) picks up exactly where it stopped.
+  const t0 = Date.now(), outOfTime = () => Date.now() - t0 > 22000;
+  let unsaved = 0; const saveDone = async () => { if (unsaved) { await s.setJSON("wp-sync-done", [...done].slice(-5000)); unsaved = 0; } };
+  const runs = [];
+  for (const [a, label] of AGENTS) for (const sfx of ["", "_es", "_pt"]) {
+    const k = a + sfx, aid = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k];
+    if (aid && !runs.some((x) => x.aid === aid)) runs.push({ a, label: label + (sfx ? " (" + sfx.slice(1).toUpperCase() + ")" : ""), aid });
+  }
+  for (const { a, label, aid } of runs) {
+    if (outOfTime()) { lastErr = lastErr || "stopped early to save progress; the next run continues"; break; }
     let calls = [], ok = false;
     for (const from of [new Date(Date.now() - 3 * 3600e3).toISOString(), since]) { // newest calls first, so a busy day never cuts them off
-      const qs = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript", start_time_gte: from });
-      const r = await fetch(API + "/agents/calls?" + qs, { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": V_READ } });
-      if (!r.ok) { lastErr = "Cartesia " + r.status + " for " + label; continue; }
-      ok = true; const seen = new Set(calls.map((x) => x.id || x.agent_call_id));
-      for (const x of ((await r.json()).data || [])) if (!seen.has(x.id || x.agent_call_id)) calls.push(x);
+      let after = "", pages = 0;
+      do {
+        const qs = new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript", start_time_gte: from });
+        if (after) qs.set("starting_after", after);
+        const r = await fetch(API + "/agents/calls?" + qs, { headers: { "Authorization": "Bearer " + ck, "X-API-Key": ck, "Cartesia-Version": V_READ } });
+        if (!r.ok) { lastErr = "Cartesia " + r.status + " for " + label; break; }
+        ok = true; const seen = new Set(calls.map((x) => x.id || x.agent_call_id));
+        const d = await r.json(), page = d.data || [];
+        for (const x of page) if (!seen.has(x.id || x.agent_call_id)) calls.push(x);
+        after = d.has_more && page.length ? (page[page.length - 1].id || page[page.length - 1].agent_call_id || "") : "";
+      } while (after && ++pages < 5);
     }
     if (!ok) continue;
     for (const c of calls) {
+      if (outOfTime()) break;
       const id = c.id || c.agent_call_id;
       if (!id || done.has(id)) continue;
       if (!c.end_time && !/ended|completed|failed/i.test(String(c.status || ""))) continue; // still in progress
@@ -179,7 +200,7 @@ export async function runWorkpilotSync(hours) {
         if (!token) token = await idToken(key, s);
         const docId = "ai-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100);
         const w = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/leads?documentId=${docId}`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify({ fields }) });
-        if (w.ok || w.status === 409) { done.add(id); sent++; } else { errors++; lastErr = "WorkPilot database " + w.status + ": " + (await w.text().catch(() => "")).slice(0, 200); }
+        if (w.ok || w.status === 409) { done.add(id); sent++; if (++unsaved >= 5) await saveDone(); } else { errors++; lastErr = "WorkPilot database " + w.status + ": " + (await w.text().catch(() => "")).slice(0, 200); }
       } catch (e) { errors++; lastErr = String(e.message || e).slice(0, 200); }
     }
   }

@@ -2,6 +2,8 @@
 // ("call me back in 2 weeks", "end of the week"), with the subject and script she wrote.
 // Runs every 5 minutes on weekdays. Only calls 8 AM to 8 PM in the person's own time zone AND before 8 PM New York time (Tania, Nov 14; was 6 PM Nov 7),
 // never on the Do Not Call list, and only when VOICE_CALLING_ENABLED is on.
+import { callerAllowed } from "../lib/dialer-plan.mjs";
+import { startWatch } from "../lib/call-watch.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
@@ -30,7 +32,7 @@ export default async () => {
   const jenna = process.env.CARTESIA_AGENT_JENNA || ids.jenna;
   const fromJenna = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim() || from;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
-  for (const c of due.slice(0, 2)) {
+  for (const c of due.filter((c) => callerAllowed(c.agent === "jenna" ? "jenna" : "alek")).slice(0, 2)) { // Nov 16 plan: only Jenna/George call this week
     const to = e164(c.phone);
     if (!to) { c.status = "skipped"; c.note = "invalid number"; continue; }
     if (dnc.includes(to)) { c.status = "skipped"; c.note = "Do Not Call"; continue; }
@@ -49,7 +51,7 @@ export default async () => {
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
-      await budgetRecord(store, { id: c0.agent_call_id, agent: who, by: "callback-calendar", maxMin: 10 });
+      await budgetRecord(store, { id: c0.agent_call_id, agent: who, by: "callback-calendar", maxMin: 10 }); await startWatch(c0.agent_call_id, who);
       c.status = "called"; c.callId = c0.agent_call_id; c.calledAt = new Date().toISOString(); c.note = "";
     } catch (e) { c.status = "error"; c.note = String(e.message || e).slice(0, 160); }
   }

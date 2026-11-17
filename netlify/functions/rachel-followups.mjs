@@ -3,6 +3,8 @@
 // minute appointment with Tania. Tania queues each call in Voice Studio (Alek's calendar page → Rachel follow-ups).
 // Runs every 15 minutes on weekdays. Calls only 9 AM to 5 PM in the business's own time zone, never on the
 // Do Not Call list, never if they already booked, and only when VOICE_CALLING_ENABLED is on.
+import { callerAllowed } from "../lib/dialer-plan.mjs";
+import { startWatch } from "../lib/call-watch.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
@@ -23,6 +25,7 @@ export default async () => {
   const list = (await store.get("rachel-followups", { type: "json" })) || [];
   const due = list.filter((c) => c.status === "scheduled" && Date.parse(c.callAt) <= Date.now());
   if (!due.length) return new Response("nothing due");
+  if (!callerAllowed("rachelout")) return new Response("silent: this week only Jenna and George call (dialer plan)");
   const ids = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_RACHELOUT || ids.rachelout;
   const nums = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -53,7 +56,7 @@ export default async () => {
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
-      await budgetRecord(store, { id: c0.agent_call_id, agent: "rachelout", by: "rachel-followups", maxMin: 10 });
+      await budgetRecord(store, { id: c0.agent_call_id, agent: "rachelout", by: "rachel-followups", maxMin: 10 }); await startWatch(c0.agent_call_id, "rachelout");
       c.status = "called"; c.callId = c0.agent_call_id; c.calledAt = new Date().toISOString(); n++;
     } catch (e) { c.status = "error"; c.note = String(e.message || e).slice(0, 160); }
   }

@@ -6,6 +6,8 @@
 //   - it is business hours in the LEAD's own time zone (9 AM to 5 PM, stricter in some states)
 //   - the number is valid, not on the Do Not Call list, not already called today, and the daily cap per number isn't reached
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
+import { startWatch } from "../lib/call-watch.mjs";
+import { DIALER_PLAN, planActive, planCallerFor, planWindow, JENNA_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
@@ -98,13 +100,20 @@ export default async () => {
   if (ny.hour >= 18 || ny.day === "sat" || ny.day === "sun") return new Response("after 6 PM New York time");
   // Tania, Nov 7: campaigns call Monday to Thursday only (doctors leave early or are off on Fridays). Alek's callbacks still run lead by lead.
   if (ny.day === "fri") return new Response("no campaign calls on Fridays");
-  const s = q.settings || {};
+  const PLAN = planActive();               // Tania, Nov 16: this week only Jenna and George dial, in their own windows
+  const s0 = q.settings || {};
+  const s = PLAN ? Object.assign({}, s0, { tz: DIALER_PLAN.tz, agentHours: null }) : s0;
   const tz = s.tz || "America/New_York", now = clock(tz);
-  if (!(s.days || []).includes(now.day)) return new Response("not a dialing day");
-  // Up to two dialing windows a day (for example 8-9 AM and 1-2 PM).
-  const wins = [[toMins(s.start), toMins(s.end)], [toMins(s.start2), toMins(s.end2)]];
-  const win = wins.findIndex(([a, b]) => a >= 0 && b > a && now.mins >= a && now.mins < b);
-  if (win < 0) return new Response("outside window");
+  let win = 0;
+  if (PLAN) {
+    if (!Object.keys(DIALER_PLAN.agents).some((n) => planWindow(n, now.mins) >= 0)) return new Response("plan: nobody's calling window right now");
+  } else {
+    if (!(s.days || []).includes(now.day)) return new Response("not a dialing day");
+    // Up to two dialing windows a day (for example 8-9 AM and 1-2 PM).
+    const wins = [[toMins(s.start), toMins(s.end)], [toMins(s.start2), toMins(s.end2)]];
+    win = wins.findIndex(([a, b]) => a >= 0 && b > a && now.mins >= a && now.mins < b);
+    if (win < 0) return new Response("outside window");
+  }
 
   // Monthly budget: how many more 6-minute calls fit under the stop line (unfinished calls count at full length).
   const gate = await budgetGate(store, 1, 6);
@@ -139,24 +148,28 @@ export default async () => {
 
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
-    if (["alek", "jenna"].includes(String(lead.agent || "").toLowerCase())) continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
+    // This week's plan: only leads one of the plan's callers takes, and only in that caller's own window.
+    const planName = PLAN ? planCallerFor(lead) : "";
+    if (PLAN && (!planName || planWindow(planName, now.mins) < 0)) continue;
+    if (!PLAN && ["alek", "jenna"].includes(String(lead.agent || "").toLowerCase())) continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
     if (COMPLIANCE_CALLERS.has(String(lead.agent || s.agent || "").toLowerCase()) && looksTravel(lead)) {
       lead.status = "skipped"; lead.note = "travel agency: not a compliance lead"; continue; // Tania, Nov 12
     }
     if (lead.notBefore && Date.now() < lead.notBefore) continue; // Eva follow-up: waits 24 hours after her email
     if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
-    const ln = line(String(lead.agent || s.agent || "").toLowerCase()), wk = win + ":" + ln;
+    const ln = PLAN ? planName : line(String(lead.agent || s.agent || "").toLowerCase()), wk = (PLAN ? "plan" + planWindow(planName, now.mins) : win) + ":" + ln;
     if ((placedBy[ln] || 0) >= perRun) continue;
-    if (perWin && (winCounts[wk] || 0) >= perWin) continue; // this campaign is done for this window
+    const winCap = PLAN ? DIALER_PLAN.agents[planName].perWindow : perWin;
+    if (winCap && (winCounts[wk] || 0) >= winCap) continue; // this caller is done for this window
     if (Object.keys(placedBy).length && placed >= perRun * 4) break;
     const to = e164(lead.phone);
     if (!to) { lead.status = "skipped"; lead.note = "invalid number"; continue; }
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
-    const name = String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
+    const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
-    const slots = (s.agentHours || DEFAULT_AGENT_HOURS)[name];
+    const slots = PLAN ? null : (s.agentHours || DEFAULT_AGENT_HOURS)[name];
     if (slots && !slots.some(([a, b]) => now.mins >= toMins(a) && now.mins < toMins(b))) continue; // not this agent's hour; stays in the queue
     if (name === "alek" && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
     const floating = name === "alek" && lead.mode === "floating" && String(lead.task || "").length >= 10;
@@ -168,15 +181,15 @@ export default async () => {
         headers: { "Authorization": "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
-          outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: lead.campaign || "", by: "auto-dialer" },
-            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: floating ? lead.task : "none" } }],
+          outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: (PLAN ? DIALER_PLAN.agents[name].campaign : lead.campaign) || "", by: "auto-dialer" },
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "jenna" ? "Floating: follow Tania's task below" : name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: name === "jenna" ? JENNA_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : floating ? lead.task : "none" } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10
         })
       });
       const d = await r.json().catch(() => ({}));
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
-      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 });
+      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 }); await startWatch(c0.agent_call_id, name);
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
       if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++; placedBy[ln] = (placedBy[ln] || 0) + 1; winCounts[wk] = (winCounts[wk] || 0) + 1;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }
