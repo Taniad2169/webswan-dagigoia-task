@@ -132,6 +132,15 @@ export async function runWorkpilotSync(hours) {
     const k = a + sfx, aid = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k];
     if (aid && !runs.some((x) => x.aid === aid)) runs.push({ a, label: label + (sfx ? " (" + sfx.slice(1).toUpperCase() + ")" : ""), aid });
   }
+  // Tania, Nov 17: "not all my recordings are reaching WorkPilot." The loop below always walked the SAME fixed
+  // order (Rebecca, Monica, George, Alek, Jenna, Rachel), and with only ~22s per 15-minute run, a busy day's worth
+  // of Rebecca/Monica calls could eat the whole budget before the loop ever reached Jenna or Rachel -- every run,
+  // not just occasionally, since the order never changed. Rotate who goes first each run so no agent is perpetually
+  // starved; everyone still gets covered over a handful of runs either way.
+  const rotKey = "wp-sync-rotate";
+  let rot = Number((await s.get(rotKey, { type: "json" }).catch(() => null)) || 0);
+  if (runs.length) { rot = rot % runs.length; if (rot) runs.push(...runs.splice(0, rot)); }
+  await s.setJSON(rotKey, runs.length ? (rot + 1) % runs.length : 0).catch(() => {});
   for (const { a, label, aid } of runs) {
     if (outOfTime()) { lastErr = lastErr || "stopped early to save progress; the next run continues"; break; }
     let calls = [], ok = false;
