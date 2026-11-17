@@ -169,7 +169,9 @@ function doPost(e) {
       return out({ events: evs, tasks: tasks });
     }
     if (b.action === 'draft') {
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.to || ''))) return out({ error: 'bad recipient' });
+      // Nov 16: this email check used to lose its backslashes when copied into Google, so it refused every address
+      // containing the letter "s" ("bad recipient"). Fixed.
+      if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(String(b.to || ''))) return out({ error: 'bad recipient' });
       var opt = { htmlBody: String(b.html || '').slice(0, 30000), name: String(b.fromName || 'Tania | WebSwan').slice(0, 80) };
       if (b.pdfBase64) opt.attachments = [Utilities.newBlob(Utilities.base64Decode(b.pdfBase64), 'application/pdf', String(b.filename || 'Website-Audit-Report.pdf').slice(0, 120))];
       var d = GmailApp.createDraft(b.to, String(b.subject || '').slice(0, 200), String(b.text || '').slice(0, 30000), opt);
