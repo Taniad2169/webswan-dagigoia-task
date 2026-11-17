@@ -582,7 +582,8 @@ CURRENT DRAFT FROM WORKPILOT (edit it; don't start over unless it's empty):
 Subject: ${pkg.subject || ""}
 Body:
 ${pkg.body || ""}
-Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as separators, under 230 words, mention 2 or 3 findings in plain words, invite them to book a 10-minute review with Tania (https://calendar.app.google/V5vTgj1L22g4YvTq5) or reply to this email. No signature block (Gmail adds Tania's signature). Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
+Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as separators, under 230 words, mention 2 or 3 findings in plain words, invite them to book a 10-minute review with Tania (https://calendar.app.google/V5vTgj1L22g4YvTq5) or reply to this email. No signature block (Gmail adds Tania's signature). Reply with JSON only: {"subject": "...", "body": "plain text body", "appointment": null}
+APPOINTMENT (Tania, Nov 16): if TANIA'S NOTES say a call, review or appointment is set or wanted for a day and time (for example "call Wednesday at 10 am"), fill "appointment": {"start": "<ISO date-time with its UTC offset>", "minutes": 10, "title": "<short title>"} and confirm that day and time in the email instead of the booking link. Today is ${new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "long", year: "numeric", month: "long", day: "numeric" })} (Pacific); "Wednesday" means the next Wednesday. Use the time zone the notes give (ET/EST = -05:00, CT = -06:00, MT = -07:00, PT/PST = -08:00); if none is given, use the practice's own time zone for their state (${pkg.state || "unknown"}), or Pacific (-08:00) if the state is unknown. Leave "appointment": null when the notes give no day and time.`;
       const ans = await askAI(brainFor(s, "eva"), AGENTS.eva.system, [{ role: "user", content: ask }], 1600);
       const m = String(ans.text || "").match(/\{[\s\S]*\}/); let j = {}; try { j = JSON.parse(m ? m[0] : ans.text); } catch (e) {}
       const subject = String(j.subject || pkg.subject || "Your website audit report").slice(0, 200), body = String(j.body || pkg.body || "").slice(0, 30000).trim();
@@ -590,11 +591,26 @@ Rules: warm and professional, in Tania's voice, short paragraphs, no dashes as s
       const html = body.split(/\n{2,}/).map((p) => "<p>" + p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") + "</p>").join("");
       const r = await scriptCall({ action: "draft", to: pkg.to, subject, text: body, html, pdfBase64: pdf, filename: String(pkg.filename || "Website-Audit-Report.pdf").slice(0, 120), fromName: "Tania | WebSwan Digital Solutions" });
       if (!r || !r.ok) throw new Error((r && r.error) || "Gmail gave no confirmation");
-      Object.assign(it, { status: "done", subject, draftId: r.draftId || "", doneAt: new Date().toISOString(), error: "" });
+      // Tania, Nov 16: "she's supposed to send an email and be able to book it in my calendar as well" -- Eva's queue only
+      // ever drafted the email; it never booked. Now, when Tania's notes give a day and time, Eva books it on her Google
+      // Calendar (the practice gets the invitation) and says so below, with a clear error if Google refuses.
+      let booked = "";
+      const ap = j && j.appointment && typeof j.appointment === "object" ? j.appointment : null;
+      const apStart = ap ? new Date(String(ap.start || "")) : null;
+      if (ap && apStart && !isNaN(apStart.getTime()) && apStart.getTime() > Date.now()) {
+        try {
+          const mins = Math.max(10, Math.min(60, Number(ap.minutes) || 10));
+          const title = String(ap.title || ("10-min review · " + (pkg.practice || pkg.to))).slice(0, 120);
+          const cr = await scriptCall({ action: "create", title, start: apStart.toISOString(), end: new Date(apStart.getTime() + mins * 60000).toISOString(), description: "Booked by Eva from Tania's notes for " + (pkg.practice || "") + " (" + (pkg.contact || "") + ", " + (pkg.phone || "") + ").", email: pkg.to });
+          booked = cr && cr.ok && cr.id ? "\n📅 **Booked on your Google Calendar:** " + title + " — " + apStart.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " PT (" + apStart.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }) + " ET); invitation sent to " + pkg.to + "."
+            : "\n❌ **I could NOT book the calendar time** (" + ((cr && cr.error) || "Google Calendar gave no confirmation") + "). Please book it yourself; the email still says the day and time.";
+        } catch (e) { booked = "\n❌ **I could NOT book the calendar time** (" + String(e.message || e).slice(0, 140) + "). Please book it yourself."; }
+      }
+      Object.assign(it, { status: "done", subject, draftId: r.draftId || "", doneAt: new Date().toISOString(), error: "", booked: !!booked && booked.includes("📅") });
       const fu = (await st.get("followups", { type: "json" })) || [];
       fu.push({ to: pkg.to, practice: pkg.practice || "", phone: pkg.phone || "", state: pkg.state || "", at: new Date().toISOString(), done: false });
       await st.setJSON("followups", fu.slice(-1000));
-      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph" + (pdfText ? " (he read the attached audit PDF)." : ".") : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
+      await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph" + (pdfText ? " (he read the attached audit PDF)." : ".") : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}${booked}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
     } catch (e) {
       Object.assign(it, { status: "error", error: String(e.message || e).slice(0, 200), doneAt: new Date().toISOString() });
       await addMessages("eva", [{ role: "agent", kind: "error", text: "⚠️ I couldn't finish the light grey email for **" + (it.practice || it.id) + "**: " + it.error + ". It stays in my queue; press Ready for Eva again in WorkPilot once it's fixed." }]);
