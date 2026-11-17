@@ -11,7 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { startWatch } from "../lib/call-watch.mjs";
-import { runWorkpilotSync } from "./ai-calls-workpilot.mjs";
+import { runWorkpilotSync, recentProspectorLeads } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
 import crypto from "node:crypto";
@@ -454,6 +454,33 @@ export default async (req) => {
     log.push({ at: new Date().toISOString(), by: email, business, phone, state: st, agent, campaign: "WorkPilot push", updated: !!same });
     await store.setJSON("eva-handoffs", log.slice(-500));
     return reply(200, { ok: true, agent, updated: !!same, paused: !!q.paused }, origin);
+  }
+
+  // ---------- Tania, Nov 16: put the attorney leads she just sent from Prospector to WorkPilot into George's queue ----------
+  // { action: "wp_prospector_import", hours: 12, agent: "george", lang: "es", only: "attorney", dry: true|false }
+  if (b.action === "wp_prospector_import") {
+    const agent = AGENTS.includes(String(b.agent || "").toLowerCase()) ? String(b.agent).toLowerCase() : "george";
+    const lang = LANGS[b.lang] ? b.lang : "en";
+    let list; try { list = await recentProspectorLeads(Math.max(1, Math.min(72, Number(b.hours) || 12))); } catch (e) { return reply(502, { error: "Couldn't read WorkPilot: " + e.message }, origin); }
+    const ATTY = /attorney|lawyer|law firm|law office|legal|esq|abogad/i;
+    const pick = String(b.only || "") === "attorney" ? list.filter((l) => ATTY.test([l.industry, l.business, l.name, l.comment].join(" "))) : list;
+    const stateOf = (l) => { const m = String(l.comment || "").match(/,\s*([A-Z]{2})(?:,\s*\d{5}(?:-\d{4})?)?\s*$/m) || String(l.comment || "").match(/\b([A-Z]{2})\s+\d{5}\b/); return m ? m[1] : ""; };
+    const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
+    const have = new Set(q.leads.filter((l) => l.status === "queued").map((l) => e164(l.phone)));
+    const added = [], skipped = [];
+    for (const l of pick) {
+      const phone = e164(l.phone), st = stateOf(l);
+      if (!phone) { skipped.push(l.business + ": no valid phone"); continue; }
+      if (!/^[A-Z]{2}$/.test(st)) { skipped.push(l.business + ": no state found"); continue; }
+      if (have.has(phone)) { const ex = q.leads.find((x) => x.status === "queued" && e164(x.phone) === phone); if (ex && !b.dry) { ex.agent = agent; ex.lang = lang; ex.addedAt = Date.now(); } added.push(l.business + " (already queued, moved to " + agent + ")"); continue; }
+      const issues = (String(l.comment || "").match(/Website issues:[^\n]*/) || [""])[0];
+      const item = { id: "wp_" + String(l.id).replace(/[^\w-]/g, "").slice(0, 50), name: clean(l.name, 120), business: clean(l.business, 160), phone, state: st, agent, lang, mode: "selling", task: "",
+        findings: clean([l.website ? "Website: " + l.website : "", issues, l.social ? "Social media: " + l.social : ""].filter(Boolean).join(" · "), 900), campaign: "Website compliance · attorneys (from Prospector)", status: "queued", addedAt: Date.now() };
+      if (!b.dry) q.leads.push(item);
+      have.add(phone); added.push(l.business);
+    }
+    if (!b.dry) await store.setJSON("queue", q);
+    return reply(200, { ok: true, dry: !!b.dry, found: list.length, attorneys: pick.length, added: added.length, addedNames: added.slice(0, 60), skipped }, origin);
   }
 
   if (b.action === "queue_get" || b.action === "queue_set") {

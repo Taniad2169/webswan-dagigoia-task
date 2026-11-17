@@ -220,3 +220,20 @@ export async function runWorkpilotSync(hours) {
   await s.setJSON("wp-sync-status", st);
   return st;
 }
+
+// Tania, Nov 16: leads she sent from Lead Prospector to WorkPilot in the last `hours` hours, read straight from WorkPilot's
+// database (same sign-in the AI-call sync uses), so Voice Studio can queue them without her re-sending anything.
+export async function recentProspectorLeads(hours = 12) {
+  const key = String(process.env.WORKPILOT_FIREBASE_KEY || "").trim().replace(/^["']|["']$/g, "");
+  if (!key) throw new Error("WORKPILOT_FIREBASE_KEY is not set");
+  const s = getStore({ name: "voice-studio", consistency: "strong" });
+  const token = await idToken(key, s);
+  const q = { structuredQuery: { from: [{ collectionId: "leads" }], where: { fieldFilter: { field: { fieldPath: "source" }, op: "IN", value: { arrayValue: { values: [{ stringValue: "prospector" }, { stringValue: "lead-prospector" }] } } } }, limit: 1000 } };
+  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify(q) });
+  const d = await r.json().catch(() => []);
+  if (!r.ok || !Array.isArray(d)) throw new Error("WorkPilot database " + r.status);
+  const since = Date.now() - hours * 3600e3;
+  return d.filter((x) => x.document).map((x) => { const f = x.document.fields || {}; const g = (k) => (f[k] && (f[k].stringValue || f[k].integerValue)) || "";
+    return { id: x.document.name.split("/").pop(), name: g("decisionMakerName") || g("name"), business: g("companyName") || g("name"), phone: g("phone"), email: g("email"), website: g("website"), industry: g("industry"), comment: g("comment"), social: g("social"), timestamp: g("timestamp") || x.document.createTime }; })
+    .filter((l) => Date.parse(l.timestamp || 0) >= since);
+}
