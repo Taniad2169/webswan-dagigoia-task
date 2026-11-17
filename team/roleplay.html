@@ -119,7 +119,7 @@ const ROLES = {
   caller: ["a doctor calling back about the compliance report", "an attorney calling about advertising", "an office manager with questions"]
 };
 const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen: 0, log: [], audio: null, speaking: "", doneAt: 0, buf: "", timer: null, rec: null, cobyTurns: 0 };
-const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k }).n;
+const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k === "sebastien" ? "Sebastien" : k }).n;
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
 function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).checked = v == null ? d : v === "on"; } catch (e) { $(id).checked = d; } $(id).onchange = () => { try { localStorage.setItem(key, $(id).checked ? "on" : "off"); } catch (e) {} }; }
 pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", true); // Tania, Nov 6: role plays at no cost by default (browser voices); uncheck to hear the real Cartesia voices // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
@@ -400,7 +400,7 @@ $("cobyDone").onclick = () => { S.coach = false; $("cobyBox").style.display = "n
 /* ---------- 🙋 Step in: Tania stops everyone, gives her opinion to Coby or the caller, they agree, the role play goes on ---------- */
 function huddleTargets() {
   const a = S.agent ? [[S.agent, first(S.agent)]] : [];
-  return [...a, ["sdr", "Coby"], ...(a.length ? [["both", "Both"]] : [])];
+  return [...a, ["sdr", "Coby"], ["sebastien", "Sebastien"], ...(a.length ? [["both", "Both"]] : [])];
 }
 function drawHuddle() { $("huddleWho").innerHTML = huddleTargets().map(([k, n]) => `<button class="btn${S.huddle === k ? " pri" : ""}" data-h="${k}" aria-pressed="${S.huddle === k}" style="padding:7px 12px">${esc(n)}</button>`).join(" "); }
 function stepIn() {
@@ -423,7 +423,7 @@ async function huddleTurn(text) {
       say("💭 " + first(k) + " is thinking…");
       const call = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-5000);
       const talk = S.log.filter((x) => /→/.test(x.who)).slice(-8).map((x) => x.who + ": " + x.text).join("\n").slice(-3000);
-      const role = k === "sdr" ? "You are Coby, her SDR and call coach" + (mode() === "coby" ? ", and you were playing the person who answered the phone" : "") : "You are " + first(k) + ", the caller being practiced";
+      const role = k === "sdr" ? "You are Coby, her SDR and call coach" + (mode() === "coby" ? ", and you were playing the person who answered the phone" : "") : k === "sebastien" ? "You are Sebastien, her business and performance coach, watching this practice call for the caller's personality, composure and confidence" : "You are " + first(k) + ", the caller being practiced";
       const ans = await ask_(k, `TIME OUT (not role play: step out of character and talk to Tania directly). ${role}. Tania stopped the practice call to give her opinion. Answer her in 1 to 3 short spoken sentences: say plainly whether you agree and why, and give the exact words you would say instead. If you disagree, say so respectfully with your reason. If something is unclear, ask ONE question. The goal is to reach a clear conclusion with her.\n\nTHE PRACTICE CALL SO FAR (data):\n${call || "(nothing said yet)"}\n\nTHE TIME-OUT CONVERSATION SO FAR (data):\n${talk}`);
       if (!S.huddle) break;
       addLog(first(k) + " → Tania", ans, k === "sdr" ? "coby" : "ag"); S.busy = false;
