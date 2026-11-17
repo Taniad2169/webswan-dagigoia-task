@@ -11,7 +11,8 @@ export const DIALER_PLAN = {
     jenna: { windows: [["07:00", "08:00"], ["12:30", "13:45"]], perWindow: 25, lang: "en", takes: ["monica"], campaign: "Website compliance · doctors (English)" },
     // George: website compliance, ATTORNEYS. Tania, Nov 16 (later): 12 in the morning window, 13 in the afternoon, and he
     // calls his attorney leads in whatever language they're marked (the 27 she sent from Prospector come in as English).
-    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: [12, 13], lang: "any", takes: ["george"], campaign: "Website compliance · attorneys",
+    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: [12, 13], lang: "any", forceLang: "es", // Tania: George opens in Spanish this week; switches to English only if they answer in English
+      takes: ["george"], campaign: "Website compliance · attorneys",
       addedSince: "2026-11-17T00:00:00Z" } // only the attorney leads Tania sends tonight (Nov 16, after 4 PM PT), not his older queue
   }
 };
