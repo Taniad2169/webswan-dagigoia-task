@@ -7,6 +7,7 @@
 //   - the number is valid, not on the Do Not Call list, not already called today, and the daily cap per number isn't reached
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
+import { getLeadMemory, NO_MEMORY } from "../lib/lead-memory.mjs";
 import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, JENNA_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
@@ -166,6 +167,8 @@ export default async () => {
     if (!to) { lead.status = "skipped"; lead.note = "invalid number"; continue; }
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
+    const memo = await getLeadMemory(to); // Nov 17: what earlier calls to this number taught us
+    if (memo && memo.dnc) { lead.status = "skipped"; lead.note = "Asked not to be called (lead memory)"; continue; }
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
     const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = (PLAN && DIALER_PLAN.agents[planName].forceLang) || (["es", "pt"].includes(lead.lang) ? lead.lang : "en"), aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
@@ -182,14 +185,14 @@ export default async () => {
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
           outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: (PLAN ? DIALER_PLAN.agents[name].campaign : lead.campaign) || "", by: "auto-dialer" },
-            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "jenna" ? "Floating: follow Tania's task below" : name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: name === "jenna" ? JENNA_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : floating ? lead.task : "none" } }],
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_memory: (memo && memo.brief) ? String(memo.brief).slice(0, 1200) : NO_MEMORY, lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "jenna" ? "Floating: follow Tania's task below" : name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: name === "jenna" ? JENNA_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : floating ? lead.task : "none" } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10
         })
       });
       const d = await r.json().catch(() => ({}));
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
-      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 }); await startWatch(c0.agent_call_id, name);
+      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 }); await startWatch(c0.agent_call_id, name, to);
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
       if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++; placedBy[ln] = (placedBy[ln] || 0) + 1; winCounts[wk] = (winCounts[wk] || 0) + 1;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }

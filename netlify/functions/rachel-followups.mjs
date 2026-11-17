@@ -5,6 +5,7 @@
 // Do Not Call list, never if they already booked, and only when VOICE_CALLING_ENABLED is on.
 import { callerAllowed } from "../lib/dialer-plan.mjs";
 import { startWatch } from "../lib/call-watch.mjs";
+import { leadMemoryText } from "../lib/lead-memory.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
@@ -51,12 +52,12 @@ export default async () => {
       const r = await fetch(API + "/agents/calls", { method: "POST", headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
         body: JSON.stringify({ agent_id: agent, from_number_id: nums[Math.floor(Math.random() * nums.length)],
           outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: "Rachel follow-up (" + kind + ")", by: "rachel-followups" },
-            dynamic_variables: { lead_id: c.id, lead_name: c.name || "", business: c.business || "", lead_state: c.state || "", findings: [c.website && "Website: " + c.website, c.note].filter(Boolean).join(". ") || "none listed",
+            dynamic_variables: { lead_id: c.id, lead_name: c.name || "", business: c.business || "", lead_state: c.state || "", findings: [c.website && "Website: " + c.website, c.note].filter(Boolean).join(". ") || "none listed", lead_memory: await leadMemoryText(to),
               lead_language: "English", call_mode: kind === "advertising" ? "follow-up on the advertising information Tania emailed" : "follow-up on the website compliance report Tania emailed", task: kind } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
-      await budgetRecord(store, { id: c0.agent_call_id, agent: "rachelout", by: "rachel-followups", maxMin: 10 }); await startWatch(c0.agent_call_id, "rachelout");
+      await budgetRecord(store, { id: c0.agent_call_id, agent: "rachelout", by: "rachel-followups", maxMin: 10 }); await startWatch(c0.agent_call_id, "rachelout", to);
       c.status = "called"; c.callId = c0.agent_call_id; c.calledAt = new Date().toISOString(); n++;
     } catch (e) { c.status = "error"; c.note = String(e.message || e).slice(0, 160); }
   }

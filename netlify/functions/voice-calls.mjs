@@ -11,6 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { startWatch } from "../lib/call-watch.mjs";
+import { leadMemoryText } from "../lib/lead-memory.mjs";
 import { runWorkpilotSync, recentProspectorLeads } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -961,7 +962,7 @@ export default async (req) => {
     try {
       data = await cartesia("POST", "/agents/calls", V_CREATE, {
         agent_id: aid, from_number_id: pick.id,
-        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_language: LANGS[lang], call_mode: TASKED(name) ? MODES[mode] : "standard", task: TASKED(name) && mode === "floating" ? task : "none" } }],
+        outbound_calls: [{ to_number: to, metadata, dynamic_variables: { lead_id: metadata.leadId, lead_name: metadata.lead, business: metadata.business, lead_state: clean(b.state, 2).toUpperCase(), findings: clean(b.findings, 900) || "none listed", lead_memory: await leadMemoryText(to), lead_language: LANGS[lang], call_mode: TASKED(name) ? MODES[mode] : "standard", task: TASKED(name) && mode === "floating" ? task : "none" } }],
         ringing_timeout_seconds: 30, max_call_duration_minutes: 10
       });
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
@@ -970,7 +971,7 @@ export default async (req) => {
     counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
     await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
     await budgetRecord(store, { id: r0.agent_call_id, agent: name, by: email, maxMin: 6 });
-    await startWatch(r0.agent_call_id, name);
+    await startWatch(r0.agent_call_id, name, to);
     return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name, lang }, origin);
   }
 
