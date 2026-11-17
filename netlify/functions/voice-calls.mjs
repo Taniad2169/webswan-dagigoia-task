@@ -119,7 +119,7 @@ const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toU
 // Languages: an agent's English version is its base name; other languages are separate Cartesia agents
 // saved as name_es (Latin American Spanish) and name_pt (Brazilian Portuguese).
 const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
-const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"] };
+const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"], jenna: ["en", "es"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
 // The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
 const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
@@ -640,6 +640,7 @@ export default async (req) => {
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
           ...(a.split("_")[0] !== "alek" && !a.includes("_") ? { language: AGENT_LANGS(a.split("_")[0]) } : {}), // Nov 16: English + Latin Spanish for everyone
+          ...(a.endsWith("_es") ? { language: { primary: "es-MX", additional: ["en"] } } : {}), // Spanish twin: native Latin Spanish voice, English ready
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
           system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: { wait_timeout_secs: 30 }, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });
@@ -1200,12 +1201,15 @@ export default async (req) => {
     catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
-  // ---------- a few English voices to choose from (for a new agent) ----------
+  // ---------- voices to choose from (for a new agent); lang "es" lists native Spanish voices ----------
   if (b.action === "voices") {
     try {
-      const d = await cartesia("GET", "/voices?limit=100", V_READ);
-      const list = (Array.isArray(d) ? d : d.data || []).filter((v) => !v.language || v.language === "en")
-        .map((v) => ({ id: v.id, name: v.name || "", gender: v.gender || "", description: clean(v.description, 140) }));
+      const vl = b.lang === "es" || b.lang === "pt" ? b.lang : "en";
+      let raw = [];
+      for (const q of (vl === "en" ? ["/voices?limit=100"] : ["/voices?limit=100&language=" + vl, "/voices?limit=100"])) {
+        try { const d = await cartesia("GET", q, V_READ); raw = (Array.isArray(d) ? d : d.data || []).filter((v) => vl === "en" ? (!v.language || v.language === "en") : String(v.language || "").startsWith(vl)); if (raw.length) break; } catch (e) {}
+      }
+      const list = raw.map((v) => ({ id: v.id, name: v.name || "", gender: v.gender || "", language: v.language || "", description: clean(v.description, 140) }));
       const want = String(b.gender || "").toLowerCase(), g = /^f/.test(want) ? /^(fem|female|woman)/ : /^m/.test(want) ? /^(masc|male|man)/ : null;
       return reply(200, { voices: (g ? list.filter((v) => g.test(String(v.gender).toLowerCase())) : list).slice(0, 40) }, origin);
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
