@@ -149,6 +149,7 @@ export async function runWorkpilotSync(hours) {
       } while (after && ++pages < 5);
     }
     if (!ok) continue;
+    calls.sort((x, y) => Date.parse(x.start_time || 0) - Date.parse(y.start_time || 0)); // oldest first, so the newest outcome ends up on the row
     for (const c of calls) {
       if (outOfTime()) break;
       const id = c.id || c.agent_call_id;
@@ -198,8 +199,18 @@ export async function runWorkpilotSync(hours) {
       for (const [k, v] of Object.entries(data)) if (v !== "" && v != null) fields[k] = { stringValue: String(v).slice(0, 3000) };
       try {
         if (!token) token = await idToken(key, s);
-        const docId = "ai-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100);
-        const w = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/leads?documentId=${docId}`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify({ fields }) });
+        // Tania, Nov 16: one WorkPilot row per phone number. Each call used to create its own row ("ai-<call id>"), so a
+        // practice called twice showed up 2-3 times in different colors. Now every call to the same number updates ONE row
+        // ("ai-p<10 digits>"): the newest outcome and color win, and earlier calls stay underneath in the notes.
+        const d10 = digits(other);
+        const docId = d10.length === 10 ? "ai-p" + d10 : "ai-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100);
+        const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/leads/${docId}`;
+        let oldComment = "";
+        try { const g = await fetch(base, { headers: { authorization: "Bearer " + token } }); if (g.ok) { const doc = await g.json(); oldComment = ((doc.fields || {}).comment || {}).stringValue || ""; } } catch (e) {}
+        if (oldComment && !oldComment.includes("Call ID " + id)) fields.comment = { stringValue: (comment + "\n\n—— Earlier call(s) to this number ——\n" + oldComment).slice(0, 3000) };
+        else if (oldComment) { done.add(id); continue; } // this call is already on the row
+        const mask = Object.keys(fields).map((k) => "updateMask.fieldPaths=" + encodeURIComponent(k)).join("&");
+        const w = await fetch(base + "?" + mask, { method: "PATCH", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify({ fields }) });
         if (w.ok || w.status === 409) { done.add(id); sent++; if (++unsaved >= 5) await saveDone(); } else { errors++; lastErr = "WorkPilot database " + w.status + ": " + (await w.text().catch(() => "")).slice(0, 200); }
       } catch (e) { errors++; lastErr = String(e.message || e).slice(0, 200); }
     }
