@@ -127,13 +127,17 @@ const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "
 // and back to English + Mexican Spanish for the next English or Spanish call.
 // Tania, Nov 11: Alek speaks ONE language per call. Mixing English and Spanish in the same call gets him hung up on,
 // so his agent is set to a single primary language with no extra languages before every call.
-const ALEK_LANGS = { en: { primary: "en", additional: [] }, es: { primary: "es-MX", additional: [] }, pt: { primary: "pt-BR", additional: [] } };
+// Tania, Nov 16 (later): every agent speaks English AND Latin American Spanish and switches with ease when the person
+// needs the other language. Alek starts in the lead's language with the other one ready; Portuguese stays single-language.
+const ALEK_LANGS = { en: { primary: "en", additional: ["es-MX"] }, es: { primary: "es-MX", additional: ["en"] }, pt: { primary: "pt-BR", additional: [] } };
+// Starting language per agent (all bilingual): George opens in Spanish, everyone else in English.
+const AGENT_LANGS = (n) => n === "george" ? { primary: "es-MX", additional: ["en"] } : { primary: "en", additional: ["es-MX"] };
 async function alekLanguage(id, lang, store) {
   const want = ALEK_LANGS[lang] || ALEK_LANGS.en;
   const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
   const cur = ((d.config || (d.agent && d.agent.config)) || {}).language || {};
   const extras = Array.isArray(cur.additional) ? cur.additional.length : 0;
-  if (String(cur.primary || "") === want.primary && !extras) return;
+  if (String(cur.primary || "") === want.primary && extras === want.additional.length) return;
   await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { language: want } });
 }
 const MODES = { selling: "Selling: phone application (PWA) and digital e-card", floating: "Floating: follow Tania's task below" };
@@ -635,6 +639,7 @@ export default async (req) => {
         try { const cur = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); ins = withPhoneRules(((cur.config || (cur.agent && cur.agent.config)) || {}).instructions || "", a.split("_")[0]); } catch (e) {}
         await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: {
           ...(ins.length > 200 && ins.length <= 30000 ? { instructions: ins } : {}),
+          ...(a.split("_")[0] !== "alek" && !a.includes("_") ? { language: AGENT_LANGS(a.split("_")[0]) } : {}), // Nov 16: English + Latin Spanish for everyone
           tools: Object.entries(saved).filter(([k, x]) => x && TOOLSET(a.split("_")[0]).includes(k)).map(([, x]) => ({ id: x })),
           system_tools: Object.assign({ end_call: {}, send_dtmf: { pre_tool_speech: "off" }, skip_turn: { wait_timeout_secs: 30 }, voicemail_detection: { pre_tool_speech: "off" } }, rachelTransfers(a.split("_")[0]) ? { transfer_to_number: { pre_tool_speech: "force", transfers: rachelTransfers(a.split("_")[0]) } } : {})
         } });

@@ -64,13 +64,13 @@ async function cart(method, path, body) {
 // Alek's one agent switches to Brazilian Portuguese for pt leads and back for English/Spanish leads.
 // Tania, Nov 11: Alek speaks ONE language per call. Mixing English and Spanish in the same call gets him hung up on,
 // so his agent is set to a single primary language with no extra languages before every call.
-const ALEK_LANGS = { en: { primary: "en", additional: [] }, es: { primary: "es-MX", additional: [] }, pt: { primary: "pt-BR", additional: [] } };
+const ALEK_LANGS = { en: { primary: "en", additional: ["es-MX"] }, es: { primary: "es-MX", additional: ["en"] }, pt: { primary: "pt-BR", additional: [] } }; // Nov 16: bilingual EN + Latin Spanish
 async function alekLanguage(id, lang, store) {
   const want = ALEK_LANGS[lang] || ALEK_LANGS.en;
   const d = await cart("GET", "/v1/agents/" + encodeURIComponent(id));
   const cur = ((d.config || (d.agent && d.agent.config)) || {}).language || {};
   const extras = Array.isArray(cur.additional) ? cur.additional.length : 0;
-  if (String(cur.primary || "") === want.primary && !extras) return;
+  if (String(cur.primary || "") === want.primary && extras === want.additional.length) return;
   await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { language: want } });
 }
 const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toUpperCase()] || EXTRA_IDS[String(name || "").toLowerCase()] || "";
