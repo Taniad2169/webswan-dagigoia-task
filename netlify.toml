@@ -1,8 +1,10 @@
 [build]
   publish = "."
   functions = "netlify/functions"
-  # Skip Netlify builds (and credits) when only the GitHub Pages screens change.
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)voice-studio' ':(exclude)team'"
+  # Nov 17: only rebuild on Netlify when something Netlify actually serves changed (functions, config, packages,
+  # voice-studio, team). Edits to the GitHub Pages screens (index.html, studio, budget, ...) now skip the build and save credits.
+  # (The old rule was inverted: it skipped only when voice-studio/team changed, so almost every edit cost a build.)
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- netlify netlify.toml package.json package-lock.json voice-studio team"
 
 [build.environment]
   # WORKPILOT_FIREBASE_KEY is a Firebase *web* key: it is public by design (it already sits in the WorkPilot and
