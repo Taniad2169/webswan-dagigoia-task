@@ -9,8 +9,10 @@ export const DIALER_PLAN = {
   agents: {
     // Jenna: website compliance, DOCTORS, English. She takes the queued English doctor-compliance leads (Monica's line).
     jenna: { windows: [["07:00", "08:00"], ["12:30", "13:45"]], perWindow: 25, lang: "en", takes: ["monica"], campaign: "Website compliance · doctors (English)" },
-    // George: website compliance, ATTORNEYS, Spanish.
-    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: 25, lang: "es", takes: ["george"], campaign: "Website compliance · attorneys (Spanish)" }
+    // George: website compliance, ATTORNEYS. Tania, Nov 16 (later): 12 in the morning window, 13 in the afternoon, and he
+    // calls his attorney leads in whatever language they're marked (the 27 she sent from Prospector come in as English).
+    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: [12, 13], lang: "any", takes: ["george"], campaign: "Website compliance · attorneys",
+      addedSince: "2026-11-17T00:00:00Z" } // only the attorney leads Tania sends tonight (Nov 16, after 4 PM PT), not his older queue
   }
 };
 const ymd = (tz) => new Date().toLocaleDateString("en-CA", { timeZone: tz });
@@ -20,9 +22,11 @@ export function callerAllowed(agent) { return !planActive() || !!DIALER_PLAN.age
 // Which plan caller (if any) dials this queued lead.
 export function planCallerFor(lead) {
   const owner = String(lead.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en";
-  for (const [name, a] of Object.entries(DIALER_PLAN.agents)) if (a.takes.includes(owner) && a.lang === lang) return name;
+  for (const [name, a] of Object.entries(DIALER_PLAN.agents)) if (a.takes.includes(owner) && (a.lang === "any" || a.lang === lang) && (!a.addedSince || Number(lead.addedAt || 0) >= Date.parse(a.addedSince))) return name;
   return "";
 }
+// How many calls this agent places in window number i (perWindow can be one number or one per window).
+export function planCap(name, i) { const a = DIALER_PLAN.agents[name]; if (!a) return 0; return Array.isArray(a.perWindow) ? (a.perWindow[i] || 0) : a.perWindow; }
 // Index of the plan window this agent is in right now (-1 = not their time).
 export function planWindow(name, mins) {
   const a = DIALER_PLAN.agents[name]; if (!a) return -1;
