@@ -1,4 +1,6 @@
 // Jennifer Reid (WSMN Central): patient/client requests from Rachel, and placing Jennifer's booking calls.
+import { callerAllowed } from "./dialer-plan.mjs";
+import { startWatch } from "./call-watch.mjs";
 import { getStore } from "@netlify/blobs";
 import { STATE_TZ, sanitizeCal, callScript } from "./cal.mjs";
 import { budgetGate, budgetRecord } from "./budget.mjs";
@@ -19,6 +21,7 @@ export function openNow(state) {
   return day !== "Sun" && hour >= 9 && hour < 19;
 }
 export async function placeCentralCall(s, req) {
+  if (!callerAllowed("jennifer")) return { ok: false, why: "Jennifer is silent this week (only Jenna and George call); email the practice instead" };
   if (!liveOn() || !process.env.CARTESIA_API_KEY) return { ok: false, why: "calling off" };
   const ids = (await s.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_JENNIFER || ids.jennifer || "";
@@ -41,7 +44,7 @@ export async function placeCentralCall(s, req) {
   const d = await r.json().catch(() => ({}));
   const c0 = (d.calls || [])[0] || {};
   if (!r.ok || !c0.agent_call_id) return { ok: false, why: String(d.message || d.error || (c0.error && (c0.error.message || c0.error)) || "HTTP " + r.status).slice(0, 160) };
-  await budgetRecord(s, { id: c0.agent_call_id, agent: "jennifer", by: "rachel-central", maxMin: 6 });
+  await budgetRecord(s, { id: c0.agent_call_id, agent: "jennifer", by: "rachel-central", maxMin: 6 }); await startWatch(c0.agent_call_id, "jennifer");
   return { ok: true, callId: c0.agent_call_id };
 }
 
