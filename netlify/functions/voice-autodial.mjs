@@ -7,7 +7,7 @@
 //   - the number is valid, not on the Do Not Call list, not already called today, and the daily cap per number isn't reached
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
-import { DIALER_PLAN, planActive, planCallerFor, planWindow, JENNA_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
+import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, JENNA_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
@@ -159,7 +159,7 @@ export default async () => {
     if (allowance <= 0) { q.paused = true; q.pauseReason = "budget"; break; }
     const ln = PLAN ? planName : line(String(lead.agent || s.agent || "").toLowerCase()), wk = (PLAN ? "plan" + planWindow(planName, now.mins) : win) + ":" + ln;
     if ((placedBy[ln] || 0) >= perRun) continue;
-    const winCap = PLAN ? DIALER_PLAN.agents[planName].perWindow : perWin;
+    const winCap = PLAN ? planCap(planName, planWindow(planName, now.mins)) : perWin;
     if (winCap && (winCounts[wk] || 0) >= winCap) continue; // this caller is done for this window
     if (Object.keys(placedBy).length && placed >= perRun * 4) break;
     const to = e164(lead.phone);
