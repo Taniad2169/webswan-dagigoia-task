@@ -25,12 +25,12 @@ export function humanAnswered(transcript) {
 export const watchToken = (callId) => crypto.createHmac("sha256", String(process.env.CARTESIA_API_KEY || "none")).update("watch:" + callId).digest("hex").slice(0, 32);
 
 // Fire-and-forget: start the background watcher for one call. Never throws.
-export async function startWatch(callId, agent) {
+export async function startWatch(callId, agent, phone) {
   if (!callId) return;
   const base = process.env.URL || process.env.DEPLOY_PRIME_URL || "";
   if (!base) return;
   try {
     await fetch(base + "/.netlify/functions/voice-watch-background", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ callId, agent: agent || "", placedAt: Date.now(), token: watchToken(callId) }) });
+      body: JSON.stringify({ callId, agent: agent || "", phone: phone || "", placedAt: Date.now(), token: watchToken(callId) }) });
   } catch (e) { /* the agent's own 2-minute rule and the 120 s silence limit still apply */ }
 }
