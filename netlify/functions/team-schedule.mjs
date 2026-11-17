@@ -7,6 +7,8 @@
 import { AGENTS, addMessages, teamStore } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
 import { sweepExpiredScripts } from "./voice-calls.mjs";
+import { ptClock, toMins } from "../lib/team-routines.mjs";
+import { DIALER_PLAN, planActive } from "../lib/dialer-plan.mjs";
 
 const first = (k) => String((AGENTS[k] || {}).name || k).split(" ")[0];
 
@@ -30,10 +32,25 @@ export default async () => {
       await st.setJSON("tania-reminders", rem.slice(-300));
     }
   } catch (e) {}
+  // Tania, Nov 17: Sebastien reviews Jenna every Friday afternoon (she never dials Fridays), and before each of Jenna's calling
+  // windows her team preps her (Jonathan only joins when the leads are compliance calls). Each runs once, in the background.
+  let routines = "";
+  try {
+    const c = ptClock(), done = (await st.get("routines-done", { type: "json" })) || [];
+    const mark = async (k) => { done.push(k); await st.setJSON("routines-done", done.slice(-80)); };
+    if (c.day === "fri" && c.mins >= 15 * 60 && c.mins < 19 * 60 && !done.includes("jr-" + c.date)) { await mark("jr-" + c.date); await startJobs(["jenna_review"]); routines += " review started;"; }
+    if (planActive() && ["mon", "tue", "wed", "thu"].includes(c.day)) {
+      const wins = ((DIALER_PLAN.agents || {}).jenna || {}).windows || [];
+      for (let i = 0; i < wins.length; i++) {
+        const t = toMins(wins[i][0]), key = "hd-" + c.date + "-" + i;
+        if (t >= 0 && c.mins >= t - 45 && c.mins < t && !done.includes(key)) { await mark(key); await startJobs(["huddle:" + c.date + "|" + i]); routines += " huddle " + i + " started;"; }
+      }
+    }
+  } catch (e) { routines = " routines error: " + String(e.message || e).slice(0, 80); }
   const list = (await st.get("team-assignments", { type: "json" })) || [];
   const now = Date.now();
   const due = list.filter((a) => a.status === "pending" && Date.parse(a.runAt) <= now);
-  if (!due.length) return new Response("nothing due; reminders sent: " + reminded + "; scripts cleared: " + scriptSweep.cleared);
+  if (!due.length) return new Response("nothing due; reminders sent: " + reminded + "; scripts cleared: " + scriptSweep.cleared + ";" + routines);
   for (const a of due) {
     a.status = "dispatched"; a.dispatchedAt = new Date().toISOString();
     const mates = (a.agents || []).filter((k) => AGENTS[k]);

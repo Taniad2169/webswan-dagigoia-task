@@ -5,7 +5,7 @@
 //    Drafts are never sent: Tania reviews and sends. Trash keeps emails 30 days; nothing is deleted forever.
 //  - Tania, Nov 14: ANY agent can schedule a task (its own, or shared with a teammate like Tatiana + Jenna) to start
 //    automatically at a day/hour she gives, even if nobody is there: ((SCHEDULE: ...)). See scheduleAssignment() below.
-import { AGENTS, addMessages, teamStore } from "./team.mjs";
+import { AGENTS, addMessages, teamStore, history } from "./team.mjs";
 
 // Tania, Nov 13: never touch starred/important mail, clients, leads, banks, invoices or appointments.
 const SAFE = " -is:starred -is:important -subject:(invoice OR receipt OR payment OR statement OR appointment OR contract OR audit OR proposal) -from:(bank OR chase OR wellsfargo OR stripe OR paypal OR netlify OR google.com)";
@@ -63,7 +63,11 @@ export async function runActions(agent, text, ctx) {
         if (!to || to === agent) { done.push("⚠️ I couldn't find that teammate, so nothing was sent."); continue; }
         if (!msg) { done.push("⚠️ My message to " + first(to) + " was empty, so nothing was sent."); continue; }
         if (hop >= MAX_HOPS) { done.push("⏸ " + first(to) + " and I have gone back and forth enough for now; Tania, please step in."); continue; }
-        await addMessages(to, [{ role: "user", kind: "agentmsg", from: agent, hop: hop + 1, text: "📨 From " + first(agent) + " (teammate):\n\n" + msg }]);
+        // Tania, Nov 17: files travel between teammates too. When the note talks about a file/report/picture, the latest file on
+        // the sender's desk goes along with it (the same way a file goes when Tania hands one over).
+        let pass = null;
+        if (/\b(file|attach\w*|pdf|report|document|doc|picture|image|photo|screenshot|spreadsheet|sheet)\b/i.test(msg)) { try { pass = ((await history(agent)).slice(-10).reverse().find((m) => m.file && m.file.id) || {}).file || null; } catch (e) { pass = null; } }
+        await addMessages(to, [{ role: "user", kind: "agentmsg", from: agent, hop: hop + 1, ...(pass ? { file: pass } : {}), text: "📨 From " + first(agent) + " (teammate):\n\n" + msg + (pass ? "\n📎 " + pass.name : "") }]);
         let started = true; try { await startJobs(["relay:" + to + "|" + agent + "|" + (hop + 1)]); } catch (e) { started = false; }
         done.push(started ? "📨 Asked " + first(to) + ". Their answer will appear here in a minute or two." : "📨 Left the message in " + first(to) + "'s chat, but they couldn't be woken up automatically (" + "background worker unavailable" + ").");
       } else if (a.kind === "schedule") {

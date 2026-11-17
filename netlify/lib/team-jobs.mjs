@@ -6,6 +6,7 @@ import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch
 import { callScript, sanitizeCal } from "./cal.mjs";
 import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
+import { preCallHuddle, jennaReview } from "./team-routines.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -640,6 +641,10 @@ async function agentReply(agent, hop = 0) {
     try { extra += "\n\nLATEST EMAILS (data):\n" + JSON.stringify((await scriptCall({ action: "inbox", query: "in:inbox newer_than:2d", max: 40 })).emails || []).slice(0, 14000); } catch (e) { extra += "\n\n(Gmail: " + e.message + ")"; }
     try { extra += "\n\nGOOGLE CALENDAR AND TASKS, next 7 days (data, UTC times; say them in Pacific time):\n" + JSON.stringify(await scriptCall({ action: "agenda", from: now.toISOString(), to: new Date(now.getTime() + 7 * 864e5).toISOString() })).slice(0, 9000); } catch (e) { extra += "\n\n(Calendar: " + e.message + ")"; }
   }
+  // Tania, Nov 17: Sebastien's background answers (teammate messages, pre-call huddles) also see all of WorkPilot's leads and her notes.
+  if (agent === "sebastien" && /lead|huddle|prospect|workpilot|approach|jenna/i.test(String(last.text || ""))) {
+    try { const { leadsBrief } = await import("./call-data.mjs"); const lb = await leadsBrief(14000); if (lb) extra += "\n\n" + lb; } catch (e) {}
+  }
   const notes = (((await st.get("brain-notes", { type: "json" })) || {})[agent] || []).map((n) => "- " + n.note).join("\n");
   const ans = await askAI(brainFor(s, agent), AGENTS[agent].system + (notes ? "\n\nTANIA'S COACHING NOTES:\n" + notes : "") + actionsHelp(agent) + (last.kind === "agentmsg" ? "\n\nThe last message is from a TEAMMATE, not Tania. Answer them directly and completely (your answer goes back to them automatically). Do your part now; ask another teammate only if you truly need them." : "") + "\nToday is " + ptDate() + ".", [...past, { role: "user", content: String(last.text || "") + extra }]);
   let outText = ans.text;
@@ -663,5 +668,5 @@ async function evaClean(kind) {
   }
   await addMessages("eva", [{ role: "agent", text: moved ? `🧹 Cleaned **${kind}**: moved **${moved}** emails to Trash (Gmail keeps them 30 days if you need one back). I skipped anything starred, important, from banks or payments, invoices, receipts, contracts, audits and appointments.${samples.length ? " Senders included: " + [...new Set(samples)].join(", ") + "." : ""}` : `✨ Nothing to clean in **${kind}**.` }]);
 }
-export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
+export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
 export { ptHour };
