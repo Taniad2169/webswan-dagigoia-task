@@ -167,7 +167,7 @@ export default async () => {
     if (dnc.includes(to)) { lead.status = "skipped"; lead.note = "Do Not Call"; continue; }
     if (dialed.includes(to)) continue; // try again another day
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
-    const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en", aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
+    const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = (PLAN && DIALER_PLAN.agents[planName].forceLang) || (["es", "pt"].includes(lead.lang) ? lead.lang : "en"), aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     if (!aid) continue; // agent not connected yet; stays in the queue
     const slots = PLAN ? null : (s.agentHours || DEFAULT_AGENT_HOURS)[name];
     if (slots && !slots.some(([a, b]) => now.mins >= toMins(a) && now.mins < toMins(b))) continue; // not this agent's hour; stays in the queue
