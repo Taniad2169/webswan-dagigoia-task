@@ -14,8 +14,19 @@
 // any reply text (see neutralizeDirectives below), and in team.mjs it's fed back to Sentinel as a second,
 // isolated model turn explicitly labeled as untrusted evidence to analyze -- never as something Sentinel's own
 // earlier turn said, and never as text that runs through the shared ((ACTION: ...)) directive parser.
+//
+// Nov 18 (later same day): added sentinelInspectUrl -- a second, separate read-only tool, same evidence
+// discipline as the GitHub reader above (secret/PII scrubbed where relevant, directive-defused, fed back as an
+// isolated analysis turn, append-only audit log). This one fetches a PUBLIC website Tania hands Sentinel and
+// checks static-HTML signals only (links, alt text, form labels, cookie/consent signals) -- it never touches
+// Eva, Gmail, or any other agent's integration, and it never runs JavaScript, so anything a page builds client
+// side (a login flow, a booking widget, a single-page app's real content) is outside what this can see. It is
+// also hardened against SSRF: before any fetch, the target host (and every redirect hop, and every link it
+// checks) is resolved and rejected if it's a loopback, link-local, private, or otherwise non-public address, so
+// Sentinel can never be used to probe internal infrastructure through a URL in a chat message.
 
 import { teamStore } from "./team.mjs";
+import dns from "node:dns/promises";
 
 export const SENTINEL_REPOS = ["taniad2169/webswan-dagigoia-task", "taniad2169/webswan-lead-prospector"];
 
@@ -126,6 +137,227 @@ export async function sentinelReadCommits(repo, path, n) {
       at: (c.commit && c.commit.author && c.commit.author.date) || ""
     }))
   };
+}
+
+// ---- Live public-website inspection (SSRF-hardened) ----------------------------------------------------------
+
+function ipToInt(ip) {
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((p) => !(p >= 0 && p <= 255) || Number.isNaN(p))) return null;
+  return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
+}
+
+// Private/reserved/loopback/link-local/CGNAT/test-net/multicast/metadata ranges -- anything in here is refused.
+const PRIVATE_V4 = [
+  [0x00000000, 8], [0x0A000000, 8], [0x7F000000, 8], [0xA9FE0000, 16],
+  [0xAC100000, 12], [0xC0A80000, 16], [0x64400000, 10], [0xC0000000, 29],
+  [0xC0000200, 24], [0xC6336400, 24], [0xCB007100, 24], [0xE0000000, 4], [0xF0000000, 4]
+];
+
+function isPrivateV4(ip) {
+  const n = ipToInt(ip);
+  if (n == null) return true; // fail closed on anything we can't parse
+  for (const [base, bits] of PRIVATE_V4) {
+    const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+    if ((n & mask) === (base & mask)) return true;
+  }
+  return false;
+}
+
+function isPrivateV6(ip) {
+  const a = String(ip || "").toLowerCase();
+  if (a === "::1" || a === "::") return true;
+  if (/^fe[89ab]/.test(a)) return true; // fe80::/10 link-local
+  if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // fc00::/7 unique local
+  if (a.startsWith("::ffff:")) { const v4 = a.split(":").pop(); if (v4 && v4.includes(".")) return isPrivateV4(v4); }
+  return false;
+}
+
+async function assertPublicHost(hostname) {
+  const h = String(hostname || "").toLowerCase();
+  if (!h) return { ok: false, error: "Missing host." };
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) {
+    return { ok: false, error: "That host (" + hostname + ") looks internal/local, not a public website -- refused." };
+  }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) {
+    return isPrivateV4(h) ? { ok: false, error: "That address (" + hostname + ") is a private/internal IP -- refused." } : { ok: true };
+  }
+  if (h.includes(":")) {
+    return isPrivateV6(h) ? { ok: false, error: "That address is a private/internal IP -- refused." } : { ok: true };
+  }
+  let addrs;
+  try { addrs = await dns.lookup(h, { all: true, verbatim: true }); }
+  catch (e) { return { ok: false, error: "Could not resolve " + hostname + ": " + String(e.message || e).slice(0, 120) }; }
+  if (!addrs || !addrs.length) return { ok: false, error: "Could not resolve " + hostname + " to any address." };
+  for (const a of addrs) {
+    if (a.family === 4 && isPrivateV4(a.address)) return { ok: false, error: "That host resolves to a private/internal address -- refused." };
+    if (a.family === 6 && isPrivateV6(a.address)) return { ok: false, error: "That host resolves to a private/internal address -- refused." };
+  }
+  return { ok: true };
+}
+
+function parseUrlSafe(raw) {
+  const s = clean(raw, 500).trim();
+  if (!s) return { error: "Missing URL." };
+  // Only treat a string as already having its own scheme if it's specifically http:// or https://; anything
+  // else with a "scheme://" shape (ftp://, javascript://, file://, ...) must NOT have https:// silently
+  // prepended in front of it -- that would mangle it into a confusing (if still rejected) URL instead of
+  // cleanly failing the protocol check below with an honest error.
+  const hasHttpScheme = /^https?:\/\//i.test(s);
+  const hasOtherScheme = !hasHttpScheme && /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s);
+  let u;
+  try { u = new URL(hasOtherScheme ? s : (hasHttpScheme ? s : "https://" + s)); }
+  catch (e) { return { error: "That doesn't look like a valid URL: " + s.slice(0, 200) }; }
+  if (!/^https?:$/.test(u.protocol)) return { error: "Only http/https URLs are allowed." };
+  if (u.username || u.password) return { error: "A URL with embedded credentials is refused." };
+  if (u.port && !["80", "443"].includes(u.port)) return { error: "Only default web ports (80/443) are allowed for a website check." };
+  return { url: u };
+}
+
+const FETCH_TIMEOUT_MS = 9000;
+const MAX_PAGE_BYTES = 2_000_000;
+const MAX_LINKS_CHECKED = 20;
+
+async function fetchWithTimeout(url, opts) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  try { return await fetch(url, { ...(opts || {}), signal: ac.signal, redirect: "manual" }); }
+  finally { clearTimeout(t); }
+}
+
+async function safeFetchPage(startUrl) {
+  let current = startUrl;
+  for (let hop = 0; hop < 4; hop++) {
+    const check = await assertPublicHost(current.hostname);
+    if (!check.ok) return { error: check.error };
+    let r;
+    try { r = await fetchWithTimeout(current.toString(), { headers: { "User-Agent": "WebSwanSentinel/1.0 (+read-only compliance check)" } }); }
+    catch (e) { return { error: "Fetch did not go through: " + String(e.message || e).slice(0, 160) }; }
+    if ([301, 302, 303, 307, 308].includes(r.status)) {
+      const loc = r.headers.get("location");
+      if (!loc) return { error: "Redirected (" + r.status + ") with no Location header to follow." };
+      let next;
+      try { next = new URL(loc, current); } catch (e) { return { error: "Redirect target is not a valid URL." }; }
+      if (!/^https?:$/.test(next.protocol)) return { error: "Redirected to a non-http(s) URL -- refused." };
+      current = next;
+      continue;
+    }
+    return { response: r, finalUrl: current };
+  }
+  return { error: "Too many redirects (stopped after 4 hops)." };
+}
+
+async function checkLinkStatus(href, baseUrl) {
+  let u;
+  try { u = new URL(href, baseUrl); } catch (e) { return { error: "not a resolvable URL" }; }
+  if (!/^https?:$/.test(u.protocol)) return { skipped: true, reason: "non-http(s) link (" + u.protocol + ")" };
+  const check = await assertPublicHost(u.hostname);
+  if (!check.ok) return { skipped: true, reason: "internal/private host -- not checked" };
+  try {
+    let r = await fetchWithTimeout(u.toString(), { method: "HEAD", headers: { "User-Agent": "WebSwanSentinel/1.0" } });
+    if (r.status === 405 || r.status === 501) r = await fetchWithTimeout(u.toString(), { method: "GET", headers: { "User-Agent": "WebSwanSentinel/1.0", Range: "bytes=0-0" } });
+    return { status: r.status };
+  } catch (e) { return { error: String(e.message || e).slice(0, 100) }; }
+}
+
+function attrOf(tag, name) {
+  const m = tag.match(new RegExp(name + "\\s*=\\s*(\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", "i"));
+  if (!m) return null;
+  return m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
+}
+
+function extractTags(html, re) { return [...html.matchAll(re)].map((m) => m[0]); }
+
+export async function sentinelInspectUrl(rawUrl, checksRaw) {
+  const parsed = parseUrlSafe(rawUrl);
+  if (parsed.error) return { error: parsed.error };
+  const fetched = await safeFetchPage(parsed.url);
+  if (fetched.error) return { error: fetched.error };
+  const r = fetched.response;
+  const ct = r.headers.get("content-type") || "";
+  if (!/text\/html/i.test(ct)) { try { await r.body?.cancel?.(); } catch (e) {} return { error: "That URL did not return an HTML page (content-type: " + (ct || "unknown") + ") -- nothing to inspect." }; }
+  const body = await readCapped(r, MAX_PAGE_BYTES);
+  if (body.tooLarge) return { error: "Page too large to inspect directly (over " + Math.round(MAX_PAGE_BYTES / 1024) + " KB)." };
+  const html = body.text;
+  const base = fetched.finalUrl;
+
+  const wanted = new Set(clean(checksRaw, 200).toLowerCase().split(",").map((s) => s.trim()).filter(Boolean));
+  const want = (k) => wanted.size === 0 || wanted.has(k);
+
+  const limitations = ["This reads the page's raw HTML as delivered by the server -- it does not run JavaScript, so anything a page builds client-side (a login flow, a booking widget, a single-page app's real content) is not seen or checked."];
+  const out = { url: parsed.url.toString(), finalUrl: base.toString(), checks: [] };
+
+  if (want("links")) {
+    const hrefs = [];
+    for (const a of extractTags(html, /<a\b[^>]*>/gi)) { const h = attrOf(a, "href"); if (h && !/^(javascript:|mailto:|tel:|#)/i.test(h.trim())) hrefs.push(h.trim()); }
+    const uniq = [...new Set(hrefs)].slice(0, MAX_LINKS_CHECKED);
+    const results = [];
+    for (const h of uniq) results.push({ href: h, ...(await checkLinkStatus(h, base)) });
+    out.checks.push({ type: "links", totalFound: hrefs.length, checked: uniq.length, results });
+    if (hrefs.length > uniq.length) limitations.push("Only the first " + MAX_LINKS_CHECKED + " unique links on this page were checked (" + hrefs.length + " found in total).");
+  }
+  if (want("alt")) {
+    const missing = [], empty = [];
+    const imgs = extractTags(html, /<img\b[^>]*>/gi);
+    for (const tag of imgs) {
+      const alt = attrOf(tag, "alt"); const src = attrOf(tag, "src") || "(no src)";
+      if (alt === null) missing.push(src); else if (alt.trim() === "") empty.push(src);
+    }
+    out.checks.push({ type: "alt_text", totalImages: imgs.length, missingAlt: missing.slice(0, 25), emptyAlt: empty.slice(0, 25) });
+    limitations.push("Empty alt=\"\" can be intentional for a purely decorative image -- flagged for review, not assumed to be a violation.");
+  }
+  if (want("forms")) {
+    const fields = extractTags(html, /<(input|select|textarea)\b[^>]*>/gi).filter((t) => !/type\s*=\s*["']?(hidden|submit|button|image)["']?/i.test(t));
+    const labelFors = new Set([...html.matchAll(/<label\b[^>]*\bfor\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]));
+    const unlabeled = [];
+    for (const tag of fields) {
+      const id = attrOf(tag, "id");
+      const hasLabel = (id && labelFors.has(id)) || attrOf(tag, "aria-label") || attrOf(tag, "aria-labelledby") || attrOf(tag, "title");
+      if (!hasLabel) unlabeled.push(tag.slice(0, 120));
+    }
+    out.checks.push({ type: "form_labels", totalFields: fields.length, unlabeled: unlabeled.slice(0, 25) });
+    limitations.push("Form-field labeling is checked by pattern (for=/id, aria-label, aria-labelledby, title) -- a label that wraps the field instead can be missed, so this is a lead to confirm, not a final verdict.");
+  }
+  if (want("cookies")) {
+    const lower = html.toLowerCase();
+    const foundLibs = ["cookieconsent", "onetrust", "cookiebot", "cookieyes", "termly", "iubenda", "cookie-law-info", "complianz"].filter((k) => lower.includes(k));
+    const hasBannerText = /\b(we use cookies|cookie policy|accept cookies|manage cookies|cookie preferences)\b/i.test(html);
+    const privacyLink = [...html.matchAll(/<a\b[^>]*href=["']([^"']*)["'][^>]*>/gi)].some((m) => /privacy/i.test(m[1]));
+    out.checks.push({ type: "cookie_signals", consentLibraryDetected: foundLibs, bannerTextDetected: hasBannerText, privacyPolicyLinkDetected: privacyLink });
+    limitations.push("Cookie/consent detection looks for known banner libraries and common wording in the static HTML -- a banner injected only by JavaScript would not be seen, and this never rules on legal compliance itself (that's Jonathan's job, not Sentinel's).");
+  }
+  out.limitations = limitations;
+  return out;
+}
+
+export function formatUrlInspection(r) {
+  const lines = ["URL checked: " + r.url, "Final URL after redirects: " + r.finalUrl, ""];
+  for (const c of r.checks) {
+    if (c.type === "links") {
+      lines.push("LINKS: " + c.checked + " of " + c.totalFound + " unique links checked.");
+      for (const res of c.results) {
+        if (res.skipped) lines.push("  - " + res.href + " -> skipped (" + res.reason + ")");
+        else if (res.error) lines.push("  - " + res.href + " -> could not verify (" + res.error + ")");
+        else lines.push("  - " + res.href + " -> HTTP " + res.status + (res.status >= 400 ? "  [BROKEN]" : ""));
+      }
+    } else if (c.type === "alt_text") {
+      lines.push("ALT TEXT: " + c.totalImages + " <img> tags found.");
+      lines.push("  Missing alt attribute entirely (" + c.missingAlt.length + "): " + (c.missingAlt.join(", ") || "none"));
+      lines.push("  Present but empty alt=\"\" (" + c.emptyAlt.length + ", may be intentional/decorative): " + (c.emptyAlt.join(", ") || "none"));
+    } else if (c.type === "form_labels") {
+      lines.push("FORM FIELDS: " + c.totalFields + " non-hidden input/select/textarea fields found.");
+      lines.push("  No detected label/aria-label/aria-labelledby/title (" + c.unlabeled.length + "): " + (c.unlabeled.join(" | ") || "none"));
+    } else if (c.type === "cookie_signals") {
+      lines.push("COOKIE/PRIVACY SIGNALS:");
+      lines.push("  Known consent library detected: " + (c.consentLibraryDetected.length ? c.consentLibraryDetected.join(", ") : "none"));
+      lines.push("  Cookie-banner-style wording detected: " + (c.bannerTextDetected ? "yes" : "no"));
+      lines.push("  A link to a privacy policy detected: " + (c.privacyPolicyLinkDetected ? "yes" : "no"));
+    }
+    lines.push("");
+  }
+  lines.push("LIMITATIONS / what this check could NOT verify:");
+  for (const l of r.limitations) lines.push("  - " + l);
+  return lines.join("\n");
 }
 
 export async function sentinelLog(entry) {
