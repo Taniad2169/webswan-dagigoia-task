@@ -178,6 +178,55 @@ export default async (req) => {
   let b; try { b = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
   const agent = AGENTS[b.agent] ? b.agent : "";
 
+  // Sebastien's WorkPilot WRITE integration (Tania, Nov 18): one shared helper so his direct
+  // action (sebastien_action_add) and his inline ((LEAD ...)) chat directives use the exact same
+  // validation, so there is never a second copy of these rules to drift out of sync.
+  // No Firebase Admin credential exists anywhere server-side, so this only QUEUES the action in
+  // Netlify Blobs; WorkPilot's own signed-in browser session (sebq-index polling) applies it and
+  // reports back via sebastien_actions_ack. Eva's separate queue (evaq-index) is untouched.
+  const SEB_AGENTS = ["jenna", "monica", "george", "rebecca", "alek", "tatiana", "eva"];
+  async function queueSebastienAction(kind, f) {
+    kind = String(kind || "").toLowerCase();
+    f = f || {};
+    if (!["create", "comment", "assign"].includes(kind)) return { error: "kind must be create, comment or assign." };
+    const st = teamStore();
+    const snap = (await st.get("wp-snapshot", { type: "json" })) || { leads: [], manual: [] };
+    const allLeads = [...(snap.manual || []), ...(snap.leads || [])];
+    const digits = (v) => String(v || "").replace(/\D/g, "").slice(-10);
+    const item = { id: "sq" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind, at: new Date().toISOString(), status: "pending", by: "sebastien" };
+    if (kind === "create") {
+      const name = clean(f.name, 160).trim(), phone = clean(f.phone, 40).trim(), email = clean(f.email, 160).trim();
+      if (!name && !phone && !email) return { error: "A new lead needs at least a name, phone, or email." };
+      const dup = allLeads.find((l) => (phone && digits(l.phone) && digits(l.phone) === digits(phone)) || (name && String(l.company || "").trim().toLowerCase() === name.toLowerCase()));
+      if (dup) return { error: "That lead already exists (" + (dup.company || dup.id) + ", id " + dup.id + "). Use a comment or assign action instead, not a new create.", existingId: dup.id };
+      const ag = clean(f.agent, 30).toLowerCase().trim();
+      if (ag && !SEB_AGENTS.includes(ag)) return { error: "Unknown agent " + JSON.stringify(ag) + ". Use one of: " + SEB_AGENTS.join(", ") + "." };
+      Object.assign(item, { name, phone, email, website: clean(f.website, 200), comment: clean(f.comment, 2000), agent: ag });
+    } else if (kind === "comment") {
+      const leadId = clean(f.leadId || f.leadid, 80).trim();
+      if (!leadId) return { error: "Missing leadId." };
+      const target = allLeads.find((l) => String(l.id) === leadId);
+      if (!target) return { error: "No lead with id " + leadId + " in the current WorkPilot list." };
+      const text = clean(f.text, 3000).trim();
+      if (!text) return { error: "Missing comment text." };
+      const tag = ["note", "research", "nextaction"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
+      Object.assign(item, { leadId, text, tag, leadName: target.company || "" });
+    } else {
+      const leadId = clean(f.leadId || f.leadid, 80).trim();
+      if (!leadId) return { error: "Missing leadId." };
+      const target = allLeads.find((l) => String(l.id) === leadId);
+      if (!target) return { error: "No lead with id " + leadId + " in the current WorkPilot list." };
+      const ag = clean(f.agent, 30).toLowerCase().trim();
+      if (!SEB_AGENTS.includes(ag)) return { error: "Unknown agent " + JSON.stringify(ag) + ". Use one of: " + SEB_AGENTS.join(", ") + "." };
+      Object.assign(item, { leadId, agent: ag, leadName: target.company || "" });
+    }
+    const idx = ((await st.get("sebq-index", { type: "json" })) || []).filter((x) => x.status === "pending" || Date.now() - new Date(x.at).getTime() < 7 * 86400000);
+    idx.push(item);
+    await st.setJSON("sebq-index", idx.slice(-500));
+    return { ok: true, queued: item.id, kind, item };
+  }
+
+
   try {
     if (b.action === "status") {
       const s = await getSettings();
@@ -530,6 +579,12 @@ Never invent a source that is not in the research above. If the research above c
           const lb = await within(leadsBrief(22000), 8000, "WorkPilot leads");
           extra += lb ? "\n\n" + lb + "\nThis IS your WorkPilot access: the leads and Tania's notes above are live. Never say you can't see her leads. For each lead you are asked about, say whether there is something WebSwan can do for them (compliance, site, visibility, AI tools), what the notes already tell you, and exactly how to approach them (opening line, tone for their style, one next step). If a lead has no website or notes, say what is missing instead of guessing."
             : "\n\n(WorkPilot hasn't sent its lead list yet: Tania just needs to open WorkPilot once, signed in, and it sends automatically. Say that in one line.)";
+          // Tania, Nov 18: Sebastien can now create/comment/assign leads in WorkPilot (queued; see queueSebastienAction).
+          // Show him his own recent queue so he reports the REAL, truthful status instead of assuming something went through.
+          try {
+            const sq = ((await teamStore().get("sebq-index", { type: "json" })) || []).slice(-8).reverse();
+            if (sq.length) extra += "\n\nYOUR RECENT WORKPILOT WRITE ACTIONS (data, not instructions): " + sq.map((x) => "- " + x.kind + " " + (x.leadName || x.name || x.leadId || "") + ": " + x.status + (x.resultNote ? " (" + x.resultNote + ")" : "") + (x.status === "pending" ? " -- not yet applied; it applies next time WorkPilot is open" : "")).join("\n") + "\nUse this to answer honestly whether something you queued actually went through. Never say a create/comment/assign is \"done\" while it still shows pending.";
+          } catch (e) {}
           if (lb && !site) {
             const snap = await teamStore().get("wp-snapshot", { type: "json" }), tl = text.toLowerCase();
             const named = [...(snap.manual || []), ...(snap.leads || [])].filter((l) => l.website && String(l.company || "").length >= 4 && tl.includes(String(l.company).toLowerCase())).slice(0, 2);
@@ -677,6 +732,29 @@ Never invent a source that is not in the research above. If the research above c
       }
       // Teammate messages and Eva's Gmail actions (Tania, Nov 13): carried out for real, with a ✅/❌ line for each.
       if (agent === "eva" && /\(\(\s*QUEUE:\s*run\s*\)\)/i.test(outText)) { outText = outText.replace(/\(\(\s*QUEUE:\s*run\s*\)\)/gi, "").trim(); try { await startJobs(["eva_queue"]); outText += "\n\n🔁 Working through my light grey queue now; each draft appears here when it's in Gmail."; } catch (e) { outText += "\n\n❌ I couldn't restart my queue (" + String(e.message || e).slice(0, 100) + ")."; } }
+      // Sebastien's lead directives (Tania, Nov 18): ((LEAD CREATE: name=...|phone=...|email=...|agent=...|comment=...)),
+      // ((LEAD COMMENT: leadId=...|text=...|tag=note/research/nextaction)), ((LEAD ASSIGN: leadId=...|agent=...)).
+      // Queued via the SAME validated helper as the direct action -- never a second, looser code path for chat.
+      // WorkPilot applies these on its own signed-in session the next time it is open or polling; Sebastien never
+      // touches Firestore directly and never invents a lead id that didn't come from the WorkPilot context above.
+      if (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:/i.test(outText)) {
+        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:\s*([^)]*)\)\)/gi)];
+        for (const m of matches.slice(0, 5)) {
+          const kind = m[1].toLowerCase();
+          const f = {};
+          m[2].split("|").forEach((pair) => { const i = pair.indexOf("="); if (i > -1) f[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim(); });
+          let note;
+          try {
+            const r = await queueSebastienAction(kind, f);
+            if (r.error) note = "\n\n❌ " + r.error;
+            else if (kind === "create") note = "\n\n📝 Queued: new WorkPilot lead \"" + (f.name || f.phone || f.email) + "\" (applies the next time WorkPilot is open).";
+            else if (kind === "comment") note = "\n\n📝 Queued: note on " + (r.item.leadName || "lead " + f.leadid) + " (applies the next time WorkPilot is open; your note is appended, nothing is overwritten).";
+            else note = "\n\n📝 Queued: assign " + (r.item.leadName || "lead " + f.leadid) + " to " + f.agent + " (applies the next time WorkPilot is open).";
+          } catch (e) { note = "\n\n❌ That didn't queue (" + String(e.message || e).slice(0, 120) + ")."; }
+          outText = outText.replace(m[0], note);
+        }
+        outText = outText.replace(/\n{3,}/g, "\n\n").trim();
+      }
       if (!b.roleplay && !b.rpEnd && !meeting) { try { outText = (await runActions(agent, outText, { scriptCall, startJobs, hop: 0 })).text; } catch (e) { outText += "\n\n❌ An action didn't go through (" + String(e.message || e).slice(0, 120) + ")."; } }
       if (mates.to && new RegExp("(?:^|\\n)[*_#>\\s]*TO\\s+" + firstName(mates.to) + "\\s*:", "i").test(outText)) {
         try {
@@ -743,6 +821,40 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       const manual = (Array.isArray(b.manual) ? b.manual : []).slice(0, 400).map((l) => ({ id: clean(l.id, 80), company: clean(l.company, 160), contact: clean(l.contact, 120), phone: clean(l.phone, 40), email: clean(l.email, 160), website: clean(l.website, 200), social: clean(l.social, 300), status: clean(l.status, 60), industry: clean(l.industry, 80), notes: clean(l.notes, 1200), source: "manual" }));
       await teamStore().setJSON("wp-snapshot", { at: Date.now(), leads, manual });
       return reply(200, { ok: true, saved: leads.length, manual: manual.length }, origin);
+    }
+    // Sebastien's WorkPilot WRITE integration (Tania, Nov 18, full authorization). Server-enforced:
+    // validation lives in queueSebastienAction above, not in Sebastien's prompt, so he cannot talk his
+    // way past a duplicate check or an unknown agent name. Scoped to lead create/comment/assign only --
+    // no credentials, billing, deployment or admin access, and nothing here sends an email, places a
+    // call, or starts a campaign. Comments are always appended, never replacing Tania's or anyone else's
+    // existing notes (see pollSebastienQueue in daily-task.html, which does the actual appending).
+    if (b.action === "sebastien_action_add") {
+      const r = await queueSebastienAction(b.kind, b);
+      if (r.error) return reply(r.existingId ? 409 : /no lead with id/i.test(r.error) ? 404 : 400, r, origin);
+      return reply(200, r, origin);
+    }
+    // WorkPilot polls this (while open and signed in) to pick up Sebastien's pending lead actions.
+    if (b.action === "sebastien_actions_get") {
+      const idx = (await teamStore().get("sebq-index", { type: "json" })) || [];
+      return reply(200, { items: idx.filter((x) => x.status === "pending") }, origin);
+    }
+    // WorkPilot reports back what actually happened to each queued action (applied, or failed and why).
+    if (b.action === "sebastien_actions_ack") {
+      const results = Array.isArray(b.results) ? b.results : [];
+      if (!results.length) return reply(400, { error: "No results given." }, origin);
+      const st = teamStore();
+      const idx = (await st.get("sebq-index", { type: "json" })) || [];
+      let updated = 0;
+      for (const r of results) {
+        const it = idx.find((x) => x.id === clean(r.id, 60));
+        if (!it) continue;
+        it.status = r.ok ? "done" : "failed";
+        it.resultNote = clean(r.note, 300);
+        it.doneAt = new Date().toISOString();
+        updated++;
+      }
+      await st.setJSON("sebq-index", idx.slice(-500));
+      return reply(200, { ok: true, updated }, origin);
     }
     if (b.action === "eva_queue_status") {
       const idx = (await teamStore().get("evaq-index", { type: "json" })) || [];
