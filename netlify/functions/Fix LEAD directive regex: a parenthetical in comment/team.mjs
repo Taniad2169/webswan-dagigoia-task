@@ -738,7 +738,7 @@ Never invent a source that is not in the research above. If the research above c
       // WorkPilot applies these on its own signed-in session the next time it is open or polling; Sebastien never
       // touches Firestore directly and never invents a lead id that didn't come from the WorkPilot context above.
       if (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:/i.test(outText)) {
-        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:\s*([^)]*)\)\)/gi)];
+        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:\s*([\s\S]*?)\)\)/gi)]; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
         for (const m of matches.slice(0, 5)) {
           const kind = m[1].toLowerCase();
           const f = {};
