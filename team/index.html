@@ -310,7 +310,7 @@ function drawMsgs() {
     const ok = cur + g.d, open = q || (ok in openDays ? openDays[ok] : (g.d === today || g.d === lastDay));
     h += `<div class="day ${g.d === today ? "today" : ""}" data-day="${esc(g.d)}" title="Click to open or close">${open ? "▾" : "▸"} ${esc(g.d)} <small>(${g.ms.length})</small></div>`;
     if (!open) continue;
-    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta"><input type="checkbox" data-sel="${esc(m.id)}" ${SEL[m.id] ? "checked" : ""} aria-label="Select this message to delete" style="margin:0 6px 0 0;vertical-align:middle">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md(m.text)}</div>${m.media ? `<div class="jm" data-media="${esc(m.media.key)}" data-mtype="${esc(m.media.type)}"><p class="hint">Loading ${m.media.type === "video" ? "the video" : "the picture"}…</p></div>` : ""}${cur === "tatiana" && m.role !== "user" && (m.items || m.kind === "weekly") ? `<div class="pcards" data-cards="${esc(m.id)}"><p class="hint">Loading the posts…</p></div>` : ""}${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button><select class="copy" data-send="${esc(m.id)}" aria-label="Send this to another agent" style="margin-left:6px"><option value="">➡️ Send to…</option>${ORDER.filter((k) => k !== cur && k !== "rachel").map((k) => `<option value="${k}">${esc((((S.agents || FALLBACK)[k]) || FALLBACK[k]).name)}</option>`).join("")}</select>` : ""}</div>`;
+    for (const m of g.ms) h += `<div class="m ${m.role === "user" ? "me" : ""}"><div class="meta"><input type="checkbox" data-sel="${esc(m.id)}" ${SEL[m.id] ? "checked" : ""} aria-label="Select this message to delete" style="margin:0 6px 0 0;vertical-align:middle">${m.role === "user" ? "You" : esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)} · ${esc(timeOf(m.at))}${m.provider ? " · " + esc(S.providers[m.provider] || m.provider) : ""}</div><div class="body">${m.role === "user" ? esc(m.text).replace(/\n/g, "<br>") : md((m.rep = parseReport(m.text)) ? (m.text.replace(m.rep.raw, "").trim() || "📄 Report ready — see below.") : m.text)}</div>${m.media ? `<div class="jm" data-media="${esc(m.media.key)}" data-mtype="${esc(m.media.type)}"><p class="hint">Loading ${m.media.type === "video" ? "the video" : "the picture"}…</p></div>` : ""}${m.rep ? `<div class="jm" data-report="${esc(m.id)}"><p class="hint">Building the PDF…</p></div>` : ""}${cur === "tatiana" && m.role !== "user" && (m.items || m.kind === "weekly") ? `<div class="pcards" data-cards="${esc(m.id)}"><p class="hint">Loading the posts…</p></div>` : ""}${m.role !== "user" ? `<button class="copy" data-copy="${esc(m.id)}">Copy</button><select class="copy" data-send="${esc(m.id)}" aria-label="Send this to another agent" style="margin-left:6px"><option value="">➡️ Send to…</option>${ORDER.filter((k) => k !== cur && k !== "rachel").map((k) => `<option value="${k}">${esc((((S.agents || FALLBACK)[k]) || FALLBACK[k]).name)}</option>`).join("")}</select>` : ""}</div>`;
   }
   if (!days.length) h += q ? `<p class="hint">Nothing matches "${esc(findQ)}".</p>` : `<p class="hint">No messages yet. Say hi to ${esc(((S.agents || FALLBACK)[cur] || FALLBACK[cur]).name)}.</p>`;
   $("msgs").innerHTML = h;
@@ -329,6 +329,7 @@ function drawMsgs() {
   if (!q) $("msgs").scrollTop = $("msgs").scrollHeight;
   if (cur === "tatiana") fillCards();
   fillMedia();
+  fillReports();
 }
 const TOOLS = {
   eva: [["☀️ Morning briefing now", () => run("eva_daily")], ["📊 Monday briefing now", () => run("eva_monday")], ["✉️ New email draft", () => draftPanel()], ["🧹 Clean up inbox", () => cleanPanel()], ["⚙️ Settings", () => settingsPanel()]],
@@ -705,6 +706,105 @@ function mediaURL(key, type) {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Couldn't load it (" + r.status + ")");
     return URL.createObjectURL(await r.blob()); })();
   return MEDIA[key];
+}
+// Tania, Nov 17: Eva's "go online, research it, bring me back a report" answers carry a strict
+// ===WEBSWAN REPORT===...===END REPORT=== block (built server-side from her live web research). Parsed
+// here and turned into a real downloadable PDF with the WebSwan logo in the header -- Tania never sees
+// the raw marker text, just a report card with a Download PDF button, the same way Jimmy's pictures and
+// videos show up in chat.
+function parseReport(text) {
+  const m = String(text || "").match(/===WEBSWAN REPORT===([\s\S]*?)===END REPORT===/);
+  if (!m) return null;
+  let title = "Report", intro = "", sources = [], sections = [], mode = null, cur = null;
+  for (const line of m[1].split("\n")) {
+    if (/^TITLE:/i.test(line)) { title = line.replace(/^TITLE:\s*/i, "").trim() || title; mode = null; }
+    else if (/^INTRO:/i.test(line)) { intro = line.replace(/^INTRO:\s*/i, "").trim(); mode = "intro"; }
+    else if (/^SECTION:/i.test(line)) { cur = { heading: line.replace(/^SECTION:\s*/i, "").trim(), body: "" }; sections.push(cur); mode = "section"; }
+    else if (/^SOURCES:/i.test(line)) { mode = "sources"; }
+    else if (mode === "intro") intro += (intro ? "\n" : "") + line;
+    else if (mode === "section" && cur) cur.body += (cur.body ? "\n" : "") + line;
+    else if (mode === "sources") { const t = line.replace(/^-\s*/, "").trim(); if (t) { const p = t.split("|"); sources.push({ url: (p[0] || "").trim(), label: (p[1] || p[0] || "").trim() }); } }
+  }
+  sections.forEach((s) => s.body = s.body.trim());
+  return { title, intro: intro.trim(), sections, sources, raw: m[0] };
+}
+let JSPDF_READY = null;
+function loadJsPDF() {
+  if (window.jspdf) return Promise.resolve();
+  if (JSPDF_READY) return JSPDF_READY;
+  JSPDF_READY = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = res; s.onerror = () => rej(new Error("Couldn't load the PDF library."));
+    document.head.appendChild(s);
+  });
+  return JSPDF_READY;
+}
+let LOGO_INFO = null;
+async function logoInfo() {
+  if (LOGO_INFO) return LOGO_INFO;
+  const blob = await (await fetch("img/webswan-logo.webp")).blob();
+  const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("logo image failed to load")); im.src = URL.createObjectURL(blob); });
+  const canvas = document.createElement("canvas"); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+  canvas.getContext("2d").drawImage(img, 0, 0);
+  LOGO_INFO = { dataUrl: canvas.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight };
+  return LOGO_INFO;
+}
+function wrapText(doc, text, x, y, maxW, lh) {
+  const lines = doc.splitTextToSize(String(text || ""), maxW);
+  for (const ln of lines) { y = ensureRoom(doc, y, lh); doc.text(ln, x, y); y += lh; }
+  return y;
+}
+function ensureRoom(doc, y, need) {
+  const H = doc.internal.pageSize.getHeight();
+  if (y + need > H - 50) { doc.addPage(); return 56; }
+  return y;
+}
+async function buildReportPDF(rep) {
+  await loadJsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const W = doc.internal.pageSize.getWidth(), M = 54; let y = 50;
+  try { const logo = await logoInfo(); const lw = 110, lh = lw * (logo.h / logo.w); doc.addImage(logo.dataUrl, "PNG", M, y, lw, lh); } catch (e) {}
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(120);
+  doc.text("The WebSwan", W - M, y + 14, { align: "right" });
+  y += 60;
+  doc.setDrawColor(220); doc.line(M, y, W - M, y); y += 28;
+  doc.setTextColor(20); doc.setFont("helvetica", "bold"); doc.setFontSize(19);
+  y = wrapText(doc, rep.title, M, y, W - M * 2, 24) + 8;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(140);
+  doc.text("Prepared by Eva · " + new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }), M, y); y += 22;
+  if (rep.intro) { doc.setFontSize(11); doc.setTextColor(60); y = wrapText(doc, rep.intro, M, y, W - M * 2, 15) + 14; }
+  for (const sec of rep.sections) {
+    y = ensureRoom(doc, y, 60);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(20);
+    y = wrapText(doc, sec.heading, M, y, W - M * 2, 17) + 6;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(50);
+    for (const para of sec.body.split(/\n{2,}/).filter(Boolean)) { y = ensureRoom(doc, y, 40); y = wrapText(doc, para, M, y, W - M * 2, 15) + 10; }
+    y += 6;
+  }
+  if (rep.sources.length) {
+    y = ensureRoom(doc, y, 60);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(20); doc.text("Sources", M, y); y += 18;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(40, 80, 180);
+    for (const s of rep.sources) { y = ensureRoom(doc, y, 30); doc.textWithLink("• " + (s.label || s.url), M, y, { url: s.url }); y += 15; }
+  }
+  const pages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) { doc.setPage(p); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(160); doc.text("Page " + p + " of " + pages, W - M, doc.internal.pageSize.getHeight() - 24, { align: "right" }); }
+  return doc.output("blob");
+}
+function fillReports() {
+  document.querySelectorAll("[data-report]").forEach(async (box) => {
+    if (box.dataset.done) return; box.dataset.done = "1";
+    const id = box.dataset.report, m = msgs.find((x) => x.id === id), rep = m && m.rep;
+    if (!rep) { box.innerHTML = ""; return; }
+    try {
+      const blob = await buildReportPDF(rep);
+      const url = URL.createObjectURL(blob);
+      const fname = ("webswan-" + rep.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60).replace(/^-|-$/g, "")) + ".pdf";
+      box.innerHTML = '<div class="panel"><b>📄 ' + esc(rep.title) + '</b><div class="pc-row"><a class="btn" href="' + url + '" download="' + esc(fname || "webswan-report.pdf") + '">⬇️ Download PDF</a></div></div>';
+    } catch (e) { box.innerHTML = "<p class=\"hint\">⚠️ Couldn't build the PDF: " + esc(e.message) + "</p>"; box.dataset.done = ""; }
+  });
 }
 function fillMedia() {
   document.querySelectorAll("[data-media]").forEach(async (box) => {
