@@ -18,8 +18,10 @@
   .ag { border:2px solid var(--line); background:#fff; border-radius:14px; padding:10px 8px; cursor:pointer; text-align:center; position:relative; }
   .ag img { width:66px; height:66px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 6px; }
   .ag b { display:block; font-size:14.5px; } .ag small { color:var(--muted); font-size:11.5px; line-height:1.2; display:block; }
-  .ag.on { border-color:var(--blue); background:#eef6ff; box-shadow:0 0 0 3px #cfe6ff; }
-  .ag.on::after { content:"✓"; position:absolute; top:6px; right:8px; color:var(--blue); font-weight:900; }
+  .ag.green { border-color:#16a34a; background:#eafaf0; box-shadow:0 0 0 3px #bbf0cc; }
+  .ag.green::after { content:"🎤"; position:absolute; top:4px; right:6px; font-size:14px; }
+  .ag.red { border-color:#d32f2f; background:#fdeaea; box-shadow:0 0 0 3px #f6c6c6; }
+  .ag.red::after { content:"🤐"; position:absolute; top:4px; right:6px; font-size:14px; }
   .row { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; }
   label { font-weight:700; font-size:14px; }
   select, input[type=text] { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; }
@@ -109,21 +111,28 @@ const TEAM = [
   { k: "jenna", n: "Jenna", r: "Market intelligence", male: false, img: "img/jenna.jpg" }
 ];
 const NAME = (k) => (TEAM.find((t) => t.k === k) || { n: k }).n;
-const S = { in: new Set(), talkTo: "all", log: [], busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
+const S = { in: new Set(), mode: new Map(), talkTo: "all", log: [], busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
 try { $("free").checked = localStorage.getItem("wsMeetVoice") === "on"; } catch (e) {}
 $("free").onchange = () => { try { localStorage.setItem("wsMeetVoice", $("free").checked ? "on" : "off"); } catch (e) {} };
 
 function drawAgents() {
-  $("agents").innerHTML = TEAM.map((t) => `<button class="ag ${S.in.has(t.k) ? "on" : ""}" data-k="${t.k}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`).join("");
+  $("agents").innerHTML = TEAM.map((t) => { const m = S.in.has(t.k) ? (S.mode.get(t.k) || "green") : ""; const tip = !S.in.has(t.k) ? "Tap to add to the meeting (green)" : (m === "green" ? "Green: can answer — tap to mute (red)" : "Red: listening only, answers only if called on by name — tap to remove"); return `<button class="ag ${m}" data-k="${t.k}" title="${tip}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`; }).join("");
 }
 function drawTalkTo() {
   const inList = TEAM.filter((t) => S.in.has(t.k));
   $("talkTo").innerHTML = `<option value="all">🔄 Around the table (everyone answers)</option>` + inList.map((t) => `<option value="${t.k}" ${S.talkTo === t.k ? "selected" : ""}>${esc(t.n)}</option>`).join("");
   if (S.talkTo !== "all" && !S.in.has(S.talkTo)) { S.talkTo = "all"; $("talkTo").value = "all"; }
 }
-$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b) return; const k = b.dataset.k; if (S.in.has(k)) S.in.delete(k); else S.in.add(k); drawAgents(); drawTalkTo(); };
-$("selAll").onclick = () => { TEAM.forEach((t) => S.in.add(t.k)); drawAgents(); drawTalkTo(); };
-$("selNone").onclick = () => { S.in.clear(); drawAgents(); drawTalkTo(); };
+// Tania, Nov 17: click cycles each teammate off -> green (can answer, included in "around the table") -> red (listens only, answers ONLY if called on by name) -> off.
+$("agents").onclick = (e) => {
+  const b = e.target.closest(".ag"); if (!b) return; const k = b.dataset.k;
+  if (!S.in.has(k)) { S.in.add(k); S.mode.set(k, "green"); }
+  else if ((S.mode.get(k) || "green") === "green") { S.mode.set(k, "red"); }
+  else { S.in.delete(k); S.mode.delete(k); }
+  drawAgents(); drawTalkTo();
+};
+$("selAll").onclick = () => { TEAM.forEach((t) => { S.in.add(t.k); S.mode.set(t.k, "green"); }); drawAgents(); drawTalkTo(); };
+$("selNone").onclick = () => { S.in.clear(); S.mode.clear(); drawAgents(); drawTalkTo(); };
 $("talkTo").onchange = () => { S.talkTo = $("talkTo").value; };
 drawAgents(); drawTalkTo();
 
@@ -242,13 +251,21 @@ async function brainVoiceCommand(text) {
   }
 }
 
-/* ---------- who did Tania actually address? decided here, before any agent is asked ---------- */
-function detectAddressee(text) {
-  const m = String(text || "").trim().match(/^(?:hey|hi|ok|okay)?\s*([A-Za-z]+)\s*[,:]/i);
-  if (!m) return null;
-  const cand = m[1].toLowerCase();
-  const hit = TEAM.find((t) => t.n.toLowerCase() === cand);
-  return hit ? hit.k : null;
+/* ---------- who got called on by name? checked on Tania's own words AND on whatever an agent (like Coby or Sebastien) just said, so a name dropped mid-meeting actually gets a turn ---------- */
+function findAddressed(text, poolKeys, exceptKey) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+  let m = t.match(/^(?:hey|hi|ok|okay|so|alright)?[\s,]*([A-Za-z]+)\s*[,:]/i);
+  if (m) {
+    const hit = TEAM.find((x) => x.n.toLowerCase() === m[1].toLowerCase());
+    if (hit && hit.k !== exceptKey && poolKeys.has(hit.k)) return hit.k;
+  }
+  for (const cand of TEAM) {
+    if (cand.k === exceptKey || !poolKeys.has(cand.k)) continue;
+    const re = new RegExp("\\b" + cand.n + "\\b\\s*[,?]|\\b" + cand.n + "\\b\\s+(?:can you|what do you|do you|would you|how about you|your thoughts|what's your take|weigh in)", "i");
+    if (re.test(t)) return cand.k;
+  }
+  return null;
 }
 
 /* ---------- a turn: Tania says something, the chosen teammate(s) answer ---------- */
@@ -259,14 +276,26 @@ async function runTurn(text) {
   addLog("Tania", text.trim(), "me");
   if (BRAIN.test(text)) { S.busy = true; try { await brainVoiceCommand(text.trim()); } finally { S.busy = false; $("send").disabled = false; say("Your turn — tap the mic or type."); } return; }
   S.busy = true; $("send").disabled = true;
-  // The controller decides who's up BEFORE anyone is asked. Even in "around the table"
-  // mode, if Tania named one teammate by name ("Jenna, ..."), only that person is asked —
-  // everyone else stays silent, listening, rather than each agent being trusted to self-select.
-  const addressed = S.talkTo === "all" ? detectAddressee(text) : null;
+  // The controller decides who's up BEFORE anyone is asked. If Tania named one teammate
+  // ("Jenna, ...") or picked one from the dropdown, only that person answers. In "around the
+  // table" mode with nobody named, only GREEN teammates answer — a RED teammate stays silent
+  // and listening unless called on by name (Tania, Nov 17).
+  const addressed = findAddressed(text, S.in, null);
   const order = (addressed && S.in.has(addressed)) ? [addressed]
-    : (S.talkTo === "all" ? TEAM.filter((t) => S.in.has(t.k)).map((t) => t.k) : [S.talkTo]);
+    : (S.talkTo !== "all") ? [S.talkTo]
+    : TEAM.filter((t) => S.in.has(t.k) && (S.mode.get(t.k) || "green") === "green").map((t) => t.k);
+  if (!order.length) { S.busy = false; $("send").disabled = false; say("Nobody's green to answer that — call on someone by name, or switch a teammate back to green."); return; }
   try {
-    for (const k of order) {
+    // A teammate called on by name mid-meeting — by Tania, by Coby, by Sebastien, or by
+    // another agent — gets their own turn right after, even if they're red, answering just
+    // that question; capped so one turn can't chain through the whole room.
+    const spoken = new Set();
+    let queue = order.slice();
+    let guard = 0;
+    while (queue.length && guard < 6) {
+      const k = queue.shift();
+      if (spoken.has(k) || !S.in.has(k)) continue;
+      guard++; spoken.add(k);
       say("💭 " + NAME(k) + " is thinking…"); micLook("");
       let reply;
       try { reply = await askAgent(k); }
@@ -280,6 +309,8 @@ async function runTurn(text) {
       S.busy = false; $("send").disabled = false; // allow Stop to cut speech, and let Tania send the next line while this one is still being spoken
       await speak(reply, k);
       S.busy = true; $("send").disabled = true;
+      const called = findAddressed(reply, S.in, k);
+      if (called && !spoken.has(called) && !queue.includes(called)) queue.push(called);
     }
   } finally {
     S.busy = false; $("send").disabled = false; micLook(""); say("Your turn — tap the mic or type.");
