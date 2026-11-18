@@ -1214,7 +1214,7 @@ function isEcho(t) {
   if (SHORT_ANSWER.test(t)) return false;                 // a direct answer, however short
   const w = wordsOf(t);
   if (!w.length) return !String(t || "").trim();          // only real silence counts as nothing said
-  if (w.length < 4) return false;                         // too short to be the speaker bleeding back in
+  if (w.length < 4) { const s4 = new Set(wordsOf((V.lastAnswer || "") + " " + (V.speaking || ""))); return (w.filter((x) => s4.has(x)).length / w.length) >= 0.9; }                         // too short to be the speaker bleeding back in
   const said = new Set(wordsOf((V.lastAnswer || "") + " " + (V.speaking || "")));
   return w.filter((x) => said.has(x)).length / w.length >= 0.5;
 }
