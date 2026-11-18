@@ -188,7 +188,7 @@ export default async (req) => {
   async function queueSebastienAction(kind, f) {
     kind = String(kind || "").toLowerCase();
     f = f || {};
-    if (!["create", "comment", "assign"].includes(kind)) return { error: "kind must be create, comment or assign." };
+    if (!["create", "comment", "assign", "push"].includes(kind)) return { error: "kind must be create, comment, assign or push." };
     const st = teamStore();
     const snap = (await st.get("wp-snapshot", { type: "json" })) || { leads: [], manual: [] };
     const allLeads = [...(snap.manual || []), ...(snap.leads || [])];
@@ -211,7 +211,7 @@ export default async (req) => {
       if (!text) return { error: "Missing comment text." };
       const tag = ["note", "research", "nextaction"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
       Object.assign(item, { leadId, text, tag, leadName: target.company || "" });
-    } else {
+    } else if (kind === "assign") {
       const leadId = clean(f.leadId || f.leadid, 80).trim();
       if (!leadId) return { error: "Missing leadId." };
       const target = allLeads.find((l) => String(l.id) === leadId);
@@ -219,6 +219,23 @@ export default async (req) => {
       const ag = clean(f.agent, 30).toLowerCase().trim();
       if (!SEB_AGENTS.includes(ag)) return { error: "Unknown agent " + JSON.stringify(ag) + ". Use one of: " + SEB_AGENTS.join(", ") + "." };
       Object.assign(item, { leadId, agent: ag, leadName: target.company || "" });
+    } else if (kind === "push") {
+      // Tania, Nov 18: Sebastien can push a Lead Prospector-sourced lead (read-only to him until now) into WorkPilot's
+      // manual list, same as a human ticking it in the Prospector and clicking "push to WorkPilot" -- except he can
+      // only push a lead he can already SEE (snap.leads, never invented), and this reuses the exact same validated
+      // create path pollSebastienQueue already runs, so no new write surface or Firestore project is touched.
+      const leadId = clean(f.leadId || f.leadid, 80).trim();
+      if (!leadId) return { error: "Missing leadId." };
+      const source = (snap.leads || []).find((l) => String(l.id) === leadId);
+      if (!source) return { error: "No Lead Prospector lead with id " + leadId + " in your current read access. You can only push a lead you can already see." };
+      const name = clean(source.company, 160).trim(), phone = clean(source.phone, 40).trim(), email = clean(source.email, 160).trim();
+      if (!name && !phone && !email) return { error: "That Lead Prospector lead has no name, phone, or email to push." };
+      const dup = allLeads.find((l) => String(l.id) !== leadId && ((phone && digits(l.phone) && digits(l.phone) === digits(phone)) || (name && String(l.company || "").trim().toLowerCase() === name.toLowerCase())));
+      if (dup) return { error: "That lead is already in WorkPilot (" + (dup.company || dup.id) + ", id " + dup.id + "). Use a comment or assign action instead, not a new push.", existingId: dup.id };
+      const ag = clean(f.agent, 30).toLowerCase().trim();
+      if (ag && !SEB_AGENTS.includes(ag)) return { error: "Unknown agent " + JSON.stringify(ag) + ". Use one of: " + SEB_AGENTS.join(", ") + "." };
+      const note = ("Pushed from Lead Prospector by Sebastien." + (source.notes ? " Prospector notes: " + clean(source.notes, 500) : "") + (f.comment ? " " + clean(f.comment, 1000) : "")).trim();
+      Object.assign(item, { kind: "create", name, phone, email, website: clean(source.website, 200), comment: note, agent: ag, prospectorId: leadId });
     }
     const idx = ((await st.get("sebq-index", { type: "json" })) || []).filter((x) => x.status === "pending" || Date.now() - new Date(x.at).getTime() < 7 * 86400000);
     idx.push(item);
@@ -737,8 +754,8 @@ Never invent a source that is not in the research above. If the research above c
       // Queued via the SAME validated helper as the direct action -- never a second, looser code path for chat.
       // WorkPilot applies these on its own signed-in session the next time it is open or polling; Sebastien never
       // touches Firestore directly and never invents a lead id that didn't come from the WorkPilot context above.
-      if (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:/i.test(outText)) {
-        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN)\s*:\s*([\s\S]*?)\)\)/gi)]; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
+      if (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) {
+        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi)]; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
         for (const m of matches.slice(0, 5)) {
           const kind = m[1].toLowerCase();
           const f = {};
@@ -749,6 +766,7 @@ Never invent a source that is not in the research above. If the research above c
             if (r.error) note = "\n\n❌ " + r.error;
             else if (kind === "create") note = "\n\n📝 Queued: new WorkPilot lead \"" + (f.name || f.phone || f.email) + "\" (applies the next time WorkPilot is open).";
             else if (kind === "comment") note = "\n\n📝 Queued: note on " + (r.item.leadName || "lead " + f.leadid) + " (applies the next time WorkPilot is open; your note is appended, nothing is overwritten).";
+            else if (kind === "push") note = "\n\n📝 Queued: push Lead Prospector lead \"" + (r.item.name || f.leadid) + "\" into WorkPilot" + (f.agent ? " and assign to " + f.agent : "") + " (applies the next time WorkPilot is open).";
             else note = "\n\n📝 Queued: assign " + (r.item.leadName || "lead " + f.leadid) + " to " + f.agent + " (applies the next time WorkPilot is open).";
           } catch (e) { note = "\n\n❌ That didn't queue (" + String(e.message || e).slice(0, 120) + ")."; }
           outText = outText.replace(m[0], note);
