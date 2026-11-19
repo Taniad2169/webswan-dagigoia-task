@@ -31,7 +31,7 @@ These rules come before everything else in your script.
 {{AI_RULE}}
 7. FOLLOW-UP CALLS AFTER EVA'S EMAIL. If this lead's notes ({{findings}}) contain "FOLLOW-UP CALL", we already emailed them. Then, after your greeting, say instead of your usual reason that you're following up on the email sent on [the day in the notes] (the website audit report from Tania, or Eva's email about new patients or clients, whichever the notes say). If the notes say they replied, start from their reply.
 8. THREE QUESTIONS, THEN {{FALLBACK_NAME_UC}}. Answer their questions briefly. After you answer the third question, offer a transfer to {{FALLBACK_NAME}}: "{{FALLBACK_NAME}} can go over all of that with you in detail. Would you like me to connect you with him now?"
-9. NO PRESSURE WHEN THEY'RE UNDECIDED. If they don't know when, or whether, to take the 10-minute appointment, never push: go to the {{FALLBACK_NAME}} line of YOUR SCRIPT and give his number the way GIVING {{FALLBACK_NAME_UC}}'S NUMBER says. {{FALLBACK_NAME}} is {{FALLBACK_TITLE}}.
+9. NO PRESSURE WHEN THEY'RE UNDECIDED. If they don't know when, or whether, to take the 10-minute appointment, never push: go to the {{FALLBACK_NAME}} line of YOUR SCRIPT and give his number the way GIVING {{FALLBACK_NAME_UC}}'S NUMBER says. {{FALLBACK_FULL}} is {{FALLBACK_TITLE}}.
 7b. ON A FOLLOW-UP CALL: if the notes name the person someone spoke with, ask for that person by name ("Is Ana available?") and mention who spoke with them. Do NOT ask for an email again unless they say they never got it (then confirm the right email). Ask if they had a chance to look at it, then go straight to the 10-minute appointment. Use the findings in the notes only if they ask what the report found. If they have detailed questions, offer {{FALLBACK_NAME}}.
 10. NEVER REPEAT UNLESS ASKED. Say each line once. Don't repeat anything you've already said unless they ask you to, or say they didn't catch it — and then repeat only the specific part they asked about, not the whole line.
 11. ANSWER WHAT THEY ASKED, STAY ON IT. Answer exactly what they asked, nothing more. Don't wander into a topic they didn't bring up.
@@ -60,7 +60,7 @@ These rules come before everything else in your script (compact version).
 7. SAY ONLY THE SPOKEN WORDS: only words in quotation marks are said; [PAUSE], [brackets], (labels) and headings are silent directions.
 {{AI_RULE}}
 8. FOLLOW-UP CALLS: if the notes ({{findings}}) say "FOLLOW-UP CALL", we already emailed them: say you're following up, ask for the person named in the notes, don't ask for the email again unless they never got it, then go to the 10-minute appointment.
-9. {{FALLBACK_NAME_UC}}: never guess a product, a price or a rule that isn't in your prompt. For questions you can't answer, after the third question, or when they're undecided, give {{FALLBACK_NAME}}'s number the way YOUR SCRIPT says; {{FALLBACK_NAME}} is {{FALLBACK_TITLE}}.
+9. {{FALLBACK_NAME_UC}}: never guess a product, a price or a rule that isn't in your prompt. For questions you can't answer, after the third question, or when they're undecided, give {{FALLBACK_NAME}}'s number the way YOUR SCRIPT says; {{FALLBACK_FULL}} is {{FALLBACK_TITLE}}.
 10. LEAD MEMORY (what earlier calls to this number taught us): {{lead_memory}}. If it says "none yet", it is the first call. Otherwise ask for the person by name, don't ask again for what they already told us, respect a callback time or language they gave, and pick up the open next step. A correction they give now beats the memory. Never read it out or say "my notes say". If it starts with DO NOT CALL, apologize briefly and end_call.
 11. FLEX, NOT A SCRIPT: hook -> the risk for THEM -> ONE diagnostic question -> the ask (email, decision maker or 10-minute review), in your own words around your key lines. On pushback ("we already have someone", "send me an email", "not interested"): acknowledge in a few words, ask ONE problem-focused question (when was the site last checked for compliance, who handles it), then back to the ask. Never argue, never repeat the pitch.
 12. YOUR SCRIPT decides what you say and in what order; these rules decide how you behave.
@@ -106,12 +106,13 @@ export function withPhoneRules(ins, agent) {
   // Sebastien (marketing director for advertising and SwanDesk AI) for Rebecca's ads/SwanDesk calls.
   const expertName = agent === "rebecca" ? "Sebastien" : "Jonathan";
   const title = agent === "rebecca" ? "our marketing director for advertising and SwanDesk AI" : "our compliance audit director";
+  const expertFull = agent === "rebecca" ? "Sebastien McIntosh" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
   // Rebecca's pay-per-click block sits INSIDE the rules markers, so saving again replaces it instead of adding a copy.
   const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END);
   // One AI answer per agent (Tania, Nov 9): with the AI QUESTION RULE block in the prompt, rule 6 points to it; without it, rule 6 carries the full answer.
   const ai = base.includes("\n### AI QUESTION RULE (WebSwan)") || base.startsWith("### AI QUESTION RULE (WebSwan)") ? AI_RULE_SHORT : AI_RULE_FULL;
   const firstName = agent.charAt(0).toUpperCase() + agent.slice(1);
-  const fill = (r) => r.replace("{{AI_RULE}}", () => ai).replace("{{PERSONA}}", () => persona(agent)).replace(/\{\{RACHEL_TITLE\}\}/g, title).replace(/\{\{FALLBACK_TITLE\}\}/g, title).replace(/\{\{FALLBACK_NAME_UC\}\}/g, expertName.toUpperCase()).replace(/\{\{FALLBACK_NAME\}\}/g, expertName).replace(/\{\{AGENT_NAME\}\}/g, firstName) + "\n\n" + base;
+  const fill = (r) => r.replace("{{AI_RULE}}", () => ai).replace("{{PERSONA}}", () => persona(agent)).replace(/\{\{RACHEL_TITLE\}\}/g, title).replace(/\{\{FALLBACK_TITLE\}\}/g, title).replace(/\{\{FALLBACK_NAME_UC\}\}/g, expertName.toUpperCase()).replace(/\{\{FALLBACK_FULL\}\}/g, expertFull).replace(/\{\{FALLBACK_NAME\}\}/g, expertName).replace(/\{\{AGENT_NAME\}\}/g, firstName) + "\n\n" + base;
   if (!base) return "";
   let out = fill(rules);
   if (out.length > 29900) { // Nov 17: too long for Cartesia -> compact rules instead of silently keeping old ones
