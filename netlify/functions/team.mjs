@@ -91,7 +91,7 @@ async function rachelLog(n) {
 }
 // Does Tania's message to Jimmy ask him to MAKE something (vs. just talk about it)?
 // Video requests are NOT made here: Jimmy answers in chat with a ready-to-paste prompt for Tania's Gemini app.
-const jimmyWants = (t) => /\b(make|create|design|draw|paint|generate|give me|do|produce|build|render)\b/i.test(t) && /\b(picture|image|graphic|photo|flyer|banner|poster|logo|thumbnail|background|post|visual|illustration|icon|cover)s?\b/i.test(t) && !/\b(video|clip|reel|animation|animate|footage|b-?roll|tiktok)\b/i.test(t) && !/\?\s*$/.test(t.trim());
+const jimmyWants = (t) => /\b(make|create|design|draw|paint|generate|give me|need|needs|want|wants|get me|send me|finish|finished|start on|work on|handle|handles|go ahead and|do|produce|build|render)\b/i.test(t) && /\b(picture|image|graphic|photo|flyer|banner|poster|logo|thumbnail|background|post|visual|illustration|icon|cover)s?\b/i.test(t) && !/\b(video|clip|reel|animation|animate|footage|b-?roll|tiktok)\b/i.test(t) && !/\?\s*$/.test(t.trim());
 // ---------- Teammates passing work to each other (Tania, Nov 9) ----------
 // Every agent has her own private chat, so "send this to Jonathan" used to go nowhere. Now:
 //  - when Tania tells an agent to send / pass / give something to a teammate, the note is delivered into that teammate's chat;
