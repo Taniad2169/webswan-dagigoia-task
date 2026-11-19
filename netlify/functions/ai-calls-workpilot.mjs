@@ -1,11 +1,15 @@
-// v2 (Nov 3): needs WORKPILOT_FIREBASE_KEY on webswan-billing.
+// v3 (Nov 18): needs WORKPILOT_SYNC_CLIENT_EMAIL + WORKPILOT_SYNC_PRIVATE_KEY on webswan-billing (dedicated GCP service account, not the Firebase web key).
 // AI calls -> WorkPilot: every 15 minutes, every finished call by Rebecca, Monica, George, Alek (outbound)
 // and Rachel (inbound) becomes a row in WorkPilot's "From AI Calls (Voice Studio)" list (blue), with the agent's
 // name, the outcome (Hang up, Call back, Voicemail, Talked, Email captured, Transferred to Rachel, Got Rachel's number,
 // Appointment booked, Do not call),
 // the summary and what the person said, so Tania can follow up herself.
-// Netlify env (set by Tania): WORKPILOT_FIREBASE_KEY (same value as in webswan-lead-prospector).
+// Netlify env (set by Tania): WORKPILOT_SYNC_CLIENT_EMAIL, WORKPILOT_SYNC_PRIVATE_KEY -- the workpilot-sync GCP service
+// account (Cloud Datastore User on webswan-marketing). This talks to Firestore over IAM, not Firestore Security Rules,
+// so it can read AND update existing lead docs -- the old anonymous Firebase sign-in could create a lead but not update
+// one on a repeat call, which is why some recordings never made it into WorkPilot.
 import { getStore } from "@netlify/blobs";
+import crypto from "node:crypto";
 
 // Tania, Nov 16: no more all-night runs (Netlify credits). Weekdays 6am-4pm Pacific (14-23 UTC); each run looks back 72 hours,
 // so calls after the last run (evenings, Friday) still reach WorkPilot the next weekday morning.
@@ -20,18 +24,26 @@ const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 const TEST_PHONES = new Set(["4156189200", "4158770687", "5166100203"]);
 const pretty = (p) => { const d = digits(p); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
 
-async function idToken(key, s) {
-  const saved = await s.get("workpilot-auth", { type: "json" }).catch(() => null);
-  if (saved && saved.refreshToken) {
-    const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(saved.refreshToken) });
-    const d = await r.json().catch(() => ({}));
-    if (r.ok && d.id_token) return d.id_token;
-  }
-  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ returnSecureToken: true }) });
+// Tania, Nov 18: service-account auth (replaces the old anonymous-Firebase-sign-in idToken()). Signs a short-lived
+// JWT with the workpilot-sync service account's private key and exchanges it for a Google OAuth2 access token
+// scoped to Firestore -- this goes through Google Cloud IAM, not Firestore Security Rules, so it can update an
+// existing lead (not just create one). Cached in memory for the life of the function instance (tokens last 1 hour).
+let cachedToken = null, cachedExp = 0;
+async function serviceAccountToken() {
+  if (cachedToken && Date.now() < cachedExp - 60000) return cachedToken;
+  const email = process.env.WORKPILOT_SYNC_CLIENT_EMAIL;
+  const pkey = String(process.env.WORKPILOT_SYNC_PRIVATE_KEY || "").replace(/\\n/g, "\n");
+  if (!email || !pkey) throw new Error("WORKPILOT_SYNC_CLIENT_EMAIL / WORKPILOT_SYNC_PRIVATE_KEY is not set on webswan-billing in Netlify");
+  const now = Math.floor(Date.now() / 1000);
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const unsigned = b64({ alg: "RS256", typ: "JWT" }) + "." + b64({ iss: email, scope: "https://www.googleapis.com/auth/datastore", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 });
+  const signature = crypto.createSign("RSA-SHA256").update(unsigned).sign(pkey).toString("base64url");
+  const jwt = unsigned + "." + signature;
+  const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer") + "&assertion=" + encodeURIComponent(jwt) });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.idToken) throw new Error("WorkPilot sign-in failed: " + ((d.error && d.error.message) || r.status));
-  await s.setJSON("workpilot-auth", { refreshToken: d.refreshToken });
-  return d.idToken;
+  if (!r.ok || !d.access_token) throw new Error("WorkPilot sync auth failed: " + ((d.error_description || d.error) || r.status));
+  cachedToken = d.access_token; cachedExp = now * 1000 + (d.expires_in || 3600) * 1000;
+  return cachedToken;
 }
 
 // Phone menus ("press 1"), voicemail greetings and AI/virtual receptionists are not people: those calls stay blue in WorkPilot.
@@ -106,9 +118,9 @@ export default async () => new Response(JSON.stringify(await runWorkpilotSync())
 
 // Also run on demand from Voice Studio ("Sync AI calls to WorkPilot now"), with the real error if it fails.
 export async function runWorkpilotSync(hours) {
-  const key = String(process.env.WORKPILOT_FIREBASE_KEY || "").trim().replace(/^["']|["']$/g, ""), ck = process.env.CARTESIA_API_KEY;
+  const svcEmail = process.env.WORKPILOT_SYNC_CLIENT_EMAIL, svcKey = process.env.WORKPILOT_SYNC_PRIVATE_KEY, ck = process.env.CARTESIA_API_KEY;
   const s0 = getStore({ name: "voice-studio", consistency: "strong" });
-  if (!key || !ck) { const st = { at: new Date().toISOString(), ok: false, error: !key ? "WORKPILOT_FIREBASE_KEY is not set on webswan-billing in Netlify" : "CARTESIA_API_KEY is missing" }; await s0.setJSON("wp-sync-status", st); return st; }
+  if (!svcEmail || !svcKey || !ck) { const st = { at: new Date().toISOString(), ok: false, error: (!svcEmail || !svcKey) ? "WORKPILOT_SYNC_CLIENT_EMAIL / WORKPILOT_SYNC_PRIVATE_KEY is not set on webswan-billing in Netlify" : "CARTESIA_API_KEY is missing" }; await s0.setJSON("wp-sync-status", st); return st; }
   const s = getStore({ name: "voice-studio", consistency: "strong" });
   const ids = (await s.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const done = new Set((await s.get("wp-sync-done", { type: "json" }).catch(() => null)) || []);
@@ -207,7 +219,7 @@ export async function runWorkpilotSync(hours) {
       const fields = {};
       for (const [k, v] of Object.entries(data)) if (v !== "" && v != null) fields[k] = { stringValue: String(v).slice(0, 3000) };
       try {
-        if (!token) token = await idToken(key, s);
+        if (!token) token = await serviceAccountToken();
         // Tania, Nov 16: one WorkPilot row per phone number. Each call used to create its own row ("ai-<call id>"), so a
         // practice called twice showed up 2-3 times in different colors. Now every call to the same number updates ONE row
         // ("ai-p<10 digits>"): the newest outcome and color win, and earlier calls stay underneath in the notes.
@@ -225,7 +237,7 @@ export async function runWorkpilotSync(hours) {
     }
   }
   await s.setJSON("wp-sync-done", [...done].slice(-5000));
-  const st = { at: new Date().toISOString(), ok: !errors, sent, errors, error: lastErr, keyHint: key.slice(0, 10) + "… (" + key.length + " characters)" };
+  const st = { at: new Date().toISOString(), ok: !errors, sent, errors, error: lastErr, keyHint: "service-account: " + svcEmail };
   await s.setJSON("wp-sync-status", st);
   return st;
 }
@@ -233,10 +245,7 @@ export async function runWorkpilotSync(hours) {
 // Tania, Nov 16: leads she sent from Lead Prospector to WorkPilot in the last `hours` hours, read straight from WorkPilot's
 // database (same sign-in the AI-call sync uses), so Voice Studio can queue them without her re-sending anything.
 export async function recentProspectorLeads(hours = 12) {
-  const key = String(process.env.WORKPILOT_FIREBASE_KEY || "").trim().replace(/^["']|["']$/g, "");
-  if (!key) throw new Error("WORKPILOT_FIREBASE_KEY is not set");
-  const s = getStore({ name: "voice-studio", consistency: "strong" });
-  const token = await idToken(key, s);
+  const token = await serviceAccountToken();
   const q = { structuredQuery: { from: [{ collectionId: "leads" }], where: { fieldFilter: { field: { fieldPath: "source" }, op: "IN", value: { arrayValue: { values: [{ stringValue: "prospector" }, { stringValue: "lead-prospector" }] } } } }, limit: 1000 } };
   const r = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify(q) });
   const d = await r.json().catch(() => []);
