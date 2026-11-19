@@ -347,13 +347,31 @@ const SCAN_TIMEOUT_MS = 15000;
 // may not have separately negotiated. Used only to raise a flag worth Jonathan's review, never as a verdict.
 const NO_STANDARD_BAA_VENDORS = ["Meta (Facebook) Pixel", "TikTok Pixel", "LinkedIn Insight Tag", "Pinterest Tag", "Google Ads / DoubleClick", "Hotjar", "Microsoft Clarity", "Microsoft Ads (UET)", "X (Twitter) Pixel"];
 
+const AUDIT_LAB_COVERED_STATES = { CA: "California", NY: "New York", FL: "Florida", TX: "Texas", UT: "Utah", NV: "Nevada", NJ: "New Jersey", AZ: "Arizona", CT: "Connecticut", GA: "Georgia", VA: "Virginia" };
+const STATE_NAME_TO_CODE = Object.fromEntries(Object.entries(AUDIT_LAB_COVERED_STATES).map(([code, name]) => [name.toLowerCase(), code]));
+
+// Resolves whatever Sentinel passed (a code, a full name, or something not on the Lab's covered-state list) into
+// either a covered two-letter code, or OTHER with the original name preserved -- the Lab's scan.mts rejects any
+// state value that isn't a covered code or literally "OTHER", so this never lets a bad state value block the scan.
+function resolveAuditLabState(rawState) {
+  const raw = clean(rawState, 40).trim();
+  if (!raw) return { state: "", other: "" };
+  const upper = raw.toUpperCase();
+  if (AUDIT_LAB_COVERED_STATES[upper]) return { state: upper, other: "" };
+  const byName = STATE_NAME_TO_CODE[raw.toLowerCase()];
+  if (byName) return { state: byName, other: "" };
+  if (upper === "OTHER") return { state: "OTHER", other: "" };
+  return { state: "OTHER", other: raw.slice(0, 60) };
+}
+
 export async function sentinelScanSite(rawUrl, rawState, rawOther) {
   const parsed = parseUrlSafe(rawUrl);
   if (parsed.error) return { error: parsed.error };
   const hostCheck = await assertPublicHost(parsed.url.hostname);
   if (!hostCheck.ok) return { error: hostCheck.error };
-  const state = clean(rawState, 8).trim().toUpperCase();
-  const other = clean(rawOther, 60).trim();
+  const resolved = resolveAuditLabState(rawState);
+  const state = resolved.state;
+  const other = resolved.other || clean(rawOther, 60).trim();
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), SCAN_TIMEOUT_MS);
   let res;
