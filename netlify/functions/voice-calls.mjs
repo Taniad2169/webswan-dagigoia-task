@@ -285,6 +285,12 @@ export default async (req) => {
     return reply(200, { debug: d || null, note: d ? "" : "No run has reached George's plan window yet today -- check back once 8-9am or 12:30-1:45pm Pacific has passed." }, origin);
   }
 
+  // ---------- temporary: read the George dialer diagnostic Tania asked for (Nov 19) ----------
+  if (b.action === "debug_george") {
+    const d = await store.get("debug-george-" + today(), { type: "json" });
+    return reply(200, { debug: d || null, note: d ? "" : "No run has reached George's plan window yet today -- check back once 8-9am or 12:30-1:45pm Pacific has passed." }, origin);
+  }
+
   if (b.action === "status") {
     const counts = (await store.get("count-" + today(), { type: "json" })) || {};
     return reply(200, {
