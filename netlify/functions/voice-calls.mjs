@@ -113,6 +113,19 @@ async function verifyFirebaseToken(token) {
 }
 
 const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
+// Tania, Nov 19: a “name” that’s just a bare category (“dentist”, “chiropractor”) or the phone number itself
+// typed into the name field isn’t a real name. This catches both so a lead like that can never reach an agent
+// disguised as a named lead -- it gets routed to the Needs Info queue instead (Sebastien reviews it).
+const BARE_CATEGORY_WORDS = new Set(["dentist", "dentists", "doctor", "doctors", "physician", "physicians", "chiropractor", "chiropractors", "chiropractic", "attorney", "attorneys", "lawyer", "lawyers", "law firm", "clinic", "dermatologist", "dermatologists", "dermatology", "plumber", "plumbers", "plumbing", "electrician", "electricians", "contractor", "contractors", "medical", "practice", "office", "business", "company", "dental", "surgeon", "surgeons"]);
+function usableName(v) {
+  const s = clean(v, 200);
+  if (!s) return "";
+  const digitsOnly = s.replace(/\D/g, "");
+  const compact = s.replace(/\s/g, "");
+  if (digitsOnly.length >= 7 && digitsOnly.length / Math.max(1, compact.length) > 0.6) return ""; // mostly a phone number
+  if (BARE_CATEGORY_WORDS.has(s.trim().toLowerCase())) return ""; // just a category, not a name
+  return s;
+}
 const numberIds = () => String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
 // agents created from Voice Studio are remembered in Blobs ("agent-ids"); a Netlify env var always wins
 let EXTRA_IDS = {};
@@ -418,6 +431,18 @@ export default async (req) => {
     const phone = e164(x.phone), st = clean(x.state, 2).toUpperCase();
     if (!phone) return reply(400, { error: "This lead has no valid US phone number." }, origin);
     if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the lead's state (2 letters) so the agent calls in their business hours." }, origin);
+    // Tania, Nov 19: no lead without a real name goes to any agent, period. If all we have is a bare category
+    // (“dentist”) or the phone number sitting in the name field, park it in the Needs Info queue instead of
+    // either silently calling a stranger or just bouncing the push with no trace.
+    const nameCandidate = clean(x.contact || x.name || x.business, 160);
+    if (!usableName(nameCandidate)) {
+      try {
+        const needs = (await store.get("needs-info", { type: "json" })) || [];
+        needs.push({ at: new Date().toISOString(), by: email, lead: x, agent: want, reason: "no usable name (saw: \"" + (nameCandidate || "blank") + "\")" });
+        await store.setJSON("needs-info", needs.slice(-500));
+      } catch (e) {}
+      return reply(400, { error: "This lead has no real name on file (just \"" + (nameCandidate || "blank") + "\") — it can't be sent to any agent. Sent to the Needs Info queue instead so Sebastien can research it." }, origin);
+    }
     const want = String(x.agent || "").toLowerCase();
     if (!["monica", "george", "rebecca", "alek", "jenna"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca, Alek or Jenna." }, origin);
     const agent = want, lang = LANGS[x.lang] ? x.lang : "en";
