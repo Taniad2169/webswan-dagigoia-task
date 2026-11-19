@@ -256,7 +256,8 @@ function renderLeads(c) {
 }
 function leadsTable() {
   const q = ($('search').value || '').toLowerCase(), fs = $('fStatus').value, fe = $('fElig').value;
-  const rows = state.leads.filter(x => [x.name, x.business, x.phone, x.email, x.state, x.notes].join(' ').toLowerCase().includes(q))
+  const qDigits = q.replace(/\D/g, ''); // Tania, Nov 19: typed phone numbers often have no punctuation while stored ones do -- compare digits too
+  const rows = state.leads.filter(x => [x.name, x.business, x.phone, x.email, x.state, x.notes].join(' ').toLowerCase().includes(q) || (qDigits.length >= 3 && (x.phone || '').replace(/\D/g, '').includes(qDigits)))
     .filter(x => !fs || (x.status || 'New') === fs)
     .filter(x => !fe || (eligibility(x).ok === (fe === 'yes')));
   $('leadTable').innerHTML = rows.length ? `<div class="row" style="margin-top:14px"><span class="muted">${rows.length} of ${state.leads.length} leads</span></div><div class="tablewrap"><table><thead><tr><th>NAME</th><th>BUSINESS</th><th>PHONE</th><th>LOCAL TIME</th><th>AI CALLING</th><th>STATUS</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows.map(x => {
