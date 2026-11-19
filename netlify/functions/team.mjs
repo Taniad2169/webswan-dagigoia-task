@@ -9,7 +9,7 @@ import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } f
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
 import { leadsBrief } from "../lib/call-data.mjs";
-import { sentinelReadFile, sentinelReadCommits, sentinelLog, sentinelLogList, sentinelInspectUrl, formatUrlInspection, scrubSecrets as sentinelScrub, neutralizeDirectives as sentinelNeutralize } from "../lib/sentinel.mjs";
+import { sentinelReadFile, sentinelReadCommits, sentinelLog, sentinelLogList, sentinelInspectUrl, formatUrlInspection, sentinelScanSite, formatSiteScan, scrubSecrets as sentinelScrub, neutralizeDirectives as sentinelNeutralize } from "../lib/sentinel.mjs";
 
 // Eva's inbox (Tania, Nov 8): Gmail can be slow to read 40 threads, which made Eva say "Gmail didn't answer".
 // Read fewer threads with more time, try once more, and fall back to the last good copy so Eva is never empty-handed.
@@ -804,8 +804,8 @@ Never invent a source that is not in the research above. If the research above c
       // Same shape as Sebastien's LEAD directives otherwise: server-validated against SENTINEL_REPOS in
       // sentinel.mjs, never a looser path. Every successful read also tries to write one append-only audit
       // record, in its own try/catch so a logging failure can never silently discard or overwrite a real result.
-      if (agent === "sentinel" && /\(\(\s*SENTINEL\s+(READ FILE|READ COMMITS|CHECK URL)\s*:/i.test(outText)) {
-        const matches = [...outText.matchAll(/\(\(\s*SENTINEL\s+(READ FILE|READ COMMITS|CHECK URL)\s*:\s*([\s\S]*?)\)\)/gi)];
+      if (agent === "sentinel" && /\(\(\s*SENTINEL\s+(READ FILE|READ COMMITS|CHECK URL|SCAN SITE)\s*:/i.test(outText)) {
+        const matches = [...outText.matchAll(/\(\(\s*SENTINEL\s+(READ FILE|READ COMMITS|CHECK URL|SCAN SITE)\s*:\s*([\s\S]*?)\)\)/gi)];
         for (const m of matches.slice(0, 5)) {
           const kind = m[1].toUpperCase();
           const f = {};
@@ -827,12 +827,19 @@ Never invent a source that is not in the research above. If the research above c
     evidenceLabel = "commit history on " + r.repo + "/" + r.path;
     evidenceRaw = r.commits.length ? r.commits.map((c) => "- " + c.sha + " " + c.at + " " + c.author + ": " + c.message).join("\n") : "(no commits found)";
     logBase = { action: "read_commits", target: r.repo + "/" + r.path, evidence: "GitHub Commits API, " + r.commits.length + " commit(s) returned" };
-  } else {
+  } else if (kind === "CHECK URL") {
     r = await sentinelInspectUrl(f.url, f.checks);
     if (r.error) { note = "\n\n❌ " + r.error; outText = outText.replace(m[0], note); continue; }
     evidenceLabel = "live inspection of " + r.finalUrl;
     evidenceRaw = formatUrlInspection(r);
     logBase = { action: "check_url", target: r.finalUrl, evidence: "Live HTTP fetch, checks: " + r.checks.map((c) => c.type).join(",") };
+  } else {
+    r = await sentinelScanSite(f.url, f.state, f.other);
+    if (r.error) { note = "\n\n❌ " + r.error; outText = outText.replace(m[0], note); continue; }
+    const finalUrl = (r.meta && r.meta.finalUrl) || f.url;
+    evidenceLabel = "full technical/privacy/accessibility scan of " + finalUrl + " (WebSwan Technical Audit Lab)";
+    evidenceRaw = formatSiteScan(r);
+    logBase = { action: "scan_site", target: finalUrl, evidence: "Audit Lab scan, summary: " + (r.summary ? Object.entries(r.summary).map(([k, v]) => k + "=" + v).join(",") : "") };
   }
             }
             // the version handed to the model are the SAME defused text, never a raw copy that skips this step.
