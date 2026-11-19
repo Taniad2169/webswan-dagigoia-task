@@ -23,6 +23,18 @@ const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 // Tania's own phones: test calls to these never go to WorkPilot.
 const TEST_PHONES = new Set(["4156189200", "4158770687", "5166100203"]);
 const pretty = (p) => { const d = digits(p); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : String(p || ""); };
+// Tania, Nov 19: never let a phone number, or a bare category word like “dentist”, stand in as a lead’s name --
+// that’s exactly what was showing up as the “name” in WorkPilot and tripping the push-to-agent validation later.
+const BARE_CATEGORY_WORDS = new Set(["dentist", "dentists", "doctor", "doctors", "physician", "physicians", "chiropractor", "chiropractors", "chiropractic", "attorney", "attorneys", "lawyer", "lawyers", "law firm", "clinic", "dermatologist", "dermatologists", "dermatology", "plumber", "plumbers", "plumbing", "electrician", "electricians", "contractor", "contractors", "medical", "practice", "office", "business", "company", "dental", "surgeon", "surgeons"]);
+function usableName(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const d = s.replace(/\D/g, "");
+  const compact = s.replace(/\s/g, "");
+  if (d.length >= 7 && d.length / Math.max(1, compact.length) > 0.6) return ""; // mostly a phone number
+  if (BARE_CATEGORY_WORDS.has(s.toLowerCase())) return ""; // just a category, not a name
+  return s;
+}
 
 // Tania, Nov 18: service-account auth (replaces the old anonymous-Firebase-sign-in idToken()). Signs a short-lived
 // JWT with the workpilot-sync service account's private key and exchanges it for a Google OAuth2 access token
@@ -201,10 +213,12 @@ export async function runWorkpilotSync(hours) {
         lead.campaign ? "Campaign: " + lead.campaign : "",
         `Call ID ${id} (recording in Voice Studio → Call records)`,
       ].filter(Boolean).join("\n");
+      const realName = usableName(lead.name) || usableName(md.lead) || "";
       const data = {
-        name: lead.name || md.lead || (inbound ? "Caller " + pretty(other) : pretty(other)),
-        decisionMakerName: lead.name || md.lead || "",
+        name: realName || (inbound ? "Unknown caller" : "Unknown — needs name"),
+        decisionMakerName: realName,
         companyName: lead.business || md.business || "",
+        needsInfo: realName ? "" : "true",
         phone: pretty(other),
         email,
         website: site,
