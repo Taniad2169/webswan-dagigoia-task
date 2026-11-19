@@ -330,6 +330,84 @@ export async function sentinelInspectUrl(rawUrl, checksRaw) {
   return out;
 }
 
+// ---- Live site-wide technical/privacy/accessibility scan via the WebSwan Technical Audit Lab -------------
+// (Tania, Nov 19): sentinelInspectUrl above only checks links/alt/forms/cookies from raw HTML -- it cannot see
+// tracking pixels, CSP headers, or categorize findings the way a real compliance pre-check needs. Rather than
+// duplicate that logic here (and risk it drifting out of sync), this calls the REAL, already-correct scanner
+// that already powers the standalone Audit Lab tool (repo webswan-technical-audit-lab, netlify/functions/scan.mts)
+// over its public HTTPS API. Same evidence discipline as every other Sentinel tool: read-only, SSRF-checked
+// before the call, result handed back as real named findings (never invented), and the one thing no scan of any
+// kind can ever establish -- whether a vendor BAA is actually signed, or whether language rises to a bar-rule
+// violation -- is explicitly flagged as unverifiable here rather than guessed at.
+const AUDIT_LAB_SCAN_URL = "https://silver-malabi-1a1324.netlify.app/api/scan";
+const SCAN_TIMEOUT_MS = 15000;
+
+// Vendors whose own standard / free-tier terms do not include a signed Business Associate Agreement -- this is
+// a fact about the VENDOR's public terms, not a claim about whatever contract this particular business may or
+// may not have separately negotiated. Used only to raise a flag worth Jonathan's review, never as a verdict.
+const NO_STANDARD_BAA_VENDORS = ["Meta (Facebook) Pixel", "TikTok Pixel", "LinkedIn Insight Tag", "Pinterest Tag", "Google Ads / DoubleClick", "Hotjar", "Microsoft Clarity", "Microsoft Ads (UET)", "X (Twitter) Pixel"];
+
+export async function sentinelScanSite(rawUrl, rawState, rawOther) {
+  const parsed = parseUrlSafe(rawUrl);
+  if (parsed.error) return { error: parsed.error };
+  const hostCheck = await assertPublicHost(parsed.url.hostname);
+  if (!hostCheck.ok) return { error: hostCheck.error };
+  const state = clean(rawState, 8).trim().toUpperCase();
+  const other = clean(rawOther, 60).trim();
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), SCAN_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(AUDIT_LAB_SCAN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: parsed.url.toString(), state: state || undefined, other: other || undefined }),
+      signal: ac.signal
+    });
+  } catch (e) { clearTimeout(timer); return { error: "The Audit Lab scanner did not respond: " + String(e.message || e).slice(0, 160) }; }
+  clearTimeout(timer);
+  let body;
+  try { body = await res.json(); } catch (e) { body = null; }
+  if (!body) return { error: "The Audit Lab scanner returned an unreadable response (HTTP " + res.status + ")." };
+  if (body.error) return { error: body.error };
+  if (!res.ok) return { error: "The Audit Lab scanner returned an error (HTTP " + res.status + ")." };
+  return body;
+}
+
+export function formatSiteScan(r) {
+  const meta = r.meta || {};
+  const lines = [
+    "Site scanned: " + (meta.finalUrl || meta.url || "(unknown)"),
+    "Scanned at: " + (meta.scannedAt || "(unknown)"),
+    "HTTP status: " + meta.status,
+  ];
+  if (meta.jsHeavy) lines.push("NOTE: this page builds most of its real content with JavaScript -- the raw HTML this scan reads is nearly empty, so results marked \"not checkable\" (na) may actually pass or fail once the page fully loads in a browser.");
+  lines.push("", "SUMMARY (count of checks by result): " + (r.summary ? Object.entries(r.summary).map(([k, v]) => k + "=" + v).join(", ") : "(none)"), "");
+  const flaggedVendors = [];
+  for (const g of (r.groups || [])) {
+    lines.push(String(g.title || "").toUpperCase() + ":");
+    for (const c of (g.checks || [])) {
+      lines.push("  [" + String(c.status || "").toUpperCase() + "] " + c.label + " -- " + c.detail);
+      if (c.id === "trackers" && c.detail) for (const v of NO_STANDARD_BAA_VENDORS) if (c.detail.includes(v)) flaggedVendors.push(v);
+    }
+    lines.push("");
+  }
+  if (r.notCovered && r.notCovered.length) {
+    lines.push("NOT COVERED BY THIS SCAN AT ALL (not checked -- not a pass, not evidence of anything):");
+    for (const n of r.notCovered) lines.push("  - " + n);
+    lines.push("");
+  }
+  if (r.notes && r.notes.length) { lines.push("NOTES:"); for (const n of r.notes) lines.push("  - " + n); lines.push(""); }
+  if (flaggedVendors.length) {
+    lines.push("COMPLIANCE FLAG TO VERIFY (a fact about the vendor's own standard terms, not a finding about this business): " +
+      [...new Set(flaggedVendors)].join(", ") +
+      " -- under each vendor's own standard/free-tier terms, none of these offer a signed Business Associate Agreement. If this site can collect any protected health information, firing one of these trackers on a page where that happens is a real HIPAA red flag worth Jonathan's review. This scan cannot see whether this specific business has a separate, negotiated BAA with any vendor -- that is a private contract, never visible from a site scan -- so report this as a flag to verify with Jonathan, never as a confirmed violation.");
+    lines.push("");
+  }
+  lines.push("WHAT THIS SCAN CAN NEVER ESTABLISH: whether a Business Associate Agreement is or isn't actually signed with any vendor (a private contract, not a site property); a HIPAA-compliance or state-bar-advertising-rule verdict as a legal conclusion (Jonathan's call, same as every other Sentinel finding); anything a page only builds client-side with JavaScript after it loads; or whether consent/opt-out requests are actually honored server-side.");
+  return lines.join("\n");
+}
+
 export function formatUrlInspection(r) {
   const lines = ["URL checked: " + r.url, "Final URL after redirects: " + r.finalUrl, ""];
   for (const c of r.checks) {
