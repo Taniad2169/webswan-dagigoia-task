@@ -147,6 +147,35 @@ export default async () => {
   const perWin = Number(s.perWindow) || 0, placedBy = {};
   let placed = 0;
 
+  // Tania, Nov 19: temporary read-only diagnostic -- George has placed zero calls since Nov 17 20:36 UTC
+  // despite valid config, leads and windows firing. This mirrors the loop's own gates for his queued leads
+  // ONLY, without touching q, any lead, or placing any call, and records which gate is actually stopping him
+  // so the real cause shows up tonight instead of more guessing. Safe to delete once the cause is fixed.
+  try {
+    if (PLAN) {
+      const gLeads = q.leads.filter((l) => l.status === "queued" && String(l.agent || "").toLowerCase() === "george");
+      const winNow = planWindow("george", now.mins);
+      const reasons = {}; const bump = (r) => { reasons[r] = (reasons[r] || 0) + 1; };
+      for (const lead of gLeads) {
+        if (winNow < 0) { bump("not george's plan window right now"); continue; }
+        if (lead.notBefore && Date.now() < lead.notBefore) { bump("notBefore (follow-up wait)"); continue; }
+        if (allowance <= 0) { bump("no monthly budget allowance left"); continue; }
+        const winCap0 = planCap("george", winNow);
+        if (winCap0 && (winCounts["plan" + winNow + ":george"] || 0) >= winCap0) { bump("george's window cap already reached (" + winCap0 + ")"); continue; }
+        const to0 = e164(lead.phone);
+        if (!to0) { bump("invalid/missing phone on the lead"); continue; }
+        if (dnc.includes(to0)) { bump("Do Not Call"); continue; }
+        if (dialed.includes(to0)) { bump("already dialed today"); continue; }
+        if (!leadOpen(lead)) { bump("outside lead's own business hours (state " + (lead.state || "none") + ")"); continue; }
+        if (!agentId("george")) { bump("no Cartesia agent id resolves for george"); continue; }
+        const pick0 = numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];
+        if (!pick0) { bump("every caller-ID number already at today's cap"); continue; }
+        bump("would be callable right now -- nothing blocking it");
+      }
+      if (gLeads.length) await store.set("debug-george-" + day, JSON.stringify({ at: new Date().toISOString(), windowNow: winNow, queuedCount: gLeads.length, reasons }));
+    }
+  } catch (e) {}
+
   for (const lead of q.leads) {
     if (lead.status !== "queued") continue;
     // This week's plan: only leads one of the plan's callers takes, and only in that caller's own window.
