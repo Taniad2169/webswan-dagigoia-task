@@ -76,7 +76,7 @@ a{color:#137fae}
 <style>body.vs-locked>*:not(#vsGate){visibility:hidden!important}#vsGate{display:none}body.vs-locked #vsGate{display:flex;position:fixed;inset:0;z-index:2147483647;background:#0f1d2e;color:#fff;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-family:system-ui,sans-serif;text-align:center;padding:24px}#vsGate button{background:#fff;color:#0f1d2e;border:0;border-radius:10px;padding:12px 20px;font-size:16px;font-weight:600;cursor:pointer}</style>
 <div id="vsGate" role="dialog" aria-modal="true" aria-labelledby="vsGateT"><div style="font-size:42px" aria-hidden="true">🔒</div><h1 id="vsGateT" style="margin:0;font-size:24px">WebSwan Voice Studio</h1><p style="margin:0;max-width:360px;opacity:.85">Private workspace. Sign in with your WebSwan Google account to continue.</p><button type="button" onclick="window.cloudClick && window.cloudClick()">Sign in with Google</button><p id="vsGateMsg" role="status" style="margin:0;font-size:14px;opacity:.8"></p></div>
 <a class="skip" href="#content">Skip to content</a>
-<aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><a href="https://play.cartesia.ai/agents" target="_blank" rel="noopener noreferrer" title="Open your Cartesia account: agents, voices, phone numbers and usage" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#111827;color:#fff;font-weight:800;text-decoration:none">🎧 My Cartesia account</a><a href="../team/roleplay.html" title="Practice with Monica, George, Rebecca, Alek or Rachel by voice, or let Coby play the doctor or attorney" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;text-decoration:none">🎭 Role play room</a><a href="../team/meeting.html" title="Hold a live voice meeting with your whole team: invite Coby, Eva, Tatiana, Jimmy, Jonathan, Rachel and your callers, pick who talks, and talk live yourself" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#0f766e;color:#fff;font-weight:800;text-decoration:none">🏢 Meeting room</a><a href="rachel.html" title="Listen to every call Rachel answered: call-backs and transfers, with the recording and the conversation" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#0b5c8a;color:#fff;font-weight:800;text-decoration:none">📞 Rachel's calls</a><a href="jenna.html" title="Listen to every call Jenna made or answered, with the recording and the conversation" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#6a3d9a;color:#fff;font-weight:800;text-decoration:none">📞 Jenna's calls</a><a href="../team/" style="display:block;margin:6px 0 12px;padding:12px;border-radius:10px;background:#1182f0;color:#fff;font-weight:800;text-decoration:none">🏢 AI Office<br><small style="font-weight:600;opacity:.9">Eva · Tatiana · Jonathan · Rachel</small></a><a href="../team/#brief" style="display:block;margin:0 0 12px;padding:12px;border-radius:10px;background:#0b2f57;color:#fff;font-weight:800;text-decoration:none">🎙️ Voice briefing<br><small style="font-weight:600;opacity:.9">Talk with any agent by name</small></a><nav id="nav" aria-label="Sections"></nav><a href="../team/#tatiana" style="display:block;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">📅 Content calendar (Tatiana)</a><a href="jennifer.html" style="display:block;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">👩‍💼 Jennifer Back Office</a><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
+<aside><div class="brand">🦢 WebSwan<small>VOICE STUDIO</small></div><button type="button" id="vsHelpBtn" onclick="window.openVSHelp && window.openVSHelp()" style="display:block;width:100%;margin:6px 0 8px;padding:12px;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:800;border:none;cursor:pointer;font-size:14px">❔ Help &amp; cheatsheet</button><a href="https://play.cartesia.ai/agents" target="_blank" rel="noopener noreferrer" title="Open your Cartesia account: agents, voices, phone numbers and usage" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#111827;color:#fff;font-weight:800;text-decoration:none">🎧 My Cartesia account</a><a href="../team/roleplay.html" title="Practice with Monica, George, Rebecca, Alek or Rachel by voice, or let Coby play the doctor or attorney" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;text-decoration:none">🎭 Role play room</a><a href="../team/meeting.html" title="Hold a live voice meeting with your whole team: invite Coby, Eva, Tatiana, Jimmy, Jonathan, Rachel and your callers, pick who talks, and talk live yourself" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#0f766e;color:#fff;font-weight:800;text-decoration:none">🏢 Meeting room</a><a href="rachel.html" title="Listen to every call Rachel answered: call-backs and transfers, with the recording and the conversation" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#0b5c8a;color:#fff;font-weight:800;text-decoration:none">📞 Rachel's calls</a><a href="jenna.html" title="Listen to every call Jenna made or answered, with the recording and the conversation" style="display:block;margin:6px 0 8px;padding:12px;border-radius:10px;background:#6a3d9a;color:#fff;font-weight:800;text-decoration:none">📞 Jenna's calls</a><a href="../team/" style="display:block;margin:6px 0 12px;padding:12px;border-radius:10px;background:#1182f0;color:#fff;font-weight:800;text-decoration:none">🏢 AI Office<br><small style="font-weight:600;opacity:.9">Eva · Tatiana · Jonathan · Rachel</small></a><a href="../team/#brief" style="display:block;margin:0 0 12px;padding:12px;border-radius:10px;background:#0b2f57;color:#fff;font-weight:800;text-decoration:none">🎙️ Voice briefing<br><small style="font-weight:600;opacity:.9">Talk with any agent by name</small></a><nav id="nav" aria-label="Sections"></nav><a href="../team/#tatiana" style="display:block;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">📅 Content calendar (Tatiana)</a><a href="jennifer.html" style="display:block;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:#e8f5fc;color:#0b5c8a;font-weight:700;text-decoration:none">👩‍💼 Jennifer Back Office</a><div class="asidefoot">YOUR PRIVATE WORKSPACE<br>Where your business takes flight.</div></aside>
 <main>
   <header><div class="ws-left"><img class="ws-me" src="../team/img/tania.jpg" alt="Tania Domingue"><div><div class="muted" style="font-size:13px">WEBSWAN VOICE STUDIO / <span id="crumb">OVERVIEW</span></div><h1 id="title">Overview</h1></div></div><div class="toolbar"><span class="pill" style="background:#e6f7ec;color:#17723a">● Live calling on · Cartesia</span><a class="btn outline small" href="https://play.cartesia.ai/agents" target="_blank" rel="noopener noreferrer" title="Cartesia: your AI voice agents (Rebecca, George), phone numbers, API keys and usage">🎧 Cartesia Agents</a><button type="button" id="cloudBtn" class="btn outline small" onclick="window.cloudClick && window.cloudClick()" title="Sync your workspace to your private WebSwan cloud">☁ Sign in to sync</button></div><img class="ws-logo" src="../team/img/webswan-logo.webp" alt="The WebSwan logo"></header>
   <div id="content" tabindex="-1"></div>
@@ -2250,6 +2250,90 @@ function renderBrain(c) {
   <div class="card section"><h2 style="margin:0 0 6px">💫 Prompt &amp; personality <small class="muted" style="font-weight:400">how she behaves</small></h2><p class="muted" style="margin:0 0 8px;font-size:13px">Her personality, phone rules, HOW TO RUN YOUR CALL, rebuttals, booking and email rules. She follows these silently while she says the script. ${t.length.toLocaleString()} of 30,000 characters in total.</p>${ta('brPrompt', SP.prompt, 380)}<div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="btn small" onclick="brSavePrompt()">💾 Save prompt &amp; personality</button></div></div>
   <details class="card section"><summary style="cursor:pointer;font-weight:700">🔧 Advanced: the full live prompt as Cartesia receives it</summary>  <div style="margin-top:10px"><p class="muted" style="margin:0 0 8px;font-size:13px">Her complete prompt: ${t.length.toLocaleString()} of 30,000 characters. Edit carefully; Save updates her live voice.</p><textarea id="brFull" style="width:100%;min-height:420px;font:13px/1.45 ui-monospace,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid #cfd8e3">${esc(t)}</textarea><div class="toolbar" style="margin-top:8px"><button class="btn green" onclick="brSave()">💾 Save to live voice</button></div></div></details>`}`;
 }
+</script>
+
+<div id="vsHelpOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid #e5e7eb">
+      <div style="font-weight:800;font-size:17px;flex:1">❔ Voice Studio cheatsheet</div>
+      <button type="button" onclick="document.getElementById('vsHelpOverlay').style.display='none'" style="border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 20px 0">
+      <input type="text" id="vsHelpSearchInput" placeholder="Type what you need help with... (e.g. 'push leads', 'pause', 'one hour')"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px" autocomplete="off">
+      <div id="vsHelpSearchMsg" style="font-size:12px;color:#64748b;margin-top:6px;min-height:14px"></div>
+    </div>
+    <div id="vsHelpBody" style="overflow-y:auto;padding:4px 20px 20px;flex:1">
+      <div class="vsHelpSection" data-kw="navigate menu sidebar pages overview move around go to" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Navigating Voice Studio</div>
+        <div style="font-size:14px;color:#334155">Use the icons down the left side to move between sections: Overview, SDR AI, AI Team, Leads, Agents, Brain, Campaigns, Alek's calendar, Practice call, Call records, Tania call-back, and Usage &amp; setup.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="add lead manual enter new lead by hand" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Enter a manual lead</div>
+        <div style="font-size:14px;color:#334155">Leads tab → + Add lead, then fill in name, business, phone, email, state and status by hand. Use Import CSV instead for a batch from WorkPilot or Prospector.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="push leads to dialer add leads queue" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Push leads to the dialer</div>
+        <div style="font-size:14px;color:#334155">Leads aren't pushed one by one — a campaign automatically pulls in every lead matching its agent and status filter. Open the campaign on the Campaigns tab and press 🤖 Auto-dial on its card to load its matching leads into the shared dialer queue.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="add campaign create new campaign" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Add a campaign</div>
+        <div style="font-size:14px;color:#334155">Campaigns → + Create campaign. Name it, pick the agent, the call language, which lead statuses it pulls, a schedule note, and the goal. Saving only makes a draft — nothing dials until Auto-dial is turned on.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="remove campaign delete campaign" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Remove a campaign</div>
+        <div style="font-size:14px;color:#334155">Press the 🗑 trash icon on that campaign's card. It deletes the campaign draft only — your leads are never touched.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="start dialer turn on activate begin calling" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Start the dialer</div>
+        <div style="font-size:14px;color:#334155">Turn on 🤖 Auto-dial on the campaign(s) you want running, then make sure the shared Auto-dialer panel at the top of Campaigns shows ▶ On with your Days and Window times saved — that's what actually places the calls.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="one hour campaign short burst single agent" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Set a one-hour campaign with one agent</div>
+        <div style="font-size:14px;color:#334155">Create the campaign for that agent, turn its Auto-dial on, then in the shared Auto-dialer panel set Window 1 to that one hour and press Save schedule. When the hour's up, press ⏸ Pause, or just narrow the window back afterward.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="long term permanent campaign ongoing everyday" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Set up a long-term / permanent campaign</div>
+        <div style="font-size:14px;color:#334155">Same Create campaign steps, but leave the shared Auto-dialer's normal day/window schedule in place and leave that campaign's Auto-dial switched on. It keeps pulling eligible leads every matching day inside those hours.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="pause restart resume stop dialer" style="padding:12px 0;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:700;margin-bottom:4px">Pause / restart the dialer</div>
+        <div style="font-size:14px;color:#334155">⏸ Pause stops dialing right away. Press the same button again to resume where it left off — nothing is lost. ↻ Refresh just updates the counts; Empty queue wipes the whole queue and can't be undone.</div>
+      </div>
+      <div class="vsHelpSection" data-kw="skip eligible dnc do not call business hours why" style="padding:12px 0">
+        <div style="font-weight:700;margin-bottom:4px">Why a lead gets skipped</div>
+        <div style="font-size:14px;color:#334155">Do Not Call numbers, numbers already called today, and leads outside their own time zone's business hours are skipped automatically — no need to filter those out yourself.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+window.openVSHelp = function() {
+  document.getElementById('vsHelpOverlay').style.display = 'flex';
+  const inp = document.getElementById('vsHelpSearchInput');
+  inp.value = '';
+  document.getElementById('vsHelpSearchMsg').textContent = '';
+  setTimeout(() => inp.focus(), 50);
+};
+(function() {
+  const inp = document.getElementById('vsHelpSearchInput');
+  if (!inp) return;
+  inp.addEventListener('input', function() {
+    const q = inp.value.trim().toLowerCase();
+    const sections = Array.from(document.querySelectorAll('.vsHelpSection'));
+    sections.forEach(s => s.style.background = '');
+    const msg = document.getElementById('vsHelpSearchMsg');
+    if (!q) { msg.textContent = ''; return; }
+    const match = sections.find(s => (s.dataset.kw + ' ' + s.textContent).toLowerCase().includes(q));
+    if (match) {
+      match.style.background = '#fef9c3';
+      match.scrollIntoView({behavior:'smooth', block:'center'});
+      msg.textContent = '';
+    } else {
+      msg.textContent = 'No matching topic yet — try another word.';
+    }
+  });
+})();
 </script>
 </body>
 </html>
