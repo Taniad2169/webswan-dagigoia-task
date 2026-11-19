@@ -8,7 +8,7 @@
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
 import { getLeadMemory, NO_MEMORY } from "../lib/lead-memory.mjs";
-import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, JENNA_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
+import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, JENNA_COMPLIANCE_TASK, GEORGE_COMPLIANCE_TASK } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
@@ -185,7 +185,7 @@ export default async () => {
         body: JSON.stringify({
           agent_id: aid, from_number_id: pick.id,
           outbound_calls: [{ to_number: to, metadata: { leadId: lead.id, lead: lead.name || "", business: lead.business || "", campaign: (PLAN ? DIALER_PLAN.agents[name].campaign : lead.campaign) || "", by: "auto-dialer" },
-            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_memory: (memo && memo.brief) ? String(memo.brief).slice(0, 1200) : NO_MEMORY, lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "jenna" ? "Floating: follow Tania's task below" : name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: name === "jenna" ? JENNA_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : floating ? lead.task : "none" } }],
+            dynamic_variables: { lead_id: lead.id || "", lead_name: lead.name || "", business: lead.business || "", lead_state: lead.state || "", findings: lead.findings || "none listed", lead_memory: (memo && memo.brief) ? String(memo.brief).slice(0, 1200) : NO_MEMORY, lead_language: lang === "es" ? "Latin American Spanish" : lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: name === "jenna" ? "Floating: follow Tania's task below" : name === "alek" ? (floating ? "Floating: follow Tania's task below" : "Selling: phone application (PWA) and digital e-card") : "standard", task: name === "jenna" ? JENNA_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : name === "george" ? GEORGE_COMPLIANCE_TASK.replace("{{findings}}", String(lead.findings || "none listed").slice(0, 600)) : floating ? lead.task : "none" } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10
         })
       });
