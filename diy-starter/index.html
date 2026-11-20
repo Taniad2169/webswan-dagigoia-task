@@ -207,16 +207,55 @@
     } catch (e) {}
   }
 
+  // Live preview: fills the "sample" card above as Sentinel learns each detail, so the
+  // visitor sees their own page take shape instead of a generic placeholder.
+  const sf = document.querySelector('.sample-frame');
+  const sfName = sf && sf.querySelector('.sample-head b');
+  const sfTag = sf && sf.querySelector('.sample-head small');
+  const sfHead = sf && sf.querySelector('.sample-body h3');
+  const sfBody = sf && sf.querySelector('.sample-body');
+  function applyPreview(fields) {
+    if (!sf || !fields) return;
+    if (fields.businessName) { sfName.textContent = fields.businessName; if (sfHead) sfHead.textContent = fields.tagline || sfHead.textContent; }
+    if (fields.tagline) { sfTag.textContent = fields.tagline; }
+    if (fields.color) {
+      const c = /^#?[0-9a-f]{3,8}$/i.test(fields.color.replace('#', '')) ? (fields.color[0] === '#' ? fields.color : '#' + fields.color) : fields.color;
+      try {
+        sf.style.setProperty('--prevc', c);
+        const head = sf.querySelector('.sample-head'); if (head) head.style.background = c;
+        const logo = sf.querySelector('.logo'); if (logo) logo.style.background = c;
+        const cta = sf.querySelector('.sample-cta'); if (cta) cta.style.background = c;
+        const foot = sf.querySelector('.sample-foot'); if (foot) foot.style.borderTop = '3px solid ' + c;
+      } catch (e) {}
+    }
+  }
+
+  let sessionId = '';
+  try { sessionId = sessionStorage.getItem('sentinel-sid') || ''; } catch (e) {}
+
   function sendMsg(text) {
     if (!text.trim()) return;
     addLine('me', text);
     $('sp-input').value = '';
-    // Placeholder reply until the DeepSeek-powered builder backend is wired in (next build phase).
-    setTimeout(() => {
-      const reply = "Got it -- noted: \"" + text + "\". The live design conversation (DeepSeek) connects here next; for now this shows the chat flow and voice.";
+    const thinking = document.createElement('div');
+    thinking.className = 'ln sent'; thinking.textContent = '...';
+    log.appendChild(thinking); log.scrollTop = log.scrollHeight;
+    fetch('https://webswan-billing.netlify.app/.netlify/functions/sentinel-builder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: text, lang })
+    }).then(r => r.json()).then(data => {
+      thinking.remove();
+      if (data.error) { addLine('sent', "Sorry, " + data.error); return; }
+      if (data.sessionId) { sessionId = data.sessionId; try { sessionStorage.setItem('sentinel-sid', sessionId); } catch (e) {} }
+      applyPreview(data.fields);
+      const reply = data.reply || "Got it.";
       addLine('sent', reply);
       say(reply);
-    }, 500);
+      if (data.approved) {
+        const confirm = "You're all set -- that request is now with the WebSwan team, and we'll text or email you shortly to finish your $698 build.";
+        setTimeout(() => { addLine('sent', confirm); say(confirm); }, 600);
+      }
+    }).catch(() => { thinking.remove(); addLine('sent', "Sorry, I couldn't connect just now -- please try again in a moment."); });
   }
 
   function openPanel() {
