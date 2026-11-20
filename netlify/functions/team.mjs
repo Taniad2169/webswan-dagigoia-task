@@ -983,6 +983,26 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       await st.setJSON("sebq-index", idx.slice(-500));
       return reply(200, { ok: true, updated }, origin);
     }
+    // Tania, Nov 19: the moment a lead lands on Tania's Calls (or Jenna's), WorkPilot calls this so
+    // Sebastien profiles it and writes the call script right away -- no waiting on him being asked in
+    // chat, no 90-second queue poll. Synchronous: WorkPilot applies the returned script to the lead itself.
+    if (b.action === "sebastien_profile_lead") {
+      const lead = b.lead || {};
+      const name = clean(lead.contact || lead.name, 160).trim();
+      const business = clean(lead.business || lead.company, 200).trim();
+      if (!name && !business) return reply(400, { error: "Need at least a name or a business name to profile this lead." }, origin);
+      const website = clean(lead.website || lead.url, 200).trim();
+      const notes = clean(lead.notes || lead.comment || lead.myNotes, 2000).trim();
+      const calledBy = lead.calledBy === "jenna" ? "Jenna" : "Tania";
+      const s = await getSettings();
+      const ask = "A lead was just pushed to " + calledBy + "'s call list in WorkPilot. Profile this prospect using everything you know about buyer psychology for WebSwan's services, then write the actual call script " + calledBy + " (or whoever picks it up) will read from -- opening line through close, objection-ready, real spoken language, no markdown, no headers, no labels like \"Opening:\". Keep the whole script under 900 characters so it fits WorkPilot's 1000-character script box.\n\nLead: " + (name || "(no contact name)") + (business ? " -- " + business : "") + "\nWebsite: " + (website || "(none on file)") + "\nNotes on file: " + (notes || "(none yet -- this is a cold lead)");
+      let ans;
+      try { ans = await within(askAI(brainFor(s, "sebastien"), AGENTS.sebastien.system, [{ role: "user", content: ask }], 500), 20000, "Sebastien's script"); }
+      catch (e) { return reply(502, { error: "Sebastien couldn't finish in time: " + String((e && e.message) || e).slice(0, 200) }, origin); }
+      const script = clean(String((ans && ans.text) || "").trim(), 1000);
+      if (!script) return reply(502, { error: "Sebastien didn't return a script this time -- try again." }, origin);
+      return reply(200, { ok: true, script }, origin);
+    }
         // Sentinel's diagnostic audit trail (Tania, Nov 18). Owner-only -- already gated by verifyOwnerEither at
     // the top of this function, same as every action here. Read-only: no action anywhere edits or deletes a
     // record, which is what keeps this log append-only. 90-day retention, enforced in sentinel.mjs.
