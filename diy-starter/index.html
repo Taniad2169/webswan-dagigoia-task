@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index, follow">
+<title>WebSwan DIY Starter Page -- Build Your Landing Page with Sentinel</title>
+<meta name="description" content="Design your own one-page website with Sentinel, WebSwan's AI builder. Preview it free, pay only when you approve it.">
+<style>
+  :root { --blue:#1182f0; --navy:#0b2a4a; --ink:#1d2733; --muted:#6b7684; --line:#e6ebf2; --bg:#f6f8fb; --amber:#f3a712; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.6 "Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header.site { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
+  header.site b { font-size:20px; }
+  header.site a.home { color:#fff; font-weight:700; text-decoration:none; background:rgba(255,255,255,.18); padding:8px 14px; border-radius:9px; font-size:13px; }
+  main { max-width:1040px; margin:0 auto; padding:26px 20px 60px; }
+  .hero { text-align:center; padding:28px 10px 10px; }
+  .hero h1 { font-size:clamp(26px,4vw,40px); margin:0 0 10px; color:var(--navy); }
+  .hero p.sub { color:var(--muted); font-size:17px; max-width:680px; margin:0 auto 18px; }
+  .price-row { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:18px 0 22px; }
+  .price-pill { background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px 22px; text-align:center; min-width:150px; box-shadow:0 2px 10px rgba(16,40,70,.06); }
+  .price-pill b { display:block; font-size:24px; color:var(--blue); }
+  .price-pill span { color:var(--muted); font-size:13px; }
+  .cta-row { text-align:center; margin:10px 0 36px; }
+  .btn-start { display:inline-flex; align-items:center; gap:10px; background:var(--blue); color:#fff; font-weight:800; font-size:17px; text-decoration:none; padding:15px 28px; border-radius:999px; border:0; cursor:pointer; box-shadow:0 8px 20px rgba(17,130,240,.3); }
+  .btn-start:hover { background:#0f6fd1; }
+  .sample-wrap { margin:30px auto; max-width:760px; }
+  .sample-wrap h2 { text-align:center; font-size:18px; color:var(--navy); margin:0 0 14px; }
+  .sample-frame { border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(16,40,70,.08); background:#fff; }
+  .sample-head { background:linear-gradient(120deg,#163a63,#1f7fc9); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:12px; }
+  .sample-head .logo { width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .sample-head b { font-size:16px; } .sample-head small { opacity:.85; display:block; font-size:12px; }
+  .sample-body { padding:26px 22px; }
+  .sample-body h3 { margin:0 0 8px; color:var(--navy); font-size:20px; }
+  .sample-body p { color:var(--muted); margin:0 0 14px; font-size:14.5px; }
+  .sample-cta { display:inline-block; background:var(--amber); color:#2a1d00; font-weight:800; padding:10px 18px; border-radius:10px; text-decoration:none; font-size:14px; }
+  .sample-foot { background:#0f2a4a; color:#9fc3e6; padding:12px 20px; font-size:12.5px; text-align:center; }
+  .how { margin:46px 0; }
+  .how h2 { text-align:center; color:var(--navy); font-size:20px; margin:0 0 20px; }
+  .how ol { max-width:640px; margin:0 auto; padding:0 0 0 22px; color:var(--ink); font-size:15px; line-height:1.9; }
+  .fine { max-width:680px; margin:28px auto 0; color:var(--muted); font-size:13px; text-align:center; }
+
+  /* ---------- Sentinel (adapted from Rachel's widget on Media Network; static photo, no jaw animation) ---------- */
+  .rpic { position:relative; overflow:hidden; background:#2f9fd0; border-radius:50%; }
+  .rpic img { display:block; width:100%; height:100%; object-fit:cover; }
+  #sent-launch { position:fixed; right:18px; bottom:18px; z-index:60; display:flex; align-items:center; gap:10px; background:var(--navy); color:#fff; border:0; border-radius:999px; padding:10px 18px 10px 10px; cursor:pointer; box-shadow:0 8px 24px rgba(10,30,55,.35); font:inherit; font-weight:800; }
+  #sent-launch .sf-face { width:42px; height:42px; }
+  #sent-panel { position:fixed; right:18px; bottom:18px; z-index:61; width:360px; max-width:calc(100vw - 24px); max-height:calc(100vh - 36px); background:#fff; border-radius:18px; box-shadow:0 16px 48px rgba(10,30,55,.35); display:flex; flex-direction:column; overflow:hidden; }
+  #sent-panel[hidden] { display:none; }
+  .sp-top { display:flex; align-items:center; gap:10px; padding:12px 14px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
+  .sp-top .sf-face { width:36px; height:36px; flex:none; }
+  .sp-top b { font-size:14.5px; display:block; } .sp-top small { opacity:.85; font-size:11.5px; }
+  #sp-close { margin-left:auto; background:none; border:0; color:#fff; font-size:20px; cursor:pointer; line-height:1; }
+  #sp-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line); background:#f8fafc; }
+  #sp-voice { font:inherit; font-size:12.5px; font-weight:700; border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 10px; cursor:pointer; }
+  #sp-voice[aria-pressed="true"] { background:#eafaf0; border-color:#16a34a; color:#116b2e; }
+  .sp-lang-wrap { margin-left:auto; font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+  #sp-lang { font:inherit; font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; }
+  #sp-log { flex:1; min-height:160px; max-height:320px; overflow-y:auto; padding:12px 14px; font-size:13.5px; }
+  #sp-log .ln { margin:0 0 10px; padding:8px 11px; border-radius:10px; max-width:88%; }
+  #sp-log .ln.me { background:#e9f3fe; margin-left:auto; }
+  #sp-log .ln.sent { background:#f4f6f9; }
+  #sp-chips { display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 8px; }
+  #sp-chips button { font:inherit; font-size:12px; border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 10px; cursor:pointer; }
+  #sp-form { display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--line); }
+  #sp-input { flex:1; font:inherit; font-size:13.5px; padding:9px 10px; border:1px solid var(--line); border-radius:9px; }
+  #sp-form button[type=submit] { font:inherit; font-weight:800; background:var(--blue); color:#fff; border:0; border-radius:9px; padding:9px 14px; cursor:pointer; }
+  .sp-foot { font-size:11px; color:var(--muted); text-align:center; padding:6px 10px 10px; }
+  @media (max-width:480px){ #sent-panel { right:12px; bottom:12px; width:calc(100vw - 24px); } #sent-launch { right:12px; bottom:12px; } }
+</style>
+</head>
+<body>
+<header class="site">
+  <div><b>WebSwan DIY Starter Page</b></div>
+  <a class="home" href="https://thewebswan.com">&larr; thewebswan.com</a>
+</header>
+<main>
+  <section class="hero">
+    <h1>Design one landing page with Sentinel. Preview it before you pay.</h1>
+    <p class="sub">Tell Sentinel what you promote, who you want to reach and what a visitor should do -- he builds your page with you, live, while you watch. Add more pages when your business is ready.</p>
+    <div class="price-row">
+      <div class="price-pill"><b>$499</b><span>to build, pay on approval</span></div>
+      <div class="price-pill"><b>$199</b><span>per month, starts at launch</span></div>
+    </div>
+    <div class="cta-row"><button class="btn-start" type="button" id="sent-cta">Build my landing page with Sentinel</button></div>
+  </section>
+
+  <section class="sample-wrap">
+    <h2>A sample of what you'll get</h2>
+    <div class="sample-frame">
+      <div class="sample-head"><div class="logo">W</div><div><b>Your Business Name</b><small>Your tagline goes here</small></div></div>
+      <div class="sample-body">
+        <h3>What you offer, in one clear line</h3>
+        <p>A short paragraph about your service, written the way Sentinel and you agree on -- your colors, your photos, your words. Your logo, hours and contact info live right here too.</p>
+        <a class="sample-cta" href="#" onclick="return false">Your button -- goes wherever you choose</a>
+      </div>
+      <div class="sample-foot">Built and hosted by WebSwan -- this footer matches your branding color too</div>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <ol>
+      <li><b>Meet Sentinel.</b> He shows you a sample like the one above and explains exactly what's included before you start.</li>
+      <li><b>Design by conversation.</b> Tell him what to change -- colors, photos, wording, where each button should send people -- and watch the preview update.</li>
+      <li><b>Approve the design.</b> Review it on phone and desktop. When you're happy, you sign and pay $499 to build it.</li>
+      <li><b>We finish and test it.</b> Buttons, forms and responsiveness get checked on real devices before it goes live.</li>
+      <li><b>Go live.</b> We can call you to help connect your domain, or you can grow it into a full website with WebSwan any time.</li>
+    </ol>
+  </section>
+
+  <p class="fine">You have 2 hours with Sentinel to complete your design; time beyond that is billed at $25/hour. The $499 build fee is due once your design is approved and tested -- no refund after that point. Full terms are shown before you sign.</p>
+</main>
+
+<!-- ===== Sentinel (static photo -- no talking-mouth animation) ===== -->
+<button id="sent-launch" type="button" aria-expanded="false" aria-controls="sent-panel">
+  <span class="rpic sf-face" aria-hidden="true"><img src="img/sentinel.jpg" alt=""></span>
+  <span>Chat with Sentinel</span>
+</button>
+<div id="sent-panel" role="dialog" aria-label="Build with Sentinel" hidden>
+  <div class="sp-top">
+    <span class="rpic sf-face" aria-hidden="true"><img src="img/sentinel.jpg" alt=""></span>
+    <div><b>Sentinel</b><small>WebSwan DIY builder</small></div>
+    <button type="button" id="sp-close" aria-label="Close">&times;</button>
+  </div>
+  <div id="sp-bar">
+    <button type="button" id="sp-voice" aria-pressed="true">&#128266; Voice on</button>
+    <label class="sp-lang-wrap">Language <select id="sp-lang" aria-label="Sentinel's language">
+      <option value="en">English</option>
+      <option value="es">Espa&ntilde;ol</option>
+      <option value="ht">Krey&ograve;l</option>
+      <option value="pt">Portugu&ecirc;s</option>
+    </select></label>
+  </div>
+  <div id="sp-log" role="log" aria-live="polite"></div>
+  <div id="sp-chips"></div>
+  <form id="sp-form" autocomplete="off">
+    <label for="sp-input" style="position:absolute;left:-9999px">Message Sentinel</label>
+    <input id="sp-input" placeholder="Type to Sentinel...">
+    <button type="submit">Send</button>
+  </form>
+  <div class="sp-foot">$499 to build - $199/mo from launch - 2 hrs included, then $25/hr</div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const launch = $('sent-launch'), panel = $('sent-panel'), log = $('sp-log'), chips = $('sp-chips');
+  const LANG_NAMES = { en:'English', es:'Español', ht:'Kreyòl', pt:'Português' };
+
+  function addLine(who, text) {
+    const d = document.createElement('div');
+    d.className = 'ln ' + (who === 'me' ? 'me' : 'sent');
+    d.textContent = text;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  const GREETING = {
+    en: "Hi, I'm Sentinel. I'll help you design one landing page today -- $499 to build, $199/month after launch. Want to see how it works, or start designing?",
+    es: "Hola, soy Sentinel. Te ayudo a diseñar una página hoy mismo -- $499 por construirla, $199 al mes después del lanzamiento. ¿Quieres ver cómo funciona, o empezamos a diseñar?",
+    ht: "Bonjou, mwen se Sentinel. Mwen ap ede w kreye yon paj jodi a -- $499 pou konstwi li, $199 chak mwa apre li lanse. Ou vle wè kijan li mache, oswa nou kòmanse kreye l?",
+    pt: "Oi, eu sou o Sentinel. Vou te ajudar a criar uma página hoje -- $499 para construir, $199 por mês após o lançamento. Quer ver como funciona, ou já começamos a desenhar?"
+  };
+  const CHIPS = {
+    en: ["What's included?", "Can I see a sample?", "How long does this take?", "I'm ready to start"],
+    es: ["¿Qué incluye?", "¿Puedo ver un ejemplo?", "¿Cuánto tiempo toma?", "Estoy listo para empezar"],
+    ht: ["Kisa ki enkli?", "Eske m ka wè yon egzanp?", "Konbyen tan sa pran?", "Mwen pare pou kòmanse"],
+    pt: ["O que está incluído?", "Posso ver um exemplo?", "Quanto tempo leva?", "Estou pronto para começar"]
+  };
+
+  let voiceOn = true, lang = 'en', started = false;
+
+  function drawChips() {
+    chips.innerHTML = '';
+    (CHIPS[lang] || CHIPS.en).forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = c;
+      b.onclick = () => sendMsg(c);
+      chips.appendChild(b);
+    });
+  }
+
+  // Male-voice pick, same locale/fallback rule as Rachel's widget: only a real voice for
+  // that language ever speaks; otherwise Sentinel stays text-only rather than guess an accent.
+  const LOCALES = { en: ['en-US'], es: ['es-MX','es-US','es-419'], pt: ['pt-BR'], ht: ['ht-HT','ht'] };
+  const MALE = /\b(alex|daniel|fred|tom|thomas|oliver|arthur|aaron|gordon|rishi|david|mark|guy|george|james|ryan|eric|andrew|brian|christopher|roger|steffan|jorge|diego|juan|carlos|pablo|male|homme|hombre|homem)\b/i;
+  function pickVoice(l) {
+    if (!('speechSynthesis' in window)) return null;
+    const vs = speechSynthesis.getVoices().filter(v => MALE.test(v.name));
+    for (const loc of (LOCALES[l] || LOCALES.en)) {
+      const hit = vs.find(v => v.lang && v.lang.toLowerCase().replace('_','-') === loc.toLowerCase());
+      if (hit) return hit;
+    }
+    return null;
+  }
+  function say(text) {
+    if (!voiceOn) return;
+    const v = pickVoice(lang);
+    if (!v) return; // no real voice for this language on this device -- stay silent, text still shows
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = v; u.lang = v.lang; u.rate = 1.0;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function sendMsg(text) {
+    if (!text.trim()) return;
+    addLine('me', text);
+    $('sp-input').value = '';
+    // Placeholder reply until the DeepSeek-powered builder backend is wired in (next build phase).
+    setTimeout(() => {
+      const reply = "Got it -- noted: \"" + text + "\". The live design conversation (DeepSeek) connects here next; for now this shows the chat flow and voice.";
+      addLine('sent', reply);
+      say(reply);
+    }, 500);
+  }
+
+  function openPanel() {
+    panel.hidden = false; launch.setAttribute('aria-expanded', 'true');
+    if (!started) { started = true; const g = GREETING[lang] || GREETING.en; addLine('sent', g); say(g); drawChips(); }
+    $('sp-input').focus();
+  }
+  function closePanel() { panel.hidden = true; launch.setAttribute('aria-expanded', 'false'); try { speechSynthesis.cancel(); } catch (e) {} }
+
+  launch.onclick = openPanel;
+  $('sent-cta').onclick = openPanel;
+  $('sp-close').onclick = closePanel;
+  $('sp-voice').onclick = () => { voiceOn = !voiceOn; $('sp-voice').setAttribute('aria-pressed', String(voiceOn)); $('sp-voice').textContent = (voiceOn ? '🔊 Voice on' : '🔇 Voice off'); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (e) {} } };
+  $('sp-lang').onchange = () => { lang = $('sp-lang').value; drawChips(); const g = GREETING[lang] || GREETING.en; addLine('sent', g); say(g); };
+  $('sp-form').onsubmit = (e) => { e.preventDefault(); sendMsg($('sp-input').value); };
+
+  if ('speechSynthesis' in window && speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = () => {};
+})();
+</script>
+</body>
+</html>
