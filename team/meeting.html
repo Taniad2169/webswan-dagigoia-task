@@ -116,7 +116,7 @@ try { $("free").checked = localStorage.getItem("wsMeetVoice") === "on"; } catch 
 $("free").onchange = () => { try { localStorage.setItem("wsMeetVoice", $("free").checked ? "on" : "off"); } catch (e) {} };
 
 function drawAgents() {
-  $("agents").innerHTML = TEAM.map((t) => { const m = S.in.has(t.k) ? (S.mode.get(t.k) || "green") : ""; const tip = !S.in.has(t.k) ? "Tap to add to the meeting (green)" : (m === "green" ? "Green: can answer — tap to mute (red)" : "Red: listening only, answers only if called on by name — tap to remove"); return `<button class="ag ${m}" data-k="${t.k}" title="${tip}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`; }).join("");
+  $("agents").innerHTML = TEAM.map((t) => { const m = S.in.has(t.k) ? (S.mode.get(t.k) || "red") : ""; const tip = !S.in.has(t.k) ? "Tap to add to the meeting (starts red/muted)" : (m === "green" ? "Green: can answer — tap to mute (red)" : "Red: fully muted, won\u2019t answer even if named — tap to let them talk (green), tap again to remove"); return `<button class="ag ${m}" data-k="${t.k}" title="${tip}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`; }).join("");
 }
 function drawTalkTo() {
   const inList = TEAM.filter((t) => S.in.has(t.k));
@@ -126,12 +126,12 @@ function drawTalkTo() {
 // Tania, Nov 17: click cycles each teammate off -> green (can answer, included in "around the table") -> red (listens only, answers ONLY if called on by name) -> off.
 $("agents").onclick = (e) => {
   const b = e.target.closest(".ag"); if (!b) return; const k = b.dataset.k;
-  if (!S.in.has(k)) { S.in.add(k); S.mode.set(k, "green"); }
-  else if ((S.mode.get(k) || "green") === "green") { S.mode.set(k, "red"); }
+  if (!S.in.has(k)) { S.in.add(k); S.mode.set(k, "red"); }
+  else if ((S.mode.get(k) || "red") === "red") { S.mode.set(k, "green"); }
   else { S.in.delete(k); S.mode.delete(k); }
   drawAgents(); drawTalkTo();
 };
-$("selAll").onclick = () => { TEAM.forEach((t) => { S.in.add(t.k); S.mode.set(t.k, "green"); }); drawAgents(); drawTalkTo(); };
+$("selAll").onclick = () => { TEAM.forEach((t) => { S.in.add(t.k); S.mode.set(t.k, "red"); }); drawAgents(); drawTalkTo(); };
 $("selNone").onclick = () => { S.in.clear(); S.mode.clear(); drawAgents(); drawTalkTo(); };
 $("talkTo").onchange = () => { S.talkTo = $("talkTo").value; };
 drawAgents(); drawTalkTo();
@@ -278,12 +278,15 @@ async function runTurn(text) {
   S.busy = true; $("send").disabled = true;
   // The controller decides who's up BEFORE anyone is asked. If Tania named one teammate
   // ("Jenna, ...") or picked one from the dropdown, only that person answers. In "around the
-  // table" mode with nobody named, only GREEN teammates answer — a RED teammate stays silent
-  // and listening unless called on by name (Tania, Nov 17).
+  // table" mode with nobody named, only GREEN teammates answer. Tania, Nov 19: red now means
+  // fully muted -- a RED teammate stays silent even if called on by name, until flipped green.
   const addressed = findAddressed(text, S.in, null);
+  const isGreen = (k) => (S.mode.get(k) || "red") === "green";
+  if (addressed && S.in.has(addressed) && !isGreen(addressed)) { S.busy = false; $("send").disabled = false; say(NAME(addressed) + " is on red right now \u2014 tap them green first so they can talk."); return; }
+  if (S.talkTo !== "all" && S.in.has(S.talkTo) && !isGreen(S.talkTo)) { S.busy = false; $("send").disabled = false; say(NAME(S.talkTo) + " is on red right now \u2014 tap them green first so they can talk."); return; }
   const order = (addressed && S.in.has(addressed)) ? [addressed]
     : (S.talkTo !== "all") ? [S.talkTo]
-    : TEAM.filter((t) => S.in.has(t.k) && (S.mode.get(t.k) || "green") === "green").map((t) => t.k);
+    : TEAM.filter((t) => S.in.has(t.k) && isGreen(t.k)).map((t) => t.k);
   if (!order.length) { S.busy = false; $("send").disabled = false; say("Nobody's green to answer that — call on someone by name, or switch a teammate back to green."); return; }
   try {
     // A teammate called on by name mid-meeting — by Tania, by Coby, by Sebastien, or by
@@ -310,7 +313,7 @@ async function runTurn(text) {
       await speak(reply, k);
       S.busy = true; $("send").disabled = true;
       const called = findAddressed(reply, S.in, k);
-      if (called && !spoken.has(called) && !queue.includes(called)) queue.push(called);
+      if (called && isGreen(called) && !spoken.has(called) && !queue.includes(called)) queue.push(called);
     }
   } finally {
     S.busy = false; $("send").disabled = false; micLook(""); say("Your turn — tap the mic or type.");
