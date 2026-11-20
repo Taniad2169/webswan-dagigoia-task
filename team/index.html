@@ -959,7 +959,7 @@ let G = { on: false, members: [], last: null, log: [] };
 const aName = (k) => (((S.agents || FALLBACK)[k] || FALLBACK[k]).name);
 const first = (k) => aName(k).split(" ")[0];
 function groupStart(members) {
-  G = { on: true, members, last: null, log: [], rp: null, mode: new Map(members.map((k) => [k, "green"])) };
+  G = { on: true, members, last: null, log: [], rp: null, mode: new Map(members.map((k) => [k, "red"])) };
   $("vImg").src = ((S.agents || FALLBACK)[members[0]] || FALLBACK[members[0]]).photo;
   $("vName").textContent = "Brain Room: " + members.map(first).join(", "); $("vHeard").textContent = "";
   V.on = true; vSay("Say who you want to hear from, or ask everyone's opinion.");
@@ -971,14 +971,14 @@ function groupStart(members) {
 // red (listens only, answers only when Tania says their name) -- same rule as the Meeting Room portraits.
 function drawBrainRoster() {
   $("vPick").hidden = false;
-  $("vPick").innerHTML = '<p class="hint" style="margin:0 0 6px;text-align:center">Tap a teammate: \uD83C\uDFA4 can join in when you ask everyone, \uD83E\uDD10 listens and answers only when you say their name.</p>'
+  $("vPick").innerHTML = '<p class="hint" style="margin:0 0 6px;text-align:center">Tap a teammate: \uD83C\uDFA4 can talk. \uD83E\uDD10 red means fully muted -- they will not answer even if you say their name, until you tap them green.</p>'
     + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px">' + G.members.map((k) => {
-      const a = (S.agents || FALLBACK)[k] || FALLBACK[k], m = G.mode.get(k) || "green";
+      const a = (S.agents || FALLBACK)[k] || FALLBACK[k], m = G.mode.get(k) || "red";
       const bg = m === "green" ? "#eafaf0" : "#fdeaea", bd = m === "green" ? "#16a34a" : "#d32f2f", badge = m === "green" ? "\uD83C\uDFA4" : "\uD83E\uDD10";
-      return `<button class="btn" data-gp="${k}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:${bg};border:2px solid ${bd}" aria-label="${esc(a.name)}: ${m === "green" ? "can answer, tap to mute" : "listening only, tap to unmute"}"><span style="position:absolute;top:2px;right:6px;font-size:13px">${badge}</span><img src="${esc(a.photo)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover"><b style="font-size:13px">${esc(a.name.split(" ")[0])}</b></button>`;
+      return `<button class="btn" data-gp="${k}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:${bg};border:2px solid ${bd}" aria-label="${esc(a.name)}: ${m === "green" ? "can talk -- tap to mute" : "muted -- tap to let them talk"}"><span style="position:absolute;top:2px;right:6px;font-size:13px">${badge}</span><img src="${esc(a.photo)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover"><b style="font-size:13px">${esc(a.name.split(" ")[0])}</b></button>`;
     }).join("") + "</div>";
   $("vPick").querySelectorAll("[data-gp]").forEach((b) => b.onclick = () => {
-    const k = b.dataset.gp; G.mode.set(k, (G.mode.get(k) || "green") === "green" ? "red" : "green"); drawBrainRoster();
+    const k = b.dataset.gp; G.mode.set(k, (G.mode.get(k) || "red") === "green" ? "red" : "green"); drawBrainRoster();
   });
 }
 // Who is named, in the order Tania said them.
@@ -992,15 +992,17 @@ function named(text) {
 function plan(text) {
   const n = named(text), t = text.toLowerCase();
   const all = /\b(everyone|everybody|all of you|each of you|the team|you all|y'all|go around|what do you (all|guys) think)\b/.test(t);
-  // "Coby, your turn" / "Monica, it's your turn to answer Coby": only that person speaks.
+  const isGreen = (k) => (G.mode.get(k) || "red") === "green";
+  // "Coby, your turn" / "Monica, it's your turn to answer Coby": only that person speaks -- but never if they're red.
   const turn = G.members.find((k) => new RegExp("\\b(" + nameRe(k) + ")\\b[\\s,.!]*(it'?s\\s+|now\\s+)?(your turn|go ahead|you'?re up|over to you)").test(t));
-  if (turn) return { kind: "named", order: [turn] };
-  // Tania, Nov 18: a red teammate sits out the "ask everyone" round -- they still answer when named directly (above).
-  const green = G.members.filter((k) => (G.mode.get(k) || "green") === "green");
-  if (all && n.length < 2) return { kind: "all", order: n.length ? [n[0], ...green.filter((k) => k !== n[0])] : green.slice() };
+  if (turn) return isGreen(turn) ? { kind: "named", order: [turn] } : { kind: "blocked", who: turn };
+  // Tania, Nov 19: red means fully muted -- a red teammate never speaks, even when named directly, until Tania taps them green.
+  const green = G.members.filter(isGreen);
+  if (all && n.length < 2) return { kind: "all", order: n.length && isGreen(n[0]) ? [n[0], ...green.filter((k) => k !== n[0])] : green.slice() };
   // One name or several: Tania gives the floor to ONE person (the first one she names). The others wait for their turn.
-  if (n.length) return { kind: "named", order: [n[0]] };
-  return { kind: "named", order: [G.last || G.members[0]] };
+  if (n.length) return isGreen(n[0]) ? { kind: "named", order: [n[0]] } : { kind: "blocked", who: n[0] };
+  const fallback = G.last || G.members[0];
+  return isGreen(fallback) ? { kind: "named", order: [fallback] } : { kind: "blocked", who: fallback };
 }
 function groupPrompt(k, said, role) {
   const others = G.members.filter((x) => x !== k).map(aName).join(", ");
@@ -1027,7 +1029,8 @@ async function groupTurn(text) {
   if (BRAIN.test(text)) {
     V.busy = false;
     const everyone = /\b(everyone|everybody|all of you|their brains|everyone'?s|the team)\b/i.test(text);
-    return brainVoice(everyone ? G.members.slice() : n0.length ? n0 : [G.rp || G.last || G.members[0]], text);
+    const isGreenB = (k) => (G.mode.get(k) || "red") === "green";
+    return brainVoice(everyone ? G.members.filter(isGreenB) : n0.length ? n0 : [G.rp || G.last || G.members[0]], text);
   }
   const steps = [];
   if (G.rp && RP_END.test(text)) {
@@ -1038,10 +1041,16 @@ async function groupTurn(text) {
     steps.push([G.rp, "Stay in the role play.", { roleplay: true }]);
   } else if (RP_START.test(text)) {
     G.rp = n0[0] || G.last || G.members[0];
-    $("vName").textContent = "🎭 Role play with " + first(G.rp);
+    $("vName").textContent = "\uD83C\uDFAD Role play with " + first(G.rp);
     steps.push([G.rp, G.rp === "rachel" ? "Tania wants to role play now: she is calling you as a prospect. Answer the phone with your greeting." : "Tania wants to role play a real call with you now. She is the person who picks up. Start with your opening line.", { roleplay: true }]);
   }
   const p = steps.length ? { kind: "done" } : plan(text);
+  if (p.kind === "blocked") {
+    V.busy = false;
+    vSay(aName(p.who) + " is on red right now -- tap them green first so they can talk.");
+    setTimeout(listen, pref("wsPhones", false) ? 150 : 400);
+    return;
+  }
   if (p.kind === "done") {  } else if (p.kind === "all") {
     p.order.forEach((k, i) => steps.push([k, i ? "Give your own view from your role. Build on what the others just said instead of repeating it; agree or respectfully disagree." : "You speak first. Give your own view from your role."]));
   } else p.order.forEach((k) => steps.push([k, "Tania gave the floor to YOU. Do exactly what she asked, nothing more. If she asked you to ask someone a question, ask it in one sentence and stop: they answer only when Tania gives them their turn. Never answer for anyone else."]));
@@ -1054,7 +1063,7 @@ async function groupTurn(text) {
     await speak(ans, k);
     if (V.interrupted || gen !== G.gen) return; // her new words become the next turn
   }
-  if (V.on && G.on && !V.interrupted && gen === G.gen) { vSay(G.rp ? "🎭 Your line. Say “end role play” when you're done." : "Your turn. Call someone by name, or ask everyone."); setTimeout(listen, pref("wsPhones", false) ? 150 : 400); }
+  if (V.on && G.on && !V.interrupted && gen === G.gen) { vSay(G.rp ? "\uD83C\uDFAD Your line. Say \u201Cend role play\u201D when you're done." : "Your turn. Call someone by name, or ask everyone."); setTimeout(listen, pref("wsPhones", false) ? 150 : 400); }
 }
 function vSay(t) { $("vState").textContent = t; }
 /* ---------- Role play + "add it to your brain" ---------- */
