@@ -24,6 +24,7 @@
   .cta-row { text-align:center; margin:10px 0 36px; }
   .btn-start { display:inline-flex; align-items:center; gap:10px; background:var(--blue); color:#fff; font-weight:800; font-size:17px; text-decoration:none; padding:15px 28px; border-radius:999px; border:0; cursor:pointer; box-shadow:0 8px 20px rgba(17,130,240,.3); }
   .btn-start:hover { background:#0f6fd1; }
+  .included { max-width:760px; margin:0 auto 10px; text-align:center; color:var(--muted); font-size:13.5px; }
   .sample-wrap { margin:30px auto; max-width:760px; }
   .sample-wrap h2 { text-align:center; font-size:18px; color:var(--navy); margin:0 0 14px; }
   .sample-frame { border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(16,40,70,.08); background:#fff; }
@@ -77,12 +78,13 @@
 <main>
   <section class="hero">
     <h1>Design one landing page with Sentinel. Preview it before you pay.</h1>
-    <p class="sub">Tell Sentinel what you promote, who you want to reach and what a visitor should do -- he builds your page with you, live, while you watch. Add more pages when your business is ready.</p>
+    <p class="sub">Tell Sentinel what you want and see your page take shape, live, while you watch. You have up to 2 hours to design and refine it, and you can approve it as soon as you're happy -- if you'd like more time, you can add an hour for $25.</p>
     <div class="price-row">
-      <div class="price-pill"><b>$499</b><span>to build, pay on approval</span></div>
+      <div class="price-pill"><b>$698</b><span>to build, pay on approval</span></div>
       <div class="price-pill"><b>$199</b><span>per month, starts at launch</span></div>
     </div>
-    <div class="cta-row"><button class="btn-start" type="button" id="sent-cta">Build my landing page with Sentinel</button></div>
+    <p class="included">Includes your page, logo, SEO-ready content, a booking button linked to your own calendar, a Q&amp;A section and a compliance banner.</p>
+    <div class="cta-row"><button class="btn-start" type="button" id="sent-cta">Design My Landing Page with Sentinel</button></div>
   </section>
 
   <section class="sample-wrap">
@@ -102,14 +104,14 @@
     <h2>How it works</h2>
     <ol>
       <li><b>Meet Sentinel.</b> He shows you a sample like the one above and explains exactly what's included before you start.</li>
-      <li><b>Design by conversation.</b> Tell him what to change -- colors, photos, wording, where each button should send people -- and watch the preview update.</li>
-      <li><b>Approve the design.</b> Review it on phone and desktop. When you're happy, you sign and pay $499 to build it.</li>
-      <li><b>We finish and test it.</b> Buttons, forms and responsiveness get checked on real devices before it goes live.</li>
+      <li><b>Design by conversation.</b> Tell him what to change -- colors, up to 8 photos, wording, where each button should send people, and where your booking link should point -- and watch the preview update.</li>
+      <li><b>Approve the design.</b> Review it on phone and desktop. When you're happy, you sign and pay $698 to build it.</li>
+      <li><b>We finish and test it.</b> Buttons, forms, your booking link and responsiveness get checked on real devices before it goes live.</li>
       <li><b>Go live.</b> We can call you to help connect your domain, or you can grow it into a full website with WebSwan any time.</li>
     </ol>
   </section>
 
-  <p class="fine">You have 2 hours with Sentinel to complete your design; time beyond that is billed at $25/hour. The $499 build fee is due once your design is approved and tested -- no refund after that point. Full terms are shown before you sign.</p>
+  <p class="fine">You have up to 2 hours with Sentinel to design and refine your page, and you can approve it as soon as you're happy -- time beyond that is billed at $25/hour. The $698 build fee is due once your design is approved and tested -- no refund after that point. Full terms are shown before you sign.</p>
 </main>
 
 <!-- ===== Sentinel (static photo -- no talking-mouth animation) ===== -->
@@ -139,7 +141,7 @@
     <input id="sp-input" placeholder="Type to Sentinel...">
     <button type="submit">Send</button>
   </form>
-  <div class="sp-foot">$499 to build - $199/mo from launch - 2 hrs included, then $25/hr</div>
+  <div class="sp-foot">$698 to build - $199/mo from launch - 2 hrs included, then $25/hr</div>
 </div>
 
 <script>
@@ -157,10 +159,10 @@
   }
 
   const GREETING = {
-    en: "Hi, I'm Sentinel. I'll help you design one landing page today -- $499 to build, $199/month after launch. Want to see how it works, or start designing?",
-    es: "Hola, soy Sentinel. Te ayudo a diseñar una página hoy mismo -- $499 por construirla, $199 al mes después del lanzamiento. ¿Quieres ver cómo funciona, o empezamos a diseñar?",
-    ht: "Bonjou, mwen se Sentinel. Mwen ap ede w kreye yon paj jodi a -- $499 pou konstwi li, $199 chak mwa apre li lanse. Ou vle wè kijan li mache, oswa nou kòmanse kreye l?",
-    pt: "Oi, eu sou o Sentinel. Vou te ajudar a criar uma página hoje -- $499 para construir, $199 por mês após o lançamento. Quer ver como funciona, ou já começamos a desenhar?"
+    en: "Hi, I'm Sentinel. I'll help you design one landing page today -- $698 to build, $199/month after launch. Want to see how it works, or start designing?",
+    es: "Hola, soy Sentinel. Te ayudo a diseñar una página hoy mismo -- $698 por construirla, $199 al mes después del lanzamiento. ¿Quieres ver cómo funciona, o empezamos a diseñar?",
+    ht: "Bonjou, mwen se Sentinel. Mwen ap ede w kreye yon paj jodi a -- $698 pou konstwi li, $199 chak mwa apre li lanse. Ou vle wè kijan li mache, oswa nou kòmanse kreye l?",
+    pt: "Oi, eu sou o Sentinel. Vou te ajudar a criar uma página hoje -- $698 para construir, $199 por mês após o lançamento. Quer ver como funciona, ou já começamos a desenhar?"
   };
   const CHIPS = {
     en: ["What's included?", "Can I see a sample?", "How long does this take?", "I'm ready to start"],
