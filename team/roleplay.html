@@ -56,6 +56,11 @@
       <label>Coby plays: <select id="role"></select></label>
       <label>How hard: <select id="mood"><option value="friendly">Friendly</option><option value="busy" selected>Busy, a bit rushed</option><option value="tough">Tough, pushes back</option></select></label>
     </div>
+    <div class="row" id="cobyGate" style="margin-top:10px;display:none">
+      <span class="hint">Who's allowed to talk (starts red/muted -- tap to let them talk):</span>
+      <button class="btn" type="button" id="gateCoby"></button>
+      <button class="btn" type="button" id="gateAgent"></button>
+    </div>
     <div class="row" style="margin-top:10px">
       <label><input type="checkbox" id="phones"> 🎧 I'm wearing headphones (I can interrupt just by talking)</label>
       <label><input type="checkbox" id="free"> 🆓 No-cost practice voices (browser voices, no Cartesia credits). Uncheck to hear their real Cartesia voices</label>
@@ -131,7 +136,7 @@ function drawRoles() {
   const c = CALLERS.find((x) => x.k === S.agent); const list = ROLES[c ? c.kind : "doctor"];
   $("role").innerHTML = list.map((r) => `<option>${esc(r)}</option>`).join("");
 }
-$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); if (S.agent !== "tania") loadNotes(); say(S.agent === "tania" ? "Ready: you make the call, Coby picks up as the prospect. Press the microphone." : "Ready: " + first(S.agent) + ". Press the microphone."); };
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); drawGate(); if (S.agent !== "tania") loadNotes(); say(S.agent === "tania" ? "Ready: you make the call, Coby picks up as the prospect. Press the microphone." : "Ready: " + first(S.agent) + ". Press the microphone."); };
 /* ---------- coaching notes editor (team brain notes; synced into a separate block of the live script) ---------- */
 let NOTES = [], NOTES_ORIG = [];
 function drawNotes() {
@@ -158,6 +163,21 @@ $("notesSave").onclick = async () => {
 // Opened from Voice Studio's Brain page: roleplay.html#notes=monica
 window.addEventListener("load", () => { const m = location.hash.match(/notes=(\w+)/); if (m && CALLERS.some((c) => c.k === m[1])) { S.agent = m[1]; drawAgents(); drawRoles(); const go = () => window._auth && window._auth.token().then((t) => t ? (loadNotes(), document.getElementById("notesCard").scrollIntoView()) : setTimeout(go, 800)); setTimeout(go, 800); } });
 drawAgents(); drawRoles();
+// Tania, Nov 19: when Coby plays the prospect against a real agent, both start red (muted) -- she ticks
+// each one green herself before they're allowed to talk, same rule as the other rooms.
+const GATE = new Map();
+function gateOn(k) { return (GATE.get(k) || "red") === "green"; }
+function gateLabel(k, label) { return (gateOn(k) ? "\uD83C\uDFA4 " : "\uD83E\uDD10 ") + label + (gateOn(k) ? " (tap to mute)" : " (red -- tap to let talk)"); }
+function paintGate(btn, k) { btn.style.background = gateOn(k) ? "#eafaf0" : "#fdeaea"; btn.style.borderColor = gateOn(k) ? "#16a34a" : "#d32f2f"; btn.style.border = "2px solid " + (gateOn(k) ? "#16a34a" : "#d32f2f"); }
+function drawGate() {
+  if (mode() !== "coby" || !S.agent) { $("cobyGate").style.display = "none"; return; }
+  $("cobyGate").style.display = "";
+  $("gateCoby").textContent = gateLabel("sdr", "Coby"); paintGate($("gateCoby"), "sdr");
+  $("gateAgent").textContent = gateLabel(S.agent, first(S.agent)); paintGate($("gateAgent"), S.agent);
+}
+$("gateCoby").onclick = () => { GATE.set("sdr", gateOn("sdr") ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; cobyLoop(); } };
+$("gateAgent").onclick = () => { if (!S.agent) return; GATE.set(S.agent, gateOn(S.agent) ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; cobyLoop(); } };
+document.querySelectorAll('input[name="mode"]').forEach((r) => r.onchange = () => { GATE.clear(); drawGate(); });
 
 function say(t) { $("state").textContent = t; }
 function micLook(m) { $("mic").className = "mic" + (m ? " " + m : ""); }
@@ -292,6 +312,7 @@ async function cobyLoop() {
     const last = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).slice(-1)[0];
     const cobyNext = !last || last.who !== "Coby";
     const who = cobyNext ? "sdr" : S.agent;
+    if (!gateOn(who)) { S.paused = true; S.gateWait = true; S.busy = false; micLook(""); say((who === "sdr" ? "Coby" : first(who)) + " is on red -- tap them green above to let them talk."); return; }
     let text;
     if (who === "sdr") {
       text = !last ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). ${first(S.agent)} from WebSwan is calling. You just picked up the phone: ${who_()} Say only how you'd answer it, like "Good morning, ${S.persona.office}, this is ${S.persona.name}." One line only, no stage directions.`
@@ -335,7 +356,7 @@ async function start() {
   S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; S.persona = null; S.agreed = []; S.huddle = ""; $("huddle").style.display = "none"; $("log").innerHTML = '<p class="hint">Starting…</p>';
   startRec();
   if (S.agent === "tania") return prospectTurn(null); // Coby picks up the phone, then Tania talks live (no AI voice for her)
-  if (mode() === "coby") return cobyLoop();
+  if (mode() === "coby") { GATE.clear(); drawGate(); return cobyLoop(); }
   if (S.agent === "rachel") { // Rachel answers the phone, so she speaks first
     S.busy = true; say("💭 Rachel is picking up…");
     try { const g = await ask("rachel", "Tania wants to role play now: she is calling you as a prospect. Answer the phone with your greeting."); addLog("Rachel", g, "ag"); S.busy = false; if (await speak(g, "rachel")) yourTurn(); } catch (e) { S.busy = false; say("⚠️ " + e.message); yourTurn(); }
