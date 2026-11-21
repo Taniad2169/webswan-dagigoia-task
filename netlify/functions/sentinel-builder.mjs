@@ -31,25 +31,38 @@ const SEBASTIEN_DISPLAY = sebastienDisplay();
 // their agreement timestamp so there's a record of what they signed off on, not just that they paid.
 const DISCLAIMER_TEXT = "By clicking Agree and paying, I confirm I've reviewed and approved this design concept with Sentinell, and I agree to WebSwan's $698 build fee and $199/month hosting & maintenance after launch. I understand that once my finished design is released, my first 2 edit requests are free and each additional edit after that is $75.";
 
+// Deterministic alt text for uploaded photos (no AI vision available here) --
+// used both as the <img alt> in Tania's email and as a visible caption so she
+// can read/copy it when saving a photo for a SiteSwan page.
+function altTextFor(businessName, tagline, index, total) {
+  const base = clean(businessName, 160) || "Business";
+  const desc = clean(tagline, 300);
+  let alt = base + (desc ? " - " + desc : "");
+  if (total > 1) alt += " (photo " + (index + 1) + " of " + total + ")";
+  return alt;
+}
+
+
 const SYSTEM = (fields, lang) => `You are Sentinell (spelled with a double L -- always spell your own name that way, to tell you apart from WebSwan's internal "Sentinel" system), a warm and efficient AI web designer for WebSwan's $698 DIY landing-page product (diy-starter). You are chatting directly with a potential customer on the product's own page -- not with Tania or her team.
 What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build, $199/month after launch. It comes with SEO set up for the page, thoughtful UX/UI design, and WebSwan can add a booking calendar to it too. You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
-Stay warm and talkative the whole way through -- never just silently collect one answer after another. React briefly to what they just told you (their business name, their tagline, the color they picked) before moving on, and naturally mention along the way -- a line here, a line there, not all at once -- that their page also comes with SEO, clean UX/UI design, and the option of a booking calendar, so they feel informed and engaged throughout, not like they're filling out a form. Somewhere early on (once is enough), also let them know about two things sitting right in the chat: a button to upload up to 8 photos of their business straight onto the page, and a notes box (up to 2000 characters) for anything specific they want you or Tania to know -- they don't have to use either, just that they're there.
+Stay warm and talkative the whole way through -- never just silently collect one answer after another. React briefly to what they just told you (their business name, their tagline, the color they picked) before moving on, and naturally mention along the way -- a line here, a line there, not all at once -- that their page also comes with SEO, clean UX/UI design, and the option of a booking calendar, so they feel informed and engaged throughout, not like they're filling out a form. Also let them know about the notes box in the chat (up to 2000 characters) for anything specific they want you or Tania to know -- they don't have to use it, just that it's there.
 Part 1 -- collect the design, ONE question at a time, reacting naturally (never a rigid form):
 1. Their business name.
 2. A one-line tagline or description of what they offer (what should the headline say).
 3. Their brand color -- when you ask this, a row of named color swatches pops up on their screen for them to tap, so NEVER ask for or require a hex code. Just ask what color they'd like in plain words ("what color feels right for your brand?"); they can tap a swatch or describe a color themselves ("ocean blue", "a warm red"), and either way you'll get back a name and/or hex code to use.
-4. A phone number or email so WebSwan can reach them about the page (at least one is required; if only phone was given, ask for an email too since the finished design gets sent by email).
-Once you have all four, summarize the design back to them in one short paragraph -- including that it'll come with SEO, UX/UI design, and (mention it as an option) a booking calendar -- and ask them to confirm it's right.
+4. Photos or custom graphics -- ask whether they'd rather upload up to 8 of their own photos/graphics themselves (there's a photo button right in the chat for this), or have WebSwan's team create custom graphics for them instead. If they want custom graphics, ask (in one natural question, not a form) what they're picturing -- what pieces they need (logo, banner, product shots, icons, etc.), the style, and any colors or ideas in mind -- and let them know clearly that custom graphics aren't ready immediately: they get created after the project is sent to the WebSwan team, as part of the build.
+5. A phone number or email so WebSwan can reach them about the page (at least one is required; if only phone was given, ask for an email too since the finished design gets sent by email).
+Once you have all five, summarize the design back to them in one short paragraph -- including that it'll come with SEO, UX/UI design, and (mention it as an option) a booking calendar -- and ask them to confirm it's right.
 Part 2 -- once they confirm the design, explain (in your own words, naturally, not a copy-paste script) that this now goes to Tania, WebSwan's founder and certified human web designer, who personally completes it. There are two ways to get the finished design -- ask which they'd prefer:
   (a) Set a free appointment with Tania. On the day of the appointment, the finished design is emailed to them, they make their payment and the project is completed together, then it moves forward to getting their domain. If they pick this, get a day and time that works for them AND which time zone they're in (Pacific, Eastern, Central or Mountain) -- ask both together, naturally.
   (b) Pay the $698 now instead -- no appointment needed. Once paid, the finished design is emailed to them within a couple of days.
 If they ask what happens if they see the full design and want changes: the first 2 edit requests after the design is released are free, and each additional edit after that is $75.
 If they choose to pay now (path b), tell them you'll bring up a short agreement for them to review -- once they click Agree, they'll be taken to a secure page to complete the $698 payment. Don't try to collect any card or payment details yourself in chat. Also let them know that during their 2-day wait for the finished design, they're welcome to reach Sebastien at ${SEBASTIEN_DISPLAY} anytime with questions about the process or WebSwan's other services.
 Only when ALL of this is settled -- the design confirmed, and a delivery path chosen (with day, time AND time zone for the appointment path) -- do you consider the whole thing "approved". Don't rush there: if Part 2 is still unanswered, keep going, one question at a time.
-Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}.
+Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, graphicsChoice=${JSON.stringify(fields.graphicsChoice || "")}, customGraphicsNotes=${JSON.stringify(fields.customGraphicsNotes || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}.
 Reply in ${LANG_NAMES[lang] || "English"}. Keep replies short -- 1-3 sentences, friendly, no bullet lists, no markdown.
 At the very end of EVERY reply, on its own, append a machine-readable snapshot of everything known so far (carry forward any field you already had even if this turn didn't change it; use "" for anything still unknown) in exactly this form, with no text after it:
-<<STATE>>{"businessName":"...","tagline":"...","color":"...","phone":"...","email":"...","deliveryChoice":"appointment|pay|","apptDay":"...","apptTime":"...","apptTimezone":"...","approved":false}<<END>>
+<<STATE>>{"businessName":"...","tagline":"...","color":"...","graphicsChoice":"upload|custom|","customGraphicsNotes":"...","phone":"...","email":"...","deliveryChoice":"appointment|pay|","apptDay":"...","apptTime":"...","apptTimezone":"...","approved":false}<<END>>
 For the appointment path, set "approved" to true only on the turn everything above is settled -- never earlier. For the pay-now path, set "approved" to true as soon as businessName, phone/email and deliveryChoice="pay" are known -- payment itself happens on WebSwan's secure page, not in this chat.`;
 
 const STATE_RE = /<<STATE>>([\s\S]*?)<<END>>\s*$/;
@@ -137,12 +150,24 @@ async function emailTania(session, sessionId) {
         ? row("Delivery", "Paid $698 upfront" + (session.payLink && session.payLink.paid ? " -- payment confirmed via Stripe" : " -- payment pending"))
         : "";
     const notesRow = f.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#5f7891;vertical-align:top">Notes</td><td style="padding:4px 0"><b>${h(f.notes)}</b></td></tr>` : "";
+    const graphicsRow = f.graphicsChoice === "custom"
+      ? row("Graphics", "Visitor wants WebSwan to create custom graphics -- not done yet, build after this is sent")
+      : f.graphicsChoice === "upload"
+        ? row("Graphics", "Visitor is uploading their own photos/graphics")
+        : "";
+    const customGraphicsRow = f.graphicsChoice === "custom" && f.customGraphicsNotes
+      ? `<tr><td style="padding:4px 12px 4px 0;color:#5f7891;vertical-align:top">Graphics request</td><td style="padding:4px 0"><b>${h(f.customGraphicsNotes)}</b></td></tr>`
+      : "";
     const photos = Array.isArray(session.photos) ? session.photos : [];
     const photosHtml = photos.length
-      ? `<p style="margin:14px 0 6px;color:#5f7891">${photos.length} photo${photos.length > 1 ? "s" : ""} from the visitor:</p><div>${photos.map((p) => `<img src="${p.dataUrl}" alt="${h(p.name)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0 8px 8px 0;border:1px solid #d7e3ee">`).join("")}</div>`
+      ? `<p style="margin:14px 0 6px;color:#5f7891">${photos.length} photo${photos.length > 1 ? "s" : ""} from the visitor (right-click &rarr; save image to download for SiteSwan; alt text below each for reference):</p><div>${photos.map((p, i) => {
+          const alt = altTextFor(f.businessName, f.tagline, i, photos.length);
+          return `<div style="display:inline-block;width:120px;margin:0 8px 10px 0;vertical-align:top"><img src="${p.dataUrl}" alt="${h(alt)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #d7e3ee;display:block">
+          <div style="font-size:11px;color:#5f7891;margin-top:3px;word-break:break-word">${h(alt)}</div></div>`;
+        }).join("")}</div>`
       : "";
     const html = `<div style="font-family:Arial,sans-serif;color:#17324c;max-width:560px"><h2 style="margin:0 0 8px">Sentinell DIY landing page completed -- $698</h2>
-    <table style="border-collapse:collapse;font-size:15px">${row("Business", f.businessName)}${row("Tagline", f.tagline)}${row("Brand color", f.color)}${row("Phone", f.phone)}${row("Email", f.email)}${deliveryRow}${notesRow}${row("Session", sessionId)}</table>${photosHtml}</div>`;
+    <table style="border-collapse:collapse;font-size:15px">${row("Business", f.businessName)}${row("Tagline", f.tagline)}${row("Brand color", f.color)}${row("Phone", f.phone)}${row("Email", f.email)}${deliveryRow}${graphicsRow}${customGraphicsRow}${notesRow}${row("Session", sessionId)}</table>${photosHtml}</div>`;
     const r = await callScript(cal, secret, { action: "mail", to: TANIA_EMAIL, subject: "Sentinell DIY completed: " + (f.businessName || sessionId), html, fromName: "Sentinell" });
     return !!(r && r.ok);
   } catch (e) { return false; }
@@ -157,17 +182,26 @@ async function queueLead(session, sessionId) {
     : f.deliveryChoice === "pay"
       ? "paid $698 upfront -- design emailed within a couple days" + (session.payLink && session.payLink.paid ? " (payment confirmed via Stripe)" : " (payment pending)")
       : "delivery path not yet chosen";
-  const photos = Array.isArray(session.photos) ? session.photos : [];
+  const photos = (Array.isArray(session.photos) ? session.photos : []).map((p, i, arr) => ({
+    name: p.name, dataUrl: p.dataUrl, alt: altTextFor(f.businessName, f.tagline, i, arr.length)
+  }));
+  const graphicsBit = f.graphicsChoice === "custom"
+    ? "wants custom graphics (not done yet -- build after this is sent)" + (f.customGraphicsNotes ? ": " + clean(f.customGraphicsNotes, 300) : "")
+    : f.graphicsChoice === "upload"
+      ? "uploading own photos/graphics"
+      : "";
   const item = {
     id: newLeadId(), kind: "create", at: new Date().toISOString(), status: "pending", by: "sentinel-diy",
     name: clean(f.businessName, 160), phone: clean(f.phone, 40), email: clean(f.email, 160),
     comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit
-      + (f.notes ? " | notes: " + clean(f.notes, 300) : "") + " | " + photos.length + " photo(s) attached | session " + sessionId,
+      + (graphicsBit ? " | graphics: " + graphicsBit : "") + (f.notes ? " | notes: " + clean(f.notes, 300) : "") + " | " + photos.length + " photo(s) attached | session " + sessionId,
     dropdown: "call back",
     // Record of what was agreed to and the full chat it came from, for Tania's files.
     transcript: (session.messages || []).map((m) => ({ role: m.role, content: m.content })),
     disclaimer: session.disclaimer || null,
     notes: f.notes || "",
+    graphicsChoice: f.graphicsChoice || "",
+    customGraphicsNotes: f.customGraphicsNotes || "",
     photos: photos,
     payLink: session.payLink ? { id: session.payLink.id, amount: session.payLink.amount, paid: !!session.payLink.paid, paidAt: session.payLink.paidAt || null } : null
   };
@@ -263,10 +297,13 @@ export default async (req, context) => {
 
   if (state && typeof state === "object") {
     const dc = ["appointment", "pay"].includes(state.deliveryChoice) ? state.deliveryChoice : (session.fields.deliveryChoice || "");
+    const gc = state.graphicsChoice === "upload" || state.graphicsChoice === "custom" ? state.graphicsChoice : (session.fields.graphicsChoice || "");
     session.fields = {
       businessName: clean(state.businessName, 160) || session.fields.businessName || "",
       tagline: clean(state.tagline, 300) || session.fields.tagline || "",
       color: clean(state.color, 60) || session.fields.color || "",
+      graphicsChoice: gc,
+      customGraphicsNotes: clean(state.customGraphicsNotes, 1000) || session.fields.customGraphicsNotes || "",
       phone: clean(state.phone, 40) || session.fields.phone || "",
       email: clean(state.email, 160) || session.fields.email || "",
       deliveryChoice: dc,
