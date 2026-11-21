@@ -18,7 +18,8 @@ const pkgStore = () => getStore({ name: "package-leads", consistency: "strong" }
 
 const PACKAGES = {
   websitePackage: { label: "Managed Website Program ($899 to start + $499/mo)", from: "WebSwan Media Network" },
-  fullAudit: { label: "Full Compliance & Security Audit ($799)", from: "WebSwan Digital Solutions" }
+  fullAudit: { label: "Full Compliance & Security Audit ($799)", from: "WebSwan Digital Solutions" },
+  sentinell: { label: "Sentinell DIY website ($698 to build + $199/mo)", from: "thewebswan.com" }
 };
 
 async function emailTania(rec, pkg) {
