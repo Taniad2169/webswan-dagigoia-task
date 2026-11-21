@@ -210,7 +210,7 @@ export default async (req) => {
   // No Firebase Admin credential exists anywhere server-side, so this only QUEUES the action in
   // Netlify Blobs; WorkPilot's own signed-in browser session (sebq-index polling) applies it and
   // reports back via sebastien_actions_ack. Eva's separate queue (evaq-index) is untouched.
-  const SEB_AGENTS = ["jenna", "monica", "george", "rebecca", "alek", "tatiana", "eva"];
+  const SEB_AGENTS = ["jenna", "monica", "george", "rebecca", "alek", "rachel", "tatiana", "eva"];
   async function queueSebastienAction(kind, f) {
     kind = String(kind || "").toLowerCase();
     f = f || {};
@@ -235,7 +235,7 @@ export default async (req) => {
       if (!target) return { error: "No lead with id " + leadId + " in the current WorkPilot list." };
       const text = clean(f.text, 3000).trim();
       if (!text) return { error: "Missing comment text." };
-      const tag = ["note", "research", "nextaction"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
+      const tag = ["note", "research", "nextaction", "script", "approved"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
       Object.assign(item, { leadId, text, tag, leadName: target.company || "" });
     } else if (kind === "assign") {
       const leadId = clean(f.leadId || f.leadid, 80).trim();
