@@ -122,7 +122,11 @@
   @media (max-width:860px){
     .spec-grid, .doc-grid, .loc-grid { grid-template-columns:repeat(2,1fr); }
     .feature__inner, .patients, .appt { grid-template-columns:1fr; }
-    .nav { display:none; }
+    .nav { display:none; position:absolute; top:100%; left:0; right:0; flex-direction:column; align-items:stretch; gap:0; background:#fff; border-bottom:1px solid var(--line); padding:8px 24px 14px; }
+    .nav.is-open { display:flex; }
+    .nav a { padding:10px 0; border-bottom:1px solid var(--line); }
+    .nav .btn--sm { margin-top:10px; text-align:center; }
+    .header__inner { position:relative; }
     .menu-toggle { display:block; }
   }
 </style>
