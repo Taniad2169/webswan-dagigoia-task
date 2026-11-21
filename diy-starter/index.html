@@ -212,12 +212,34 @@
     }
     return null;
   }
+  // Tania, Nov 20: the voice was reading "$199" as "dollar one ninety nine" -- say it the way a
+  // person would ("a hundred ninety-nine dollars a month"), while the chat text keeps showing
+  // "$199" as written. Spelled out for English; other languages just drop the $ sign (still reads
+  // the number fine, just without mispronouncing the symbol).
+  const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  function numberToWords(n) {
+    n = Math.round(n);
+    if (n < 20) return ONES[n];
+    if (n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '');
+    if (n < 1000) return ONES[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + numberToWords(n % 100) : '');
+    return String(n);
+  }
+  function spokenPrice(text, l) {
+    return String(text).replace(/\$(\d+)(?:\.(\d{2}))?(\/mo(?:nth)?)?/g, (m, dollars, cents, perMonth) => {
+      if (l !== 'en') return dollars + (cents ? '.' + cents : '') + (perMonth ? perMonth : '');
+      let out = numberToWords(parseInt(dollars, 10)) + (parseInt(dollars, 10) === 1 ? ' dollar' : ' dollars');
+      if (cents) out += ' and ' + numberToWords(parseInt(cents, 10)) + (parseInt(cents, 10) === 1 ? ' cent' : ' cents');
+      if (perMonth) out += ' a month';
+      return out;
+    });
+  }
   function say(text) {
     if (!voiceOn) return;
     const v = pickVoice(lang);
     if (!v) return; // no real voice for this language on this device -- stay silent, text still shows
     try {
-      const u = new SpeechSynthesisUtterance(text);
+      const u = new SpeechSynthesisUtterance(spokenPrice(text, lang));
       u.voice = v; u.lang = v.lang; u.rate = 1.0;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) {}
