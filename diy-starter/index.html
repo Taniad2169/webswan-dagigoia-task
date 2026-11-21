@@ -47,6 +47,16 @@
   .sf-close-btn { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; border:2px solid #fff; background:#0f2a4a; color:#fff; font-size:16px; line-height:1; cursor:pointer; z-index:3; display:none; }
   .sample-frame.sf-big .sf-close-btn { display:block; }
   .sample-frame.sf-big .sf-expand-btn { display:none; }
+  /* Tania, Nov 20: a lot of people don't know hex codes -- when Sentinell reaches the brand-color
+     step, show tappable named swatches instead of asking for a code. */
+  #sp-colors { padding:10px 12px 2px; border-top:1px solid var(--line, #e6ebf2); background:#fbfdff; }
+  #sp-colors p { margin:0 0 8px; font-size:12px; color:#6b7684; }
+  #sp-colors-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .sp-swatch { display:flex; flex-direction:column; align-items:center; gap:4px; border:0; background:none; cursor:pointer; padding:4px; border-radius:10px; }
+  .sp-swatch:hover, .sp-swatch:focus-visible { background:#eef4fb; outline:none; }
+  .sp-swatch .dot { width:30px; height:30px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.12); transition:transform .15s; }
+  .sp-swatch:hover .dot, .sp-swatch:focus-visible .dot { transform:scale(1.15); }
+  .sp-swatch span { font-size:10.5px; color:#44505c; max-width:56px; text-align:center; line-height:1.2; }
   .how { margin:46px 0; }
   .how h2 { text-align:center; color:var(--navy); font-size:20px; margin:0 0 20px; }
   .how ol { max-width:640px; margin:0 auto; padding:0 0 0 22px; color:var(--ink); font-size:15px; line-height:1.9; }
@@ -152,6 +162,10 @@
   </div>
   <div id="sp-log" role="log" aria-live="polite"></div>
   <div id="sp-chips"></div>
+  <div id="sp-colors" hidden>
+    <p>Tap a color, or just tell me in words -- no hex code needed:</p>
+    <div id="sp-colors-row"></div>
+  </div>
   <form id="sp-form" autocomplete="off">
     <label for="sp-input" style="position:absolute;left:-9999px">Message Sentinell</label>
     <input id="sp-input" placeholder="Type to Sentinell...">
@@ -282,9 +296,36 @@
   if (sfBackdrop) sfBackdrop.onclick = collapseSample;
   const SAMPLE_ASK = /\b(sample|example|see what|show me|see it|see a demo|demo|preview|mwen vle wè|muestra|ejemplo|exemplo|amostra)\b/i;
 
+  // Tania, Nov 20: a lot of visitors don't know hex codes -- show named, tappable swatches the
+  // moment Sentinell reaches the color question, instead of making them type a code.
+  const COLOR_PALETTE = [
+    { name: 'Ocean Blue', hex: '#1182f0' }, { name: 'Deep Purple', hex: '#7a2f8f' },
+    { name: 'Forest Green', hex: '#1f7a4d' }, { name: 'Sunset Coral', hex: '#ff6b57' },
+    { name: 'Sunshine Yellow', hex: '#f3a712' }, { name: 'Rose Pink', hex: '#e0507a' },
+    { name: 'Teal', hex: '#0f9b8e' }, { name: 'Burgundy', hex: '#7a1f2b' },
+    { name: 'Navy', hex: '#0b2a4a' }, { name: 'Tangerine', hex: '#f2641a' },
+    { name: 'Emerald', hex: '#14936b' }, { name: 'Charcoal', hex: '#22303f' }
+  ];
+  const colorsBox = $('sp-colors'), colorsRow = $('sp-colors-row');
+  let colorsBuilt = false, colorsShown = false;
+  function buildColorSwatches() {
+    if (colorsBuilt || !colorsRow) return; colorsBuilt = true;
+    COLOR_PALETTE.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sp-swatch'; b.title = c.name;
+      b.innerHTML = '<span class="dot" style="background:' + c.hex + '"></span><span>' + c.name + '</span>';
+      b.onclick = () => { hideColorSwatches(); sendMsg("Let's go with " + c.name + " (" + c.hex + ")."); };
+      colorsRow.appendChild(b);
+    });
+  }
+  function showColorSwatches() { buildColorSwatches(); if (colorsBox) { colorsBox.hidden = false; colorsShown = true; } }
+  function hideColorSwatches() { if (colorsBox) { colorsBox.hidden = true; colorsShown = false; } }
+  const COLOR_ASK = /\b(color|colour|couleur|koul|color de marca)\b/i;
+
   function sendMsg(text) {
     if (!text.trim()) return;
     if (SAMPLE_ASK.test(text)) expandSample();
+    if (colorsShown) hideColorSwatches();
     addLine('me', text);
     $('sp-input').value = '';
     const thinking = document.createElement('div');
@@ -301,6 +342,8 @@
       const reply = data.reply || "Got it.";
       addLine('sent', reply);
       say(reply);
+      if (data.fields && !data.fields.color && COLOR_ASK.test(reply)) showColorSwatches();
+      else if (data.fields && data.fields.color) hideColorSwatches();
       if (data.approved) {
         const confirm = "You're all set -- that request is now with the WebSwan team, and we'll text or email you shortly to finish your $698 build.";
         setTimeout(() => { addLine('sent', confirm); say(confirm); }, 600);
