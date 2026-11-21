@@ -1,4 +1,4 @@
-// Sentinel Phase 1 -- read-only diagnostic helpers (Tania, Nov 18; revised after Coby's static-inspection review).
+// Sentinel Phase 1 -- read-only diagnostic helpers (Tania, Nov 18; revised after Kobe's static-inspection review).
 // GitHub only in this release. NO Netlify token: Tania decided the account-wide reach of a Netlify personal
 // access token is not worth the risk for a first release, so Phase 1 ships with GitHub read-only diagnostics
 // plus Netlify log text Tania supplies manually in chat (scrubbed the same as everything else here -- see

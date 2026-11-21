@@ -96,7 +96,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 // key, name, role, male, photo
 const TEAM = [
-  { k: "sdr", n: "Coby", r: "Sales coach", male: true, img: "img/sdr.jpg" },
+  { k: "sdr", n: "Kobe", r: "Sales coach", male: true, img: "img/sdr.jpg" },
   { k: "sebastien", n: "Sebastien", r: "Business coach", male: true, img: "img/sebastien.jpg" },
   { k: "eva", n: "Eva", r: "Executive assistant", male: false, img: "img/eva.jpg" },
   { k: "tatiana", n: "Tatiana", r: "Content & social", male: false, img: "img/tatiana.jpg" },
@@ -196,7 +196,7 @@ async function speak(text, who) {
 function hush() { S.gen++; try { S.audio && S.audio.pause(); } catch (e) {} try { speechSynthesis.cancel(); } catch (e) {} S.speaking = ""; }
 
 /* ---------- coaching notes: nothing reaches an agent's brain without Tania approving or editing it first ----------
-   Same gate as the Brain Room and the Role Play Room: Coby only ever PROPOSES a note (either by saying
+   Same gate as the Brain Room and the Role Play Room: Kobe only ever PROPOSES a note (either by saying
    "add that to X's brain" herself, or by writing "PROPOSED NOTE FOR <agent>: ..." when he scores a call/role
    play). Either way this draws an editable textarea with Save/Cancel — brain_add (the only call that writes
    to brain-notes and pushes the agent's live Cartesia script) never fires until she presses Save. */
@@ -230,12 +230,12 @@ async function proposeAndApprove(k, said, oldNotes) {
     if (r.note) approveNoteBox(k, r.note, oldNotes);
   } catch (e) { toast(NAME(k) + ": " + e.message); }
 }
-// Coby wrote "PROPOSED NOTE FOR <agent>: ..." while scoring a call or a role play — draft it properly and show the approve box.
+// Kobe wrote "PROPOSED NOTE FOR <agent>: ..." while scoring a call or a role play — draft it properly and show the approve box.
 function maybeProposedNote(text) {
   const m = String(text || "").match(PROPOSED_RE);
   if (!m) return;
   const k = teamKeyByName(m[1]);
-  if (k) proposeAndApprove(k, "Coby proposed this after reviewing a call: " + m[2].trim());
+  if (k) proposeAndApprove(k, "Kobe proposed this after reviewing a call: " + m[2].trim());
 }
 // Tania said "add/save/remember that to X's (or everyone's) brain" out loud or typed it — same approve gate.
 async function brainVoiceCommand(text) {
@@ -251,7 +251,7 @@ async function brainVoiceCommand(text) {
   }
 }
 
-/* ---------- who got called on by name? checked on Tania's own words AND on whatever an agent (like Coby or Sebastien) just said, so a name dropped mid-meeting actually gets a turn ---------- */
+/* ---------- who got called on by name? checked on Tania's own words AND on whatever an agent (like Kobe or Sebastien) just said, so a name dropped mid-meeting actually gets a turn ---------- */
 function findAddressed(text, poolKeys, exceptKey) {
   const t = String(text || "").trim();
   if (!t) return null;
@@ -289,7 +289,7 @@ async function runTurn(text) {
     : TEAM.filter((t) => S.in.has(t.k) && isGreen(t.k)).map((t) => t.k);
   if (!order.length) { S.busy = false; $("send").disabled = false; say("Nobody's green to answer that — call on someone by name, or switch a teammate back to green."); return; }
   try {
-    // A teammate called on by name mid-meeting — by Tania, by Coby, by Sebastien, or by
+    // A teammate called on by name mid-meeting — by Tania, by Kobe, by Sebastien, or by
     // another agent — gets their own turn right after, even if they're red, answering just
     // that question; capped so one turn can't chain through the whole room.
     const spoken = new Set();

@@ -31,7 +31,7 @@
   #heard { color:#35506a; min-height:22px; text-align:center; font-size:14px; }
   #log { max-height:420px; overflow-y:auto; }
   .ln { padding:8px 10px; border-radius:10px; margin:6px 0; } .ln b { display:block; font-size:12.5px; color:var(--muted); }
-  .ln.me { background:#e9f3fe; } .ln.ag { background:#f3effe; } .ln.coby { background:#fff7e6; } .ln.fb { background:#e9f9ee; }
+  .ln.me { background:#e9f3fe; } .ln.ag { background:#f3effe; } .ln.kobe { background:#fff7e6; } .ln.fb { background:#e9f9ee; }
   .hint { color:var(--muted); font-size:13px; }
   #signin { display:none; }
 </style>
@@ -50,15 +50,15 @@
     <h2>2. Who plays the doctor or attorney?</h2>
     <div class="row">
       <label><input type="radio" name="mode" value="me" checked> 🙋‍♀️ Me (I answer the phone)</label>
-      <label><input type="radio" name="mode" value="coby"> 🤖 Coby plays the prospect, I watch</label>
+      <label><input type="radio" name="mode" value="kobe"> 🤖 Kobe plays the prospect, I watch</label>
     </div>
     <div class="row" style="margin-top:10px">
-      <label>Coby plays: <select id="role"></select></label>
+      <label>Kobe plays: <select id="role"></select></label>
       <label>How hard: <select id="mood"><option value="friendly">Friendly</option><option value="busy" selected>Busy, a bit rushed</option><option value="tough">Tough, pushes back</option></select></label>
     </div>
-    <div class="row" id="cobyGate" style="margin-top:10px;display:none">
+    <div class="row" id="kobeGate" style="margin-top:10px;display:none">
       <span class="hint">Who's allowed to talk (starts red/muted -- tap to let them talk):</span>
-      <button class="btn" type="button" id="gateCoby"></button>
+      <button class="btn" type="button" id="gateKobe"></button>
       <button class="btn" type="button" id="gateAgent"></button>
     </div>
     <div class="row" style="margin-top:10px">
@@ -75,7 +75,7 @@
       <button class="btn pri" id="stepIn" title="Stops whoever is talking and holds the role play so you can give your opinion">🙋 Step in: give my opinion</button>
       <button class="btn" id="hush">✋ Stop talking (Space)</button>
       <button class="btn red" id="end">End role play + feedback</button>
-      <button class="btn" id="coby" style="background:#fff3d6">💬 Brainstorm with Coby</button>
+      <button class="btn" id="kobe" style="background:#fff3d6">💬 Brainstorm with Kobe</button>
     </div>
     <div id="huddle" style="display:none;margin-top:12px;text-align:left;background:#eef7ff;border:1px solid #9cc9ee;border-radius:12px;padding:12px" role="region" aria-label="Time out: give your opinion">
       <b>🙋 Time out. The role play is on hold.</b> <span class="hint">Nobody talks until you do. Pick who you're talking to, then speak (the mic is on) or type. Go back and forth until you agree, then continue.</span>
@@ -83,12 +83,12 @@
       <div class="row" style="margin-top:8px"><input id="huddleText" aria-label="Your opinion" style="flex:1;min-width:220px;font:inherit;padding:9px;border-radius:9px;border:1px solid #9cc9ee" placeholder="Type your opinion here, or just say it"><button class="btn pri" id="huddleSend">Send</button></div>
       <div class="row" style="margin-top:10px"><button class="btn pri" id="huddleGo">▶ We agree: continue the role play</button><button class="btn" id="huddleSave">🧠 Save this to the brain</button></div>
     </div>
-    <div id="cobyBox" style="display:none;margin-top:12px;text-align:left;background:#fff7e6;border:1px solid #f3d38a;border-radius:12px;padding:12px">
-      <b>💬 Coby is listening</b> <span class="hint">Talk to him (the mic stays on), or type below. He gives his opinion on the role play, then listens to yours.</span>
-      <div class="row" style="margin-top:8px"><input id="cobyText" style="flex:1;min-width:220px;font:inherit;padding:9px;border-radius:9px;border:1px solid #f3d38a" placeholder="Coby, what did you think of Monica's opening?"><button class="btn pri" id="cobySend">Send</button><button class="btn" id="cobyDone">Done with Coby</button></div>
-      <div class="row" style="margin-top:8px"><span class="hint">Have Coby coach one of them directly (he heard the call):</span><span id="cobyCoach"></span></div>
+    <div id="kobeBox" style="display:none;margin-top:12px;text-align:left;background:#fff7e6;border:1px solid #f3d38a;border-radius:12px;padding:12px">
+      <b>💬 Kobe is listening</b> <span class="hint">Talk to him (the mic stays on), or type below. He gives his opinion on the role play, then listens to yours.</span>
+      <div class="row" style="margin-top:8px"><input id="kobeText" style="flex:1;min-width:220px;font:inherit;padding:9px;border-radius:9px;border:1px solid #f3d38a" placeholder="Kobe, what did you think of Monica's opening?"><button class="btn pri" id="kobeSend">Send</button><button class="btn" id="kobeDone">Done with Kobe</button></div>
+      <div class="row" style="margin-top:8px"><span class="hint">Have Kobe coach one of them directly (he heard the call):</span><span id="kobeCoach"></span></div>
     </div>
-    <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Coby, it runs on its own: say "pause" to step in, "continue" to go on. Press 🙋 Step in any time to stop them and give your opinion to Coby or the caller.</p>
+    <p class="hint">When you stop talking, they answer. When you talk, they stop. Say "end role play" any time. With Kobe, it runs on its own: say "pause" to step in, "continue" to go on. Press 🙋 Step in any time to stop them and give your opinion to Kobe or the caller.</p>
   </div>
 
   <div class="card" id="notesCard"><h2>🧠 Coaching notes <span class="hint" id="notesWho"></span></h2><p class="hint">Only the adjustments you approved. Editing these never changes the agent's script, opening or personality. Pick a caller above, then edit, add or remove notes and press Save.</p><div id="notesList"><p class="hint">Pick a caller above to see her notes.</p></div><div class="row" style="margin-top:8px"><button class="btn" id="noteAdd">+ Add a note</button><button class="btn pri" id="notesSave">✅ Save notes</button><span id="notesMsg" class="hint"></span></div></div>
@@ -110,7 +110,7 @@ const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const CALLERS = [
-  { k: "tania", n: "Tania", r: "CEO & Founder · you make the call, Coby is the prospect", male: false, kind: "doctor", me: true, img: "img/tania-ceo.jpg" },
+  { k: "tania", n: "Tania", r: "CEO & Founder · you make the call, Kobe is the prospect", male: false, kind: "doctor", me: true, img: "img/tania-ceo.jpg" },
   { k: "monica", n: "Monica", r: "Compliance · doctors", male: false, kind: "doctor" },
   { k: "george", n: "George", r: "Compliance · attorneys", male: true, kind: "attorney" },
   { k: "rebecca", n: "Rebecca", r: "Media Network", male: false, kind: "doctor" },
@@ -123,8 +123,8 @@ const ROLES = {
   attorney: ["the receptionist at a law firm", "the office manager at a law firm", "the attorney"],
   caller: ["a doctor calling back about the compliance report", "an attorney calling about advertising", "an office manager with questions"]
 };
-const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen: 0, log: [], audio: null, speaking: "", doneAt: 0, buf: "", timer: null, rec: null, cobyTurns: 0 };
-const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Coby" : k === "sebastien" ? "Sebastien" : k }).n;
+const S = { agent: "", on: false, busy: false, turn: "idle", paused: false, gen: 0, log: [], audio: null, speaking: "", doneAt: 0, buf: "", timer: null, rec: null, kobeTurns: 0 };
+const first = (k) => (CALLERS.find((c) => c.k === k) || { n: k === "sdr" ? "Kobe" : k === "sebastien" ? "Sebastien" : k }).n;
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
 function pref(id, key, d) { try { const v = localStorage.getItem(key); $(id).checked = v == null ? d : v === "on"; } catch (e) { $(id).checked = d; } $(id).onchange = () => { try { localStorage.setItem(key, $(id).checked ? "on" : "off"); } catch (e) {} }; }
 pref("phones", "wsPhones", false); pref("free", "wsRpFreeVoice", true); // Tania, Nov 6: role plays at no cost by default (browser voices); uncheck to hear the real Cartesia voices // own setting: the AI Office's free-voice switch no longer turns this room's voices into browser voices
@@ -136,7 +136,7 @@ function drawRoles() {
   const c = CALLERS.find((x) => x.k === S.agent); const list = ROLES[c ? c.kind : "doctor"];
   $("role").innerHTML = list.map((r) => `<option>${esc(r)}</option>`).join("");
 }
-$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); drawGate(); if (S.agent !== "tania") loadNotes(); say(S.agent === "tania" ? "Ready: you make the call, Coby picks up as the prospect. Press the microphone." : "Ready: " + first(S.agent) + ". Press the microphone."); };
+$("agents").onclick = (e) => { const b = e.target.closest(".ag"); if (!b || S.on) return; S.agent = b.dataset.k; drawAgents(); drawRoles(); drawGate(); if (S.agent !== "tania") loadNotes(); say(S.agent === "tania" ? "Ready: you make the call, Kobe picks up as the prospect. Press the microphone." : "Ready: " + first(S.agent) + ". Press the microphone."); };
 /* ---------- coaching notes editor (team brain notes; synced into a separate block of the live script) ---------- */
 let NOTES = [], NOTES_ORIG = [];
 function drawNotes() {
@@ -163,20 +163,20 @@ $("notesSave").onclick = async () => {
 // Opened from Voice Studio's Brain page: roleplay.html#notes=monica
 window.addEventListener("load", () => { const m = location.hash.match(/notes=(\w+)/); if (m && CALLERS.some((c) => c.k === m[1])) { S.agent = m[1]; drawAgents(); drawRoles(); const go = () => window._auth && window._auth.token().then((t) => t ? (loadNotes(), document.getElementById("notesCard").scrollIntoView()) : setTimeout(go, 800)); setTimeout(go, 800); } });
 drawAgents(); drawRoles();
-// Tania, Nov 19: when Coby plays the prospect against a real agent, both start red (muted) -- she ticks
+// Tania, Nov 19: when Kobe plays the prospect against a real agent, both start red (muted) -- she ticks
 // each one green herself before they're allowed to talk, same rule as the other rooms.
 const GATE = new Map();
 function gateOn(k) { return (GATE.get(k) || "red") === "green"; }
 function gateLabel(k, label) { return (gateOn(k) ? "\uD83C\uDFA4 " : "\uD83E\uDD10 ") + label + (gateOn(k) ? " (tap to mute)" : " (red -- tap to let talk)"); }
 function paintGate(btn, k) { btn.style.background = gateOn(k) ? "#eafaf0" : "#fdeaea"; btn.style.borderColor = gateOn(k) ? "#16a34a" : "#d32f2f"; btn.style.border = "2px solid " + (gateOn(k) ? "#16a34a" : "#d32f2f"); }
 function drawGate() {
-  if (mode() !== "coby" || !S.agent) { $("cobyGate").style.display = "none"; return; }
-  $("cobyGate").style.display = "";
-  $("gateCoby").textContent = gateLabel("sdr", "Coby"); paintGate($("gateCoby"), "sdr");
+  if (mode() !== "kobe" || !S.agent) { $("kobeGate").style.display = "none"; return; }
+  $("kobeGate").style.display = "";
+  $("gateKobe").textContent = gateLabel("sdr", "Kobe"); paintGate($("gateKobe"), "sdr");
   $("gateAgent").textContent = gateLabel(S.agent, first(S.agent)); paintGate($("gateAgent"), S.agent);
 }
-$("gateCoby").onclick = () => { GATE.set("sdr", gateOn("sdr") ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; cobyLoop(); } };
-$("gateAgent").onclick = () => { if (!S.agent) return; GATE.set(S.agent, gateOn(S.agent) ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; cobyLoop(); } };
+$("gateKobe").onclick = () => { GATE.set("sdr", gateOn("sdr") ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; kobeLoop(); } };
+$("gateAgent").onclick = () => { if (!S.agent) return; GATE.set(S.agent, gateOn(S.agent) ? "red" : "green"); drawGate(); if (S.paused && S.gateWait) { S.gateWait = false; S.paused = false; kobeLoop(); } };
 document.querySelectorAll('input[name="mode"]').forEach((r) => r.onchange = () => { GATE.clear(); drawGate(); });
 
 function say(t) { $("state").textContent = t; }
@@ -193,7 +193,7 @@ async function ask(agent, text, opt) {
   const body = Object.assign({ action: "chat", agent, text, voice: true, roleplay: true }, opt || {});
   // Only the lines of THIS practice call go along (no coaching asides), so every practice starts clean and names stay the same.
   if (body.roleplay && S.agreed && S.agreed.length) body.rpNotes = S.agreed.join(" | ").slice(-1500);
-  if (body.roleplay || body.rpEnd) body.rpLog = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).slice(-60).map((x) => ({ who: x.who === "You" ? "Person on the phone (Tania)" : x.who === "Coby" ? "Person on the phone" : x.who, text: x.text }));
+  if (body.roleplay || body.rpEnd) body.rpLog = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).slice(-60).map((x) => ({ who: x.who === "You" ? "Person on the phone (Tania)" : x.who === "Kobe" ? "Person on the phone" : x.who, text: x.text }));
   const r = await api(body);
   const m = (r.messages || []).find((x) => x.role === "agent" || x.role === "assistant") || (r.messages || [])[1] || {};
   if (String(m.id || "").startsWith("tmp")) throw new Error("took too long to answer, try again");
@@ -269,12 +269,12 @@ function commit() {
   const text = S.buf.trim(); S.buf = ""; $("heard").textContent = "";
   if (!text || !S.on) return;
   if (S.huddle) return huddleTurn(text);
-  if (S.coach) return cobyTurn(text);
+  if (S.coach) return kobeTurn(text);
   if (/\b(end|stop|finish) (the )?role ?play\b/i.test(text)) return finish();
   if (S.agent === "tania") { addLog("Tania", text, "me"); return prospectTurn(text); }
-  if (mode() === "coby") {
+  if (mode() === "kobe") {
     if (/^\s*(pause|hold on|wait)\b/i.test(text)) { S.paused = true; hush(); say("⏸️ Paused. Say \"continue\" when you're ready."); return; }
-    if (/\b(continue|go on|keep going|resume)\b/i.test(text)) { S.paused = false; return cobyLoop(); }
+    if (/\b(continue|go on|keep going|resume)\b/i.test(text)) { S.paused = false; return kobeLoop(); }
     addLog("Tania (coach)", text, "me"); S.paused = true; say("⏸️ Paused for your note. Say \"continue\" to go on.");
     return;
   }
@@ -297,9 +297,9 @@ async function agentTurn(text) {
 }
 function yourTurn() { S.turn = "listen"; micLook("live"); say("🎙️ Your turn. Just talk."); }
 
-/* ---------- Coby as the prospect: they go back and forth on their own ---------- */
+/* ---------- Kobe as the prospect: they go back and forth on their own ---------- */
 function scene() { return "a " + $("mood").value + " " + $("role").value.replace(/^the /, ""); }
-// One made-up person and office per practice call, picked at the start and kept to the end, so Coby never changes names mid-call.
+// One made-up person and office per practice call, picked at the start and kept to the end, so Kobe never changes names mid-call.
 const RP_FIRST = ["Karen", "Maria", "Denise", "Angela", "Patricia", "Carol", "Sharon", "Nancy"], RP_LAST = ["Smith", "Miller", "Carter", "Rivera", "Brooks", "Hayes", "Morgan", "Reyes"];
 function newPersona() {
   const pick = (a) => a[Math.floor(Math.random() * a.length)], last = pick(RP_LAST), law = S.agent === "george", role = $("role").value;
@@ -307,26 +307,26 @@ function newPersona() {
   return { name: boss ? (law ? "Attorney " : "Doctor ") + last : pick(RP_FIRST), office: law ? last + " Law Office" : "Doctor " + last + "'s office", boss: (law ? "Attorney " : "Doctor ") + last };
 }
 const who_ = () => { const p = S.persona || (S.persona = newPersona()); return `Your name on this whole call is ${p.name} and you work at ${p.office} (${p.boss} is the ${S.agent === "george" ? "attorney" : "doctor"}). Never use or invent any other name for yourself, the office or the ${S.agent === "george" ? "attorney" : "doctor"}.`; };
-async function cobyLoop() {
-  while (S.on && !S.paused && S.cobyTurns < 24) {
+async function kobeLoop() {
+  while (S.on && !S.paused && S.kobeTurns < 24) {
     const last = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).slice(-1)[0];
-    const cobyNext = !last || last.who !== "Coby";
-    const who = cobyNext ? "sdr" : S.agent;
-    if (!gateOn(who)) { S.paused = true; S.gateWait = true; S.busy = false; micLook(""); say((who === "sdr" ? "Coby" : first(who)) + " is on red -- tap them green above to let them talk."); return; }
+    const kobeNext = !last || last.who !== "Kobe";
+    const who = kobeNext ? "sdr" : S.agent;
+    if (!gateOn(who)) { S.paused = true; S.gateWait = true; S.busy = false; micLook(""); say((who === "sdr" ? "Kobe" : first(who)) + " is on red -- tap them green above to let them talk."); return; }
     let text;
     if (who === "sdr") {
       text = !last ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). ${first(S.agent)} from WebSwan is calling. You just picked up the phone: ${who_()} Say only how you'd answer it, like "Good morning, ${S.persona.office}, this is ${S.persona.name}." One line only, no stage directions.`
         : `ROLE PLAY: you are still ${scene()}. ${who_()} ${first(S.agent)} just said: "${last.text}". Reply with ONLY your next line as that person (one or two short sentences), the way a real ${$("mood").value} office person would: sometimes ask who's calling or why, push back, or give the email or a time. If ${first(S.agent)} said goodbye, just say goodbye. No stage directions, no coaching.`;
     } else {
       text = !S.log.some((x) => x.who === first(S.agent))
-        ? `Tania wants to role play now. Coby is playing ${$("role").value}. You are calling, they just picked up and said: "${last.text}". Say your opening line.`
+        ? `Tania wants to role play now. Kobe is playing ${$("role").value}. You are calling, they just picked up and said: "${last.text}". Say your opening line.`
         : `The person on the phone says: "${last.text}"`;
     }
     S.busy = true; S.turn = "thinking"; micLook(""); say("💭 " + first(who) + " is thinking…");
     const gen = ++S.gen; let ans;
     try { ans = await ask(who, text); } catch (e) { S.busy = false; say("⚠️ " + first(who) + " " + e.message + ". Say \"continue\" to try again."); S.paused = true; return; }
     S.busy = false; if (gen !== S.gen || !S.on || S.paused) return;
-    addLog(first(who), ans, who === "sdr" ? "coby" : "ag"); S.cobyTurns++;
+    addLog(first(who), ans, who === "sdr" ? "kobe" : "ag"); S.kobeTurns++;
     const ok = await speak(ans, who); if (!ok || S.paused) return;
     const lastTwo = S.log.slice(-2).map((x) => x.text).join(" ");
     if (/\b(good ?bye|bye now|have a (great|good|nice|lovely|wonderful) (day|afternoon|evening))\b/i.test(lastTwo) && S.log.slice(-2).every((x) => /bye|have a/i.test(x.text))) return finish();
@@ -335,9 +335,9 @@ async function cobyLoop() {
   if (S.on && !S.paused) finish();
 }
 
-/* ---------- Tania makes the call herself; Coby plays the prospect (Tania, Nov 13) ---------- */
+/* ---------- Tania makes the call herself; Kobe plays the prospect (Tania, Nov 13) ---------- */
 async function prospectTurn(taniaSaid) {
-  S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Coby (the prospect) is thinking…");
+  S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Kobe (the prospect) is thinking…");
   const gen = ++S.gen;
   const text = !taniaSaid
     ? `ROLE PLAY: you are ${scene()} (Tania picked "${$("role").value}"). Tania, the founder of WebSwan, is calling you herself. You just picked up the phone: ${who_()} Say only how you'd answer it, like "Good morning, ${S.persona.office}, this is ${S.persona.name}." One line only.`
@@ -345,18 +345,18 @@ async function prospectTurn(taniaSaid) {
   try {
     const ans = await ask("sdr", text);
     if (gen !== S.gen || !S.on) return;
-    addLog("Coby (prospect)", ans, "coby"); S.busy = false;
+    addLog("Kobe (prospect)", ans, "kobe"); S.busy = false;
     const ok = await speak(ans, "sdr"); if (ok) yourTurn();
-  } catch (e) { S.busy = false; say("⚠️ Coby " + e.message); yourTurn(); }
+  } catch (e) { S.busy = false; say("⚠️ Kobe " + e.message); yourTurn(); }
 }
 /* ---------- start / end ---------- */
 async function start() {
   if (!S.agent) { say("Pick a caller first."); return; }
   if (!(await window._auth.token())) { say("Please sign in first (button above)."); return; }
-  S.on = true; S.paused = false; S.log = []; S.cobyTurns = 0; S.finishing = false; S.persona = null; S.agreed = []; S.huddle = ""; $("huddle").style.display = "none"; $("log").innerHTML = '<p class="hint">Starting…</p>';
+  S.on = true; S.paused = false; S.log = []; S.kobeTurns = 0; S.finishing = false; S.persona = null; S.agreed = []; S.huddle = ""; $("huddle").style.display = "none"; $("log").innerHTML = '<p class="hint">Starting…</p>';
   startRec();
-  if (S.agent === "tania") return prospectTurn(null); // Coby picks up the phone, then Tania talks live (no AI voice for her)
-  if (mode() === "coby") { GATE.clear(); drawGate(); return cobyLoop(); }
+  if (S.agent === "tania") return prospectTurn(null); // Kobe picks up the phone, then Tania talks live (no AI voice for her)
+  if (mode() === "kobe") { GATE.clear(); drawGate(); return kobeLoop(); }
   if (S.agent === "rachel") { // Rachel answers the phone, so she speaks first
     S.busy = true; say("💭 Rachel is picking up…");
     try { const g = await ask("rachel", "Tania wants to role play now: she is calling you as a prospect. Answer the phone with your greeting."); addLog("Rachel", g, "ag"); S.busy = false; if (await speak(g, "rachel")) yourTurn(); } catch (e) { S.busy = false; say("⚠️ " + e.message); yourTurn(); }
@@ -368,11 +368,11 @@ async function start() {
 async function finish() {
   if (!S.on) return; hush(); const who = S.agent; S.on = false; S.finishing = true; S.huddle = ""; $("huddle").style.display = "none"; try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); say("📝 Getting feedback…");
   if (who === "tania") {
-    try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice cold call made by Tania herself (the founder and CEO, a born closer who doesn't love telemarketing). Step out of character and coach her like her SDR: what worked, the one thing to tighten, and the exact line you'd change, in 3 or 4 short spoken sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching for Tania", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {}
+    try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice cold call made by Tania herself (the founder and CEO, a born closer who doesn't love telemarketing). Step out of character and coach her like her SDR: what worked, the one thing to tighten, and the exact line you'd change, in 3 or 4 short spoken sentences. The call:\n" + t, { roleplay: false }); addLog("Kobe · coaching for Tania", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {}
     S.finishing = false; say("Done. Press 🎙️ to go again."); return;
   }
   try { const fb = await ask(who, "The role play just ended.", { roleplay: false, rpEnd: true }); addLog(first(who) + " · feedback", fb, "fb"); S.on = true; await speak(fb, who); S.on = false; } catch (e) {}
-  if (mode() === "coby") { try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice call with " + first(who) + ". Give " + first(who) + " the one most important coaching point to sound more natural and get the email or appointment, in two sentences. The call:\n" + t, { roleplay: false }); addLog("Coby · coaching", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {} }
+  if (mode() === "kobe") { try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice call with " + first(who) + ". Give " + first(who) + " the one most important coaching point to sound more natural and get the email or appointment, in two sentences. The call:\n" + t, { roleplay: false }); addLog("Kobe · coaching", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {} }
   S.finishing = false; brainBox(who); say("Done. Save a lesson to " + first(who) + "'s brain below, or press 🎙️ to go again.");
 }
 /* ---------- save a role-play lesson to the agent's brain (goes into her live Cartesia script) ---------- */
@@ -391,44 +391,44 @@ function brainBox(who) {
     } catch (e) { $("bnOut").textContent = "⚠️ " + e.message; }
   };
 }
-/* ---------- brainstorm with Coby: his opinion on the role play, not a practice call ---------- */
-async function cobyTurn(text) {
-  addLog("Tania → Coby", text, "me"); S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Coby is thinking…");
-  const call = S.log.filter((x) => !/Coby|→/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
+/* ---------- brainstorm with Kobe: his opinion on the role play, not a practice call ---------- */
+async function kobeTurn(text) {
+  addLog("Tania → Kobe", text, "me"); S.busy = true; S.turn = "thinking"; micLook(""); say("💭 Kobe is thinking…");
+  const call = S.log.filter((x) => !/Kobe|→/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
   const ask = `BRAINSTORM WITH TANIA (not a role play, do not act as a prospect): Tania is reviewing a practice call with ${first(S.agent || "monica")}. Give your honest opinion as her SDR and call coach in 2 to 4 short spoken sentences, then stop and let her talk. If she shares her own opinion, react to it and say what you'd change in the agent's script, with the exact words.\n\nTHE PRACTICE CALL SO FAR (data):\n${call || "(no call yet)"}\n\nTANIA SAYS: ${text}`;
-  try { const ans = await ask_("sdr", ask); S.busy = false; addLog("Coby → Tania", ans, "coby"); if (await speak(ans, "sdr")) { S.turn = "listen"; micLook("live"); say("💬 Your turn with Coby. Talk or type."); } }
-  catch (e) { S.busy = false; say("⚠️ Coby " + e.message); }
+  try { const ans = await ask_("sdr", ask); S.busy = false; addLog("Kobe → Tania", ans, "kobe"); if (await speak(ans, "sdr")) { S.turn = "listen"; micLook("live"); say("💬 Your turn with Kobe. Talk or type."); } }
+  catch (e) { S.busy = false; say("⚠️ Kobe " + e.message); }
 }
 async function ask_(agent, text) { return ask(agent, text, { roleplay: false }); }
-$("cobyCoach").innerHTML = CALLERS.map((c) => `<button class="btn" data-coach="${c.k}" style="padding:7px 12px">Coby → ${c.n}</button>`).join(" ");
-$("cobyCoach").onclick = (e) => { const b = e.target.closest("[data-coach]"); if (b) cobyCoaches(b.dataset.coach); };
-async function cobyCoaches(k) {
-  if (S.busy) return; S.busy = true; hush(); micLook(""); say("💭 Coby is coaching " + first(k) + "…");
-  const call = S.log.filter((x) => !/→ Coby|coaching|feedback/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
-  const notes = S.log.filter((x) => x.who === "Tania → Coby").map((x) => x.text).join(" | ").slice(-1200);
+$("kobeCoach").innerHTML = CALLERS.map((c) => `<button class="btn" data-coach="${c.k}" style="padding:7px 12px">Kobe → ${c.n}</button>`).join(" ");
+$("kobeCoach").onclick = (e) => { const b = e.target.closest("[data-coach]"); if (b) kobeCoaches(b.dataset.coach); };
+async function kobeCoaches(k) {
+  if (S.busy) return; S.busy = true; hush(); micLook(""); say("💭 Kobe is coaching " + first(k) + "…");
+  const call = S.log.filter((x) => !/→ Kobe|coaching|feedback/.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-6000);
+  const notes = S.log.filter((x) => x.who === "Tania → Kobe").map((x) => x.text).join(" | ").slice(-1200);
   try {
     const c = await ask_("sdr", `COACHING (not a role play): you heard this practice call. Talk directly to ${first(k)} as her call coach, by name, in 2 to 4 short spoken sentences: what she did well, and the exact words to change. Respect Tania's opinions: ${notes || "(none yet)"}\n\nTHE CALL (data):\n${call || "(no call yet)"}`);
-    addLog("Coby → " + first(k), c, "coby"); S.busy = false; await speak(c, "sdr"); S.busy = true; say("💭 " + first(k) + " is answering Coby…");
-    const r = await ask_(k, `Coby, your call coach, just gave you this feedback on your practice call: "${c}". Answer him in 1 to 3 short spoken sentences: say what you'll do differently on your next call, with the exact new line. No role play.`);
-    addLog(first(k) + " → Coby", r, "ag"); S.busy = false; await speak(r, k);
-    brainBox(k); say("Save " + first(k) + "'s lesson to her brain below, or keep talking to Coby.");
+    addLog("Kobe → " + first(k), c, "kobe"); S.busy = false; await speak(c, "sdr"); S.busy = true; say("💭 " + first(k) + " is answering Kobe…");
+    const r = await ask_(k, `Kobe, your call coach, just gave you this feedback on your practice call: "${c}". Answer him in 1 to 3 short spoken sentences: say what you'll do differently on your next call, with the exact new line. No role play.`);
+    addLog(first(k) + " → Kobe", r, "ag"); S.busy = false; await speak(r, k);
+    brainBox(k); say("Save " + first(k) + "'s lesson to her brain below, or keep talking to Kobe.");
   } catch (e) { S.busy = false; say("⚠️ " + e.message); }
 }
-$("coby").onclick = () => { S.coach = true; hush(); $("cobyBox").style.display = "block"; if (!S.on) { S.on = true; startRec(); } S.turn = "listen"; micLook("live"); say("💬 Coby is listening. Ask him what he thinks."); $("cobyText").focus(); };
-$("cobySend").onclick = () => { const t = $("cobyText").value.trim(); if (!t) return; $("cobyText").value = ""; cobyTurn(t); };
-$("cobyText").addEventListener("keydown", (e) => { if (e.key === "Enter") $("cobySend").click(); });
-$("cobyDone").onclick = () => { S.coach = false; $("cobyBox").style.display = "none"; hush(); if (S.agent && mode() === "me") { yourTurn(); say("Back to the role play. Your turn."); } else { stopAll(); say("Done with Coby. Press 🎙️ to start a role play."); } };
-/* ---------- 🙋 Step in: Tania stops everyone, gives her opinion to Coby or the caller, they agree, the role play goes on ---------- */
+$("kobe").onclick = () => { S.coach = true; hush(); $("kobeBox").style.display = "block"; if (!S.on) { S.on = true; startRec(); } S.turn = "listen"; micLook("live"); say("💬 Kobe is listening. Ask him what he thinks."); $("kobeText").focus(); };
+$("kobeSend").onclick = () => { const t = $("kobeText").value.trim(); if (!t) return; $("kobeText").value = ""; kobeTurn(t); };
+$("kobeText").addEventListener("keydown", (e) => { if (e.key === "Enter") $("kobeSend").click(); });
+$("kobeDone").onclick = () => { S.coach = false; $("kobeBox").style.display = "none"; hush(); if (S.agent && mode() === "me") { yourTurn(); say("Back to the role play. Your turn."); } else { stopAll(); say("Done with Kobe. Press 🎙️ to start a role play."); } };
+/* ---------- 🙋 Step in: Tania stops everyone, gives her opinion to Kobe or the caller, they agree, the role play goes on ---------- */
 function huddleTargets() {
   const a = S.agent ? [[S.agent, first(S.agent)]] : [];
-  return [...a, ["sdr", "Coby"], ["sebastien", "Sebastien"], ...(a.length ? [["both", "Both"]] : [])];
+  return [...a, ["sdr", "Kobe"], ["sebastien", "Sebastien"], ...(a.length ? [["both", "Both"]] : [])];
 }
 function drawHuddle() { $("huddleWho").innerHTML = huddleTargets().map(([k, n]) => `<button class="btn${S.huddle === k ? " pri" : ""}" data-h="${k}" aria-pressed="${S.huddle === k}" style="padding:7px 12px">${esc(n)}</button>`).join(" "); }
 function stepIn() {
   if (S.finishing) return;
-  hush(); S.paused = true; S.coach = false; $("cobyBox").style.display = "none";
+  hush(); S.paused = true; S.coach = false; $("kobeBox").style.display = "none";
   if (!S.agreed) S.agreed = [];
-  if (!S.huddle) S.huddle = mode() === "coby" && S.agent ? "both" : (S.agent || "sdr");
+  if (!S.huddle) S.huddle = mode() === "kobe" && S.agent ? "both" : (S.agent || "sdr");
   $("huddle").style.display = "block"; drawHuddle();
   if (!S.on) { S.on = true; startRec(); }
   S.turn = "listen"; micLook("live"); say("🙋 On hold. Give your opinion: talk or type."); $("huddleText").focus();
@@ -436,7 +436,7 @@ function stepIn() {
 async function huddleTurn(text) {
   if (S.busy) return;
   const to = S.huddle === "both" ? ["sdr", S.agent] : [S.huddle];
-  addLog("Tania → " + (S.huddle === "both" ? "Coby and " + first(S.agent) : first(S.huddle)), text, "me"); S.agreed.push(text);
+  addLog("Tania → " + (S.huddle === "both" ? "Kobe and " + first(S.agent) : first(S.huddle)), text, "me"); S.agreed.push(text);
   S.busy = true; S.turn = "thinking"; micLook("");
   try {
     for (const k of to) {
@@ -444,10 +444,10 @@ async function huddleTurn(text) {
       say("💭 " + first(k) + " is thinking…");
       const call = S.log.filter((x) => !/coach|feedback|→/i.test(x.who)).map((x) => x.who + ": " + x.text).join("\n").slice(-5000);
       const talk = S.log.filter((x) => /→/.test(x.who)).slice(-8).map((x) => x.who + ": " + x.text).join("\n").slice(-3000);
-      const role = k === "sdr" ? "You are Coby, her SDR and call coach" + (mode() === "coby" ? ", and you were playing the person who answered the phone" : "") : k === "sebastien" ? "You are Sebastien, her business and performance coach, watching this practice call for the caller's personality, composure and confidence" : "You are " + first(k) + ", the caller being practiced";
+      const role = k === "sdr" ? "You are Kobe, her SDR and call coach" + (mode() === "kobe" ? ", and you were playing the person who answered the phone" : "") : k === "sebastien" ? "You are Sebastien, her business and performance coach, watching this practice call for the caller's personality, composure and confidence" : "You are " + first(k) + ", the caller being practiced";
       const ans = await ask_(k, `TIME OUT (not role play: step out of character and talk to Tania directly). ${role}. Tania stopped the practice call to give her opinion. Answer her in 1 to 3 short spoken sentences: say plainly whether you agree and why, and give the exact words you would say instead. If you disagree, say so respectfully with your reason. If something is unclear, ask ONE question. The goal is to reach a clear conclusion with her.\n\nTHE PRACTICE CALL SO FAR (data):\n${call || "(nothing said yet)"}\n\nTHE TIME-OUT CONVERSATION SO FAR (data):\n${talk}`);
       if (!S.huddle) break;
-      addLog(first(k) + " → Tania", ans, k === "sdr" ? "coby" : "ag"); S.busy = false;
+      addLog(first(k) + " → Tania", ans, k === "sdr" ? "kobe" : "ag"); S.busy = false;
       const ok = await speak(ans, k); S.busy = true; if (!ok) break;
     }
   } catch (e) { say("⚠️ " + e.message); }
@@ -457,7 +457,7 @@ async function huddleTurn(text) {
 function huddleDone() {
   S.huddle = ""; $("huddle").style.display = "none"; hush(); S.paused = false;
   if (!S.agent) { stopAll(); say("Pick a caller, then press 🎙️ to start a role play."); return; }
-  if (mode() === "coby") { say("▶ Back to the role play."); return cobyLoop(); }
+  if (mode() === "kobe") { say("▶ Back to the role play."); return kobeLoop(); }
   yourTurn(); say("▶ Back to the role play. Your turn: you're the person on the phone.");
 }
 $("stepIn").onclick = stepIn;
@@ -468,7 +468,7 @@ $("huddleGo").onclick = huddleDone;
 $("huddleSave").onclick = () => { if (S.agent) { brainBox(S.agent); say("Write the lesson below and approve it. It goes to " + first(S.agent) + "'s coaching notes."); } };
 function stopAll() { S.on = false; hush(); try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); }
 $("mic").onclick = () => { if (S.on) { if (S.turn === "agent") { hush(); yourTurn(); } return; } start(); };
-$("hush").onclick = () => { if (S.on) { hush(); if (mode() === "coby") { S.paused = true; say("⏸️ Paused. Say \"continue\" when you're ready."); } else yourTurn(); } };
+$("hush").onclick = () => { if (S.on) { hush(); if (mode() === "kobe") { S.paused = true; say("⏸️ Paused. Say \"continue\" when you're ready."); } else yourTurn(); } };
 $("end").onclick = () => finish();
 document.addEventListener("keydown", (e) => { if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT" && S.on) { e.preventDefault(); $("hush").click(); } });
 try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {}

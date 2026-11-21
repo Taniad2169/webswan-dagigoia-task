@@ -163,7 +163,7 @@
 const API = "https://webswan-billing.netlify.app/.netlify/functions/team";
 const PROSPECTOR = "https://webswan-lead-prospector.netlify.app";
 const ORDER = ["eva", "tatiana", "jimmy", "linda", "sentinel", "clara", "rachel", "sdr", "sebastien", "jenna", "monica", "george", "rebecca", "alek"];
-const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Jonathan", role: "Legal & Compliance", photo: "img/jonathan.jpg" }, sentinel: { name: "Sentinel", role: "Security intelligence & monitoring · read-only advisory", photo: "img/sentinel.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, jenna: { name: "Jenna", role: "Market Intelligence Director", photo: "img/jenna.jpg" }, sebastien: { name: "Sebastien", role: "Business & performance coach", photo: "img/sebastien.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Coby", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
+const FALLBACK = { eva: { name: "Eva", role: "Executive Assistant", photo: "img/eva.jpg" }, jimmy: { name: "Jimmy", role: "Graphics & Template Creator", photo: "img/jimmy.jpg" }, tatiana: { name: "Tatiana Lambert", role: "Content Creator", photo: "img/tatiana.jpg" }, linda: { name: "Jonathan", role: "Legal & Compliance", photo: "img/jonathan.jpg" }, sentinel: { name: "Sentinel", role: "Security intelligence & monitoring · read-only advisory", photo: "img/sentinel.jpg" }, clara: { name: "Clara", role: "Budget Strategist", photo: "img/clara.svg" }, rachel: { name: "Rachel Bennett", role: "Receptionist (inbound calls)", photo: "img/rachel.jpg" } , monica: { name: "Monica", role: "Compliance calls · doctors", photo: "img/monica.jpg" }, george: { name: "George", role: "Compliance calls · attorneys", photo: "img/george.jpg" }, rebecca: { name: "Rebecca", role: "Advertising calls · Media Network", photo: "img/rebecca.jpg" }, jenna: { name: "Jenna", role: "Market Intelligence Director", photo: "img/jenna.jpg" }, sebastien: { name: "Sebastien", role: "Business & performance coach", photo: "img/sebastien.jpg" }, alek: { name: "Alek", role: "Floating agent · phone app & e-card", photo: "img/alek.jpg" }, sdr: { name: "Kobe", role: "Sales coach · listens to every call", photo: "img/sdr.jpg" } };
 let S = { agents: FALLBACK, last: {}, providers: { deepseek: "DeepSeek", chatgpt: "ChatGPT (Gips)", gemini: "Gemini", claude: "Claude", grok: "Grok (Jimmy)" }, ready: {}, settings: { provider: "deepseek", competitors: [] } };
 let cur = "eva", msgs = [], pendingDraft = null;
 const $ = (id) => document.getElementById(id);
@@ -982,8 +982,8 @@ function drawBrainRoster() {
   });
 }
 // Who is named, in the order Tania said them.
-// Speech-to-text often mishears names ("Kobe" for Coby, "Alex" for Alek), so each agent answers to a few spellings.
-const SOUNDS = { sdr: "coby|kobe|koby|cobie|colby|cody|toby|kobi|sdr", alek: "alek|alec|alex|alek's", monica: "monica|monika|veronica", rebecca: "rebecca|becca|rebekah", george: "george|jorge", rachel: "rachel|rachael", tatiana: "tatiana|tatyana", clara: "clara|klara|claire", eva: "eva|ava|eve", linda: "jonathan|jonathon|johnathan|john|linda|lynda" };
+// Speech-to-text often mishears names ("Kobe" for Kobe, "Alex" for Alek), so each agent answers to a few spellings.
+const SOUNDS = { sdr: "kobe|kobe|koby|cobie|colby|cody|toby|kobi|sdr", alek: "alek|alec|alex|alek's", monica: "monica|monika|veronica", rebecca: "rebecca|becca|rebekah", george: "george|jorge", rachel: "rachel|rachael", tatiana: "tatiana|tatyana", clara: "clara|klara|claire", eva: "eva|ava|eve", linda: "jonathan|jonathon|johnathan|john|linda|lynda" };
 const nameRe = (k) => SOUNDS[k] || first(k).toLowerCase();
 function named(text) {
   const t = text.toLowerCase();
@@ -993,7 +993,7 @@ function plan(text) {
   const n = named(text), t = text.toLowerCase();
   const all = /\b(everyone|everybody|all of you|each of you|the team|you all|y'all|go around|what do you (all|guys) think)\b/.test(t);
   const isGreen = (k) => (G.mode.get(k) || "red") === "green";
-  // "Coby, your turn" / "Monica, it's your turn to answer Coby": only that person speaks -- but never if they're red.
+  // "Kobe, your turn" / "Monica, it's your turn to answer Kobe": only that person speaks -- but never if they're red.
   const turn = G.members.find((k) => new RegExp("\\b(" + nameRe(k) + ")\\b[\\s,.!]*(it'?s\\s+|now\\s+)?(your turn|go ahead|you'?re up|over to you)").test(t));
   if (turn) return isGreen(turn) ? { kind: "named", order: [turn] } : { kind: "blocked", who: turn };
   // Tania, Nov 19: red means fully muted -- a red teammate never speaks, even when named directly, until Tania taps them green.
@@ -1131,7 +1131,7 @@ async function awardPanel(k) {
     const board = Object.keys(tot).filter((x) => tot[x] && known(x)).map((x) => first(x) + " " + tot[x]).join(" · ");
     $("extra").innerHTML = '<div class="card" style="padding:12px;border:1px solid #c9dcef;border-radius:12px;margin:8px 0">'
       + '<b>🏆 Awards for ' + esc(aName(k)) + '</b>'
-      + '<p class="hint" style="margin:4px 0 8px">Drop a star for good effort. ' + esc(first(k)) + ' sees them, and Coby uses the board when he coaches in the Brain Room.</p>'
+      + '<p class="hint" style="margin:4px 0 8px">Drop a star for good effort. ' + esc(first(k)) + ' sees them, and Kobe uses the board when he coaches in the Brain Room.</p>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">' + AWARDS.map((e) => '<button class="btn" data-aw="' + e + '" title="Give ' + e + '" style="font-size:20px;padding:6px 10px">' + e + '</button>').join("") + '</div>'
       + '<input id="awNote" placeholder="What did they do well? (optional)" style="width:100%;padding:8px;border:1px solid #c9dcef;border-radius:8px;margin-bottom:8px">'
       + (board ? '<p class="hint" style="margin:0 0 8px"><b>Board:</b> ' + esc(board) + '</p>' : "")
