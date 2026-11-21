@@ -11,11 +11,15 @@ export const DIALER_PLAN = {
   start: "2026-11-23", end: "2026-11-26",          // Mon Nov 23 – Thu Nov 26
   tz: "America/Los_Angeles",
   agents: {
-    // Jenna: Modesto Real Estate, Sentinel DIY pitch, English. Takes leads queued under her own name.
-    jenna: { windows: [["07:00", "09:00"]], perWindow: 24, lang: "en", takes: ["jenna"], campaign: "Modesto Real Estate · Sentinel DIY" },
-    // George: same batch, opens in Spanish (switches to English only if they answer in English).
-    george: { windows: [["09:00", "11:00"]], perWindow: 24, lang: "any", forceLang: "es",
-      takes: ["george"], campaign: "Modesto Real Estate · Sentinel DIY (Spanish)" },
+    // Jenna: 2 campaigns/day (Tania, Nov 21) -- window 1 is the Atlanta chiropractor website-compliance audit
+    // (her usual pitch, takes leads sourced under "monica" same as before), window 2 is the Modesto Real Estate
+    // Sentinel DIY push (leads queued under her own name). planTaskFor() reads each lead's own campaign tag, so
+    // mixing two lead types under one agent is safe -- every lead still gets the right script.
+    jenna: { windows: [["07:00", "08:00"], ["12:30", "13:45"]], perWindow: 24, lang: "en", takes: ["jenna", "monica"], campaign: "Website compliance (chiropractors) + Modesto RE Sentinel DIY" },
+    // George: same two-campaign split, opens in Spanish for the Sentinel DIY leads (switches to English if they
+    // answer in English); his Atlanta attorney leads come in English already.
+    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: 24, lang: "any", forceLang: "es",
+      takes: ["george"], campaign: "Website compliance (attorneys) + Modesto RE Sentinel DIY (Spanish)" },
     // Rebecca: Sentinel DIY most days; Wed she pitches WSMN advertising + SwanDesk AI instead (Jenna covers Sentinel
     // DIY that day). Which script she reads comes from the lead's own campaign tag (see planTaskFor below), not the
     // day of week, so whichever leads are actually queued for her on a given day get the right pitch automatically.
