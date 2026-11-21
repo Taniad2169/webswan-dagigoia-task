@@ -1008,6 +1008,32 @@ The audit report PDF is attached. Keep it under 170 words, warm and professional
       await sdSt.setJSON("lq-index", idx.slice(-500));
       return reply(200, { ok: true, updated }, origin);
     }
+    // WorkPilot polls this (while open and signed in) to pick up "Take me there" leads from the
+    // $899 Managed Website Program banner (WebSwan Media Network) and the $799 full audit banner
+    // (WebSwan Digital Solutions). See netlify/functions/package-lead.mjs -- separate store/queue,
+    // no shared code path with Sebastien's or Sentinel's queues.
+    if (b.action === "package_leads_get") {
+      const pkSt = getStore({ name: "package-leads", consistency: "strong" });
+      const idx = (await pkSt.get("lq-index", { type: "json" })) || [];
+      return reply(200, { items: idx.filter((x) => x.status === "pending") }, origin);
+    }
+    if (b.action === "package_leads_ack") {
+      const results = Array.isArray(b.results) ? b.results : [];
+      if (!results.length) return reply(400, { error: "No results given." }, origin);
+      const pkSt = getStore({ name: "package-leads", consistency: "strong" });
+      const idx = (await pkSt.get("lq-index", { type: "json" })) || [];
+      let updated = 0;
+      for (const r of results) {
+        const it = idx.find((x) => x.id === clean(r.id, 60));
+        if (!it) continue;
+        it.status = r.ok ? "done" : "failed";
+        it.resultNote = clean(r.note, 300);
+        it.doneAt = new Date().toISOString();
+        updated++;
+      }
+      await pkSt.setJSON("lq-index", idx.slice(-500));
+      return reply(200, { ok: true, updated }, origin);
+    }
     // Tania, Nov 19: the moment a lead lands on Tania's Calls (or Jenna's), WorkPilot calls this so
     // Sebastien profiles it and writes the call script right away -- no waiting on him being asked in
     // chat, no 90-second queue poll. Synchronous: WorkPilot applies the returned script to the lead itself.

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Managed Website Program — WebSwan Media Network</title>
+<meta name="description" content="Need a website but don't have the budget? The $899-to-start Managed Website Program from WebSwan Media Network.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#339cde;--aqua:#93e5fa;--deep:#0b5d8f;--ink:#13293d;--muted:#4a5d70;--bg:#f3fafd;--card:#ffffff;--line:#cfe3ef;--err:#b42318;--ok:#0f7b4f;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+header{background:linear-gradient(120deg,var(--deep) 0%,var(--blue) 55%,var(--aqua) 100%);color:#fff;padding:36px 16px 64px;text-align:center}
+header .brand{font-size:.95rem;letter-spacing:.04em;text-transform:uppercase;opacity:.85;margin:0 0 10px}
+header h1{margin:0;font-size:clamp(1.5rem,4vw,2.2rem);line-height:1.25}
+header p{margin:10px auto 0;max-width:640px;opacity:.95}
+main{max-width:640px;margin:-34px auto 40px;padding:0 16px}
+.card{background:var(--card);border-radius:18px;box-shadow:0 10px 30px rgba(11,93,143,.12);padding:26px 22px}
+.price{display:inline-block;background:#eaf7f0;color:var(--ok);font-weight:700;border-radius:999px;padding:6px 16px;margin-bottom:14px}
+.what{color:var(--muted);margin:0 0 20px}
+.what ul{margin:10px 0 0;padding-left:20px}
+.field{margin-bottom:14px}
+label{display:block;font-weight:500;margin-bottom:5px}
+.req{color:var(--err)}
+input[type=text],input[type=email],input[type=tel],textarea{width:100%;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fbfeff;color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.check{display:flex;gap:8px;align-items:flex-start;margin:14px 0}
+.check input{width:20px;height:20px;accent-color:var(--blue);margin-top:2px;flex:none}
+.hp{position:absolute;left:-9999px;opacity:0}
+.btn-main{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px 22px;cursor:pointer;background:linear-gradient(120deg,var(--deep),var(--blue));color:#fff;width:100%;font-size:1.05rem}
+.btn-main:disabled{opacity:.6;cursor:wait}
+.msg{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:500}
+.msg.ok{background:#e6f6ef;color:var(--ok)}
+.msg.bad{background:#fdecea;color:var(--err)}
+.contact{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.95rem;text-align:center}
+.contact a{color:var(--deep);font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <p class="brand">Welcome to WebSwan Media Network</p>
+  <h1>Need a website but don't have the budget? This package is for you.</h1>
+  <p>A custom website built by a real developer — the Managed Website Program gives you professional visibility without a big upfront cost.</p>
+</header>
+<main>
+  <div class="card">
+    <span class="price">$899 to start · $499/mo for 12 months</span>
+    <div class="what">
+      <p>This is a fully custom website, built and launched by a real web developer — not a template you have to figure out yourself. It includes:</p>
+      <ul>
+        <li>A custom-designed site built around your business</li>
+        <li>Mobile-responsive, SEO-ready, built to be found on Google and in AI search</li>
+        <li>Up to 2 hours of design time included each month</li>
+        <li>Hosting, security and ongoing maintenance for 12 months</li>
+      </ul>
+      <p>Fill out the form below and we'll reach out to get started, or call the number below to talk it through first.</p>
+    </div>
+    <form id="pkgForm">
+      <input class="hp" type="text" name="hp" tabindex="-1" autocomplete="off">
+      <div class="field"><label for="name">Your name <span class="req">*</span></label><input type="text" id="name" required maxlength="80"></div>
+      <div class="field"><label for="business">Business name</label><input type="text" id="business" maxlength="120"></div>
+      <div class="field"><label for="phone">Phone <span class="req">*</span></label><input type="tel" id="phone" required maxlength="40"></div>
+      <div class="field"><label for="email">Email <span class="req">*</span></label><input type="email" id="email" required maxlength="120"></div>
+      <div class="field"><label for="note">Anything we should know? (optional)</label><textarea id="note" maxlength="400"></textarea></div>
+      <label class="check"><input type="checkbox" id="consent" required><span>I agree WebSwan can contact me by phone, text or email about this package.</span></label>
+      <button class="btn-main" type="submit" id="submitBtn">Send my request</button>
+      <div id="msg"></div>
+    </form>
+    <div class="contact">Questions about this package or pricing? Call Sebastien McIntosh, WebSwan's Marketing Operations Director, at <a href="tel:+12295446718">(229) 544-6718</a>.</div>
+  </div>
+</main>
+<script>
+(function(){
+  var form = document.getElementById('pkgForm'), btn = document.getElementById('submitBtn'), msg = document.getElementById('msg');
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    msg.className = ''; msg.textContent = '';
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      var r = await fetch('https://webswan-billing.netlify.app/.netlify/functions/package-lead', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          kind: 'websitePackage',
+          hp: document.querySelector('[name=hp]').value,
+          name: document.getElementById('name').value,
+          business: document.getElementById('business').value,
+          phone: document.getElementById('phone').value,
+          email: document.getElementById('email').value,
+          note: document.getElementById('note').value,
+          consent: document.getElementById('consent').checked
+        })
+      });
+      var d = await r.json().catch(function(){ return {}; });
+      if (r.ok && d.ok) {
+        msg.className = 'msg ok'; msg.textContent = "Thank you! We've got your request and will reach out shortly.";
+        form.querySelectorAll('input,textarea,button').forEach(function(el){ el.disabled = true; });
+      } else {
+        msg.className = 'msg bad'; msg.textContent = d.error || 'Something went wrong. Please try again.';
+        btn.disabled = false; btn.textContent = 'Send my request';
+      }
+    } catch (err) {
+      msg.className = 'msg bad'; msg.textContent = 'Something went wrong. Please try again.';
+      btn.disabled = false; btn.textContent = 'Send my request';
+    }
+  });
+})();
+</script>
+</body>
+</html>
