@@ -226,7 +226,7 @@ export default async (req, context) => {
     const session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
     if (!session || !session.payLink) return reply(200, { paid: false }, origin);
     let paidNow = false;
-    try { paidNow = await checkSentinelPaid(session.payLink); } catch (e) { /* Stripe hiccup; visitor can poll again */ }
+    try { paidNow = await checkSentinelPaid(session.payLink); } catch (e) { console.error("checkSentinelPaid failed:", e && e.stack || e); }
     if (paidNow && !session.approved) session.approved = true;
     let queuedLeadId = session.leadId || null;
     if (session.approved && !session.leadQueued) {
@@ -329,7 +329,7 @@ export default async (req, context) => {
       try {
         session.payLink = await makeSentinelPayLink(f, sessionId);
         session.disclaimer = { text: DISCLAIMER_TEXT, agreedAt: new Date().toISOString() };
-      } catch (e) { /* Stripe hiccup; visitor can be told to try again */ }
+      } catch (e) { console.error("makeSentinelPayLink failed:", e && e.stack || e); }
     }
   }
 
