@@ -16,24 +16,29 @@ const newLeadId = () => "sd" + Date.now().toString(36) + Math.random().toString(
 
 const LANG_NAMES = { en: "English", es: "Spanish", ht: "Haitian Creole", pt: "Brazilian Portuguese" };
 
+// The exact wording a visitor is agreeing to when they click "Agree" and pay. Stored verbatim with
+// their agreement timestamp so there's a record of what they signed off on, not just that they paid.
+const DISCLAIMER_TEXT = "By clicking Agree and paying, I confirm I've reviewed and approved this design concept with Sentinell, and I agree to WebSwan's $698 build fee and $199/month hosting & maintenance after launch. I understand that once my finished design is released, my first 2 edit requests are free and each additional edit after that is $75.";
+
 const SYSTEM = (fields, lang) => `You are Sentinell (spelled with a double L -- always spell your own name that way, to tell you apart from WebSwan's internal "Sentinel" system), a warm and efficient AI web designer for WebSwan's $698 DIY landing-page product (diy-starter). You are chatting directly with a potential customer on the product's own page -- not with Tania or her team.
-What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build, $199/month after launch, up to 2 hours of design time included (then $25/hour). You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
+What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build, $199/month after launch. You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
 Part 1 -- collect the design, ONE question at a time, reacting naturally (never a rigid form):
 1. Their business name.
 2. A one-line tagline or description of what they offer (what should the headline say).
 3. Their brand color -- when you ask this, a row of named color swatches pops up on their screen for them to tap, so NEVER ask for or require a hex code. Just ask what color they'd like in plain words ("what color feels right for your brand?"); they can tap a swatch or describe a color themselves ("ocean blue", "a warm red"), and either way you'll get back a name and/or hex code to use.
-4. A phone number or email so WebSwan can reach them about the page (at least one is required; if only phone was given, ask for an email too since the project demo gets sent by email).
+4. A phone number or email so WebSwan can reach them about the page (at least one is required; if only phone was given, ask for an email too since the finished design gets sent by email).
 Once you have all four, summarize the design back to them in one short paragraph and ask them to confirm it's right.
-Part 2 -- once they confirm the design, explain what happens next (in your own words, naturally, not a copy-paste script): one of WebSwan's certified web developers will complete the design and reach out in a couple of days for review. To actually get the full demo sent to them, there are two paths -- ask which they'd prefer:
-  (a) A free 10-minute appointment -- this is the only commitment WebSwan asks for on a free demo, just to protect the work and walk through it together before it's sent. If they pick this, get a day and time that works for them AND which time zone they're in (Pacific, Eastern, Central or Mountain) -- ask both together, naturally.
-  (b) Pay the $698 now -- no appointment needed; the demo goes straight to them for review and completion once they've paid.
-Part 3 -- either path, once it's settled, ask if they'd like someone from WebSwan to call them to go over everything (yes/no is fine).
-Only when ALL of this is settled -- the design confirmed, a delivery path chosen (and, if the appointment path, a day, time AND time zone given), and they've answered whether they want a call -- do you consider the whole thing "approved". Don't rush there: if any of Part 2 or Part 3 is still unanswered, keep going, one question at a time.
-Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}, wantsCall=${JSON.stringify(fields.wantsCall === true ? "yes" : fields.wantsCall === false ? "no" : "")}.
+Part 2 -- once they confirm the design, explain (in your own words, naturally, not a copy-paste script) that this now goes to Tania, WebSwan's founder and certified human web designer, who personally completes it. There are two ways to get the finished design -- ask which they'd prefer:
+  (a) Set a free appointment with Tania. On the day of the appointment, the finished design is emailed to them, they make their payment and the project is completed together, then it moves forward to getting their domain. If they pick this, get a day and time that works for them AND which time zone they're in (Pacific, Eastern, Central or Mountain) -- ask both together, naturally.
+  (b) Pay the $698 now instead -- no appointment needed. Once paid, the finished design is emailed to them within a couple of days.
+If they ask what happens if they see the full design and want changes: the first 2 edit requests after the design is released are free, and each additional edit after that is $75.
+If they choose to pay now (path b), tell them you'll bring up a short agreement for them to review -- once they click Agree, they'll be taken to a secure page to complete the $698 payment. Don't try to collect any card or payment details yourself in chat.
+Only when ALL of this is settled -- the design confirmed, and a delivery path chosen (with day, time AND time zone for the appointment path) -- do you consider the whole thing "approved". Don't rush there: if Part 2 is still unanswered, keep going, one question at a time.
+Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}.
 Reply in ${LANG_NAMES[lang] || "English"}. Keep replies short -- 1-3 sentences, friendly, no bullet lists, no markdown.
-At the very end of EVERY reply, on its own, append a machine-readable snapshot of everything known so far (carry forward any field you already had even if this turn didn't change it; use "" for text fields and null for wantsCall when still unknown) in exactly this form, with no text after it:
-<<STATE>>{"businessName":"...","tagline":"...","color":"...","phone":"...","email":"...","deliveryChoice":"appointment|pay|","apptDay":"...","apptTime":"...","apptTimezone":"...","wantsCall":null,"approved":false}<<END>>
-Set "approved" to true only on the turn everything above is settled -- never earlier.`;
+At the very end of EVERY reply, on its own, append a machine-readable snapshot of everything known so far (carry forward any field you already had even if this turn didn't change it; use "" for anything still unknown) in exactly this form, with no text after it:
+<<STATE>>{"businessName":"...","tagline":"...","color":"...","phone":"...","email":"...","deliveryChoice":"appointment|pay|","apptDay":"...","apptTime":"...","apptTimezone":"...","approved":false}<<END>>
+For the appointment path, set "approved" to true only on the turn everything above is settled -- never earlier. For the pay-now path, set "approved" to true as soon as businessName, phone/email and deliveryChoice="pay" are known -- payment itself happens on WebSwan's secure page, not in this chat.`;
 
 const STATE_RE = /<<STATE>>([\s\S]*?)<<END>>\s*$/;
 
@@ -45,19 +50,83 @@ function parseState(text) {
   return { clean: text.slice(0, m.index).trim(), state };
 }
 
+// -- Stripe (The WebSwan's own account; STRIPE_SECRET_KEY is already set in Netlify for Business
+// Service / Residual billing -- reused here, same brand, same account) --------------------------
+const PAGE_URL = "https://taniad2169.github.io/webswan-dagigoia-task/diy-starter/";
+
+async function stripePost(path, params) {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe key not set");
+  const r = await fetch("https://api.stripe.com/v1/" + path, {
+    method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(params).toString()
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error((d.error && d.error.message) || "Stripe error");
+  return d;
+}
+
+async function stripeGet(path) {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe key not set");
+  const r = await fetch("https://api.stripe.com/v1/" + path, { headers: { Authorization: "Bearer " + key } });
+  const d = await r.json();
+  if (!r.ok) throw new Error((d.error && d.error.message) || "Stripe error");
+  return d;
+}
+
+async function makeSentinelPayLink(fields, sessionId) {
+  const meta = { source: "Sentinell DIY", sessionId, businessName: clean(fields.businessName, 100) };
+  const m = (prefix) => Object.fromEntries(Object.entries(meta).map(([k, v]) => [prefix + "[" + k + "]", v]));
+  const price = await stripePost("prices", {
+    currency: "usd", unit_amount: "69800",
+    "product_data[name]": "Sentinell DIY website build -- " + (fields.businessName || "landing page"),
+    ...m("metadata")
+  });
+  const params = {
+    "line_items[0][price]": price.id, "line_items[0][quantity]": "1",
+    "restrictions[completed_sessions][limit]": "1",
+    ...m("metadata"),
+    "after_completion[type]": "redirect",
+    "after_completion[redirect][url]": PAGE_URL + "?paid=" + sessionId,
+    "invoice_creation[enabled]": "true",
+    "invoice_creation[invoice_data][description]": "Sentinell DIY website build ($698), $199/mo hosting & maintenance after launch.",
+    ...m("invoice_creation[invoice_data][metadata]")
+  };
+  if (fields.email) params["customer_email"] = clean(fields.email, 160);
+  const link = await stripePost("payment_links", params);
+  return { id: link.id, url: link.url, amount: 698, paid: false, createdAt: new Date().toISOString() };
+}
+
+async function checkSentinelPaid(payLink) {
+  if (!payLink || payLink.paid) return !!(payLink && payLink.paid);
+  const d = await stripeGet("checkout/sessions?limit=3&status=complete&payment_link=" + encodeURIComponent(payLink.id));
+  const s = (d.data || []).find((x) => x.payment_status === "paid");
+  if (!s) return false;
+  payLink.paid = true;
+  payLink.paidAt = new Date((s.created || Date.now() / 1000) * 1000).toISOString();
+  payLink.amountPaid = (s.amount_total || 0) / 100;
+  return true;
+}
+
 async function queueLead(session, sessionId) {
   const f = session.fields || {};
   const st = diyStore();
   const idx = ((await st.get("lq-index", { type: "json" })) || []).filter((x) => x.status === "pending" || Date.now() - new Date(x.at).getTime() < 14 * 86400000);
   const deliveryBit = f.deliveryChoice === "appointment"
-    ? "wants the free 10-min appointment: " + clean(f.apptDay, 40) + " " + clean(f.apptTime, 40) + " " + clean(f.apptTimezone, 20)
-    : f.deliveryChoice === "pay" ? "chose to pay the $698 now -- send demo directly, no appointment" : "delivery path not yet chosen";
-  const callBit = f.wantsCall === true ? "wants a call" : f.wantsCall === false ? "does not want a call" : "call preference unknown";
+    ? "appointment with Tania: " + clean(f.apptDay, 40) + " " + clean(f.apptTime, 40) + " " + clean(f.apptTimezone, 20) + " -- design + payment + domain handled that day"
+    : f.deliveryChoice === "pay"
+      ? "paid $698 upfront -- design emailed within a couple days" + (session.payLink && session.payLink.paid ? " (payment confirmed via Stripe)" : " (payment pending)")
+      : "delivery path not yet chosen";
   const item = {
     id: newLeadId(), kind: "create", at: new Date().toISOString(), status: "pending", by: "sentinel-diy",
     name: clean(f.businessName, 160), phone: clean(f.phone, 40), email: clean(f.email, 160),
-    comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit + " | " + callBit + " | session " + sessionId,
-    dropdown: "call back"
+    comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit + " | session " + sessionId,
+    dropdown: "call back",
+    // Record of what was agreed to and the full chat it came from, for Tania's files.
+    transcript: (session.messages || []).map((m) => ({ role: m.role, content: m.content })),
+    disclaimer: session.disclaimer || null,
+    payLink: session.payLink ? { id: session.payLink.id, amount: session.payLink.amount, paid: !!session.payLink.paid, paidAt: session.payLink.paidAt || null } : null
   };
   idx.push(item);
   await st.setJSON("lq-index", idx.slice(-500));
@@ -71,9 +140,29 @@ export default async (req, context) => {
   if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { error: "Not allowed from this page." }, origin);
   let body; try { body = await req.json(); } catch (e) { return reply(400, { error: "Bad request." }, origin); }
 
+  const store = diyStore();
+
+  // A lightweight check the frontend polls after sending the visitor to Stripe -- never trusts the
+  // client's own claim that they paid; always re-checks with Stripe directly.
+  if (body.action === "checkPayment") {
+    const sessionId = clean(body.sessionId, 60);
+    const session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
+    if (!session || !session.payLink) return reply(200, { paid: false }, origin);
+    let paidNow = false;
+    try { paidNow = await checkSentinelPaid(session.payLink); } catch (e) { /* Stripe hiccup; visitor can poll again */ }
+    if (paidNow && !session.approved) session.approved = true;
+    let queuedLeadId = session.leadId || null;
+    if (session.approved && !session.leadQueued) {
+      try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; }
+      catch (e) { /* best-effort */ }
+    }
+    session.updatedAt = new Date().toISOString();
+    await store.setJSON("sess/" + sessionId, session);
+    return reply(200, { paid: !!(session.payLink && session.payLink.paid), approved: session.approved }, origin);
+  }
+
   if (body.hp) return reply(200, { reply: "", sessionId: newSessionId(), fields: {}, approved: false }, origin); // bot honeypot: silent fake-success
 
-  const store = diyStore();
   const ip = (context && context.ip) || req.headers.get("x-nf-client-connection-ip") || "unknown";
   const hourKey = "rl/" + crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16) + "/" + new Date().toISOString().slice(0, 13);
   const count = (await store.get(hourKey, { type: "json" })) || 0;
@@ -82,11 +171,11 @@ export default async (req, context) => {
 
   const lang = ["en", "es", "ht", "pt"].includes(body.lang) ? body.lang : "en";
   const message = clean(body.message, 1500);
-  if (!message) return reply(400, { error: "Say something to Sentinel first." }, origin);
+  if (!message) return reply(400, { error: "Say something to Sentinell first." }, origin);
 
   let sessionId = clean(body.sessionId, 60);
   let session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
-  if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false }; }
+  if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false, payLink: null, disclaimer: null }; }
 
   session.messages.push({ role: "user", content: message });
   const history = session.messages.slice(-16);
@@ -101,7 +190,6 @@ export default async (req, context) => {
 
   if (state && typeof state === "object") {
     const dc = ["appointment", "pay"].includes(state.deliveryChoice) ? state.deliveryChoice : (session.fields.deliveryChoice || "");
-    const wc = state.wantsCall === true ? true : state.wantsCall === false ? false : (session.fields.wantsCall === true || session.fields.wantsCall === false ? session.fields.wantsCall : null);
     session.fields = {
       businessName: clean(state.businessName, 160) || session.fields.businessName || "",
       tagline: clean(state.tagline, 300) || session.fields.tagline || "",
@@ -111,16 +199,26 @@ export default async (req, context) => {
       deliveryChoice: dc,
       apptDay: clean(state.apptDay, 40) || session.fields.apptDay || "",
       apptTime: clean(state.apptTime, 40) || session.fields.apptTime || "",
-      apptTimezone: clean(state.apptTimezone, 20) || session.fields.apptTimezone || "",
-      wantsCall: wc
+      apptTimezone: clean(state.apptTimezone, 20) || session.fields.apptTimezone || ""
     };
     const f = session.fields;
-    const deliverySettled = f.deliveryChoice === "pay" || (f.deliveryChoice === "appointment" && f.apptDay && f.apptTime && f.apptTimezone);
-    const canApprove = !!f.businessName && !!(f.phone || f.email) && deliverySettled && (f.wantsCall === true || f.wantsCall === false);
-    if (state.approved === true && canApprove) session.approved = true;
+    const hasContact = !!(f.phone || f.email);
+    const appointmentSettled = f.deliveryChoice === "appointment" && !!f.apptDay && !!f.apptTime && !!f.apptTimezone;
+    const paySettled = f.deliveryChoice === "pay";
+
+    if (state.approved === true && !!f.businessName && hasContact && appointmentSettled) {
+      session.approved = true; // appointment path: fully settled right here, no payment needed in chat
+    } else if (state.approved === true && !!f.businessName && hasContact && paySettled && !session.payLink) {
+      // Pay-now path: they just agreed -- record the disclaimer they're agreeing to, generate their
+      // one-time Stripe payment link, and wait for the frontend to confirm payment before approving.
+      try {
+        session.payLink = await makeSentinelPayLink(f, sessionId);
+        session.disclaimer = { text: DISCLAIMER_TEXT, agreedAt: new Date().toISOString() };
+      } catch (e) { /* Stripe hiccup; visitor can be told to try again */ }
+    }
   }
 
-  let queuedLeadId = null;
+  let queuedLeadId = session.leadId || null;
   if (session.approved && !session.leadQueued) {
     try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; }
     catch (e) { /* best-effort; visitor still sees their confirmation */ }
@@ -129,5 +227,9 @@ export default async (req, context) => {
   session.updatedAt = new Date().toISOString();
   await store.setJSON("sess/" + sessionId, session);
 
-  return reply(200, { reply: visibleText || "Got it.", sessionId, fields: session.fields, approved: session.approved, leadQueued: session.leadQueued }, origin);
+  return reply(200, {
+    reply: visibleText || "Got it.", sessionId, fields: session.fields, approved: session.approved, leadQueued: session.leadQueued,
+    payLink: session.payLink && !session.payLink.paid ? { url: session.payLink.url, amount: session.payLink.amount } : null,
+    disclaimerText: session.payLink && !session.payLink.paid ? DISCLAIMER_TEXT : null
+  }, origin);
 };

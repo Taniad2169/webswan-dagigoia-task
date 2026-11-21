@@ -8,6 +8,11 @@
 <meta name="description" content="Design your own one-page website with Sentinell, WebSwan's AI builder. Preview it free, pay only when you approve it.">
 <style>
   :root { --blue:#1182f0; --navy:#0b2a4a; --ink:#1d2733; --muted:#6b7684; --line:#e6ebf2; --bg:#f6f8fb; --amber:#f3a712; }
+  #sp-pay { padding:12px; margin:0 12px 10px; border-top:1px solid var(--line); background:#fbfdff; border-radius:10px; }
+  #sp-pay p { margin:0 0 10px; font-size:12.5px; color:var(--muted); line-height:1.4 }
+  #sp-pay-btn { display:block; text-align:center; font-weight:700; text-decoration:none; color:#fff; background:linear-gradient(120deg,var(--navy),var(--blue)); border-radius:10px; padding:12px; font-size:1rem }
+  #sp-pay-btn:hover { opacity:.92 }
+  #sp-pay-status { margin-top:8px; font-weight:600; color:var(--navy); font-size:12.5px; text-align:center }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.6 "Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
   header.site { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
@@ -166,6 +171,11 @@
     <p>Tap a color, or just tell me in words -- no hex code needed:</p>
     <div id="sp-colors-row"></div>
   </div>
+  <div id="sp-pay" hidden>
+    <p id="sp-pay-text"></p>
+    <a id="sp-pay-btn" href="#" target="_blank" rel="noopener">Agree &amp; Pay $698</a>
+    <p id="sp-pay-status"></p>
+  </div>
   <form id="sp-form" autocomplete="off">
     <label for="sp-input" style="position:absolute;left:-9999px">Message Sentinell</label>
     <input id="sp-input" placeholder="Type to Sentinell...">
@@ -179,6 +189,44 @@
   const $ = id => document.getElementById(id);
   const launch = $('sent-launch'), panel = $('sent-panel'), log = $('sp-log'), chips = $('sp-chips');
   const LANG_NAMES = { en:'English', es:'Español', ht:'Kreyòl', pt:'Português' };
+
+  const payBox = $('sp-pay'), payText = $('sp-pay-text'), payBtn = $('sp-pay-btn'), payStatus = $('sp-pay-status');
+  let payPollTimer = null;
+  function showPayCard(payLink, disclaimerText) {
+    if (!payBox || !payLink) return;
+    payText.textContent = disclaimerText || '';
+    payBtn.href = payLink.url;
+    payStatus.textContent = '';
+    payBox.hidden = false;
+    startPayPolling();
+  }
+  function hidePayCard() {
+    if (!payBox) return;
+    payBox.hidden = true;
+    stopPayPolling();
+  }
+  function stopPayPolling() { if (payPollTimer) { clearInterval(payPollTimer); payPollTimer = null; } }
+  function startPayPolling() {
+    stopPayPolling();
+    payPollTimer = setInterval(async () => {
+      try {
+        const r = await fetch('https://webswan-billing.netlify.app/.netlify/functions/sentinel-builder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'checkPayment', sessionId })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (d && d.paid) {
+          stopPayPolling();
+          payStatus.textContent = "Payment received -- you're all set!";
+          setTimeout(() => {
+            hidePayCard();
+            const msg = "Payment confirmed -- that's with the WebSwan team now, and your finished design will be emailed to you within a couple of days.";
+            addLine('sent', msg); say(msg);
+          }, 900);
+        }
+      } catch (e) {}
+    }, 4000);
+  }
 
   function addLine(who, text) {
     const d = document.createElement('div');
@@ -344,11 +392,11 @@
       say(reply);
       if (data.fields && !data.fields.color && COLOR_ASK.test(reply)) showColorSwatches();
       else if (data.fields && data.fields.color) hideColorSwatches();
-      if (data.approved) {
-        const f = data.fields || {};
-        const confirm = f.deliveryChoice === "pay"
-          ? "You're all set -- that's with the WebSwan team now, and once payment is handled we'll send your full demo for review."
-          : "You're all set -- that's with the WebSwan team now. Keep an eye out for a confirmation of your 10-minute appointment, and we'll send your full demo right after.";
+      if (data.payLink) {
+        showPayCard(data.payLink, data.disclaimerText);
+      } else if (data.approved) {
+        hidePayCard();
+        const confirm = "You're all set -- that's with Tania now. Keep an eye out for a confirmation of your appointment, and your finished design will be emailed to you that day.";
         setTimeout(() => { addLine('sent', confirm); say(confirm); }, 600);
       }
     }).catch(() => { thinking.remove(); addLine('sent', "Sorry, I couldn't connect just now -- please try again in a moment."); });
@@ -367,6 +415,19 @@
   $('sp-voice').onclick = () => { voiceOn = !voiceOn; $('sp-voice').setAttribute('aria-pressed', String(voiceOn)); $('sp-voice').textContent = (voiceOn ? '🔊 Voice on' : '🔇 Voice off'); if (!voiceOn) { try { speechSynthesis.cancel(); } catch (e) {} } };
   $('sp-lang').onchange = () => { lang = $('sp-lang').value; drawChips(); const g = GREETING[lang] || GREETING.en; addLine('sent', g); say(g); };
   $('sp-form').onsubmit = (e) => { e.preventDefault(); sendMsg($('sp-input').value); };
+
+  // If Stripe just sent them back here after paying, open the chat and confirm right away instead
+  // of waiting for them to type something.
+  try {
+    const qp = new URLSearchParams(location.search);
+    const paidSid = qp.get('paid');
+    if (paidSid && paidSid === sessionId) {
+      openPanel();
+      payText.textContent = ''; payStatus.textContent = 'Checking your payment...';
+      payBox.hidden = false;
+      startPayPolling();
+    }
+  } catch (e) {}
 
   if ('speechSynthesis' in window && speechSynthesis.getVoices().length === 0) speechSynthesis.onvoiceschanged = () => {};
 })();
