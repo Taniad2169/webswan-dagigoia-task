@@ -343,7 +343,13 @@
     if (fields.businessName) { sfName.textContent = fields.businessName; if (sfHead) sfHead.textContent = fields.tagline || sfHead.textContent; }
     if (fields.tagline) { sfTag.textContent = fields.tagline; }
     if (fields.color) {
-      const c = /^#?[0-9a-f]{3,8}$/i.test(fields.color.replace('#', '')) ? (fields.color[0] === '#' ? fields.color : '#' + fields.color) : fields.color;
+      // Nov 21: Sentinell often stores the color as "Teal (#0f9b8e)" (name + hex), not a bare hex
+      // code, so the old bare-hex-only check failed and silently fed the whole string to a CSS
+      // color property, which browsers just ignore -- the live preview kept whatever color it had
+      // before (usually none). Pull any hex code out of the string first; only fall back to the
+      // raw value (e.g. a plain word like "teal") when there's no hex to find.
+      const hexMatch = fields.color.match(/#?([0-9a-f]{3,8})\b/i);
+      const c = hexMatch ? ('#' + hexMatch[1]) : fields.color;
       try {
         sf.style.setProperty('--prevc', c);
         const head = sf.querySelector('.sample-head'); if (head) head.style.background = c;
