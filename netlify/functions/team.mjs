@@ -99,7 +99,10 @@ const jimmyWants = (t) => /\b(make|create|design|draw|paint|generate|give me|nee
 const MATE = Object.fromEntries(Object.entries(AGENTS).map(([k, a]) => [String(a.name).split(" ")[0].toLowerCase(), k]));
 MATE.linda = "linda"; // Jonathan's desk was called Linda until Nov 10: the old name still reaches him
 const mateNames = Object.keys(MATE).join("|");
-const SEND_RE = new RegExp("\\b(?:send|pass|forward|give|share|hand|deliver|show)\\b[^?!\\n]{0,160}?\\b(?:to|with|over to)\\s+(" + mateNames + ")\\b|\\b(?:send|pass|forward|give|show|tell|brief|update|inform|remind)\\s+(" + mateNames + ")\\b|\\blet\\s+(" + mateNames + ")\\s+know\\b", "i");
+// Tania, Nov 20: added "ask" and "have" as trigger verbs -- natural phrasing like "Jonathan, ask Eva to check
+// that" or "have Eva look that up" used to match nothing here, so mates.to never got set and the teammate
+// handoff silently never fired, however clearly the agent's own reply said "TO EVA:".
+const SEND_RE = new RegExp("\\b(?:send|pass|forward|give|share|hand|deliver|show|ask|have)\\b[^?!\\n]{0,160}?\\b(?:to|with|over to)\\s+(" + mateNames + ")\\b|\\b(?:send|pass|forward|give|show|tell|brief|update|inform|remind|ask|have)\\s+(" + mateNames + ")\\b|\\blet\\s+(" + mateNames + ")\\s+know\\b", "i");
 const MENTION_RE = new RegExp("\\b(" + mateNames + ")\\b", "gi");
 function matesIn(text, self) {
   const m = String(text || "").match(SEND_RE), to = m ? MATE[(m[1] || m[2] || m[3]).toLowerCase()] : "";
