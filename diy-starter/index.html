@@ -83,8 +83,14 @@
   .rpic img { display:block; width:100%; height:100%; object-fit:cover; }
   #sent-launch { position:fixed; right:18px; bottom:18px; z-index:60; display:flex; align-items:center; gap:10px; background:var(--navy); color:#fff; border:0; border-radius:999px; padding:10px 18px 10px 10px; cursor:pointer; box-shadow:0 8px 24px rgba(10,30,55,.35); font:inherit; font-weight:800; }
   #sent-launch .sf-face { width:42px; height:42px; }
-  #sent-panel { position:fixed; right:18px; bottom:18px; z-index:61; width:360px; max-width:calc(100vw - 24px); max-height:calc(100vh - 36px); background:#fff; border-radius:18px; box-shadow:0 16px 48px rgba(10,30,55,.35); display:flex; flex-direction:column; overflow:hidden; }
+  #sent-panel { position:fixed; right:18px; bottom:18px; z-index:61; width:360px; max-width:calc(100vw - 24px); max-height:calc(100vh - 36px); background:#fff; border-radius:18px; box-shadow:0 16px 48px rgba(10,30,55,.35); display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
   #sent-panel[hidden] { display:none; }
+  /* Tania, Nov 20: the panel can run taller than the screen once the color swatches, pay card,
+     photo row and notes box are all showing at once -- the panel now scrolls instead of silently
+     clipping the bottom (the send button) or the top (the voice toggle). This header block stays
+     pinned to the top of that scroll so the close X and the voice on/off button are always
+     reachable without scrolling, even mid-conversation. */
+  .sp-head-fixed { position:sticky; top:0; z-index:5; background:#fff; flex:none; }
   .sp-top { display:flex; align-items:center; gap:10px; padding:12px 14px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
   .sp-top .sf-face { width:36px; height:36px; flex:none; }
   .sp-top b { font-size:14.5px; display:block; } .sp-top small { opacity:.85; font-size:11.5px; }
@@ -163,19 +169,21 @@
   <span>Chat with Sentinell</span>
 </button>
 <div id="sent-panel" role="dialog" aria-label="Build with Sentinell" hidden>
-  <div class="sp-top">
-    <span class="rpic sf-face" aria-hidden="true"><img src="img/sentinel.jpg" alt=""></span>
-    <div><b>Sentinell</b><small>WebSwan DIY builder</small></div>
-    <button type="button" id="sp-close" aria-label="Close">&times;</button>
-  </div>
-  <div id="sp-bar">
-    <button type="button" id="sp-voice" aria-pressed="true">&#128266; Voice on</button>
-    <label class="sp-lang-wrap">Language <select id="sp-lang" aria-label="Sentinell's language">
-      <option value="en">English</option>
-      <option value="es">Espa&ntilde;ol</option>
-      <option value="ht">Krey&ograve;l</option>
-      <option value="pt">Portugu&ecirc;s</option>
-    </select></label>
+  <div class="sp-head-fixed">
+    <div class="sp-top">
+      <span class="rpic sf-face" aria-hidden="true"><img src="img/sentinel.jpg" alt=""></span>
+      <div><b>Sentinell</b><small>WebSwan DIY builder</small></div>
+      <button type="button" id="sp-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="sp-bar">
+      <button type="button" id="sp-voice" aria-pressed="true">&#128266; Voice on</button>
+      <label class="sp-lang-wrap">Language <select id="sp-lang" aria-label="Sentinell's language">
+        <option value="en">English</option>
+        <option value="es">Espa&ntilde;ol</option>
+        <option value="ht">Krey&ograve;l</option>
+        <option value="pt">Portugu&ecirc;s</option>
+      </select></label>
+    </div>
   </div>
   <div id="sp-log" role="log" aria-live="polite"></div>
   <div id="sp-chips"></div>
@@ -569,11 +577,18 @@
   #sv2-dot-btn:hover{transform:scale(1.04)}
   #sv2-dot-x{width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:2px solid #fff;background:#0b2a4a;color:#fff;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3)}
   #sv2-dot-x:hover{background:#163e63}
-  #sv2-panel{position:fixed;left:18px;bottom:18px;z-index:69999;display:flex;flex-direction:column;width:320px;max-width:calc(100vw - 24px);background:#fff;border-radius:20px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:-apple-system,Segoe UI,Arial,sans-serif}
+  /* Tania, Nov 20: with a fixed 400px stage plus the caption, call/chat/founder buttons and the
+     footer all stacked below it, this panel could end up taller than the browser window -- since
+     it's anchored to the bottom with no overflow limit, the overflow pushed the TOP of the panel
+     (the stage's own close X, at top:10px inside it) up off the top of the screen, unreachable.
+     Capping the panel's height to the viewport and letting it scroll internally keeps the whole
+     panel on-screen; shrinking the stage on short windows means it usually fits with no scrolling
+     needed at all. */
+  #sv2-panel{position:fixed;left:18px;bottom:18px;z-index:69999;display:flex;flex-direction:column;width:320px;max-width:calc(100vw - 24px);max-height:calc(100vh - 36px);background:#fff;border-radius:20px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;font-family:-apple-system,Segoe UI,Arial,sans-serif}
   #sv2-panel[hidden],#sv2-wrap[hidden]{display:none!important}
-  #sv2-stage{position:relative;width:100%;height:400px;background:#000}
+  #sv2-stage{position:relative;width:100%;height:clamp(220px,46vh,400px);background:#000;flex:none}
   #sv2-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  #sv2-ctrl{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:3}
+  #sv2-ctrl{position:sticky;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:3}
   #sv2-ctrl button{width:36px;height:36px;border-radius:9px;border:0;background:rgba(20,20,20,.6);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
   #sv2-ctrl button:hover{background:rgba(11,42,74,.85)}
   #sv2-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:40px 16px 14px;color:#fff;font-size:15.5px;font-weight:600;line-height:1.4;background:linear-gradient(transparent,rgba(0,0,0,.8));text-shadow:0 1px 3px rgba(0,0,0,.5)}
