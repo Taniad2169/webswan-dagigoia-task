@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Real example: Tenaya Medical Group -- built with Sentinell</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=zodiak@400,500,700&f[]=switzer@400,500,600&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#1182f0; --navy:#0b2a4a; --ink:#1d2733; --muted:#6b7684; --line:#e6ebf2; --bg:#f6f8fb; --amber:#f3a712; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Switzer',-apple-system,Segoe UI,Arial,sans-serif; color:var(--ink); background:#fff; }
+  h1,h2,h3 { font-family:'Zodiak',Georgia,serif; margin:0; }
+  a { color:inherit; }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 24px; }
+
+  .concept-bar { background:#fff6e1; border-bottom:1px solid #f3a712; color:#6b4e00; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 20px; }
+  .concept-bar button { background:none; border:0; font-size:18px; line-height:1; cursor:pointer; color:#6b4e00; }
+
+  .utility { background:var(--navy); color:#cfe0f2; font-size:12.5px; }
+  .utility__inner { display:flex; justify-content:space-between; align-items:center; padding:7px 0; flex-wrap:wrap; gap:6px; }
+  .utility__right a { color:#cfe0f2; text-decoration:none; margin-left:16px; }
+  .utility__phone { font-weight:700; color:#fff !important; }
+
+  .header { border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; z-index:5; }
+  .header__inner { display:flex; align-items:center; justify-content:space-between; padding:16px 0; }
+  .brand { display:flex; flex-direction:column; text-decoration:none; color:var(--navy); line-height:1.1; }
+  .brand__name { font-family:'Zodiak',Georgia,serif; font-size:22px; font-weight:700; }
+  .brand__sub { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  .menu-toggle { display:none; background:none; border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; }
+  .nav { display:flex; align-items:center; gap:22px; }
+  .nav a { text-decoration:none; color:var(--ink); font-size:14px; font-weight:600; }
+  .btn { display:inline-block; text-decoration:none; font-weight:700; border-radius:999px; padding:12px 22px; font-size:14px; border:0; cursor:pointer; }
+  .btn--primary { background:var(--blue); color:#fff; }
+  .btn--primary:hover { background:#0f6fd1; }
+  .btn--ghost { background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.7); }
+  .btn--sm { padding:9px 16px; font-size:13px; }
+
+  .hero { position:relative; color:#fff; padding:90px 0 70px; background:linear-gradient(120deg,#0b2a4a,#1763a8); }
+  .hero__shade { position:absolute; inset:0; background:radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 55%); }
+  .hero__content { position:relative; max-width:640px; }
+  .eyebrow { font-size:12.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--blue); margin:0 0 10px; }
+  .eyebrow--light { color:#9fd0ff; }
+  .hero h1 { font-size:clamp(30px,4vw,44px); line-height:1.15; margin:0 0 16px; }
+  .hero__lede { font-size:17px; opacity:.92; margin:0 0 26px; line-height:1.6; }
+  .hero__actions { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:26px; }
+  .hero__offices { list-style:none; display:flex; flex-wrap:wrap; gap:8px 18px; margin:0; padding:0; font-size:13.5px; }
+  .hero__offices a { text-decoration:none; color:#cfe0f2; border-bottom:1px dotted rgba(255,255,255,.4); }
+
+  .section { padding:64px 0; }
+  .section--tint { background:var(--bg); }
+  .section__head { max-width:620px; margin:0 0 34px; }
+  .section__head--row { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap; max-width:none; }
+  .section__note { max-width:320px; color:var(--muted); font-size:13.5px; margin:0; }
+  .section h2 { font-size:clamp(22px,3vw,28px); color:var(--navy); }
+
+  .spec-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  .spec { border:1px solid var(--line); border-radius:16px; padding:24px; background:#fff; }
+  .spec--lead { background:linear-gradient(160deg,#0b2a4a,#163e63); color:#fff; border-color:transparent; }
+  .spec--lead .tags li { color:#cfe0f2; border-color:rgba(255,255,255,.25); }
+  .spec__num { font-family:'Zodiak',Georgia,serif; font-size:13px; color:var(--blue); font-weight:700; }
+  .spec--lead .spec__num { color:#9fd0ff; }
+  .spec h3 { font-size:19px; margin:10px 0 8px; }
+  .spec p { color:var(--muted); font-size:14px; line-height:1.55; margin:0 0 14px; }
+  .spec--lead p { color:#dbe9fb; }
+  .tags { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
+  .tags li { font-size:11.5px; border:1px solid var(--line); border-radius:999px; padding:4px 10px; color:var(--muted); }
+
+  .feature__inner { display:grid; grid-template-columns:1fr 1.1fr; gap:40px; align-items:center; }
+  .feature__img { margin:0; aspect-ratio:3/2; border-radius:18px; background:linear-gradient(135deg,#dbe9fb,#f3f7fc); display:flex; align-items:center; justify-content:center; color:#9fb3c7; font-size:13px; font-weight:600; text-align:center; padding:20px; }
+  .steps { padding-left:20px; color:var(--ink); font-size:14.5px; line-height:1.7; margin:16px 0 20px; }
+  .steps strong { color:var(--navy); }
+  .link-arrow { text-decoration:none; font-weight:700; color:var(--blue); font-size:14px; }
+  .link-arrow::after { content:" \2192"; }
+
+  .doc-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+  .doc { display:flex; gap:12px; background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .doc__mono { flex:none; width:40px; height:40px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+  .doc h3 { font-size:14.5px; margin:0 0 3px; font-family:'Switzer',sans-serif; font-weight:700; }
+  .doc p { margin:0; font-size:12.5px; color:var(--muted); }
+  .doc__meta { font-size:11px !important; }
+
+  .loc-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .loc { border:1px solid var(--line); border-radius:14px; padding:18px; background:#fff; }
+  .loc h3 { font-size:16px; margin:0 0 8px; }
+  .loc address { font-style:normal; font-size:13.5px; color:var(--muted); line-height:1.5; margin:0 0 8px; }
+  .loc__hours { font-size:12px; color:var(--muted); margin:0 0 10px; }
+  .loc--call { background:var(--navy); color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+  .loc__big { display:block; font-size:20px; font-weight:700; color:#fff; text-decoration:none; margin:6px 0; }
+
+  .patients { display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start; }
+  .patients__lede { color:var(--muted); font-size:14.5px; line-height:1.6; }
+  .facility-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+  .facility-list li { display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding:9px 0; font-size:14px; }
+  .facility-list span { color:var(--muted); font-size:12.5px; }
+
+  .cta-band { background:linear-gradient(120deg,#163a63,#1f7fc9); color:#fff; padding:50px 0; }
+  .cta-band__inner { display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; }
+  .cta-band h2 { font-size:24px; margin:4px 0 8px; }
+  .cta-band__fax { text-align:right; text-decoration:none; color:#fff; font-size:13px; }
+  .cta-band__fax strong { display:block; font-size:19px; }
+
+  .appt { display:grid; grid-template-columns:1fr 1.2fr; gap:40px; align-items:start; }
+  .form { background:#fff; border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 10px 30px rgba(16,40,70,.06); }
+  .form__row { display:flex; gap:12px; margin-bottom:12px; }
+  .form__row label { flex:1; font-size:12.5px; color:var(--muted); font-weight:600; }
+  .form__row input, .form__row select { width:100%; margin-top:5px; font:inherit; font-size:14px; padding:10px 11px; border:1px solid var(--line); border-radius:9px; }
+  .form__hint { font-size:11.5px; color:var(--muted); margin:0 0 14px; }
+  .form__status { font-size:13px; font-weight:600; margin:10px 0 0; min-height:1em; }
+  .form__status[data-state="ok"] { color:#116b2e; }
+  .form__status[data-state="error"] { color:#b42318; }
+
+  .footer { background:#0f2a4a; color:#cfe0f2; padding:50px 0 0; }
+  .footer__inner { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:30px; padding-bottom:30px; }
+  .footer h3 { font-family:'Switzer',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:#9fd0ff; margin:0 0 10px; }
+  .footer p { font-size:13.5px; line-height:1.6; margin:0; color:#cfe0f2; }
+  .footer a { color:#fff; text-decoration:none; }
+  .brand--footer .brand__name, .brand--footer .brand__sub { color:#fff; }
+  .footer__base { display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,.12); padding:16px 0; font-size:12px; color:#8fb2d2; }
+
+  @media (max-width:860px){
+    .spec-grid, .doc-grid, .loc-grid { grid-template-columns:repeat(2,1fr); }
+    .feature__inner, .patients, .appt { grid-template-columns:1fr; }
+    .nav { display:none; }
+    .menu-toggle { display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-bar" id="conceptBar">
+  <p>Homepage concept prepared for Tenaya Medical Group -- a real example of a page built with Sentinell. Content is adapted from a real practice; photos here are placeholder blocks standing in for real photography.</p>
+  <button type="button" aria-label="Dismiss notice" onclick="document.getElementById('conceptBar').remove()">&times;</button>
+</div>
+
+<div class="utility">
+  <div class="wrap utility__inner">
+    <span>Mon&ndash;Fri 8:00 AM &ndash; 5:00 PM</span>
+    <span class="utility__right">
+      <a href="#referrals">Referral fax (209) 440-7280</a>
+      <a href="tel:+12097232799" class="utility__phone">(209) 723-2799</a>
+    </span>
+  </div>
+</div>
+
+<header class="header" id="top">
+  <div class="wrap header__inner">
+    <a href="#top" class="brand" aria-label="Tenaya Medical Group home">
+      <span class="brand__name">Tenaya</span>
+      <span class="brand__sub">Medical Group</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav" id="menuToggle">Menu</button>
+    <nav class="nav" id="nav" aria-label="Primary">
+      <a href="#specialties">Specialties</a>
+      <a href="#surgeons">Surgeons</a>
+      <a href="#locations">Locations</a>
+      <a href="#patients">Patients</a>
+      <a href="#referrals">Referring physicians</a>
+      <a href="#appointment" class="btn btn--primary btn--sm">Request appointment</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero__shade"></div>
+    <div class="wrap hero__content">
+      <p class="eyebrow eyebrow--light">Orthopedics &middot; Podiatry &middot; General Surgery</p>
+      <h1>Surgical care that gets the Central Valley back on its feet.</h1>
+      <p class="hero__lede">Eight surgeons. Five offices from Merced to Tracy. One team focused on bones, joints, feet and digestive health.</p>
+      <div class="hero__actions">
+        <a href="#appointment" class="btn btn--primary">Request an appointment</a>
+        <a href="tel:+12097232799" class="btn btn--ghost">Call (209) 723-2799</a>
+      </div>
+      <ul class="hero__offices" aria-label="Office locations">
+        <li><a href="#loc-modesto">Modesto</a></li>
+        <li><a href="#loc-turlock">Turlock</a></li>
+        <li><a href="#loc-merced">Merced</a></li>
+        <li><a href="#loc-manteca">Manteca</a></li>
+        <li><a href="#loc-tracy">Tracy</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="specialties">
+    <div class="wrap">
+      <div class="section__head">
+        <p class="eyebrow">What we treat</p>
+        <h2>Three specialties under one roof</h2>
+      </div>
+      <div class="spec-grid">
+        <article class="spec spec--lead">
+          <span class="spec__num">01</span>
+          <h3>Orthopedics</h3>
+          <p>Diagnosis and treatment of bone, joint and muscle injuries and conditions, from sports injuries to joint replacement.</p>
+          <ul class="tags">
+            <li>Hip &amp; knee replacement</li><li>Shoulder replacement</li><li>Rotator cuff repair</li><li>ACL reconstruction</li><li>Meniscus repair</li><li>Fractures &amp; dislocations</li>
+          </ul>
+        </article>
+        <article class="spec">
+          <span class="spec__num">02</span>
+          <h3>Podiatry</h3>
+          <p>Foot and ankle care from our podiatric surgeons, including injuries, deformities and chronic pain.</p>
+          <ul class="tags"><li>Foot &amp; ankle surgery</li><li>Podiatric care</li></ul>
+        </article>
+        <article class="spec">
+          <span class="spec__num">03</span>
+          <h3>General Surgery</h3>
+          <p>Over 30 years of experience, with minimally invasive options and a focus on acid reflux and digestive health.</p>
+          <ul class="tags"><li>GERD / acid reflux</li><li>Anti-reflux surgery</li><li>TIF procedure</li></ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tint">
+    <div class="wrap feature__inner">
+      <figure class="feature__img">Illustrative photo placeholder<br>(real photography goes here)</figure>
+      <div class="feature__text">
+        <p class="eyebrow">Your surgery, start to finish</p>
+        <h2>Clear steps before and after your procedure</h2>
+        <ol class="steps">
+          <li><strong>Consultation.</strong> Bring your insurance card, photo ID, medication list and your actual X-ray, MRI or scan films or CDs.</li>
+          <li><strong>Pre-surgery.</strong> Nothing to eat or drink for 8 hours. Arrange a ride, and we can set up rehab or home health before a joint replacement.</li>
+          <li><strong>Recovery.</strong> You go home with written instructions and prescriptions. Our answering service is available at any hour.</li>
+        </ol>
+        <a href="#patients" class="link-arrow">Patient information</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="surgeons">
+    <div class="wrap">
+      <div class="section__head section__head--row">
+        <div>
+          <p class="eyebrow">Our surgeons</p>
+          <h2>Meet the team</h2>
+        </div>
+        <p class="section__note">Orthopedic, podiatric and general surgeons serving Stanislaus, Merced and San Joaquin counties.</p>
+      </div>
+      <ul class="doc-grid">
+        <li class="doc"><span class="doc__mono" aria-hidden="true">AW</span><div><h3>Abner M. Ward, MD, FACS</h3><p>Orthopedic Surgery</p><p class="doc__meta">Member, American Shoulder &amp; Elbow Surgeons</p></div></li>
+        <li class="doc"><span class="doc__mono" aria-hidden="true">AL</span><div><h3>Arnold Lim, DO</h3><p>Orthopedic Surgery</p><p class="doc__meta">Sees patients in Modesto</p></div></li>
+        <li class="doc"><span class="doc__mono" aria-hidden="true">MD</span><div><h3>Michael M. Daniel, DPM</h3><p>Podiatric Surgery</p></div></li>
+        <li class="doc"><span class="doc__mono" aria-hidden="true">AP</span><div><h3>Alfred Patino, DPM</h3><p>Podiatric Surgery</p></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--tint" id="locations">
+    <div class="wrap">
+      <div class="section__head">
+        <p class="eyebrow">Locations</p>
+        <h2>Five offices across the valley</h2>
+      </div>
+      <div class="loc-grid">
+        <article class="loc" id="loc-modesto">
+          <h3>Modesto</h3>
+          <address>1213 Coffee Rd, Ste A<br>Modesto, CA 95355</address>
+          <p class="loc__hours">Mon&ndash;Fri &middot; 8 AM &ndash; 5 PM</p>
+          <a class="link-arrow" href="#" onclick="return false">Directions</a>
+        </article>
+        <article class="loc" id="loc-turlock">
+          <h3>Turlock</h3>
+          <address>777 E Hawkeye Ave<br>Turlock, CA 95380</address>
+          <p class="loc__hours">Mon&ndash;Fri &middot; 8 AM &ndash; 5 PM</p>
+          <a class="link-arrow" href="#" onclick="return false">Directions</a>
+        </article>
+        <article class="loc loc--call">
+          <h3>One number for every office</h3>
+          <a href="tel:+12097232799" class="loc__big">(209) 723-2799</a>
+          <p>Fax (209) 723-2984</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="patients">
+    <div class="wrap patients">
+      <div>
+        <p class="eyebrow">For patients</p>
+        <h2>Where we operate</h2>
+        <p class="patients__lede">Our surgeons perform procedures at hospitals and surgery centers throughout the region. Patient forms for each facility are available from our office.</p>
+      </div>
+      <ul class="facility-list">
+        <li>Memorial Medical Center <span>Modesto</span></li>
+        <li>Doctors Medical Center <span>Modesto</span></li>
+        <li>Emanuel Medical Center <span>Turlock</span></li>
+        <li>Mercy Medical Center <span>Merced</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="cta-band" id="referrals">
+    <div class="wrap cta-band__inner">
+      <div>
+        <p class="eyebrow eyebrow--light">Referring physicians</p>
+        <h2>Send a referral</h2>
+        <p>Fax referrals and records to our dedicated line. Our staff will contact your patient to schedule.</p>
+      </div>
+      <a href="tel:+12094407280" class="cta-band__fax">Referral fax<br><strong>(209) 440-7280</strong></a>
+    </div>
+  </section>
+
+  <section class="section" id="appointment">
+    <div class="wrap appt">
+      <div>
+        <p class="eyebrow">Appointments</p>
+        <h2>Request an appointment</h2>
+        <p>Send us a few details and our staff will call you back during business hours. For urgent needs, call <a href="tel:+12097232799">(209) 723-2799</a>. For emergencies, call 911.</p>
+      </div>
+      <form class="form" id="apptForm" novalidate>
+        <div class="form__row">
+          <label>Full name<input type="text" name="name" required autocomplete="name"></label>
+          <label>Phone<input type="tel" name="phone" required autocomplete="tel"></label>
+        </div>
+        <div class="form__row">
+          <label>Preferred office
+            <select name="office">
+              <option>Modesto</option><option>Turlock</option><option>Merced</option><option>Manteca</option><option>Tracy</option>
+            </select>
+          </label>
+          <label>Reason for visit
+            <select name="reason">
+              <option>Orthopedics</option><option>Podiatry</option><option>General surgery</option><option>Not sure</option>
+            </select>
+          </label>
+        </div>
+        <p class="form__hint">Please don't include medical details in this form.</p>
+        <button type="submit" class="btn btn--primary">Send request</button>
+        <p class="form__status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer__inner">
+    <div>
+      <p class="brand brand--footer"><span class="brand__name">Tenaya</span><span class="brand__sub">Medical Group</span></p>
+      <p>Orthopedic, podiatric and general surgery in Modesto, Turlock, Merced, Manteca and Tracy, California.</p>
+    </div>
+    <div>
+      <h3>Contact</h3>
+      <p><a href="tel:+12097232799">(209) 723-2799</a><br>Fax (209) 723-2984<br>Referral fax (209) 440-7280</p>
+    </div>
+    <div>
+      <h3>Hours</h3>
+      <p>Mon&ndash;Fri 8:00 AM &ndash; 5:00 PM<br>Tracy office: Wednesdays<br>After hours: answering service</p>
+    </div>
+  </div>
+  <div class="wrap footer__base">
+    <p>&copy; 2026 Tenaya Medical Group. All rights reserved.</p>
+    <p>Homepage concept by Tania Domingue &middot; built with Sentinell</p>
+  </div>
+</footer>
+
+<script>
+const t=document.getElementById('menuToggle'),n=document.getElementById('nav');
+if (t && n) { t.addEventListener('click',()=>{const o=n.classList.toggle('is-open');t.setAttribute('aria-expanded',o);}); }
+const f=document.getElementById('apptForm');
+if (f) { f.addEventListener('submit',e=>{e.preventDefault();const s=f.querySelector('.form__status');
+if(!f.name.value.trim()||!f.phone.value.trim()){s.textContent='Please add your name and phone number.';s.dataset.state='error';return;}
+s.textContent='Thanks, '+f.name.value.trim().split(' ')[0]+'. This is a demo form, so nothing was sent.';s.dataset.state='ok';f.reset();}); }
+</script>
+</body>
+</html>
