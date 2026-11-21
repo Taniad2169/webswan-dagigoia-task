@@ -127,9 +127,16 @@ async function makeSentinelPayLink(fields, sessionId) {
     "invoice_creation[invoice_data][description]": "Sentinell DIY website build ($698), $199/mo hosting & maintenance after launch.",
     ...m("invoice_creation[invoice_data][metadata]")
   };
-  if (fields.email) params["customer_email"] = clean(fields.email, 160);
+  // Nov 21: "customer_email" isn't a valid param for Payment Links creation (that's a Checkout
+  // Sessions-only field) -- Stripe was rejecting every single link with "unknown parameter:
+  // customer_email", which is why Agree & Pay never produced a working link. Payment Links
+  // prefill the buyer's email instead via a "prefilled_email" query param on the link URL itself.
   const link = await stripePost("payment_links", params);
-  return { id: link.id, url: link.url, amount: 698, paid: false, createdAt: new Date().toISOString() };
+  let url = link.url;
+  if (fields.email) {
+    try { url += (url.includes("?") ? "&" : "?") + "prefilled_email=" + encodeURIComponent(clean(fields.email, 160)); } catch (e) {}
+  }
+  return { id: link.id, url, amount: 698, paid: false, createdAt: new Date().toISOString() };
 }
 
 async function checkSentinelPaid(payLink) {
