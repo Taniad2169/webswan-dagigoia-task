@@ -560,8 +560,12 @@
   #sv2-mini:hover{transform:scale(1.05)} #sv2-mini video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
   #sv2-mini .sv2-badge{position:absolute;left:5px;right:5px;bottom:5px;background:rgba(11,42,74,.85);color:#fff;font:800 10.5px/1.2 -apple-system,Segoe UI,Arial,sans-serif;padding:4px 3px;border-radius:8px;text-align:center}
   #sv2-gone{position:absolute;top:-9px;right:-9px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:#0b2a4a;color:#fff;font-size:13px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:2}
-  #sv2-dot{position:fixed;left:18px;bottom:18px;z-index:69996;display:flex;align-items:center;gap:9px;border:0;cursor:pointer;background:#1182f0;color:#fff;border-radius:999px;padding:6px 16px 6px 6px;font:800 13px/1.2 -apple-system,Segoe UI,Arial,sans-serif;box-shadow:0 12px 30px rgba(8,42,72,.35)}
-  #sv2-dot[hidden]{display:none!important} #sv2-dot:hover{transform:scale(1.04)}
+  #sv2-dot{position:fixed;left:18px;bottom:18px;z-index:69996;display:flex;align-items:center;gap:7px}
+  #sv2-dot[hidden]{display:none!important}
+  #sv2-dot-btn{display:flex;align-items:center;gap:9px;border:0;cursor:pointer;background:#1182f0;color:#fff;border-radius:999px;padding:6px 16px 6px 6px;font:800 13px/1.2 -apple-system,Segoe UI,Arial,sans-serif;box-shadow:0 12px 30px rgba(8,42,72,.35)}
+  #sv2-dot-btn:hover{transform:scale(1.04)}
+  #sv2-dot-x{width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:2px solid #fff;background:#0b2a4a;color:#fff;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3)}
+  #sv2-dot-x:hover{background:#163e63}
   #sv2-panel{position:fixed;left:18px;bottom:18px;z-index:69999;display:flex;flex-direction:column;width:320px;max-width:calc(100vw - 24px);background:#fff;border-radius:20px;box-shadow:0 30px 70px rgba(8,42,72,.45);overflow:hidden;font-family:-apple-system,Segoe UI,Arial,sans-serif}
   #sv2-panel[hidden],#sv2-wrap[hidden]{display:none!important}
   #sv2-stage{position:relative;width:100%;height:400px;background:#000}
@@ -574,6 +578,7 @@
   .sv2-call{display:flex;align-items:center;justify-content:center;gap:9px;padding:11px;border-radius:13px;text-decoration:none;font-weight:800;font-size:14.5px;color:#fff;background:linear-gradient(90deg,#0b2a4a,#1763a8)}
   .sv2-call small{display:block;font-weight:600;font-size:11.5px;opacity:.85}
   .sv2-chat{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:13px;border:2px solid #1182f0;background:#fff;color:#1182f0;font-weight:800;font-size:14px;cursor:pointer}
+  .sv2-founder{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:13px;border:2px solid #0b2a4a;background:#fff;color:#0b2a4a;font-weight:800;font-size:13.5px;text-decoration:none}
   #sv2-pow{font-size:11px;color:#94a3b8;text-align:center;padding:0 12px 10px}#sv2-pow b{color:#0b2a4a}
   @media (max-width:600px){#sv2-mini{width:76px;height:106px}#sv2-wrap,#sv2-panel,#sv2-dot{left:12px}#sv2-panel{width:calc(100vw - 24px)}}
 </style>
@@ -586,7 +591,9 @@
     video: 'sentinel-698-promo.mp4',
     callName: 'Sebastien',
     callNumber: '+12295446718',
-    callLabel: '(229) 544-6718'
+    callLabel: '(229) 544-6718',
+    // Tania, Nov 21: credentials/reviews page for the "Meet the Founder" button below.
+    founderUrl: 'https://taniad2169.github.io/WebSWan-Alignable/'
   };
   var wrap, mini, panel, dot, vid;
   function openP(muted){
@@ -606,18 +613,25 @@
     mini.appendChild(thumbVid);
     var badge=document.createElement('span'); badge.className='sv2-badge'; badge.textContent='▶ Watch'; mini.appendChild(badge);
     var x=document.createElement('button'); x.id='sv2-gone'; x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Shrink the video');
-    dot=document.createElement('button'); dot.id='sv2-dot'; dot.type='button'; dot.hidden=true; dot.setAttribute('aria-label','Show the video again');
-    dot.innerHTML='<span>▶ Watch video</span>';
+    dot=document.createElement('div'); dot.id='sv2-dot'; dot.hidden=true;
+    dot.innerHTML='<button type="button" id="sv2-dot-btn" aria-label="Show the video again"><span>▶ Watch video</span></button><button type="button" id="sv2-dot-x" aria-label="Close this video for good">✕</button>';
     function collapse(){ try{ sessionStorage.setItem('sv2-gone','1'); }catch(e){} wrap.style.display='none'; dot.hidden=false; }
     function restore(){ try{ sessionStorage.removeItem('sv2-gone'); }catch(e){} dot.hidden=true; wrap.style.display=''; }
-    x.onclick=collapse; dot.onclick=restore;
+    // Tania, Nov 21: visitors had no way to fully dismiss the video once it shrank to the footer
+    // bubble -- the dot pill only re-opened it, with no X. This fully closes it for the rest of
+    // the browser tab/session (sv2-closed), matching the flag the auto-open timer already checks.
+    function dismiss(){ try{ sessionStorage.setItem('sv2-closed','1'); sessionStorage.removeItem('sv2-gone'); }catch(e){} dot.hidden=true; wrap.hidden=true; wrap.style.display='none'; }
+    x.onclick=collapse;
     wrap.appendChild(mini); wrap.appendChild(x);
     panel=document.createElement('div'); panel.id='sv2-panel'; panel.hidden=true; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label',CFG.title);
     panel.innerHTML='<div id="sv2-stage"><div id="sv2-ctrl"><button type="button" id="sv2-pp" aria-label="Pause">❚❚</button><div style="display:flex;gap:8px"><button type="button" id="sv2-snd" aria-label="Sound">🔊</button><button type="button" id="sv2-x" aria-label="Close">✕</button></div></div><div id="sv2-cap">'+CFG.caption+'</div></div>'+
       '<div id="sv2-acts"><a class="sv2-call" href="tel:'+CFG.callNumber+'">📞 <span>Call '+CFG.callName+' for more information<small>'+CFG.callLabel+'</small></span></a>'+
-      '<button type="button" class="sv2-chat" id="sv2-chat">💬 Talk to Sentinell in the chat</button></div>'+
+      '<button type="button" class="sv2-chat" id="sv2-chat">💬 Talk to Sentinell in the chat</button>'+
+      '<a class="sv2-founder" href="'+CFG.founderUrl+'" target="_blank" rel="noopener">🏆 View the Founder’s Credentials &amp; Reviews</a></div>'+
       '<div id="sv2-pow">Powered by <b>The WebSwan</b></div>';
     document.body.appendChild(wrap); document.body.appendChild(panel); document.body.appendChild(dot);
+    document.getElementById('sv2-dot-btn').onclick=restore;
+    document.getElementById('sv2-dot-x').onclick=dismiss;
     if(gone){ wrap.style.display='none'; dot.hidden=false; }
     mini.onclick=function(){ openP(false); };
     document.getElementById('sv2-pp').onclick=function(){ if(vid){ vid.paused? vid.play(): vid.pause(); setBtn('sv2-pp', vid.paused?'▶':'❚❚'); } };
@@ -625,7 +639,8 @@
     document.getElementById('sv2-x').onclick=closeP;
     document.getElementById('sv2-chat').onclick=function(){ closeP(); var b=document.getElementById('sent-launch'); if(b) b.click(); };
     var closed=false; try{ closed=!!sessionStorage.getItem('sv2-closed'); }catch(e){}
-    if(!closed && !gone && window.innerWidth>600) setTimeout(function(){ if(panel.hidden) openP(true); }, 4000);
+    if(closed){ wrap.hidden=true; wrap.style.display='none'; dot.hidden=true; return; }
+    if(!gone && window.innerWidth>600) setTimeout(function(){ if(panel.hidden) openP(true); }, 4000);
   }
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
