@@ -13,6 +13,17 @@
   #sp-pay-btn { display:block; text-align:center; font-weight:700; text-decoration:none; color:#fff; background:linear-gradient(120deg,var(--navy),var(--blue)); border-radius:10px; padding:12px; font-size:1rem }
   #sp-pay-btn:hover { opacity:.92 }
   #sp-pay-status { margin-top:8px; font-weight:600; color:var(--navy); font-size:12.5px; text-align:center }
+  #sp-media { padding:10px 12px; border-top:1px solid var(--line); background:#fbfdff; }
+  #sp-photo-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  #sp-photo-btn { font:inherit; font-size:12.5px; font-weight:600; border:1.5px solid var(--line); background:#fff; color:var(--navy); border-radius:999px; padding:7px 12px; cursor:pointer; }
+  #sp-photo-btn:disabled { opacity:.55; cursor:default; }
+  #sp-photo-thumbs { display:flex; gap:6px; flex-wrap:wrap; }
+  #sp-photo-thumbs img { width:34px; height:34px; object-fit:cover; border-radius:7px; border:1px solid var(--line); }
+  #sp-notes-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  #sp-notes-row textarea { width:100%; font:inherit; font-size:13px; padding:8px 10px; border:1.5px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); min-height:52px; resize:vertical; box-sizing:border-box; }
+  #sp-notes-count { text-align:right; font-size:11px; color:var(--muted); margin-top:3px; }
+  #sf-gallery { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin:12px 0; }
+  #sf-gallery img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; border:1px solid var(--line, #e6ebf2); }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.6 "Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--bg); }
   header.site { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; background:linear-gradient(120deg,var(--navy),#1763a8); color:#fff; }
@@ -124,6 +135,7 @@
       <div class="sample-body">
         <h3>What you offer, in one clear line</h3>
         <p>A short paragraph about your service, written the way Sentinell and you agree on -- your colors, your photos, your words. Your logo, hours and contact info live right here too.</p>
+        <div id="sf-gallery" hidden></div>
         <a class="sample-cta" href="#" onclick="return false">Your button -- goes wherever you choose</a>
       </div>
       <div class="sample-foot">Built and hosted by WebSwan -- this footer matches your branding color too</div>
@@ -175,6 +187,18 @@
     <p id="sp-pay-text"></p>
     <a id="sp-pay-btn" href="#" target="_blank" rel="noopener">Agree &amp; Pay $698</a>
     <p id="sp-pay-status"></p>
+  </div>
+  <div id="sp-media">
+    <div id="sp-photo-row">
+      <input type="file" id="sp-photo-input" accept="image/*" multiple hidden>
+      <button type="button" id="sp-photo-btn">&#128247; Add photos (<span id="sp-photo-count">0</span>/8)</button>
+      <div id="sp-photo-thumbs"></div>
+    </div>
+    <div id="sp-notes-row">
+      <label for="sp-notes">Anything specific Tania should know? (optional)</label>
+      <textarea id="sp-notes" maxlength="2000" placeholder="Hours, photos you'll send separately, special requests..."></textarea>
+      <div id="sp-notes-count">0/2000</div>
+    </div>
   </div>
   <form id="sp-form" autocomplete="off">
     <label for="sp-input" style="position:absolute;left:-9999px">Message Sentinell</label>
@@ -332,6 +356,99 @@
 
   let sessionId = '';
   try { sessionId = sessionStorage.getItem('sentinel-sid') || ''; } catch (e) {}
+
+  // Photo uploads (up to 8) -- resized client-side so nothing huge ever gets sent, uploaded one at a
+  // time to the chat backend and tied to this session, and mirrored into the live sample preview so
+  // the visitor sees their own photos on the page, not just a thumbnail strip in the chat.
+  const MAX_PHOTOS = 8;
+  const photoInput = $('sp-photo-input'), photoBtn = $('sp-photo-btn'), photoCountEl = $('sp-photo-count'), photoThumbs = $('sp-photo-thumbs');
+  const sfGallery = document.getElementById('sf-gallery');
+  let photoCount = 0;
+
+  function resizeImage(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w >= h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function addGalleryPhoto(dataUrl) {
+    if (!sfGallery) return;
+    sfGallery.hidden = false;
+    const img = document.createElement('img');
+    img.src = dataUrl; img.alt = 'Your photo';
+    sfGallery.appendChild(img);
+  }
+
+  async function uploadOnePhoto(file) {
+    const dataUrl = await resizeImage(file, 640, 0.62);
+    const r = await fetch('https://webswan-billing.netlify.app/.netlify/functions/sentinel-builder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'uploadPhoto', sessionId, name: file.name, dataUrl })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (d.sessionId) { sessionId = d.sessionId; try { sessionStorage.setItem('sentinel-sid', sessionId); } catch (e) {} }
+    if (d.ok) { addGalleryPhoto(dataUrl); return true; }
+    return false;
+  }
+
+  if (photoBtn && photoInput) {
+    photoBtn.onclick = () => { if (photoCount < MAX_PHOTOS) photoInput.click(); };
+    photoInput.onchange = async () => {
+      const files = Array.from(photoInput.files || []).filter((f) => f.type.startsWith('image/')).slice(0, MAX_PHOTOS - photoCount);
+      photoInput.value = '';
+      for (const file of files) {
+        if (photoCount >= MAX_PHOTOS) break;
+        try {
+          const img = document.createElement('img');
+          const url = URL.createObjectURL(file);
+          img.src = url; img.onload = () => URL.revokeObjectURL(url);
+          photoThumbs.appendChild(img);
+          const ok = await uploadOnePhoto(file);
+          photoCount++;
+          photoCountEl.textContent = String(photoCount);
+          if (!ok) addLine('sent', "That last photo didn't upload -- feel free to try again.");
+        } catch (e) {}
+      }
+      if (photoCount >= MAX_PHOTOS) { photoBtn.disabled = true; photoBtn.textContent = 'Max 8 photos added'; }
+    };
+  }
+
+  // Notes box (up to 2000 chars) -- saved quietly in the background a moment after they stop typing,
+  // no extra button to press.
+  const notesEl = $('sp-notes'), notesCountEl = $('sp-notes-count');
+  let notesSaveTimer = null;
+  if (notesEl) {
+    notesEl.addEventListener('input', () => {
+      notesCountEl.textContent = notesEl.value.length + '/2000';
+      clearTimeout(notesSaveTimer);
+      notesSaveTimer = setTimeout(async () => {
+        try {
+          const r = await fetch('https://webswan-billing.netlify.app/.netlify/functions/sentinel-builder', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'setNotes', sessionId, notes: notesEl.value })
+          });
+          const d = await r.json().catch(() => ({}));
+          if (d.sessionId) { sessionId = d.sessionId; try { sessionStorage.setItem('sentinel-sid', sessionId); } catch (e) {} }
+        } catch (e) {}
+      }, 1200);
+    });
+  }
 
   // Expand/collapse the sample card -- one click (or an explicit "show me a sample" ask) pops it
   // up bigger on screen; the X or the backdrop closes it.

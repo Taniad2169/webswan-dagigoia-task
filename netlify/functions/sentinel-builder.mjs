@@ -33,7 +33,7 @@ const DISCLAIMER_TEXT = "By clicking Agree and paying, I confirm I've reviewed a
 
 const SYSTEM = (fields, lang) => `You are Sentinell (spelled with a double L -- always spell your own name that way, to tell you apart from WebSwan's internal "Sentinel" system), a warm and efficient AI web designer for WebSwan's $698 DIY landing-page product (diy-starter). You are chatting directly with a potential customer on the product's own page -- not with Tania or her team.
 What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build, $199/month after launch. It comes with SEO set up for the page, thoughtful UX/UI design, and WebSwan can add a booking calendar to it too. You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
-Stay warm and talkative the whole way through -- never just silently collect one answer after another. React briefly to what they just told you (their business name, their tagline, the color they picked) before moving on, and naturally mention along the way -- a line here, a line there, not all at once -- that their page also comes with SEO, clean UX/UI design, and the option of a booking calendar, so they feel informed and engaged throughout, not like they're filling out a form.
+Stay warm and talkative the whole way through -- never just silently collect one answer after another. React briefly to what they just told you (their business name, their tagline, the color they picked) before moving on, and naturally mention along the way -- a line here, a line there, not all at once -- that their page also comes with SEO, clean UX/UI design, and the option of a booking calendar, so they feel informed and engaged throughout, not like they're filling out a form. Somewhere early on (once is enough), also let them know about two things sitting right in the chat: a button to upload up to 8 photos of their business straight onto the page, and a notes box (up to 2000 characters) for anything specific they want you or Tania to know -- they don't have to use either, just that they're there.
 Part 1 -- collect the design, ONE question at a time, reacting naturally (never a rigid form):
 1. Their business name.
 2. A one-line tagline or description of what they offer (what should the headline say).
@@ -136,8 +136,13 @@ async function emailTania(session, sessionId) {
       : f.deliveryChoice === "pay"
         ? row("Delivery", "Paid $698 upfront" + (session.payLink && session.payLink.paid ? " -- payment confirmed via Stripe" : " -- payment pending"))
         : "";
+    const notesRow = f.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#5f7891;vertical-align:top">Notes</td><td style="padding:4px 0"><b>${h(f.notes)}</b></td></tr>` : "";
+    const photos = Array.isArray(session.photos) ? session.photos : [];
+    const photosHtml = photos.length
+      ? `<p style="margin:14px 0 6px;color:#5f7891">${photos.length} photo${photos.length > 1 ? "s" : ""} from the visitor:</p><div>${photos.map((p) => `<img src="${p.dataUrl}" alt="${h(p.name)}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0 8px 8px 0;border:1px solid #d7e3ee">`).join("")}</div>`
+      : "";
     const html = `<div style="font-family:Arial,sans-serif;color:#17324c;max-width:560px"><h2 style="margin:0 0 8px">Sentinell DIY landing page completed -- $698</h2>
-    <table style="border-collapse:collapse;font-size:15px">${row("Business", f.businessName)}${row("Tagline", f.tagline)}${row("Brand color", f.color)}${row("Phone", f.phone)}${row("Email", f.email)}${deliveryRow}${row("Session", sessionId)}</table></div>`;
+    <table style="border-collapse:collapse;font-size:15px">${row("Business", f.businessName)}${row("Tagline", f.tagline)}${row("Brand color", f.color)}${row("Phone", f.phone)}${row("Email", f.email)}${deliveryRow}${notesRow}${row("Session", sessionId)}</table>${photosHtml}</div>`;
     const r = await callScript(cal, secret, { action: "mail", to: TANIA_EMAIL, subject: "Sentinell DIY completed: " + (f.businessName || sessionId), html, fromName: "Sentinell" });
     return !!(r && r.ok);
   } catch (e) { return false; }
@@ -152,14 +157,18 @@ async function queueLead(session, sessionId) {
     : f.deliveryChoice === "pay"
       ? "paid $698 upfront -- design emailed within a couple days" + (session.payLink && session.payLink.paid ? " (payment confirmed via Stripe)" : " (payment pending)")
       : "delivery path not yet chosen";
+  const photos = Array.isArray(session.photos) ? session.photos : [];
   const item = {
     id: newLeadId(), kind: "create", at: new Date().toISOString(), status: "pending", by: "sentinel-diy",
     name: clean(f.businessName, 160), phone: clean(f.phone, 40), email: clean(f.email, 160),
-    comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit + " | session " + sessionId,
+    comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit
+      + (f.notes ? " | notes: " + clean(f.notes, 300) : "") + " | " + photos.length + " photo(s) attached | session " + sessionId,
     dropdown: "call back",
     // Record of what was agreed to and the full chat it came from, for Tania's files.
     transcript: (session.messages || []).map((m) => ({ role: m.role, content: m.content })),
     disclaimer: session.disclaimer || null,
+    notes: f.notes || "",
+    photos: photos,
     payLink: session.payLink ? { id: session.payLink.id, amount: session.payLink.amount, paid: !!session.payLink.paid, paidAt: session.payLink.paidAt || null } : null
   };
   idx.push(item);
@@ -195,6 +204,35 @@ export default async (req, context) => {
     return reply(200, { paid: !!(session.payLink && session.payLink.paid), approved: session.approved }, origin);
   }
 
+  // Photos (up to 8) and the free-text notes box both land here, outside the main AI turn -- a
+  // visitor can add either at any point in the conversation, even before they've sent their first
+  // chat message, so each creates a session if one doesn't exist yet.
+  if (body.action === "uploadPhoto") {
+    let sessionId = clean(body.sessionId, 60);
+    let session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
+    if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false, payLink: null, disclaimer: null, photos: [] }; }
+    if (!Array.isArray(session.photos)) session.photos = [];
+    if (session.photos.length >= 8) return reply(200, { sessionId, ok: false, count: session.photos.length, error: "Max 8 photos." }, origin);
+    const dataUrl = String(body.dataUrl || "");
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 450000) {
+      return reply(200, { sessionId, ok: false, count: session.photos.length, error: "That photo didn't upload -- please try a smaller image." }, origin);
+    }
+    session.photos.push({ name: clean(body.name, 120) || ("photo" + (session.photos.length + 1)), dataUrl });
+    session.updatedAt = new Date().toISOString();
+    await store.setJSON("sess/" + sessionId, session);
+    return reply(200, { sessionId, ok: true, count: session.photos.length }, origin);
+  }
+  if (body.action === "setNotes") {
+    let sessionId = clean(body.sessionId, 60);
+    let session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
+    if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false, payLink: null, disclaimer: null, photos: [] }; }
+    session.fields = session.fields || {};
+    session.fields.notes = clean(body.notes, 2000);
+    session.updatedAt = new Date().toISOString();
+    await store.setJSON("sess/" + sessionId, session);
+    return reply(200, { sessionId, ok: true }, origin);
+  }
+
   if (body.hp) return reply(200, { reply: "", sessionId: newSessionId(), fields: {}, approved: false }, origin); // bot honeypot: silent fake-success
 
   const ip = (context && context.ip) || req.headers.get("x-nf-client-connection-ip") || "unknown";
@@ -209,7 +247,8 @@ export default async (req, context) => {
 
   let sessionId = clean(body.sessionId, 60);
   let session = sessionId ? await store.get("sess/" + sessionId, { type: "json" }) : null;
-  if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false, payLink: null, disclaimer: null }; }
+  if (!session) { sessionId = newSessionId(); session = { id: sessionId, createdAt: new Date().toISOString(), messages: [], fields: {}, approved: false, leadQueued: false, payLink: null, disclaimer: null, photos: [] }; }
+  if (!Array.isArray(session.photos)) session.photos = [];
 
   session.messages.push({ role: "user", content: message });
   const history = session.messages.slice(-16);
@@ -233,7 +272,8 @@ export default async (req, context) => {
       deliveryChoice: dc,
       apptDay: clean(state.apptDay, 40) || session.fields.apptDay || "",
       apptTime: clean(state.apptTime, 40) || session.fields.apptTime || "",
-      apptTimezone: clean(state.apptTimezone, 20) || session.fields.apptTimezone || ""
+      apptTimezone: clean(state.apptTimezone, 20) || session.fields.apptTimezone || "",
+      notes: session.fields.notes || "" // set via the separate notes box (action: "setNotes"), never by the AI
     };
     const f = session.fields;
     const hasContact = !!(f.phone || f.email);
