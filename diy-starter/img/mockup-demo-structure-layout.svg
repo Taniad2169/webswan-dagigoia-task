@@ -1,0 +1,54 @@
+<svg viewBox="0 0 760 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mdsl-title mdsl-desc">
+  <title id="mdsl-title">Layout and structure example, not a finished design</title>
+  <desc id="mdsl-desc">A wireframe showing a page's header, body and footer sections, used only to explain the parts of a page -- the real page Sentinell builds uses your own colors, photos and words.</desc>
+
+  <style>
+    .lbl { font: 700 13px -apple-system,Segoe UI,Arial,sans-serif; fill:#8a97a6; letter-spacing:.06em; }
+    .ph  { fill:#e3e9f1; }
+    .phd { fill:#cdd8e4; }
+    .cap { font: 600 15px -apple-system,Segoe UI,Arial,sans-serif; fill:#44505c; }
+  </style>
+
+  <rect x="0" y="0" width="760" height="640" rx="18" fill="#f6f8fb" stroke="#e6ebf2" stroke-width="1"/>
+
+  <!-- caption banner -->
+  <rect x="20" y="18" width="720" height="34" rx="9" fill="#fff6e1" stroke="#f3a712" stroke-width="1"/>
+  <text x="38" y="40" class="cap">This is only the LAYOUT &amp; STRUCTURE -- not a finished website</text>
+
+  <!-- section label column -->
+  <text x="20" y="80" class="lbl">HEADER</text>
+  <text x="20" y="300" class="lbl">BODY</text>
+  <text x="20" y="595" class="lbl">FOOTER</text>
+
+  <!-- HEADER block -->
+  <rect x="90" y="66" width="650" height="90" rx="12" fill="#fff" stroke="#dbe3ed" stroke-width="1.5"/>
+  <circle cx="130" cy="111" r="22" class="phd"/>
+  <rect x="166" y="98" width="150" height="14" rx="7" class="ph"/>
+  <rect x="166" y="120" width="100" height="10" rx="5" class="ph"/>
+  <rect x="520" y="92" width="60" height="10" rx="5" class="ph"/>
+  <rect x="596" y="92" width="60" height="10" rx="5" class="ph"/>
+  <rect x="520" y="118" width="136" height="24" rx="12" class="phd"/>
+
+  <!-- BODY block -->
+  <rect x="90" y="172" width="650" height="400" rx="12" fill="#fff" stroke="#dbe3ed" stroke-width="1.5"/>
+  <rect x="120" y="202" width="340" height="20" rx="6" class="ph"/>
+  <rect x="120" y="234" width="420" height="12" rx="6" class="ph"/>
+  <rect x="120" y="254" width="380" height="12" rx="6" class="ph"/>
+  <rect x="120" y="274" width="260" height="12" rx="6" class="ph"/>
+  <rect x="120" y="304" width="150" height="34" rx="17" class="phd"/>
+
+  <rect x="120" y="366" width="180" height="130" rx="10" class="ph"/>
+  <rect x="320" y="366" width="180" height="130" rx="10" class="ph"/>
+  <rect x="520" y="366" width="180" height="130" rx="10" class="ph"/>
+  <rect x="140" y="470" width="140" height="10" rx="5" class="phd"/>
+  <rect x="340" y="470" width="140" height="10" rx="5" class="phd"/>
+  <rect x="540" y="470" width="140" height="10" rx="5" class="phd"/>
+
+  <rect x="120" y="518" width="500" height="14" rx="7" class="ph"/>
+  <rect x="120" y="542" width="200" height="30" rx="15" class="phd"/>
+
+  <!-- FOOTER block -->
+  <rect x="90" y="582" width="650" height="38" rx="10" fill="#fff" stroke="#dbe3ed" stroke-width="1.5"/>
+  <rect x="120" y="593" width="220" height="12" rx="6" class="ph"/>
+  <rect x="560" y="593" width="150" height="12" rx="6" class="phd"/>
+</svg>

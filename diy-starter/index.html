@@ -43,6 +43,10 @@
   .included { max-width:760px; margin:0 auto 10px; text-align:center; color:var(--muted); font-size:13.5px; }
   .sample-wrap { margin:30px auto; max-width:760px; }
   .sample-wrap h2 { text-align:center; font-size:18px; color:var(--navy); margin:0 0 14px; }
+  .sample-wrap h2 + h2 { margin-top:34px; }
+  .mdsl-wrap { margin:0 0 10px; text-align:center; }
+  .mdsl-wrap img { width:100%; max-width:500px; height:auto; border:1px solid var(--line); border-radius:14px; background:#fff; }
+  .mdsl-wrap figcaption { max-width:560px; margin:10px auto 0; color:var(--muted); font-size:12.5px; line-height:1.5; }
   .sample-frame { border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(16,40,70,.08); background:#fff; }
   .sample-head { background:linear-gradient(120deg,#163a63,#1f7fc9); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:12px; }
   .sample-head .logo { width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-weight:900; }
@@ -131,7 +135,12 @@
   </section>
 
   <section class="sample-wrap">
-    <h2>A sample of what you'll get</h2>
+    <h2>First, just the layout</h2>
+    <figure class="mdsl-wrap">
+      <img src="img/mockup-demo-structure-layout.svg" alt="A wireframe showing a header section, a body section, and a footer section -- this is only the layout and structure, not a finished design." loading="lazy">
+      <figcaption>This is only the layout &amp; structure, so you can see how the sections fit together -- Sentinell builds your real page in your own colors, photos and words, not this placeholder look.</figcaption>
+    </figure>
+    <h2>Then, a sample of what you'll get</h2>
     <div class="sample-frame" id="sf-card">
       <div class="sample-head">
         <div class="logo">W</div><div><b>Your Business Name</b><small>Your tagline goes here</small></div>
@@ -467,7 +476,15 @@
   // Expand/collapse the sample card -- one click (or an explicit "show me a sample" ask) pops it
   // up bigger on screen; the X or the backdrop closes it.
   const sfCard = document.getElementById('sf-card'), sfBackdrop = document.getElementById('sf-backdrop');
-  function expandSample() { if (sfCard) sfCard.classList.add('sf-big'); if (sfBackdrop) sfBackdrop.classList.add('on'); }
+  // Tania, Nov 20: when someone asks to see a sample, show them the plain layout/structure
+  // wireframe first (so they understand it's the sections, not a finished design) before
+  // popping up the filled-in sample card.
+  const mdslWrap = document.querySelector('.mdsl-wrap');
+  function expandSample() {
+    if (mdslWrap) mdslWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (sfCard) sfCard.classList.add('sf-big');
+    if (sfBackdrop) sfBackdrop.classList.add('on');
+  }
   function collapseSample() { if (sfCard) sfCard.classList.remove('sf-big'); if (sfBackdrop) sfBackdrop.classList.remove('on'); }
   const sfExpandBtn = document.getElementById('sf-expand'), sfCloseBtn = document.getElementById('sf-close');
   if (sfExpandBtn) sfExpandBtn.onclick = expandSample;
