@@ -26,7 +26,8 @@ export default async () => {
   const list = (await store.get("rachel-followups", { type: "json" })) || [];
   const due = list.filter((c) => c.status === "scheduled" && Date.parse(c.callAt) <= Date.now());
   if (!due.length) return new Response("nothing due");
-  if (!callerAllowed("rachelout")) return new Response("silent: this week only Jenna and George call (dialer plan)");
+  const silencedAgentsRO = ((await store.get("queue", { type: "json" })) || {}).silencedAgents; // Tania, Nov 21: manual per-agent silence switch
+  if (!callerAllowed("rachelout", silencedAgentsRO)) return new Response("silent: this week only Jenna and George call (dialer plan)");
   const ids = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_RACHELOUT || ids.rachelout;
   const nums = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);

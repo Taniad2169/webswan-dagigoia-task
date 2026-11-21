@@ -33,7 +33,8 @@ export default async () => {
   const jenna = process.env.CARTESIA_AGENT_JENNA || ids.jenna;
   const fromJenna = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim() || from;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
-  for (const c of due.filter((c) => callerAllowed(c.agent === "jenna" ? "jenna" : "alek")).slice(0, 2)) { // Nov 16 plan: only Jenna/George call this week
+  const silencedAgents = ((await store.get("queue", { type: "json" })) || {}).silencedAgents; // Tania, Nov 21: manual per-agent silence switch
+  for (const c of due.filter((c) => callerAllowed(c.agent === "jenna" ? "jenna" : "alek", silencedAgents)).slice(0, 2)) { // Nov 16 plan: only Jenna/George call this week
     const to = e164(c.phone);
     if (!to) { c.status = "skipped"; c.note = "invalid number"; continue; }
     if (dnc.includes(to)) { c.status = "skipped"; c.note = "Do Not Call"; continue; }

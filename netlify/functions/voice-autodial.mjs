@@ -8,7 +8,7 @@
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
 import { getLeadMemory, NO_MEMORY } from "../lib/lead-memory.mjs";
-import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, planTaskFor } from "../lib/dialer-plan.mjs";
+import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, planTaskFor, agentSilencedToday } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
@@ -182,6 +182,9 @@ export default async () => {
     const planName = PLAN ? planCallerFor(lead) : "";
     if (PLAN && (!planName || planWindow(planName, now.mins) < 0)) continue;
     if (!PLAN && ["alek", "jenna"].includes(String(lead.agent || "").toLowerCase())) continue; // Tania, Nov 11: Alek never auto-dials; she gives him his calls herself
+    // Tania, Nov 21: manual per-agent silence switch from Voice Studio ("a box to tick on or off ... for a day or
+    // week"), independent of the weekly plan above -- checked for whichever name would actually place this call.
+    if (agentSilencedToday(PLAN ? planName : (lead.agent || s.agent || ""), q.silencedAgents)) continue;
     if (COMPLIANCE_CALLERS.has(String(lead.agent || s.agent || "").toLowerCase()) && looksTravel(lead)) {
       lead.status = "skipped"; lead.note = "travel agency: not a compliance lead"; continue; // Tania, Nov 12
     }

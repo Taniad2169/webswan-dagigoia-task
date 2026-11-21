@@ -28,8 +28,19 @@ export const DIALER_PLAN = {
 };
 const ymd = (tz) => new Date().toLocaleDateString("en-CA", { timeZone: tz });
 export function planActive(plan = DIALER_PLAN) { if (!plan) return false; const d = ymd(plan.tz); return d >= plan.start && d <= plan.end; }
+// Tania, Nov 21: "a box to tick on or off for the agents" -- a manual, per-agent silence switch she sets herself
+// from Voice Studio (a day, a week, a few days), independent of the weekly DIALER_PLAN above. Stored as
+// { agentName: "YYYY-MM-DD" } in the queue blob's silencedAgents field (set via voiceApi action agent_silence) --
+// the date is the LAST day that agent stays silent (inclusive), checked in her own time zone.
+export function agentSilencedToday(agent, silencedAgents, tz = "America/Los_Angeles") {
+  const until = silencedAgents && silencedAgents[String(agent || "").toLowerCase().split("_")[0]];
+  return !!until && ymd(tz) <= String(until);
+}
 // May this agent place any outbound call right now (callbacks, follow-ups, campaigns)?
-export function callerAllowed(agent) { return !planActive() || !!DIALER_PLAN.agents[String(agent || "").toLowerCase().split("_")[0]]; }
+export function callerAllowed(agent, silencedAgents) {
+  if (agentSilencedToday(agent, silencedAgents)) return false;
+  return !planActive() || !!DIALER_PLAN.agents[String(agent || "").toLowerCase().split("_")[0]];
+}
 // Which plan caller (if any) dials this queued lead.
 export function planCallerFor(lead) {
   const owner = String(lead.agent || "").toLowerCase(), lang = ["es", "pt"].includes(lead.lang) ? lead.lang : "en";

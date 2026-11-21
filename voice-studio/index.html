@@ -1607,7 +1607,41 @@ function dialCard() {
     <p><span class="chip">${k.queued || 0} waiting</span> <span class="chip ok">${k.called || 0} dialed</span> <span class="chip warn">${k.skipped || 0} skipped</span> ${k.error ? `<span class="chip bad">${k.error} errors</span>` : ''} ${dialQ.lastRun ? `<small class="muted">Last check ${esc(fmtDate(dialQ.lastRun))}</small>` : ''}</p>
     ${(() => { const ev = (dialQ.leads || []).filter(l => l.followup && l.status === 'queued'); return ev.length ? `<details open><summary>📨 Eva follow-ups waiting (${ev.length})</summary><p class="muted" style="margin:4px 0">Eva emailed these practices. Each caller waits 24 hours after the email, and nothing goes out after 6 PM New York time.</p>${ev.map(l => `<div class="listitem row"><small><b>${esc(l.business || l.name || '')}</b> · ${esc(l.state || '')} · ${esc((l.agent || '').replace(/^./, c => c.toUpperCase()))}</small><small class="muted">emailed ${l.emailSentAt ? esc(fmtDate(l.emailSentAt)) : ''} · ${l.notBefore && l.notBefore > Date.now() ? 'calls after ' + esc(fmtDate(l.notBefore)) : 'ready to call'}</small></div>`).join('')}</details>` : ''; })()}
     ${recent.length ? `<details><summary>Latest activity</summary>${recent.map(l => `<div class="listitem row"><small><b>${esc(l.name || '')}</b> · ${esc(l.business || '')}</small><small class="muted">${esc(l.status)}${l.note ? ' · ' + esc(l.note) : ''}${l.calledAt ? ' · ' + esc(fmtDate(l.calledAt)) : ''}</small></div>`).join('')}</details>` : ''}
-    <p class="note">Add leads with <b>🤖 Auto-dial</b> on a campaign below. Results (transcripts and outcomes) land in Call records; press 🔄 Pull live results there anytime. ${ready ? '' : 'Nothing will be dialed until Cartesia is paid and VOICE_CALLING_ENABLED is on in Netlify.'}</p></div>`;
+    <p class="note">Add leads with <b>🤖 Auto-dial</b> on a campaign below. Results (transcripts and outcomes) land in Call records; press 🔄 Pull live results there anytime. ${ready ? '' : 'Nothing will be dialed until Cartesia is paid and VOICE_CALLING_ENABLED is on in Netlify.'}</p>
+    ${silenceCard()}</div>`;
+}
+// Tania, Nov 21: "a box to tick on or off for the agents ... so they don't call" for a day, a week, or a few days --
+// a manual per-agent silence switch, separate from the weekly dialer plan. Covers campaign calls, Alek callbacks,
+// Rachel follow-ups and Jennifer's calls (checked by callerAllowed()/agentSilencedToday() on the backend).
+const SILENCE_AGENTS = ['jenna', 'george', 'rebecca', 'monica', 'alek', 'rachelout', 'jennifer'];
+const SILENCE_LABEL = { jenna: 'Jenna', george: 'George', rebecca: 'Rebecca', monica: 'Monica', alek: 'Alek', rachelout: "Rachel (follow-ups)", jennifer: 'Jennifer' };
+function silenceUntil(days) { const tz = 'America/Los_Angeles'; const d = new Date(new Date().toLocaleString('en-US', { timeZone: tz })); d.setDate(d.getDate() + days - 1); return d.toLocaleDateString('en-CA'); }
+function silenceCard() {
+  const sil = (dialQ && dialQ.silencedAgents) || {};
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  return `<details class="section" open><summary><b>🔇 Silence an agent</b> <span class="muted">— tick one off for a day, a few days, or a week; nothing else changes</span></summary>
+  <div class="grid" style="margin-top:8px">${SILENCE_AGENTS.map(a => {
+    const until = sil[a];
+    const isSilent = !!until && todayStr <= until;
+    return `<div class="card" style="padding:10px"><div class="row"><label style="display:flex;gap:8px;align-items:center;font-weight:600;margin:0"><input type="checkbox" ${isSilent ? 'checked' : ''} onchange="this.checked ? dialSilenceOpen('${a}') : dialUnsilence('${a}')"> ${esc(SILENCE_LABEL[a] || a)}</label>${isSilent ? `<span class="chip warn">🔇 silent through ${esc(until)}</span>` : `<span class="chip ok">calling</span>`}</div></div>`;
+  }).join('')}</div></details>`;
+}
+function dialSilenceOpen(agent) {
+  openForm('Silence ' + (SILENCE_LABEL[agent] || agent), `<div><label for="silDur">For how long?</label><select id="silDur">
+    <option value="1">Today only</option>
+    <option value="3">3 days</option>
+    <option value="7" selected>1 week</option>
+    <option value="14">2 weeks</option>
+  </select></div>`,
+  v => { dialSilenceSet(agent, silenceUntil(Number(v.silDur))); });
+}
+async function dialSilenceSet(agent, until) {
+  try { dialQ = await voiceApi({ action: 'queue_set', silenceAgent: { agent, until } }); render(); toast((SILENCE_LABEL[agent] || agent) + ' is silent through ' + until + '. They won’t place or receive calls until then.'); }
+  catch (e) { toast('Couldn’t silence ' + agent + ': ' + e.message); render(); }
+}
+async function dialUnsilence(agent) {
+  try { dialQ = await voiceApi({ action: 'queue_set', unsilenceAgent: agent }); render(); toast((SILENCE_LABEL[agent] || agent) + ' is back on the dialer.'); }
+  catch (e) { toast('Couldn’t turn ' + agent + ' back on: ' + e.message); render(); }
 }
 async function dialSave() {
   const days = [...document.querySelectorAll('.dialDay:checked')].map(x => x.value);

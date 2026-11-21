@@ -21,7 +21,8 @@ export function openNow(state) {
   return day !== "Sun" && hour >= 9 && hour < 19;
 }
 export async function placeCentralCall(s, req) {
-  if (!callerAllowed("jennifer")) return { ok: false, why: "Jennifer is silent this week (only Jenna and George call); email the practice instead" };
+  const silencedAgentsJ = ((await s.get("queue", { type: "json" })) || {}).silencedAgents; // Tania, Nov 21: manual per-agent silence switch
+  if (!callerAllowed("jennifer", silencedAgentsJ)) return { ok: false, why: "Jennifer is silent this week (only Jenna and George call); email the practice instead" };
   if (!liveOn() || !process.env.CARTESIA_API_KEY) return { ok: false, why: "calling off" };
   const ids = (await s.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_JENNIFER || ids.jennifer || "";

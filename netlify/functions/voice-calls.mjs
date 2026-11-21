@@ -538,6 +538,16 @@ export default async (req) => {
       // Tania, Nov 12: targeted removal, so one agent's queue can be cleaned without touching the others'.
       if (Array.isArray(b.removeIds) && b.removeIds.length) { const rm = new Set(b.removeIds.slice(0, 2000).map((v) => String(v))); q.leads = q.leads.filter((l) => !rm.has(String(l.id))); }
       if (b.clearAgent) { const ag = String(b.clearAgent).toLowerCase(); if (AGENTS.includes(ag)) q.leads = q.leads.filter((l) => !(l.status === "queued" && String(l.agent || "").toLowerCase() === ag)); }
+      // Tania, Nov 21: "a box to tick on or off for the agents ... so they don't call" for a day, a week, or a few days.
+      // b.silenceAgent = { agent, until } silences that agent through end of `until` (YYYY-MM-DD, her own time zone);
+      // b.unsilenceAgent = agent name clears it early. Checked by callerAllowed()/agentSilencedToday() everywhere a
+      // call could go out (campaigns, Alek callbacks, Rachel follow-ups, Jennifer), independent of the weekly plan.
+      if (b.silenceAgent && typeof b.silenceAgent === "object") {
+        const ag = String(b.silenceAgent.agent || "").toLowerCase();
+        const until = /^\d{4}-\d{2}-\d{2}$/.test(String(b.silenceAgent.until || "")) ? String(b.silenceAgent.until) : "";
+        if (AGENTS.includes(ag) && until) { q.silencedAgents = q.silencedAgents || {}; q.silencedAgents[ag] = until; }
+      }
+      if (b.unsilenceAgent) { const ag = String(b.unsilenceAgent).toLowerCase(); if (q.silencedAgents) delete q.silencedAgents[ag]; }
       if (Array.isArray(b.add)) {
         const have = new Set(q.leads.filter((l) => l.status === "queued").map((l) => e164(l.phone)));
         for (const x of b.add.slice(0, 1000)) {
@@ -552,7 +562,7 @@ export default async (req) => {
       await store.setJSON("queue", q);
     }
     const n = (k) => q.leads.filter((l) => l.status === k).length;
-    return reply(200, { settings: q.settings, paused: !!q.paused, pauseReason: q.pauseReason || "", lastRun: q.lastRun || null, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
+    return reply(200, { settings: q.settings, paused: !!q.paused, pauseReason: q.pauseReason || "", lastRun: q.lastRun || null, silencedAgents: q.silencedAgents || {}, counts: { queued: n("queued"), called: n("called"), skipped: n("skipped"), error: n("error") },
       leads: q.leads.slice(-300).map((l) => ({ id: l.id, name: l.name, business: l.business, state: l.state, agent: l.agent, lang: l.lang || "en", status: l.status, note: l.note || "", callId: l.callId || "", calledAt: l.calledAt || null, followup: !!l.followup, notBefore: l.notBefore || null, emailSentAt: l.emailSentAt || null })) }, origin);
   }
 
