@@ -242,9 +242,13 @@ export default async (req, context) => {
 
     if (state.approved === true && !!f.businessName && hasContact && appointmentSettled) {
       session.approved = true; // appointment path: fully settled right here, no payment needed in chat
-    } else if (state.approved === true && !!f.businessName && hasContact && paySettled && !session.payLink) {
-      // Pay-now path: they just agreed -- record the disclaimer they're agreeing to, generate their
-      // one-time Stripe payment link, and wait for the frontend to confirm payment before approving.
+    }
+    // Pay-now path: generate the one-time Stripe link as soon as the visitor has chosen "pay" and we
+    // have what we need, independent of the model's own "approved" flag -- Sentinell's narrated text
+    // ("the agreement should be on your screen now") can't be left waiting on the AI also remembering
+    // to flip approved in the same turn. Real approval for this path waits for Stripe to confirm the
+    // payment itself (see the checkPayment action below), not for anything said in chat.
+    if (!!f.businessName && hasContact && paySettled && !session.payLink) {
       try {
         session.payLink = await makeSentinelPayLink(f, sessionId);
         session.disclaimer = { text: DISCLAIMER_TEXT, agreedAt: new Date().toISOString() };
