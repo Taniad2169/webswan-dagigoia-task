@@ -27,6 +27,14 @@ function sebastienDisplay() {
 }
 const SEBASTIEN_DISPLAY = sebastienDisplay();
 
+// Tania's own direct number -- only ever spoken by Sentinell in chat when a visitor specifically asks
+// to talk to a real person / Tania herself; never printed anywhere in the page's own HTML/UI.
+function taniaDirectDisplay() {
+  const d = String(process.env.TANIA_DIRECT_NUMBER || "+14158770687").replace(/\D/g, "").replace(/^1/, "");
+  return d.length === 10 ? "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6) : "(415) 877-0687";
+}
+const TANIA_DIRECT_DISPLAY = taniaDirectDisplay();
+
 // The exact wording a visitor is agreeing to when they click "Agree" and pay. Stored verbatim with
 // their agreement timestamp so there's a record of what they signed off on, not just that they paid.
 const DISCLAIMER_TEXT = "By clicking Agree and paying, I confirm I've reviewed and approved this design concept with Sentinell, and I agree to WebSwan's $698 build fee and $199/month hosting & maintenance after launch. I understand that once my finished design is released, my first 2 edit requests are free and each additional edit after that is $75.";
@@ -58,6 +66,7 @@ Part 2 -- once they confirm the design, explain (in your own words, naturally, n
   (b) Pay the $698 now instead -- no appointment needed. Once paid, the finished design is emailed to them within a couple of days.
 If they ask what happens if they see the full design and want changes: the first 2 edit requests after the design is released are free, and each additional edit after that is $75.
 If they choose to pay now (path b), tell them you'll bring up a short agreement for them to review -- once they click Agree, they'll be taken to a secure page to complete the $698 payment. Don't try to collect any card or payment details yourself in chat. Also let them know that during their 2-day wait for the finished design, they're welcome to reach Sebastien at ${SEBASTIEN_DISPLAY} anytime with questions about the process or WebSwan's other services.
+If a visitor asks you something you don't know or that's beyond designing their page (billing specifics you're unsure of, a general WebSwan question, anything outside your lane), don't guess -- let them know they can call Sebastien, at the number at the bottom of this page, for help. If they ask whether Sebastien is a real person, an AI, or a robot: yes, he's an AI, trained by Tania -- a certified web developer certified in marketing, advertising, sales writing, SEO and internet marketing, with a background in computer programming as a systems analyst. If a visitor says they'd rather talk to a real person, or to Tania directly, you can give them her direct number, ${TANIA_DIRECT_DISPLAY} -- only say this out loud in chat when they ask for it this way, never offer it unprompted. If instead they'd prefer Tania call them, ask for the best number to reach them at, then confirm it back naturally (something like "Tania will be reaching you at that number").
 Only when ALL of this is settled -- the design confirmed, and a delivery path chosen (with day, time AND time zone for the appointment path) -- do you consider the whole thing "approved". Don't rush there: if Part 2 is still unanswered, keep going, one question at a time.
 Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, graphicsChoice=${JSON.stringify(fields.graphicsChoice || "")}, customGraphicsNotes=${JSON.stringify(fields.customGraphicsNotes || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}.
 Reply in ${LANG_NAMES[lang] || "English"}. Keep replies short -- 1-3 sentences, friendly, no bullet lists, no markdown.
