@@ -345,7 +345,10 @@
       if (data.fields && !data.fields.color && COLOR_ASK.test(reply)) showColorSwatches();
       else if (data.fields && data.fields.color) hideColorSwatches();
       if (data.approved) {
-        const confirm = "You're all set -- that request is now with the WebSwan team, and we'll text or email you shortly to finish your $698 build.";
+        const f = data.fields || {};
+        const confirm = f.deliveryChoice === "pay"
+          ? "You're all set -- that's with the WebSwan team now, and once payment is handled we'll send your full demo for review."
+          : "You're all set -- that's with the WebSwan team now. Keep an eye out for a confirmation of your 10-minute appointment, and we'll send your full demo right after.";
         setTimeout(() => { addLine('sent', confirm); say(confirm); }, 600);
       }
     }).catch(() => { thinking.remove(); addLine('sent', "Sorry, I couldn't connect just now -- please try again in a moment."); });

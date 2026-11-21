@@ -17,18 +17,23 @@ const newLeadId = () => "sd" + Date.now().toString(36) + Math.random().toString(
 const LANG_NAMES = { en: "English", es: "Spanish", ht: "Haitian Creole", pt: "Brazilian Portuguese" };
 
 const SYSTEM = (fields, lang) => `You are Sentinell (spelled with a double L -- always spell your own name that way, to tell you apart from WebSwan's internal "Sentinel" system), a warm and efficient AI web designer for WebSwan's $698 DIY landing-page product (diy-starter). You are chatting directly with a potential customer on the product's own page -- not with Tania or her team.
-What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build (paid on approval), $199/month after launch, up to 2 hours of design time included (then $25/hour). You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
-Your job, in order, asking ONE question at a time and reacting naturally to what they say (never a rigid form):
+What you are building: ONE landing page for their business, built and hosted by WebSwan: $698 to build, $199/month after launch, up to 2 hours of design time included (then $25/hour). You are not a lawyer, accountant or marketing consultant -- stick to designing their page.
+Part 1 -- collect the design, ONE question at a time, reacting naturally (never a rigid form):
 1. Their business name.
 2. A one-line tagline or description of what they offer (what should the headline say).
 3. Their brand color -- when you ask this, a row of named color swatches pops up on their screen for them to tap, so NEVER ask for or require a hex code. Just ask what color they'd like in plain words ("what color feels right for your brand?"); they can tap a swatch or describe a color themselves ("ocean blue", "a warm red"), and either way you'll get back a name and/or hex code to use.
-4. A phone number or email so WebSwan can reach them about the page (at least one is required).
-Once you have all four, summarize what you have back to them in one short paragraph and ask them to confirm it's right and that they're ready to move forward with WebSwan building it for $698. Only when they CLEARLY say yes / that's right / let's go / approved (an explicit confirmation, not just continuing to chat) do you consider this approved.
-Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}.
+4. A phone number or email so WebSwan can reach them about the page (at least one is required; if only phone was given, ask for an email too since the project demo gets sent by email).
+Once you have all four, summarize the design back to them in one short paragraph and ask them to confirm it's right.
+Part 2 -- once they confirm the design, explain what happens next (in your own words, naturally, not a copy-paste script): one of WebSwan's certified web developers will complete the design and reach out in a couple of days for review. To actually get the full demo sent to them, there are two paths -- ask which they'd prefer:
+  (a) A free 10-minute appointment -- this is the only commitment WebSwan asks for on a free demo, just to protect the work and walk through it together before it's sent. If they pick this, get a day and time that works for them AND which time zone they're in (Pacific, Eastern, Central or Mountain) -- ask both together, naturally.
+  (b) Pay the $698 now -- no appointment needed; the demo goes straight to them for review and completion once they've paid.
+Part 3 -- either path, once it's settled, ask if they'd like someone from WebSwan to call them to go over everything (yes/no is fine).
+Only when ALL of this is settled -- the design confirmed, a delivery path chosen (and, if the appointment path, a day, time AND time zone given), and they've answered whether they want a call -- do you consider the whole thing "approved". Don't rush there: if any of Part 2 or Part 3 is still unanswered, keep going, one question at a time.
+Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}, wantsCall=${JSON.stringify(fields.wantsCall === true ? "yes" : fields.wantsCall === false ? "no" : "")}.
 Reply in ${LANG_NAMES[lang] || "English"}. Keep replies short -- 1-3 sentences, friendly, no bullet lists, no markdown.
-At the very end of EVERY reply, on its own, append a machine-readable snapshot of everything known so far (carry forward any field you already had even if this turn didn't change it; use "" for anything still unknown) in exactly this form, with no text after it:
-<<STATE>>{"businessName":"...","tagline":"...","color":"...","phone":"...","email":"...","approved":false}<<END>>
-Set "approved" to true only on the turn where they give that clear final yes, and only if businessName and at least one of phone/email are already known.`;
+At the very end of EVERY reply, on its own, append a machine-readable snapshot of everything known so far (carry forward any field you already had even if this turn didn't change it; use "" for text fields and null for wantsCall when still unknown) in exactly this form, with no text after it:
+<<STATE>>{"businessName":"...","tagline":"...","color":"...","phone":"...","email":"...","deliveryChoice":"appointment|pay|","apptDay":"...","apptTime":"...","apptTimezone":"...","wantsCall":null,"approved":false}<<END>>
+Set "approved" to true only on the turn everything above is settled -- never earlier.`;
 
 const STATE_RE = /<<STATE>>([\s\S]*?)<<END>>\s*$/;
 
@@ -44,10 +49,14 @@ async function queueLead(session, sessionId) {
   const f = session.fields || {};
   const st = diyStore();
   const idx = ((await st.get("lq-index", { type: "json" })) || []).filter((x) => x.status === "pending" || Date.now() - new Date(x.at).getTime() < 14 * 86400000);
+  const deliveryBit = f.deliveryChoice === "appointment"
+    ? "wants the free 10-min appointment: " + clean(f.apptDay, 40) + " " + clean(f.apptTime, 40) + " " + clean(f.apptTimezone, 20)
+    : f.deliveryChoice === "pay" ? "chose to pay the $698 now -- send demo directly, no appointment" : "delivery path not yet chosen";
+  const callBit = f.wantsCall === true ? "wants a call" : f.wantsCall === false ? "does not want a call" : "call preference unknown";
   const item = {
     id: newLeadId(), kind: "create", at: new Date().toISOString(), status: "pending", by: "sentinel-diy",
     name: clean(f.businessName, 160), phone: clean(f.phone, 40), email: clean(f.email, 160),
-    comment: "Sentinel DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | session " + sessionId,
+    comment: "Sentinell DIY ($698) -- tagline: " + clean(f.tagline, 300) + " | brand color: " + clean(f.color, 60) + " | " + deliveryBit + " | " + callBit + " | session " + sessionId,
     dropdown: "call back"
   };
   idx.push(item);
@@ -84,21 +93,30 @@ export default async (req, context) => {
 
   let aiText;
   try { const r = await askAI("claude-only", SYSTEM(session.fields, lang), history, 600); aiText = r.text || ""; }
-  catch (e) { return reply(502, { error: "Sentinel couldn't answer just now -- please try again in a moment." }, origin); }
+  catch (e) { return reply(502, { error: "Sentinell couldn't answer just now -- please try again in a moment." }, origin); }
 
   const { clean: visibleText, state } = parseState(aiText);
   session.messages.push({ role: "assistant", content: aiText });
   session.messages = session.messages.slice(-16);
 
   if (state && typeof state === "object") {
+    const dc = ["appointment", "pay"].includes(state.deliveryChoice) ? state.deliveryChoice : (session.fields.deliveryChoice || "");
+    const wc = state.wantsCall === true ? true : state.wantsCall === false ? false : (session.fields.wantsCall === true || session.fields.wantsCall === false ? session.fields.wantsCall : null);
     session.fields = {
       businessName: clean(state.businessName, 160) || session.fields.businessName || "",
       tagline: clean(state.tagline, 300) || session.fields.tagline || "",
       color: clean(state.color, 60) || session.fields.color || "",
       phone: clean(state.phone, 40) || session.fields.phone || "",
-      email: clean(state.email, 160) || session.fields.email || ""
+      email: clean(state.email, 160) || session.fields.email || "",
+      deliveryChoice: dc,
+      apptDay: clean(state.apptDay, 40) || session.fields.apptDay || "",
+      apptTime: clean(state.apptTime, 40) || session.fields.apptTime || "",
+      apptTimezone: clean(state.apptTimezone, 20) || session.fields.apptTimezone || "",
+      wantsCall: wc
     };
-    const canApprove = !!session.fields.businessName && !!(session.fields.phone || session.fields.email);
+    const f = session.fields;
+    const deliverySettled = f.deliveryChoice === "pay" || (f.deliveryChoice === "appointment" && f.apptDay && f.apptTime && f.apptTimezone);
+    const canApprove = !!f.businessName && !!(f.phone || f.email) && deliverySettled && (f.wantsCall === true || f.wantsCall === false);
     if (state.approved === true && canApprove) session.approved = true;
   }
 
