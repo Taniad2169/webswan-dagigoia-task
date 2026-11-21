@@ -108,6 +108,7 @@ Your jobs:
 6. PDF research reports (Tania, Nov 17): when she asks you to go online, research something and bring it back as a report, or asks for a PDF of it, use the live research you are handed to write a real, sourced report in your reply: a short intro, clear section headings with real paragraphs under each (your own words, never copied), and a Sources list with the actual links. The chat turns this straight into a real PDF with the WebSwan logo in the header for her to download right there -- you never build or describe a PDF file by hand, you just write the report. Only state what the research actually said, cite every source, and if the research came back empty say so plainly instead of writing a report.
 7. AI-AGENT INDUSTRY AWARENESS (Lyzr AI research, Tania Nov 18): Lyzr AI (an enterprise "agentic OS" platform -- different market from WebSwan, not a competitor to name) is worth knowing for your Monday briefing's industry-trend lane, since SwanDesk AI sits in the same broad AI-agent space. Worth carrying: their positioning is "We build the infrastructure for AI agents -- production-grade, governed AI systems"; their free learning hub "Lyzr University" teaches agent-building in three tracks (Foundations, Platform Studio, Code with Python ADK) -- a structure worth knowing if Tania ever wants to build out WebSwan's own training materials the same way; and their enterprise sales pages (marketing and sales functions alike) lean hard on trust language ("your data, your agents, your call, always: stays in your environment, governed at every step, no lock-in") and open with a blunt diagnostic question before any pitch, never a feature list. When this is relevant to a Monday briefing or a PDF research report, cite it plainly as one AI-agent platform's own positioning, never as a fact about SwanDesk AI or a claim Tania has verified herself.
 8. WORKFLOW-AUTOMATION INDUSTRY AWARENESS (n8n research, Tania Nov 20): n8n (n8n.io, a workflow-automation platform -- different market from WebSwan, not a competitor to name) is worth knowing for the same Monday-briefing industry-trend lane. Their core pitch is a visible, step-by-step workflow where an AI agent does the work and then waits for a human approval gate before the action actually executes (their own example: an agent looks up a refund, then asks a real person in Slack before it actually processes it) -- plus full visibility into every step, every change tracked, and one-step recovery if something goes wrong. This is a clean public validation of the exact design principle already behind your own WorkPilot writes ("queued, not instant," see job 5) -- worth citing in a briefing or report as that validation, never as a tool WebSwan is adopting or a claim about WebSwan's own system unless Tania actually says she's evaluating it.
+9. PERPLEXITY AS A BRAIN OPTION (Tania, Nov 20): Perplexity is wired in as a selectable brain for you, the same way DeepSeek, ChatGPT, Gemini, Claude and Grok are -- it will show up in your brain picker once Tania adds PERPLEXITY_API_KEY in Netlify (inert and invisible until then). It answers by actually running a live web search and writing the answer with citations in the same call, which fits your own research jobs (job 2's competitor briefs, Google algorithm updates and compliance news; job 6's PDF research reports) better than a plain chat model that has to be fed search results separately. If Tania switches you to it, the answer may read more citation-heavy than your usual tone -- keep your own voice and formatting rules (job 1's brevity, job 3's warmth) on top of whatever it hands back, never pass its raw style through untouched.
 Format: big bold titles (markdown ## and **bold**), short descriptions under each, the most urgent first. When a briefing covers a new day, start with the day and date as a title.`
   },
   tatiana: {
@@ -442,13 +443,18 @@ export const PROVIDERS = {
   chatgpt: { label: "ChatGPT (Gips)", env: "OPENAI_API_KEY" },
   gemini: { label: "Gemini", env: "GEMINI_API_KEY" },
   claude: { label: "Claude", env: "ANTHROPIC_API_KEY" },
-  grok: { label: "Grok (Jimmy)", env: "XAI_API_KEY" }
+  grok: { label: "Grok (Jimmy)", env: "XAI_API_KEY" },
+  // Tania, Nov 20: wired and ready, inert until PERPLEXITY_API_KEY is actually set in Netlify -- providerReady()
+  // below only ever turns this on by checking for the key, so adding this entry changes nothing today. Best fit
+  // for Eva's live-research jobs (Monday briefing, competitor briefs, Google algorithm/compliance search) since
+  // Perplexity's whole product is a web-search-grounded answer with citations in one call.
+  perplexity: { label: "Perplexity", env: "PERPLEXITY_API_KEY" }
 };
 export const providerReady = () => Object.fromEntries(Object.entries(PROVIDERS).map(([k, p]) => [k, !!process.env[p.env]]));
 export function pickProvider(want) {
   const ready = providerReady();
   if (want && ready[want]) return want;
-  return ["deepseek", "chatgpt", "gemini", "claude", "grok"].find((k) => ready[k]) || "";
+  return ["deepseek", "chatgpt", "gemini", "claude", "grok", "perplexity"].find((k) => ready[k]) || "";
 }
 
 // messages: [{ role: "user" | "assistant", content }]
@@ -463,6 +469,9 @@ export async function askAI(provider, system, messages, maxTokens = 3000) {
   const first = pickProvider(want);
   if (!first) return askOne(want, system, messages, maxTokens);
   const ready = providerReady();
+  // Perplexity deliberately left out of this silent-fallback list (Tania, Nov 20): it answers in a
+  // citation-heavy, web-search style, not a normal conversational reply, so it should only ever run when an
+  // agent is explicitly set to it -- never substituted in quietly if that agent's real brain is down.
   const order = strict ? [first] : [first, ...["claude", "chatgpt", "deepseek", "gemini", "grok"].filter((k) => k !== first && ready[k])];
   let lastErr = null;
   for (const p of order) {
@@ -473,7 +482,7 @@ export async function askAI(provider, system, messages, maxTokens = 3000) {
 }
 async function askOne(provider, system, messages, maxTokens = 3000) {
   const p = pickProvider(provider);
-  if (!p) throw new Error("No AI is connected yet. Add DEEPSEEK_API_KEY (or OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY) in Netlify.");
+  if (!p) throw new Error("No AI is connected yet. Add DEEPSEEK_API_KEY (or OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY, PERPLEXITY_API_KEY) in Netlify.");
   const key = process.env[PROVIDERS[p].env];
   let r, j;
   if (p === "grok") {
@@ -498,6 +507,25 @@ async function askOne(provider, system, messages, maxTokens = 3000) {
     j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(PROVIDERS[p].label + ": " + ((j.error && j.error.message) || r.status));
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "", provider: p };
+  }
+  if (p === "perplexity") {
+    // Tania, Nov 20: Perplexity retired its old simple "Sonar Chat Completions" endpoint (choices[0].message.content,
+    // like ChatGPT/DeepSeek above) on Sept 27, 2026. The current product is the Agent API: one combined
+    // system+conversation string goes in as "input", an "effort" level (fast/low/medium/high/xhigh/ultra) picks
+    // the cost/speed/depth tradeoff, and the live web search + citations happen automatically inside the call.
+    // "fast" fits WebSwan's research jobs (Monday briefing, competitor briefs, compliance news) -- a few cents a
+    // query at most; raise PERPLEXITY_EFFORT in Netlify if a specific job ever needs deeper research.
+    const effort = process.env.PERPLEXITY_EFFORT || "fast";
+    const input = system + "\n\n" + messages.map((m) => (m.role === "assistant" ? "Assistant: " : "User: ") + m.content).join("\n\n");
+    r = await fetch("https://api.perplexity.ai/v1/agent", { method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      body: JSON.stringify({ effort, input }) });
+    j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error("Perplexity: " + ((j.error && (j.error.message || j.error)) || r.status));
+    const msg = (j.output || []).find((x) => x.type === "message") || {};
+    const text = (msg.content || []).filter((c) => c.type === "output_text").map((c) => c.text || "").join("");
+    const sources = (j.output || []).find((x) => x.type === "search_results");
+    const cites = sources && sources.results && sources.results.length ? "\n\nSources:\n" + sources.results.slice(0, 8).map((s) => "- " + s.title + " (" + s.url + ")").join("\n") : "";
+    return { text: (text || "") + cites, provider: p };
   }
   if (p === "gemini") {
     // Google retires model names often: try the configured one, then the "latest" aliases.
