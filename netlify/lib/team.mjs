@@ -469,10 +469,22 @@ async function askOne(provider, system, messages, maxTokens = 3000) {
     const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
     return { text: parts.map((x) => x.text || "").join(""), provider: p };
   }
-  r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5", max_tokens: maxTokens, system, messages }) });
-  j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error("Claude: " + ((j.error && j.error.message) || r.status));
+  // Claude model names change too (same reason Grok and Gemini already retry aliases, above):
+  // try the configured one, then the latest aliases, so a retired id doesn't take Sentinel and
+  // every other Claude-brained agent down with a silent 502.
+  {
+    const models = [process.env.ANTHROPIC_MODEL, "claude-sonnet-4-5", "claude-opus-4-1", "claude-sonnet-4-20250514", "claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest"].filter((m, i, a) => m && a.indexOf(m) === i);
+    let lastErr = "";
+    for (const model of models) {
+      r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }) });
+      j = await r.json().catch(() => ({}));
+      if (r.ok) break;
+      lastErr = (j.error && j.error.message) || String(r.status);
+      if (!/model|not found|does not exist|deprecated|retired/i.test(String(lastErr))) break;
+    }
+    if (!r.ok) throw new Error("Claude: " + lastErr);
+  }
   return { text: (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n"), provider: p };
 }
 

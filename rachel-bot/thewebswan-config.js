@@ -52,12 +52,12 @@
    window.WS_PROMO is left unset on purpose: no banner on this site until Sentinell is ready (below). */
 
 /* Sentinell ($698 to build + $199/mo AI website builder) banner -- Tania, Nov 20: "create it, but
-   don't put it live, because we're not done with Sentinel yet." The form page at
-   take-me-there/sentinell/ is fully built (header explains the $698/$199mo package, Sebastien's
-   number with his title, posts to package-lead.mjs) -- same as the other two banners -- but this
-   one stays OFF. DO NOT uncomment/wire this up (don't set window.WS_PROMO from it, don't load
-   promo-banner.js) until Tania explicitly says Sentinell is tested and ready to go live.
-// window.WS_PROMO = {"text": "\u2728 New: build your own website with Sentinell, WebSwan's AI web designer. $698 to build, $199/mo after launch.", "link": "https://taniad2169.github.io/webswan-dagigoia-task/take-me-there/sentinell/", "cta": "Take me there"};
+   don't put it live, because we're not done with Sentinel yet." Unlike the other two banners, this
+   one links straight to diy-starter/ (Tania, Nov 20: "not a form" -- Sentinell builds the page live
+   in chat with the visitor, so there's no separate intake form for this one). Stays OFF. DO NOT
+   uncomment/wire this up (don't set window.WS_PROMO from it, don't load promo-banner.js) until
+   Tania explicitly says Sentinell is tested and ready to go live.
+// window.WS_PROMO = {"text": "\u2728 New: build your own website with Sentinell, WebSwan's AI web designer. $698 to build, $199/mo after launch.", "link": "https://taniad2169.github.io/webswan-dagigoia-task/diy-starter/", "cta": "Take me there"};
 // (function () { var s = document.createElement('script'); s.src = 'https://taniad2169.github.io/webswan-dagigoia-task/rachel-bot/promo-banner.js'; s.defer = true; document.head.appendChild(s); })();
 */
 

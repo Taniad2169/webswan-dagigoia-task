@@ -36,6 +36,17 @@
   .sample-body p { color:var(--muted); margin:0 0 14px; font-size:14.5px; }
   .sample-cta { display:inline-block; background:var(--amber); color:#2a1d00; font-weight:800; padding:10px 18px; border-radius:10px; text-decoration:none; font-size:14px; }
   .sample-foot { background:#0f2a4a; color:#9fc3e6; padding:12px 20px; font-size:12.5px; text-align:center; }
+  /* Tania, Nov 20: when a visitor asks Sentinell to see a sample, pop this same card up bigger on
+     screen -- one click to expand, an X to close -- instead of just pointing at the inline one. */
+  .sf-expand-btn { position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:9px; border:0; background:rgba(255,255,255,.22); color:#fff; font-size:15px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; }
+  .sf-expand-btn:hover { background:rgba(255,255,255,.35); }
+  .sample-head { position:relative; }
+  #sf-backdrop { position:fixed; inset:0; background:rgba(10,30,50,.55); z-index:69990; display:none; }
+  #sf-backdrop.on { display:block; }
+  .sample-frame.sf-big { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(92vw,520px); max-height:90vh; overflow:auto; z-index:69991; box-shadow:0 30px 70px rgba(8,42,72,.5); }
+  .sf-close-btn { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; border:2px solid #fff; background:#0f2a4a; color:#fff; font-size:16px; line-height:1; cursor:pointer; z-index:3; display:none; }
+  .sample-frame.sf-big .sf-close-btn { display:block; }
+  .sample-frame.sf-big .sf-expand-btn { display:none; }
   .how { margin:46px 0; }
   .how h2 { text-align:center; color:var(--navy); font-size:20px; margin:0 0 20px; }
   .how ol { max-width:640px; margin:0 auto; padding:0 0 0 22px; color:var(--ink); font-size:15px; line-height:1.9; }
@@ -89,8 +100,12 @@
 
   <section class="sample-wrap">
     <h2>A sample of what you'll get</h2>
-    <div class="sample-frame">
-      <div class="sample-head"><div class="logo">W</div><div><b>Your Business Name</b><small>Your tagline goes here</small></div></div>
+    <div class="sample-frame" id="sf-card">
+      <div class="sample-head">
+        <div class="logo">W</div><div><b>Your Business Name</b><small>Your tagline goes here</small></div>
+        <button type="button" class="sf-expand-btn" id="sf-expand" title="See it bigger" aria-label="Expand the sample">⤢</button>
+        <button type="button" class="sf-close-btn" id="sf-close" title="Close" aria-label="Close the sample">×</button>
+      </div>
       <div class="sample-body">
         <h3>What you offer, in one clear line</h3>
         <p>A short paragraph about your service, written the way Sentinell and you agree on -- your colors, your photos, your words. Your logo, hours and contact info live right here too.</p>
@@ -98,6 +113,7 @@
       </div>
       <div class="sample-foot">Built and hosted by WebSwan -- this footer matches your branding color too</div>
     </div>
+    <div id="sf-backdrop"></div>
   </section>
 
   <section class="how">
@@ -233,8 +249,20 @@
   let sessionId = '';
   try { sessionId = sessionStorage.getItem('sentinel-sid') || ''; } catch (e) {}
 
+  // Expand/collapse the sample card -- one click (or an explicit "show me a sample" ask) pops it
+  // up bigger on screen; the X or the backdrop closes it.
+  const sfCard = document.getElementById('sf-card'), sfBackdrop = document.getElementById('sf-backdrop');
+  function expandSample() { if (sfCard) sfCard.classList.add('sf-big'); if (sfBackdrop) sfBackdrop.classList.add('on'); }
+  function collapseSample() { if (sfCard) sfCard.classList.remove('sf-big'); if (sfBackdrop) sfBackdrop.classList.remove('on'); }
+  const sfExpandBtn = document.getElementById('sf-expand'), sfCloseBtn = document.getElementById('sf-close');
+  if (sfExpandBtn) sfExpandBtn.onclick = expandSample;
+  if (sfCloseBtn) sfCloseBtn.onclick = collapseSample;
+  if (sfBackdrop) sfBackdrop.onclick = collapseSample;
+  const SAMPLE_ASK = /\b(sample|example|see what|show me|see it|see a demo|demo|preview|mwen vle wè|muestra|ejemplo|exemplo|amostra)\b/i;
+
   function sendMsg(text) {
     if (!text.trim()) return;
+    if (SAMPLE_ASK.test(text)) expandSample();
     addLine('me', text);
     $('sp-input').value = '';
     const thinking = document.createElement('div');
