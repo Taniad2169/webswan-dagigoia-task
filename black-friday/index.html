@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Black Friday Website Special — The WebSwan</title>
-<meta name="description" content="A Black Friday website special for doctors and attorneys, live November 23-30, 2026. ADA and HIPAA compliant, done for you.">
+<title>Black Friday Website Special: Compliance-Ready Redesign for $499 | The WebSwan</title>
+<meta name="description" content="Black Friday special: a redesigned, compliance-ready website with compliance banners for $499 setup. Fill out the form to be considered.">
 <link rel="icon" href="ws-logo.png">
 <style>
   :root{--blue:#3898f5;--blue2:#6aa8e6;--aqua:#48d6fa;--ink:#17324c;--line:#e1ebf2;--bg:#f3f8fc}
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
-  .hero{background:linear-gradient(120deg,var(--blue),var(--blue2) 55%,var(--aqua));color:#fff;padding:28px 20px 60px;text-align:center;position:relative}
+  .hero{background:linear-gradient(120deg,var(--blue),var(--blue2) 55%,var(--aqua));color:#fff;padding:28px 20px 60px;text-align:center}
   .hero .brandrow{display:flex;align-items:center;justify-content:space-between;max-width:1000px;margin:0 auto 30px}
   .hero img.logo{height:44px;border-radius:10px;background:#fff;padding:4px}
   .hero img.photo{height:56px;width:56px;border-radius:50%;object-fit:cover;border:3px solid #fff}
@@ -19,12 +19,9 @@
   .hero p.sub{font-size:clamp(15px,2vw,19px);opacity:.95;max-width:640px;margin:0 auto 26px}
   .dates{font-weight:700;background:rgba(255,255,255,.18);display:inline-block;padding:8px 16px;border-radius:10px;margin-bottom:28px}
   .pricecard{background:#fff;color:var(--ink);border-radius:20px;max-width:480px;margin:0 auto;padding:30px 26px;box-shadow:0 20px 50px -20px rgba(10,40,70,.4)}
-  .pricecard .was{text-decoration:line-through;opacity:.5;font-size:15px}
-  .pricecard .now{font-size:40px;font-weight:800;color:var(--blue)}
-  .pricecard .now span{font-size:16px;font-weight:600;color:var(--ink);opacity:.7}
-  .pricecard .row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)}
-  .pricecard .row:last-child{border-bottom:none}
-  .cta{display:inline-block;margin-top:22px;background:linear-gradient(120deg,var(--blue),var(--aqua));color:#fff;font-weight:800;padding:16px 30px;border-radius:12px;text-decoration:none;font-size:17px;box-shadow:0 10px 24px -8px rgba(56,152,245,.6)}
+  .pricecard .now{font-size:44px;font-weight:800;color:var(--blue)}
+  .pricecard .lbl{font-size:16px;font-weight:600;opacity:.8;margin-bottom:6px}
+  .cta{display:inline-block;margin-top:22px;background:linear-gradient(120deg,var(--blue),var(--aqua));color:#fff;font-weight:800;padding:16px 30px;border-radius:12px;text-decoration:none;font-size:17px;box-shadow:0 10px 24px -8px rgba(56,152,245,.6);border:0;cursor:pointer}
   .cta.secondary{background:#fff;color:var(--blue);border:2px solid var(--blue);box-shadow:none}
   section{max-width:1000px;margin:0 auto;padding:50px 20px}
   h2{font-size:26px;text-align:center;margin-bottom:28px}
@@ -35,13 +32,15 @@
   .included{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;max-width:640px;margin:0 auto}
   .included li{margin:10px 0;padding-left:28px;position:relative}
   .included li:before{content:"✓";position:absolute;left:0;color:#2ba84a;font-weight:800}
-  .note{text-align:center;font-size:13px;opacity:.65;max-width:620px;margin:10px auto 0}
-  footer{text-align:center;padding:30px 20px 50px;font-size:13px;opacity:.65}
   .limited{text-align:center;font-weight:700;color:#d2410a;margin-top:18px}
-  .countdown{font-size:15px;opacity:.9;margin-bottom:6px}
-  /* --- BF_STATE_STYLE: controls which block (teaser vs live) shows. The Nov 23 job flips this. --- */
-  .bf-live{display:none}
-  .bf-teaser{display:block}
+  footer{text-align:center;padding:30px 20px 50px;font-size:13px;opacity:.65}
+  form.intake{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;max-width:640px;margin:0 auto}
+  form.intake h3{margin:0 0 6px;font-size:21px}
+  form.intake p.intro{margin:0 0 18px;opacity:.8}
+  form.intake label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}
+  form.intake input,form.intake select,form.intake textarea{width:100%;padding:11px 12px;border:1px solid #c9d8e4;border-radius:10px;font:inherit}
+  form.intake textarea{min-height:120px;resize:vertical}
+  form.intake .count{font-size:12px;opacity:.6;text-align:right}
 </style>
 </head>
 <body>
@@ -51,81 +50,77 @@
     <img class="logo" src="ws-logo.png" alt="The WebSwan">
     <img class="photo" src="tania-ceo.jpg" alt="Tania Domingue">
   </div>
-  <div class="badge">Limited to doctors &amp; attorneys</div>
-  <h1>Black Friday Website Special</h1>
-  <p class="sub">A custom, done-for-you website — built ADA and HIPAA compliant from day one — at the lowest setup fee and monthly rate we offer all year.</p>
-  <div class="dates">November 23 – 30, 2026</div>
+  <div class="badge">Black Friday</div>
+  <h1>Redesign Your Website With Compliance Banners</h1>
+  <p class="sub">Protect your digital asset with a redesigned, compliance-ready website, built by a certified web developer and verified complete before you launch.</p>
+  <div class="dates">Black Friday special · November 23 – 30, 2026</div>
 
-  <!-- ============ TEASER STATE (now through Nov 22) ============ -->
-  <div class="bf-teaser" id="bfTeaser">
-    <div class="pricecard">
-      <p class="countdown">Pricing unlocks November 23rd</p>
-      <div class="row" style="border-bottom:none;justify-content:center;padding:18px 0">
-        <div style="font-size:22px;font-weight:800;color:var(--blue)">🔒 Offer details revealed on 11/23</div>
-      </div>
-      <p style="margin:0 0 14px;opacity:.75;font-size:14px">The steepest one-time discount and the lowest locked-in monthly rate we run all year. Reserve your spot now — the window is short and spots are limited.</p>
-      <a class="cta" href="tel:+13162486839" style="margin-top:10px;width:100%">📞 Call (316) 248-6839 to reserve your spot</a>
-    </div>
-    <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
+  <div class="pricecard">
+    <div class="lbl">One-time setup</div>
+    <div class="now">$499</div>
+    <a class="cta" href="#take-me-there" style="width:100%">Take me there</a>
   </div>
-
-  <!-- ============ LIVE STATE (Nov 23-30) — hidden until the scheduled job flips .bf-teaser/.bf-live ============ -->
-  <div class="bf-live" id="bfLive">
-    <div class="pricecard">
-      <div class="row">
-        <div>One-time setup</div>
-        <div><span class="was">$899</span> <span class="now">$499</span></div>
-      </div>
-      <div class="row">
-        <div>Monthly, for the life of your site</div>
-        <div><span class="was">$499</span> <span class="now">$299<span>/mo</span></span></div>
-      </div>
-      <a class="cta" href="tel:+13162486839" style="margin-top:22px;width:100%">📞 Call (316) 248-6839 to claim your spot</a>
-    </div>
-    <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
-  </div>
+  <div class="limited">Only a limited number of Black Friday spots — once they're gone, it's back to standard pricing.</div>
 </div>
 
 <section>
-  <h2>What's included, every time</h2>
+  <h2>What's included</h2>
   <ul class="included">
-    <li>A custom website built for your practice, not a template</li>
-    <li>ADA accessibility compliance built in</li>
-    <li>Cookie consent banner, built in</li>
-    <li>Hosting, maintenance and security — handled for you</li>
-    <li class="bf-live">Your $299/month rate is locked in for as long as your account is active</li>
-    <li class="bf-teaser">Your rate is locked in for as long as your account is active</li>
+    <li>A redesigned website built for your business, not a template</li>
+    <li>Compliance banners included, with ADA accessibility and privacy built in</li>
+    <li>Work verified and completed by a certified web developer</li>
+    <li>Hosting, maintenance and security, with the monthly amount confirmed in writing before you agree</li>
   </ul>
-  <p class="note bf-live">Standard plan for comparison: $899 setup, $499/month for the first 12 months, then $299/month after. The Black Friday rate starts at $299/month from day one.</p>
 </section>
 
 <section>
-  <h2>Want to make it even more yours? Add any of these — one time, no extra monthly cost</h2>
+  <h2>Add any of these, one time</h2>
   <div class="grid3">
-    <div class="card">
-      <div>🎨 AI-Powered Logo Design</div>
-      <div class="amt bf-live">$199</div>
-      <div class="amt bf-teaser">Revealed 11/23</div>
-      <div>A custom logo concept, designed and reviewed for your practice.</div>
-    </div>
-    <div class="card">
-      <div>🌐 Language Translator</div>
-      <div class="amt bf-live">$150</div>
-      <div class="amt bf-teaser">Revealed 11/23</div>
-      <div>Let patients and clients read your site in their own language.</div>
-    </div>
-    <div class="card">
-      <div>🤖 AI-Powered Website</div>
-      <div class="amt bf-live">$499</div>
-      <div class="amt bf-teaser">Revealed 11/23</div>
-      <div>An AI assistant built into your site to answer questions and help visitors.</div>
-    </div>
+    <div class="card"><div>🎨 AI-Powered Logo Design</div><div class="amt">$199</div><div>A custom logo concept, designed and reviewed for your business.</div></div>
+    <div class="card"><div>🌐 Language Translator</div><div class="amt">$150</div><div>Let your visitors read your site in their own language.</div></div>
+    <div class="card"><div>🤖 AI-Powered Website</div><div class="amt">$499</div><div>An AI assistant built into your site to answer questions and help visitors.</div></div>
   </div>
 </section>
 
+<section id="take-me-there">
+  <form class="intake" action="https://formspree.io/f/meaowdvq" method="POST">
+    <h3>Take advantage of redesigning your website with compliance banners. Protect your digital asset for the $499 Black Friday deal.</h3>
+    <p class="intro">Fill out the form below to be considered.</p>
+
+    <input type="hidden" name="_subject" value="Black Friday $499 website redesign request">
+    <input type="hidden" name="offer" value="Black Friday $499 website redesign with compliance banners">
+
+    <label for="f-name">Name</label>
+    <input id="f-name" name="name" type="text" required>
+
+    <label for="f-business">Business name</label>
+    <input id="f-business" name="business_name" type="text" required>
+
+    <label for="f-phone">Phone number</label>
+    <input id="f-phone" name="phone" type="tel" required>
+
+    <label for="f-email">Email</label>
+    <input id="f-email" name="email" type="email" required>
+
+    <label for="f-url">URL (if any)</label>
+    <input id="f-url" name="url" type="url" placeholder="https://">
+
+    <label for="f-state">State</label>
+    <input id="f-state" name="state" type="text" required>
+
+    <label for="f-profession">Profession</label>
+    <input id="f-profession" name="profession" type="text" required>
+
+    <label for="f-comment">Comment</label>
+    <textarea id="f-comment" name="comment" maxlength="500" oninput="document.getElementById('f-count').textContent = this.value.length + '/500'"></textarea>
+    <div class="count" id="f-count">0/500</div>
+
+    <button class="cta" type="submit" style="width:100%">Submit my request</button>
+  </form>
+</section>
+
 <section style="text-align:center">
-  <h2>Ready to claim your spot?</h2>
-  <p>Spots are limited and only available November 23–30, 2026. Doctors and attorneys only.</p>
+  <h2>Questions?</h2>
   <a class="cta" href="tel:+13162486839">📞 Call (316) 248-6839</a>
   <a class="cta secondary" href="mailto:thewebswann@gmail.com?subject=Black%20Friday%20Website%20Special">✉️ Email us</a>
 </section>
