@@ -509,9 +509,6 @@
       say(reply);
       if (data.fields && !data.fields.color && COLOR_ASK.test(reply)) showColorSwatches();
       else if (data.fields && data.fields.color) hideColorSwatches();
-      if (data._debugPayLinkError || data._debugPayLinkCond) {
-        addLine('sent', 'DEBUG: ' + JSON.stringify({ err: data._debugPayLinkError, cond: data._debugPayLinkCond }));
-      }
       if (data.payLink) {
         showPayCard(data.payLink, data.disclaimerText);
       } else if (data.approved) {

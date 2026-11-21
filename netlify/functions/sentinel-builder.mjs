@@ -345,16 +345,9 @@ export default async (req, context) => {
       try {
         session.payLink = await makeSentinelPayLink(f, sessionId);
         session.disclaimer = { text: DISCLAIMER_TEXT, agreedAt: new Date().toISOString() };
-        session.payLinkError = null;
       } catch (e) {
-        const msg = (e && e.message) || String(e);
         console.error("makeSentinelPayLink failed:", e && e.stack || e);
-        session.payLinkError = msg; // TEMP DEBUG -- surfaced in the reply below, remove once diagnosed
       }
-    } else {
-      session.payLinkDebugCond = { // TEMP DEBUG -- remove once diagnosed
-        hasBusinessName: !!f.businessName, hasContact, paySettled, alreadyHasPayLink: !!session.payLink
-      };
     }
   }
 
@@ -370,8 +363,6 @@ export default async (req, context) => {
   return reply(200, {
     reply: visibleText || "Got it.", sessionId, fields: session.fields, approved: session.approved, leadQueued: session.leadQueued,
     payLink: session.payLink && !session.payLink.paid ? { url: session.payLink.url, amount: session.payLink.amount } : null,
-    disclaimerText: session.payLink && !session.payLink.paid ? DISCLAIMER_TEXT : null,
-    _debugPayLinkError: session.payLinkError || null, // TEMP DEBUG -- remove once diagnosed
-    _debugPayLinkCond: session.payLinkDebugCond || null // TEMP DEBUG -- remove once diagnosed
+    disclaimerText: session.payLink && !session.payLink.paid ? DISCLAIMER_TEXT : null
   }, origin);
 };
