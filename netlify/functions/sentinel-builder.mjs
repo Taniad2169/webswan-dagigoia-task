@@ -8,6 +8,8 @@ import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, ALLOWED_ORIGINS } from "../lib/auth.mjs";
 import { askAI } from "../lib/team.mjs";
+import { store as vsStore } from "../lib/central.mjs";
+import { sanitizeCal, callScript } from "../lib/cal.mjs";
 
 const diyStore = () => getStore({ name: "sentinel-diy", consistency: "strong" });
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, n);
@@ -15,6 +17,15 @@ const newSessionId = () => "sv" + Date.now().toString(36) + crypto.randomBytes(4
 const newLeadId = () => "sd" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 const LANG_NAMES = { en: "English", es: "Spanish", ht: "Haitian Creole", pt: "Brazilian Portuguese" };
+const TANIA_EMAIL = "thewebswann@gmail.com";
+const h = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Sebastien's number, formatted for display -- Sentinell points visitors to him for anything beyond
+// building the page itself (process questions, other WebSwan services), same as the rest of the site.
+function sebastienDisplay() {
+  const d = String(process.env.SEBASTIEN_NUMBER || "+12295446718").replace(/\D/g, "").replace(/^1/, "");
+  return d.length === 10 ? "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6) : "(229) 544-6718";
+}
+const SEBASTIEN_DISPLAY = sebastienDisplay();
 
 // The exact wording a visitor is agreeing to when they click "Agree" and pay. Stored verbatim with
 // their agreement timestamp so there's a record of what they signed off on, not just that they paid.
@@ -32,7 +43,7 @@ Part 2 -- once they confirm the design, explain (in your own words, naturally, n
   (a) Set a free appointment with Tania. On the day of the appointment, the finished design is emailed to them, they make their payment and the project is completed together, then it moves forward to getting their domain. If they pick this, get a day and time that works for them AND which time zone they're in (Pacific, Eastern, Central or Mountain) -- ask both together, naturally.
   (b) Pay the $698 now instead -- no appointment needed. Once paid, the finished design is emailed to them within a couple of days.
 If they ask what happens if they see the full design and want changes: the first 2 edit requests after the design is released are free, and each additional edit after that is $75.
-If they choose to pay now (path b), tell them you'll bring up a short agreement for them to review -- once they click Agree, they'll be taken to a secure page to complete the $698 payment. Don't try to collect any card or payment details yourself in chat.
+If they choose to pay now (path b), tell them you'll bring up a short agreement for them to review -- once they click Agree, they'll be taken to a secure page to complete the $698 payment. Don't try to collect any card or payment details yourself in chat. Also let them know that during their 2-day wait for the finished design, they're welcome to reach Sebastien at ${SEBASTIEN_DISPLAY} anytime with questions about the process or WebSwan's other services.
 Only when ALL of this is settled -- the design confirmed, and a delivery path chosen (with day, time AND time zone for the appointment path) -- do you consider the whole thing "approved". Don't rush there: if Part 2 is still unanswered, keep going, one question at a time.
 Known so far: businessName=${JSON.stringify(fields.businessName || "")}, tagline=${JSON.stringify(fields.tagline || "")}, color=${JSON.stringify(fields.color || "")}, phone=${JSON.stringify(fields.phone || "")}, email=${JSON.stringify(fields.email || "")}, deliveryChoice=${JSON.stringify(fields.deliveryChoice || "")}, apptDay=${JSON.stringify(fields.apptDay || "")}, apptTime=${JSON.stringify(fields.apptTime || "")}, apptTimezone=${JSON.stringify(fields.apptTimezone || "")}.
 Reply in ${LANG_NAMES[lang] || "English"}. Keep replies short -- 1-3 sentences, friendly, no bullet lists, no markdown.
@@ -109,6 +120,28 @@ async function checkSentinelPaid(payLink) {
   return true;
 }
 
+// Tania asked to always be notified when a Sentinell landing page is completed/approved -- not just
+// queued silently for WorkPilot. Same mail pattern as package-lead.mjs (Tania's own Calendar Bridge
+// script handles the actual sending; best-effort, never blocks the visitor's own confirmation).
+async function emailTania(session, sessionId) {
+  try {
+    const vs = vsStore();
+    const cal = sanitizeCal(await vs.get("calendar", { type: "json" })), secret = await vs.get("cal-secret");
+    if (!cal.scriptUrl || !secret) return false;
+    const f = session.fields || {};
+    const row = (k, v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#5f7891">${k}</td><td style="padding:4px 0"><b>${h(v)}</b></td></tr>` : "";
+    const deliveryRow = f.deliveryChoice === "appointment"
+      ? row("Delivery", "Appointment with Tania: " + [f.apptDay, f.apptTime, f.apptTimezone].filter(Boolean).join(" "))
+      : f.deliveryChoice === "pay"
+        ? row("Delivery", "Paid $698 upfront" + (session.payLink && session.payLink.paid ? " -- payment confirmed via Stripe" : " -- payment pending"))
+        : "";
+    const html = `<div style="font-family:Arial,sans-serif;color:#17324c;max-width:560px"><h2 style="margin:0 0 8px">Sentinell DIY landing page completed -- $698</h2>
+    <table style="border-collapse:collapse;font-size:15px">${row("Business", f.businessName)}${row("Tagline", f.tagline)}${row("Brand color", f.color)}${row("Phone", f.phone)}${row("Email", f.email)}${deliveryRow}${row("Session", sessionId)}</table></div>`;
+    const r = await callScript(cal, secret, { action: "mail", to: TANIA_EMAIL, subject: "Sentinell DIY completed: " + (f.businessName || sessionId), html, fromName: "Sentinell" });
+    return !!(r && r.ok);
+  } catch (e) { return false; }
+}
+
 async function queueLead(session, sessionId) {
   const f = session.fields || {};
   const st = diyStore();
@@ -153,7 +186,7 @@ export default async (req, context) => {
     if (paidNow && !session.approved) session.approved = true;
     let queuedLeadId = session.leadId || null;
     if (session.approved && !session.leadQueued) {
-      try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; }
+      try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; await emailTania(session, sessionId); }
       catch (e) { /* best-effort */ }
     }
     session.updatedAt = new Date().toISOString();
@@ -220,7 +253,7 @@ export default async (req, context) => {
 
   let queuedLeadId = session.leadId || null;
   if (session.approved && !session.leadQueued) {
-    try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; }
+    try { queuedLeadId = await queueLead(session, sessionId); session.leadQueued = true; session.leadId = queuedLeadId; await emailTania(session, sessionId); }
     catch (e) { /* best-effort; visitor still sees their confirmation */ }
   }
 
