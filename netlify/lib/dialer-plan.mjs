@@ -3,27 +3,22 @@
 // Voice Studio: only the agents listed here dial, each in their own windows (Pacific time), 25 leads per window.
 // Every other caller is silent: no campaign calls, no Alek callbacks, no Rachel follow-up calls, no Jennifer calls.
 // Rachel still ANSWERS inbound calls. To end the plan early, set end to a past date (or delete the plan) and redeploy.
-// Tania, Nov 21: new week's plan -- Jenna, George (Spanish) and Rebecca push the Modesto Real Estate / Sentinel DIY
-// batch, 24 leads/day each (72/day total). Alek and Monica are "on vacation" this week -- same mechanism as before
-// (not listed here = silent), so neither of them places or receives a single call Mon-Thu this week, with zero
-// risk of also silencing Jenna/George/Rebecca (the only other lever available, a global pause, would have done that).
+// Tania, Nov 22: Black Friday week -- George, Rebecca and Jenna ALL call for the Black Friday $499 website-redesign
+// promotion ONLY. No ads (WSMN), no SwanDesk AI, no compliance-audit-funnel pitch this week -- every one of the
+// three reads the Black Friday script, scoped by language: George gets the Spanish-speaking leads from the NY/FL
+// Black Friday batch (71), Rebecca and Jenna split the English-speaking ones (71 each, Haitian-flagged leads folded
+// into the English pool since there's no Creole script for this campaign). One window/day each, 24 leads/day each
+// = 72 leads/day total, 2 scripts/day (Spanish + English), Mon-Wed only. Alek and Monica stay off the dialer this
+// week (not listed here = silent), same mechanism as before.
 export const DIALER_PLAN = {
-  start: "2026-11-23", end: "2026-11-26",          // Mon Nov 23 – Thu Nov 26
+  start: "2026-11-23", end: "2026-11-25",          // Mon Nov 23 – Wed Nov 25
   tz: "America/Los_Angeles",
   agents: {
-    // Jenna: 2 campaigns/day (Tania, Nov 21) -- window 1 is the Atlanta chiropractor website-compliance audit
-    // (her usual pitch, takes leads sourced under "monica" same as before), window 2 is the Modesto Real Estate
-    // Sentinel DIY push (leads queued under her own name). planTaskFor() reads each lead's own campaign tag, so
-    // mixing two lead types under one agent is safe -- every lead still gets the right script.
-    jenna: { windows: [["07:00", "08:00"], ["12:30", "13:45"]], perWindow: 24, lang: "en", takes: ["jenna", "monica"], campaign: "Website compliance (chiropractors) + Modesto RE Sentinel DIY" },
-    // George: same two-campaign split, opens in Spanish for the Sentinel DIY leads (switches to English if they
-    // answer in English); his Atlanta attorney leads come in English already.
-    george: { windows: [["08:00", "09:00"], ["12:30", "13:45"]], perWindow: 24, lang: "any", forceLang: "es",
-      takes: ["george"], campaign: "Website compliance (attorneys) + Modesto RE Sentinel DIY (Spanish)" },
-    // Rebecca: Sentinel DIY most days; Wed she pitches WSMN advertising + SwanDesk AI instead (Jenna covers Sentinel
-    // DIY that day). Which script she reads comes from the lead's own campaign tag (see planTaskFor below), not the
-    // day of week, so whichever leads are actually queued for her on a given day get the right pitch automatically.
-    rebecca: { windows: [["11:00", "13:00"]], perWindow: 24, lang: "en", takes: ["rebecca"], campaign: "Sentinel DIY / WSMN advertising + SwanDesk AI" }
+    jenna: { windows: [["07:00", "09:00"]], perWindow: 24, lang: "en", takes: ["jenna"], campaign: "Black Friday $499 website redesign" },
+    // George opens in Spanish for every Black Friday lead this week (switches to English if the person answers in English).
+    george: { windows: [["09:00", "11:00"]], perWindow: 24, lang: "any", forceLang: "es",
+      takes: ["george"], campaign: "Black Friday $499 website redesign (Spanish)" },
+    rebecca: { windows: [["11:00", "13:00"]], perWindow: 24, lang: "en", takes: ["rebecca"], campaign: "Black Friday $499 website redesign" }
   }
 };
 const ymd = (tz) => new Date().toLocaleDateString("en-CA", { timeZone: tz });
@@ -106,12 +101,57 @@ SWANDESK AI: do NOT quote exact prices on the call. Describe it as an affordable
 Never say "fully compliant," "certified," or "lawsuit-proof." Credentials to use naturally: A-rated BBB, 5-star reviews on Google/Yelp/Yahoo, ranked #2 of the top 20 web design companies in California by DesignRush, 2024 RankWatch Best Web Design Agency award.
 Always get a direct email before ending the call, and push to book a short appointment with Tania to lock the $289/year price and get SwanDesk AI pricing. If no email and no interest, give Rachel's number.`;
 
-// Picks the right script for a plan-dialed lead: Sentinel DIY / WSMN tagging on the lead's own campaign field wins
-// (so the batch and day actually queued decide the pitch, not a day-of-week guess in this file); falls back to the
-// older doctor/attorney compliance scripts for any leftover leads still carrying those campaign tags.
+// Black Friday $499 website-redesign promotion -- Jenna and Rebecca (English). Tania, Nov 22: George, Rebecca and
+// Jenna ALL call for this promotion only this week; no ads, no SwanDesk, no compliance-audit funnel. Real offer
+// facts only, taken from the live Black Friday landing page (black-friday/index.html): $499 one-time setup for a
+// redesigned, compliance-ready site (ADA + privacy banners built in, verified complete by a certified web
+// developer), Nov 23-30, 2026, a limited number of spots before it reverts to standard pricing. Hosting/maintenance
+// pricing is confirmed in writing before they agree -- never quote a monthly number on the call. The optional
+// add-ons (logo design $199, language translator $150, AI-powered website $499) are mentioned only if asked or if
+// they show real interest, never recited as a checklist.
+export const BLACK_FRIDAY_TASK_EN = `BLACK FRIDAY $499 WEBSITE REDESIGN PITCH. You call for WebSwan Digital Solutions.
+PACE LIKE A HUMAN, NOT A MONOLOGUE: say ONE short idea, then [PAUSE] and actually wait for them before the next one. Never chain two ideas into one breath. Tone: warm, confident, upbeat -- not soft or apologetic, not rushed; let silence work for you. Say your opening once per call -- if they say "Hello?" after you've started, don't re-greet, just continue.
+1. "Hi there, this is {{agentName}}."
+[PAUSE]
+2. Hook, tied to something real about their business -- if you have findings from the lead's notes ({{findings}}), use the sharpest one (e.g. "I'm calling because when we looked at your website, we noticed it's missing a few things most patients/clients expect to see today, like a clear privacy or accessibility notice"); with nothing usable in the findings, use a general hook about losing people to a competitor with a stronger site. Keep it to one sentence.
+[PAUSE]
+3. Only now name the company: "...I'm with WebSwan Digital Solutions."
+[PAUSE]
+4. THE OFFER, ONE PIECE AT A TIME, FACTUAL ONLY: this week only, Black Friday through November 30th, we're redesigning websites -- built for their business, not a template. [PAUSE] Compliance banners are already built in -- ADA accessibility and privacy. [PAUSE] One-time $499 setup, verified complete by a certified web developer before it goes live. Ongoing hosting, maintenance and security are separate, and the exact monthly amount is always confirmed to them in writing before they agree to anything -- never state a monthly number yourself. [PAUSE] Spots are limited; once they're gone it goes back to standard pricing.
+If they ask about extras: a custom AI logo design is $199, a language translator for the site is $150, and a built-in AI assistant for the site is $499 -- mention these only if asked or if they're clearly interested, never as a checklist, and never all three in one breath.
+Never say "fully compliant," "certified," or "lawsuit-proof" -- say "built in," "verified complete," "designed to help."
+CREDENTIALS, naturally, never recited as a list, never more than one or two in a row: A-rated BBB, 5-star reviews on Google/Yelp/Yahoo, ranked #2 of the top 20 web design companies in California by DesignRush, 2024 RankWatch Best Web Design Agency award, owner has a computer programming background and is a certified front-end web developer.
+5. YOUR FIRST AND MOST IMPORTANT GOAL: get a direct email. Ask plainly once, then [PAUSE] and actually wait. If they hesitate, offer to send them the Black Friday page so they can see it for themselves, then let the silence sit -- don't fill it.
+6. Push to book a short call with Tania to lock their spot before they run out. [PAUSE] If no email and no interest, give Rachel's number (see NUMBER RULE: say it calm and slow in three groups, ask them to repeat it back once, never twice).
+NEVER REPEAT, NEVER PUSH: never ask the same question twice; after you offer Rachel's number, never ask for a day or time again; never invent features, prices, results or findings.
+QUALIFY AS YOU GO (one natural question at a time, never like a form): who decides about the website and their name; whether they're interested in a redesign at all; how soon they'd want it done. Never ask about budget beyond the $499 figure already given.
+Ending: after your last line, wait for them to answer ("goodbye", "thanks", "okay") and THEN end the call -- never hang up while they're still talking.`;
+
+// Same offer, Spanish -- George opens in Spanish, switches to English only if the person answers in English.
+export const BLACK_FRIDAY_TASK_ES = `PROMOCIÓN DE BLACK FRIDAY: REDISEÑO DE SITIO WEB POR $499. Llamas de parte de WebSwan Digital Solutions. ABRE EN ESPAÑOL. Si la persona te responde en inglés, cambia a inglés para el resto de la llamada y quédate en inglés. Si responde en español, quédate en español toda la llamada.
+RITMO HUMANO, NUNCA UN MONÓLOGO: di UNA sola idea corta, luego [PAUSA] y espera de verdad antes de la siguiente. Nunca encadenes dos ideas en una sola respiración. Tono: cálido, seguro, optimista -- ni suave ni apresurado; deja que el silencio trabaje a tu favor. Di tu apertura una sola vez por llamada -- si dicen "¿Hola?" después de que ya empezaste, no vuelvas a saludar, solo continúa.
+1. "Hola, habla George."
+[PAUSA]
+2. Gancho, relacionado con algo real sobre su propio negocio -- si tienes hallazgos en las notas del contacto ({{findings}}), usa el más relevante (ej.: "Le llamo porque al revisar su sitio web notamos que le falta algo que la mayoría de los pacientes/clientes esperan ver hoy en día, como un aviso claro de privacidad o accesibilidad"); sin nada útil en los hallazgos, usa un gancho general sobre perder clientes frente a un competidor con mejor presencia en línea. Una sola frase.
+[PAUSA]
+3. Solo ahora menciona la empresa: "...soy de WebSwan Digital Solutions."
+[PAUSA]
+4. LA OFERTA, UNA PARTE A LA VEZ, SOLO HECHOS: esta semana únicamente, por Black Friday hasta el 30 de noviembre, estamos rediseñando sitios web -- hechos para su negocio, no una plantilla. [PAUSA] Los banners de cumplimiento ya están incluidos -- accesibilidad ADA y privacidad. [PAUSA] $499 de pago único, verificado y completado por un desarrollador web certificado antes de publicarse. El hosting, mantenimiento y seguridad son aparte, y el monto mensual exacto siempre se confirma por escrito antes de que acepten algo -- nunca digas tú mismo un número mensual. [PAUSA] Los cupos son limitados; una vez que se agoten, vuelve al precio normal.
+Si preguntan por extras: un logo con IA cuesta $199, un traductor de idiomas para el sitio cuesta $150, y un asistente de IA integrado al sitio cuesta $499 -- menciona esto solo si preguntan o muestran interés real, nunca como lista, nunca los tres juntos en una sola respiración.
+Nunca digas "totalmente conforme," "certificado," ni "a prueba de demandas" -- di "incluido," "verificado y completado," "diseñado para ayudar."
+CREDENCIALES, de forma natural, nunca como lista, nunca más de una o dos seguidas: calificación A del BBB, reseñas de 5 estrellas en Google/Yelp/Yahoo, #2 entre las 20 mejores empresas de diseño web de California según DesignRush, premio RankWatch 2024 a la Mejor Agencia de Diseño Web, el dueño tiene formación en programación y es desarrollador front-end certificado.
+5. TU OBJETIVO MÁS IMPORTANTE: consigue un correo directo. Pídelo claramente una vez, luego [PAUSA] y espera de verdad. Si duda, ofrece enviarle la página de Black Friday para que la vea por sí mismo, y deja que el silencio se quede -- no lo llenes tú.
+6. Empuja para reservar una breve llamada con Tania y asegurar su cupo antes de que se agoten. [PAUSA] Si no hay correo ni interés, da el número de Rachel (dilo con calma y despacio en tres grupos, pide que lo repita una sola vez, nunca dos).
+NUNCA REPITAS, NUNCA INSISTAS: nunca hagas la misma pregunta dos veces; después de ofrecer el número de Rachel, no vuelvas a pedir día u hora; nunca inventes funciones, precios, resultados o hallazgos.
+Despedida: después de tu última línea, espera su respuesta ("adiós", "gracias", "está bien") y SOLO ENTONCES termina la llamada -- nunca cuelgues mientras siguen hablando.`;
+
+// Picks the right script for a plan-dialed lead: Black Friday tagging on the lead's own campaign field wins
+// (Tania, Nov 22: this is the ONLY campaign George, Rebecca and Jenna read from this week -- no ads, no SwanDesk,
+// no compliance funnel), then falls back to the older tags for any leftover leads still carrying them.
 export function planTaskFor(name, lead, findings) {
   const camp = String(lead.campaign || "");
   const fx = (s) => s.replace(/\{\{findings\}\}/g, String(findings || "none listed").slice(0, 600)).replace(/\{\{agentName\}\}/g, name === "jenna" ? "Jenna" : name === "rebecca" ? "Rebecca" : "George");
+  if (/black friday/i.test(camp)) return fx(name === "george" ? BLACK_FRIDAY_TASK_ES : BLACK_FRIDAY_TASK_EN);
   if (/sentinel diy/i.test(camp)) return fx(name === "george" ? SENTINEL_DIY_TASK_ES : SENTINEL_DIY_TASK_EN);
   if (/wsmn|swandesk/i.test(camp)) return fx(WSMN_SWANDESK_TASK_EN);
   if (name === "jenna") return fx(JENNA_COMPLIANCE_TASK);
