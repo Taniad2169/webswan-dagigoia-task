@@ -931,8 +931,13 @@ window.addEventListener("auth", async (e) => {
   if (!ok) { $("gate").hidden = false; $("app").hidden = true; $("gateMsg").textContent = user ? "This account isn't allowed. Use thewebswann@gmail.com." : ""; return; }
   $("gate").hidden = true; $("app").hidden = false;
   try { const st = await api({ action: "status" }); S = Object.assign(S, st); } catch (err) { toast(err.message); }
-  drawProviders(); drawList(); openAgent(location.hash === "#draft" || pendingDraft ? "eva" : (ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "eva"));
+  const jennaBrief = location.hash === "#jenna-brief";
+  drawProviders(); drawList(); openAgent(location.hash === "#draft" || pendingDraft ? "eva" : (jennaBrief ? "jenna" : (ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "eva")));
   if (location.hash === "#brief") setTimeout(briefPicker, 300);
+  // Tania, Nov 22: SDR Outbound button in Voice Studio links here with #jenna-brief -- open Jenna and ask
+  // right away for her own-calls briefing (who to call back first), the same shape of report Kobe gives for
+  // Monica/George/Rebecca/Alek, but scoped to Jenna's own line. This does not touch Kobe's trainer role.
+  if (jennaBrief) setTimeout(() => ask("Give me my SDR Outbound briefing: how many calls I made today, who talked and should be called back first, who asked for a callback or showed interest, any pattern across my calls worth fixing, and the one script line to change if there is one. Use only my real call data -- say plainly if there's none yet."), 600);
   notifInit();
 });
 
