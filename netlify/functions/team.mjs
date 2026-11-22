@@ -973,8 +973,9 @@ if (!b.roleplay && !b.rpEnd && !meeting) { try { outText = (await runActions(age
       if (!html && !text) {
         const s = await getSettings();
         const ask = `Write the email for Tania's Gmail Drafts. Recipient: ${to}. Practice: ${clean(b.practice, 200)}. Website: ${clean(b.website, 300)}. State: ${clean(b.state, 40)}. Contact name if known: ${clean(b.contact, 120)}.
-Key audit findings: ${clean(b.findings, 3000)}
-The audit report PDF is attached. Keep it under 170 words, warm and professional, mention 2 or 3 findings in plain words, invite them to book a 10-minute audit review appointment with Tania (call ${s.compliancePhone || "(316) 248-6839"} or reply to this email). Sign as Tania, WebSwan Digital Solutions. Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
+Key audit findings (inspect all of these before you write a word -- do not just list them):
+${clean(b.findings, 3000)}
+Pick the ONE finding here that would actually make this specific practice sit up and pay attention -- not the first one on the list, the sharpest one for them -- and build the email's opening line around it. Goal: a reply, not just a read. Keep it under 170 words, in 3 short paragraphs (the hook from that one finding, why it matters to a practice like theirs in plain language, then the ask), warm but direct, no filler. Invite them to book a 10-minute audit review appointment with Tania (call ${s.compliancePhone || "(316) 248-6839"} or reply to this email). The audit report PDF is attached -- mention it exists, don't summarize every finding in the email itself. Sign as Tania, WebSwan Digital Solutions. Reply with JSON only: {"subject": "...", "body": "plain text body"}`;
         const ans = await askAI(b.provider || brainFor(s, "eva"), AGENTS.eva.system, [{ role: "user", content: ask }], 900);
         const m = ans.text.match(/\{[\s\S]*\}/); let j = {}; try { j = JSON.parse(m ? m[0] : ans.text); } catch {}
         subject = clean(j.subject || "Your website audit report", 200);
