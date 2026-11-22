@@ -937,7 +937,7 @@ window.addEventListener("auth", async (e) => {
   // Tania, Nov 22: SDR Outbound button in Voice Studio links here with #jenna-brief -- open Jenna and ask
   // right away for her own-calls briefing (who to call back first), the same shape of report Kobe gives for
   // Monica/George/Rebecca/Alek, but scoped to Jenna's own line. This does not touch Kobe's trainer role.
-  if (jennaBrief) setTimeout(() => ask("Give me my SDR Outbound briefing: how many calls I made today, who talked and should be called back first, who asked for a callback or showed interest, any pattern across my calls worth fixing, and the one script line to change if there is one. Use only my real call data -- say plainly if there's none yet."), 600);
+  if (jennaBrief) setTimeout(() => ask("Give me my SDR Outbound briefing: how many calls I made today, what I did wrong on any of them and the exact correction (my real line, then the better line), my best calls and what made them work, and who should be called back first -- ranked, with why for each one. Use only my real call data -- say plainly if there's none yet."), 600);
   notifInit();
 });
 
