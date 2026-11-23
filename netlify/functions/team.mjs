@@ -225,7 +225,11 @@ export default async (req) => {
     const snap = (await st.get("wp-snapshot", { type: "json" })) || { leads: [], manual: [] };
     const allLeads = [...(snap.manual || []), ...(snap.leads || [])];
     const digits = (v) => String(v || "").replace(/\D/g, "").slice(-10);
-    const item = { id: "sq" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind, at: new Date().toISOString(), status: "pending", by: "sebastien" };
+    const by = f.__by === "eva" ? "eva" : "sebastien";
+    // Tania, Nov 23: Eva earned ONE narrow slice of this (CRM-hygiene flags, see team.mjs job 15) -- comment only,
+    // never create/assign/push. The regex gate below already keeps her out of those, this is the second check.
+    if (by === "eva" && kind !== "comment") return { error: "Eva can only flag a note on an existing lead, not " + kind + " one." };
+    const item = { id: "sq" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind, at: new Date().toISOString(), status: "pending", by };
     if (kind === "create") {
       const name = clean(f.name, 160).trim(), phone = clean(f.phone, 40).trim(), email = clean(f.email, 160).trim();
       if (!name && !phone && !email) return { error: "A new lead needs at least a name, phone, or email." };
@@ -689,7 +693,8 @@ Never invent a source that is not in the research above. If the research above c
       // Eva (Tania, Nov 19): full read access to EVERY WorkPilot lead (not just her own silver "Ready for Eva"
       // queue) and to real Cartesia call transcripts across every phone agent -- see the calls block right below
       // -- so Tania can ask Eva about any lead or call instead of going to a different agent for leads vs. calls.
-      // Read-only: Eva has no LEAD directive handling (that stays Sebastien's job), so she never queues a WorkPilot write herself.
+      // Read-only otherwise: as of Nov 23 she has exactly one exception, ((LEAD COMMENT: ...)) for CRM-hygiene
+      // flags only (team.mjs job 15) -- never create, assign or push a lead, that stays Sebastien's job.
       if (agent === "eva" && !b.roleplay && !b.voice && /\b(lead|leads|workpilot|work pilot|prospect|pipeline|follow[- ]?up|phone number|contact|practice|client|customer|opportunit\w*|pending|audit status)\b/i.test(text)) {
         try {
           const lb = await within(leadsBrief(22000), 8000, "WorkPilot leads");
@@ -889,12 +894,20 @@ Never invent a source that is not in the research above. If the research above c
       // Queued via the SAME validated helper as the direct action -- never a second, looser code path for chat.
       // WorkPilot applies these on its own signed-in session the next time it is open or polling; Sebastien never
       // touches Firestore directly and never invents a lead id that didn't come from the WorkPilot context above.
-      if (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) {
-        const matches = [...outText.matchAll(/\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi)]; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
+      // Eva, Nov 23 (team.mjs job 15): the SAME ((LEAD COMMENT: ...)) directive, but only that one kind -- CRM-hygiene
+      // flags only, never create/assign/push. Enforced twice: the regex below only even looks for it from her when
+      // it's the COMMENT form, and queueSebastienAction itself rejects any other kind tagged by="eva".
+      if (
+        (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) ||
+        (agent === "eva" && /\(\(\s*LEAD\s+COMMENT\s*:/i.test(outText))
+      ) {
+        const tagPattern = agent === "eva" ? /\(\(\s*LEAD\s+(COMMENT)\s*:\s*([\s\S]*?)\)\)/gi : /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
+        const matches = [...outText.matchAll(tagPattern)];
         for (const m of matches.slice(0, 5)) {
           const kind = m[1].toLowerCase();
           const f = {};
           m[2].split("|").forEach((pair) => { const i = pair.indexOf("="); if (i > -1) f[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim(); });
+          if (agent === "eva") f.__by = "eva";
           let note;
           try {
             const r = await queueSebastienAction(kind, f);
