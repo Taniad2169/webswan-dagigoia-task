@@ -399,6 +399,23 @@ export default async (req) => {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
       return reply(200, { notes: ((await getArchive())[agent] || []).slice().reverse() }, origin);
     }
+    // Tania, Nov 23: edit a live note in place (same id, same spot in the list) instead of remove-then-add.
+    // The correction re-syncs to the live phone script right away. The ORIGINAL wording stays untouched in
+    // Full history (it really happened), and the corrected wording is archived too, as its own dated entry --
+    // history isn't rewritten, it just gains a line.
+    if (b.action === "brain_edit") {
+      if (!agent) return reply(400, { error: "Unknown agent." }, origin);
+      const note = clean(b.note, 1200).replace(/\s*\n\s*/g, " ").trim();
+      if (note.length < 4) return reply(400, { error: "The note is empty." }, origin);
+      const all = await getNotes(); let list = all[agent] || [];
+      const i = list.findIndex((n) => n.id === b.id);
+      if (i < 0) return reply(400, { error: "That note isn't live anymore -- it may already be in Full history only." }, origin);
+      list[i] = { ...list[i], note, at: new Date().toISOString() };
+      all[agent] = list; await teamStore().setJSON("brain-notes", all);
+      try { const arc = await getArchive(); arc[agent] = (arc[agent] || []).concat([{ id: Date.now().toString(36), note, at: new Date().toISOString(), editedFrom: b.id }]).slice(-2000); await teamStore().setJSON("brain-notes-archive", arc); } catch (e) {}
+      const live = await syncPhone(agent, list);
+      return reply(200, { notes: list, phone: PHONE.includes(agent), live }, origin);
+    }
     if (b.action === "brain_add" || b.action === "brain_remove") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
       const all = await getNotes(); let list = all[agent] || [];
