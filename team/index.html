@@ -1150,10 +1150,23 @@ async function brainVoice(targets, said) {
 }
 async function brainPanel(k) {
   $("extra").innerHTML = '<div class="card"><p class="hint">Loading…</p></div>';
+  let showArc = false, arcNotes = null;
   const draw = (r) => {
-    $("extra").innerHTML = `<div class="card" style="padding:12px;border:1px solid #c9dcef;border-radius:12px;margin:8px 0"><b>🧠 ${esc(aName(k))}'s brain notes</b><p class="hint" style="margin:4px 0 8px">${r.phone ? "These are added to the live phone script, so every real call uses them." : "These are added to every conversation with " + esc(first(k)) + "."}</p>${(r.notes || []).map((n) => `<div style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><span style="flex:1">${esc(n.note)}</span><button class="btn" data-rm="${esc(n.id)}">Remove</button></div>`).join("") || '<p class="hint">No notes yet.</p>'}<textarea id="bnNew" rows="2" placeholder="Type a new rule, e.g. When they ask the price, say…" style="width:100%;margin-top:6px;border:1px solid #c9dcef;border-radius:10px;padding:8px;font:inherit"></textarea><button class="btn pri" id="bnAdd" style="margin-top:6px">Add to brain</button></div>`;
-    $("bnAdd").onclick = async () => { const note = $("bnNew").value.trim(); if (!note) return; try { const x = await api({ action: "brain_add", agent: k, note }); draw(x); toast(x.phone && !x.live.updated ? "Saved. Live script not updated: " + (x.live.errors[0] || "agent not linked") : "Added to " + first(k) + "'s brain."); } catch (e) { toast(e.message); } };
-    $("extra").querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => { if (!confirm("Remove this note from " + first(k) + "'s brain?")) return; try { draw(await api({ action: "brain_remove", agent: k, id: b.dataset.rm })); } catch (e) { toast(e.message); } });
+    $("extra").innerHTML = `<div class="card" style="padding:12px;border:1px solid #c9dcef;border-radius:12px;margin:8px 0"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1">🧠 ${esc(aName(k))}'s brain notes</b><button class="btn" id="bnArc" style="padding:5px 10px;font-size:12px">${showArc ? "← Back" : "📜 Full history"}</button></div><p class="hint" style="margin:4px 0 8px">${showArc ? "Every note ever approved for " + esc(first(k)) + ", even ones that have since aged off her live list below. This never gets trimmed and never touches her phone script's character limit -- it's just for your and Kobe's reference." : (r.phone ? "These are added to the live phone script, so every real call uses them. The most recent 40 stay live; everything ever approved is kept in Full history →" : "These are added to every conversation with " + esc(first(k)) + ".")}</p>`
+      + (showArc
+        ? ((arcNotes || []).length ? `<div style="max-height:320px;overflow:auto">${arcNotes.map((n) => `<div style="padding:5px 0;border-top:1px solid #eef4fa"><span style="font-size:13px">${esc(n.note)}</span><br><span class="hint">${esc(new Date(n.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span></div>`).join("")}</div>` : '<p class="hint">No history yet.</p>')
+        : ((r.notes || []).map((n) => `<div style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><span style="flex:1">${esc(n.note)}</span><button class="btn" data-rm="${esc(n.id)}">Remove</button></div>`).join("") || '<p class="hint">No notes yet.</p>')
+          + '<textarea id="bnNew" rows="2" placeholder="Type a new rule, e.g. When they ask the price, say…" style="width:100%;margin-top:6px;border:1px solid #c9dcef;border-radius:10px;padding:8px;font:inherit"></textarea><button class="btn pri" id="bnAdd" style="margin-top:6px">Add to brain</button>')
+      + `</div>`;
+    $("bnArc").onclick = async () => {
+      showArc = !showArc;
+      if (showArc && arcNotes === null) { try { arcNotes = (await api({ action: "brain_archive_list", agent: k })).notes || []; } catch (e) { arcNotes = []; toast(e.message); } }
+      draw(r);
+    };
+    if (!showArc) {
+      $("bnAdd").onclick = async () => { const note = $("bnNew").value.trim(); if (!note) return; try { const x = await api({ action: "brain_add", agent: k, note }); arcNotes = null; draw(x); toast(x.phone && !x.live.updated ? "Saved. Live script not updated: " + (x.live.errors[0] || "agent not linked") : "Added to " + first(k) + "'s brain."); } catch (e) { toast(e.message); } };
+      $("extra").querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => { if (!confirm("Remove this note from " + first(k) + "'s live brain? (It stays in Full history.)")) return; try { draw(await api({ action: "brain_remove", agent: k, id: b.dataset.rm })); } catch (e) { toast(e.message); } });
+    }
   };
   try { draw(await api({ action: "brain_list", agent: k })); } catch (e) { $("extra").innerHTML = ""; toast(e.message); }
 }

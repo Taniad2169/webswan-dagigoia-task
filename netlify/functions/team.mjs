@@ -47,6 +47,12 @@ async function phoneIds(name) {
 const instrOf = (a) => String(((a && (a.config || (a.agent && a.agent.config))) || {}).instructions || "");
 async function liveScript(name) { const [id] = await phoneIds(name); if (!id) return ""; return instrOf(await cart("GET", "/v1/agents/" + encodeURIComponent(id))); }
 async function getNotes() { return (await teamStore().get("brain-notes", { type: "json" })) || {}; }
+// Tania, Nov 23: "brain-notes" above is the LIVE set -- capped at 40 per agent so it never blows Cartesia's
+// 30,000-character instructions limit, and only this capped set is ever written into a live phone script.
+// Past 40, the oldest note used to just fall off the end and be gone for good. This second store is the
+// permanent one: every note ever approved, kept here forever (well past any real agent's lifetime), never
+// synced to Cartesia, never costing a single live character. Brain Room's "full history" view reads this.
+async function getArchive() { return (await teamStore().get("brain-notes-archive", { type: "json" })) || {}; }
 async function syncPhone(name, notes) {
   if (!PHONE.includes(name) || !process.env.CARTESIA_API_KEY) return { updated: 0, errors: [] };
   const block = notes.length ? NOTES_START + "\n" + notes.map((n) => "- " + n.note).join("\n") + "\n" + NOTES_END : "";
@@ -389,13 +395,21 @@ export default async (req) => {
       const ans = await askAI(brainFor(s, agent), AGENTS[agent].system, [{ role: "user", content: ask }], 400);
       return reply(200, { note: clean(ans.text, 1200).replace(/^[-*•\s]+/gm, "").trim() }, origin);
     }
+    if (b.action === "brain_archive_list") {
+      if (!agent) return reply(400, { error: "Unknown agent." }, origin);
+      return reply(200, { notes: ((await getArchive())[agent] || []).slice().reverse() }, origin);
+    }
     if (b.action === "brain_add" || b.action === "brain_remove") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
       const all = await getNotes(); let list = all[agent] || [];
       if (b.action === "brain_add") {
         const note = clean(b.note, 1200).replace(/\s*\n\s*/g, " ").trim();
         if (note.length < 4) return reply(400, { error: "The note is empty." }, origin);
-        list = list.concat([{ id: Date.now().toString(36), note, at: new Date().toISOString() }]).slice(-40);
+        const entry = { id: Date.now().toString(36), note, at: new Date().toISOString() };
+        list = list.concat([entry]).slice(-40);
+        // Archive every approved note, uncapped by Cartesia's limit -- this is "she just remembers", forever,
+        // whether or not it stays in the live 40 that actually get written into her phone script.
+        try { const arc = await getArchive(); arc[agent] = (arc[agent] || []).concat([entry]).slice(-2000); await teamStore().setJSON("brain-notes-archive", arc); } catch (e) {}
       } else list = list.filter((n) => n.id !== b.id);
       all[agent] = list; await teamStore().setJSON("brain-notes", all);
       const live = await syncPhone(agent, list);
