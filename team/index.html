@@ -23,7 +23,8 @@
   .brand b { font-size: 17px; } .brand small { color: var(--muted); display: block; }
   .brand .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--blue); color: #fff; display: grid; place-items: center; font-weight: 800; }
   .list { overflow-y: auto; flex: 1; padding: 8px; }
-  .agent { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; font: inherit; color: inherit; }
+  .agent { display: grid; grid-template-columns: 20px 58px 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; font: inherit; color: inherit; }
+  .agent .gpick { width: 17px; height: 17px; cursor: pointer; }
   .agent:hover, .agent.on { background: #eef4fb; }
   .agent img { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; }
   .agent .role { font-weight: 800; font-size: 17px; letter-spacing: .2px; }
@@ -289,15 +290,28 @@ const timeOf = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numer
 function when(iso) { if (!iso) return ""; const d = new Date(iso); return d.toDateString() === new Date().toDateString() ? timeOf(iso) : d.toLocaleDateString("en-US", { day: "2-digit", month: "short" }); }
 
 function drawList() {
-  $("list").innerHTML = ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k], l = S.last[k];
-    return `<button class="agent ${k === cur ? "on" : ""}" data-a="${k}"><img src="${esc(a.photo)}" alt=""><div><div class="role">${esc(a.role)}</div><div class="prev">${esc(a.name)}: ${esc(l ? l.text.replace(/[#*]/g, "") : "Ready when you are")}</div></div><div class="when">${esc(l ? when(l.at) : "")}</div></button>`; }).join("");
+  const gn = ORDER.filter((k) => GSEL[k]).length;
+  const bar = `<div class="gbar" style="display:flex;gap:6px;align-items:center;padding:6px 10px 8px;font-size:12.5px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;flex:1;margin:0"><input type="checkbox" id="gAll"> Select all</label><button class="btn pri" id="gSend" style="padding:5px 10px" ${gn ? "" : "disabled"}>✉️ Message selected${gn ? " (" + gn + ")" : ""}</button></div>`;
+  $("list").innerHTML = bar + ORDER.map((k) => { const a = (S.agents || FALLBACK)[k] || FALLBACK[k], l = S.last[k];
+    return `<button class="agent ${k === cur ? "on" : ""}" data-a="${k}"><input type="checkbox" class="gpick" data-g="${k}" ${GSEL[k] ? "checked" : ""} aria-label="Select ${esc(a.name)} for a group message" onclick="event.stopPropagation()"><img src="${esc(a.photo)}" alt=""><div><div class="role">${esc(a.role)}</div><div class="prev">${esc(a.name)}: ${esc(l ? l.text.replace(/[#*]/g, "") : "Ready when you are")}</div></div><div class="when">${esc(l ? when(l.at) : "")}</div></button>`; }).join("");
   document.querySelectorAll("[data-a]").forEach((b) => b.onclick = () => openAgent(b.dataset.a));
+  document.querySelectorAll("[data-g]").forEach((c) => c.onchange = () => { if (c.checked) GSEL[c.dataset.g] = 1; else delete GSEL[c.dataset.g]; drawList(); });
+  $("gAll").checked = ORDER.length > 0 && ORDER.every((k) => GSEL[k]);
+  $("gAll").onchange = () => { ORDER.forEach((k) => { if ($("gAll").checked) GSEL[k] = 1; else delete GSEL[k]; }); drawList(); };
+  $("gSend").onclick = async () => {
+    const ids = ORDER.filter((k) => GSEL[k]); if (!ids.length) return;
+    const names = ids.map((k) => (((S.agents || FALLBACK)[k]) || FALLBACK[k]).name).join(", ");
+    const text = prompt(`One message, sent to all ${ids.length}: ${names}`, "");
+    if (text === null || !text.trim()) return;
+    await askGroup(ids, text.trim());
+  };
 }
 function drawProviders() {
   $("prov").innerHTML = Object.entries(S.providers).map(([k, v]) => `<option value="${k}" ${k === ((S.settings.brains || {})[cur] || S.settings.provider) ? "selected" : ""} ${S.ready[k] === false ? "disabled" : ""}>${esc(v)}${S.ready[k] === false ? " (not connected)" : ""}</option>`).join("");
 }
 let openDays = {}, findQ = "";
 let SEL = {}; // messages ticked for deleting (by id)
+let GSEL = {}; // agent ids ticked for a group message (Tania, Nov 23 -- type it once, send to everyone ticked)
 function drawMsgs() {
   const today = dayKey(new Date().toISOString()), q = findQ.toLowerCase();
   const list = q ? msgs.filter((m) => (String(m.text || "") + " " + dayKey(m.at) + " " + (m.role === "user" ? "you" : "")).toLowerCase().includes(q)) : msgs;
@@ -405,6 +419,23 @@ async function ask(text) {
     if (who === "jimmy" && /On it!/.test(r.messages[1].text)) { const vid = /video/.test(r.messages[1].text); setTimeout(() => cur === "jimmy" && openAgent("jimmy"), vid ? 180000 : 60000); if (vid) setTimeout(() => cur === "jimmy" && openAgent("jimmy"), 360000); } }
   catch (e) { if (cur === who) msgs = msgs.filter((m) => m.id !== "tmp2"); toast(e.message); }
   $("send").disabled = false; drawMsgs(); drawList();
+}
+// Group message (Tania, Nov 23): tick who it's for in the roster, type it once, it goes to each one's OWN
+// conversation (same as asking them one at a time by hand) -- they still don't talk to each other on their own.
+async function askGroup(ids, text) {
+  if (!ids.length || !text) return;
+  toast(`Sending to ${ids.length} agent${ids.length > 1 ? "s" : ""}…`);
+  let ok = 0;
+  for (const k of ids) {
+    try {
+      const r = await api({ action: "chat", agent: k, text, provider: (S.settings.brains || {})[k] || S.settings.provider });
+      S.last[k] = { at: r.messages[1].at, text: r.messages[1].text.slice(0, 140) };
+      if (cur === k) { msgs = r.messages; drawMsgs(); }
+      ok++;
+    } catch (e) { toast(`${(((S.agents || FALLBACK)[k]) || FALLBACK[k]).name}: ${e.message}`); }
+  }
+  GSEL = {}; drawList();
+  toast(`Sent to ${ok} of ${ids.length} agent${ids.length > 1 ? "s" : ""}.`);
 }
 async function run(job) { try { await api({ action: "run", job }); toast("Started. It shows up here in a minute or two; refresh this chat then."); setTimeout(() => openAgent(cur), 90000); } catch (e) { toast(e.message); } }
 function lindaPanel() {
