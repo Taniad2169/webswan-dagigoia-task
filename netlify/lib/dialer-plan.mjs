@@ -145,11 +145,18 @@ CREDENCIALES, de forma natural, nunca como lista, nunca más de una o dos seguid
 NUNCA REPITAS, NUNCA INSISTAS: nunca hagas la misma pregunta dos veces; después de ofrecer el número de Rachel, no vuelvas a pedir día u hora; nunca inventes funciones, precios, resultados o hallazgos.
 Despedida: después de tu última línea, espera su respuesta ("adiós", "gracias", "está bien") y SOLO ENTONCES termina la llamada -- nunca cuelgues mientras siguen hablando.`;
 
-// Picks the right script for a plan-dialed lead: Black Friday tagging on the lead's own campaign field wins
-// (Tania, Nov 22: this is the ONLY campaign George, Rebecca and Jenna read from this week -- no ads, no SwanDesk,
-// no compliance funnel), then falls back to the older tags for any leftover leads still carrying them.
+// Picks the right script for a plan-dialed lead. Tania, Nov 23 (fix): while DIALER_PLAN is active, the agent's OWN
+// configured campaign (DIALER_PLAN.agents[name].campaign -- "this is the ONLY campaign George, Rebecca and Jenna
+// read from this week") is the source of truth, never the individual lead's own campaign tag. Before this fix it
+// checked the LEAD's campaign field first: any lead loaded into this week's batch without "black friday" literally
+// stamped on its own record (a plain WorkPilot push, an older tag, no tag at all) silently fell through to Jenna's
+// and George's compliance script, or -- for Rebecca, who has no fallback case here at all -- to "" and then her own
+// stored advertising script, which is exactly the "compliance and advertising instead of the promotion" bug Tania
+// flagged. Now the plan's own campaign wins outright whenever it's set, so every lead a plan-active agent dials
+// this week reads the one campaign Tania actually configured, with no dependence on how that lead was tagged.
 export function planTaskFor(name, lead, findings) {
-  const camp = String(lead.campaign || "");
+  const planCamp = planActive() && DIALER_PLAN.agents[name] && DIALER_PLAN.agents[name].campaign;
+  const camp = String(planCamp || lead.campaign || "");
   const fx = (s) => s.replace(/\{\{findings\}\}/g, String(findings || "none listed").slice(0, 600)).replace(/\{\{agentName\}\}/g, name === "jenna" ? "Jenna" : name === "rebecca" ? "Rebecca" : "George");
   if (/black friday/i.test(camp)) return fx(name === "george" ? BLACK_FRIDAY_TASK_ES : BLACK_FRIDAY_TASK_EN);
   if (/sentinel diy/i.test(camp)) return fx(name === "george" ? SENTINEL_DIY_TASK_ES : SENTINEL_DIY_TASK_EN);
