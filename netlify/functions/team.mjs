@@ -293,6 +293,7 @@ export default async (req) => {
       if (b.provider && PROVIDERS[b.provider]) { if (AGENTS[b.agent]) s.brains[b.agent] = b.provider; else s.provider = b.provider; }
       for (const k of ["compliancePhone", "advertisingPhone"]) if (typeof b[k] === "string") s[k] = clean(b[k], 30).trim();
       if (Array.isArray(b.competitors)) s.competitors = b.competitors.map((x) => clean(x, 120).trim()).filter(Boolean).slice(0, 3);
+      if (Array.isArray(b.bestClients)) s.bestClients = b.bestClients.map((x) => clean(x, 120).trim()).filter(Boolean).slice(0, 4);
       await teamStore().setJSON("settings", s);
       return reply(200, { settings: s }, origin);
     }
