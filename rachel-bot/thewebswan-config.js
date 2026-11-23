@@ -42,7 +42,11 @@
       { k: ['media network', 'wsmn', 'advertis', 'directory'], a: '<b>WebSwan Media Network</b> is our online advertising platform for <b>doctors and attorneys</b>. Learn more at <a href="https://ads.webswanmedianetwork.com/">ads.webswanmedianetwork.com</a>.' },
       { k: ['monthly', 'finance', 'installment'], a: 'Yes! Monthly payment options are available for websites, landing pages and phone apps. Custom work outside a package is quoted separately.' },
       { k: ['no website', 'don\'t have a website', 'dont have a website', 'need a website', 'cheap website', 'low cost', 'keep cost low', 'keep costs low', 'tight budget', 'low budget', 'can\'t afford', 'cant afford', 'outdated website', 'old site', 'redesign'], a: 'If you don\'t have a website yet, or yours is outdated and you\'ve been thinking about a redesign, and you want to keep your cost low, we have an <b>$899 package</b> we can discuss with you. Call <b>Sebastien McIntosh</b> and ask him how it works, or fill out the form on the banner above and we\'ll get back to you. Our goal is to give you professional visibility: ' + SEB + '.' },
-      { k: ['hi', 'hello', 'hey', 'good morning', 'good evening'], a: 'Hi there! 👋 What can I help you with: websites, pricing, phone apps, SEO or our AI receptionist?' }
+      { k: ['hi', 'hello', 'hey', 'good morning', 'good evening'], a: 'Hi there! 👋 What can I help you with: websites, pricing, phone apps, SEO or our AI receptionist?' },
+      { k: ['how are you', 'how r u', 'hows it going', 'how\'s it going', 'how are u', 'how you doing', 'how have you been', 'what\'s up', 'whats up'], a: 'I’m doing great, thank you for asking! 😊 How can I help — websites, pricing, phone apps, SEO or our AI receptionist?' },
+      { k: ['thank you', 'thanks', 'appreciate it'], a: 'You’re so welcome! 😊 Anything else I can help with?' },
+      { k: ['not ready', 'maybe later', 'catch up later', 'talk later', 'come back later', 'just looking', 'just browsing', 'no thanks for now'], a: 'That’s totally fine! 😊 I’ll be right here whenever you’re ready — take your time.' },
+      { k: ['bye', 'goodbye', 'see you', 'see ya', 'take care', 'gotta go', 'got to go'], a: 'Take care! 👋 Come back anytime — I’m here 24/7.' }
     ]
   };
 })();

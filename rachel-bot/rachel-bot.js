@@ -3,13 +3,19 @@
  * Built by The WebSwan (Tania Domingue). Runs fully in the visitor's browser:
  * no AI service, no API key, nothing typed is sent anywhere.
  * VOICE INPUT (Tania, Nov 23 -- both sides talking, free/native, not a vendor integration):
- * tapping the mic uses the browser's own built-in speech recognition (the same browser-level
- * service already behind the text-to-speech voice below) to turn what a visitor SAYS into the
- * question, same as typing it would. Chrome/Edge/Safari support it; Firefox and some mobile
+ * the mic listens the whole time the chat is open (no tap needed) using the browser's own
+ * built-in speech recognition -- the same browser-level service already behind the
+ * text-to-speech voice below. The moment the visitor starts talking, even while Rachel is
+ * mid-sentence, her voice cuts off right away so they can talk over her, same as a real
+ * conversation. The mic button itself just mutes/unmutes that always-on listening; tapping
+ * it isn't required to talk. Chrome/Edge/Safari support this; Firefox and some mobile
  * browsers don't -- the mic button simply doesn't appear there (same graceful-degrade pattern
- * already used for text-to-speech). This is not ElevenLabs or Cartesia: a real vendor voice
- * (nicer TTS, more accurate STT) would need a server-side proxy and a per-minute cost, which
- * breaks the "nothing sent anywhere, no API key" promise this widget is built on.
+ * already used for text-to-speech), and the browser's own permission prompt still applies.
+ * This is not ElevenLabs or Cartesia: a real vendor voice (nicer TTS, more accurate STT) would
+ * need a server-side proxy and a per-minute cost, which breaks the "nothing sent anywhere, no
+ * API key" promise this widget is built on. Honest limitation: without the visitor wearing
+ * headphones, the mic can pick up some of Rachel's own voice through their speakers for a
+ * beat before it cuts off -- normal for any browser-based (non-telephony) voice widget.
  *
  * Install: set window.RACHEL_CONFIG = {...} then load this file.
  *   brand, subtitle, image, color, greeting, quick:[...], kb:[{k:[keywords], a:'html answer'}],
@@ -124,32 +130,45 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   }
   function stopVoice() { if (canSpeak) synth.cancel(); if (curBtn) mark(curBtn, false); curBtn = null; talking(false); }
 
-  /* ---------- voice INPUT: visitor speaks instead of types (browser-native, tap-to-talk) ---------- */
-  var recog = null, listening = false, micPlaceholder = 'Type your question here…';
-  function setListening(on) {
-    listening = on; var b = panel && panel.querySelector('.rbt-mic'); if (!b) return;
-    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
-    b.setAttribute('aria-label', on ? 'Stop listening' : 'Speak your question');
-    input.placeholder = on ? 'Listening… speak now' : micPlaceholder;
+  /* ---------- voice INPUT: visitor can talk any time, even over her -- always-on while the chat is open ---------- */
+  var recog = null, listening = false, manualMicStop = false, micPlaceholder = 'Type your question here…';
+  var micOn = canListen;
+  try { if (localStorage.getItem('rbt_mic') === 'off') micOn = false; } catch (e) {}
+  function setListening(on) { listening = on; var b = panel && panel.querySelector('.rbt-mic'); if (b) b.classList.toggle('on', on && micOn); }
+  function paintMic() {
+    var b = panel && panel.querySelector('.rbt-mic'); if (!b) return;
+    b.setAttribute('aria-pressed', String(micOn));
+    b.setAttribute('aria-label', micOn ? 'Mute microphone' : 'Turn microphone on');
+    b.style.opacity = micOn ? '1' : '.45';
+    input.placeholder = micOn && listening ? 'Listening… just start talking' : micPlaceholder;
   }
   function startListening() {
-    if (!canListen || listening) return;
-    stopVoice(); // don't let Rachel talk over the visitor while she's listening
+    if (!canListen || !micOn || listening) return;
+    manualMicStop = false;
     try {
       recog = new SR();
-      recog.lang = 'en-US'; recog.interimResults = false; recog.maxAlternatives = 1;
-      recog.onstart = function () { setListening(true); };
+      recog.lang = 'en-US'; recog.continuous = true; recog.interimResults = true; recog.maxAlternatives = 1;
+      recog.onstart = function () { setListening(true); paintMic(); };
       recog.onresult = function (e) {
-        var text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
-        setListening(false);
-        if (text) ask(text);
+        // the instant any speech comes in, let the visitor talk OVER Rachel -- cut her voice right away
+        if (synth && synth.speaking) stopVoice();
+        var r = e.results[e.results.length - 1];
+        if (r && r.isFinal) { var text = ((r[0] && r[0].transcript) || '').trim(); if (text) ask(text); }
       };
-      recog.onerror = function () { setListening(false); };
-      recog.onend = function () { setListening(false); };
+      recog.onerror = function (e) {
+        setListening(false);
+        if (e && e.error === 'not-allowed') { micOn = false; try { localStorage.setItem('rbt_mic', 'off'); } catch (e2) {} }
+        paintMic();
+      };
+      recog.onend = function () {
+        setListening(false); paintMic();
+        // browsers auto-stop a continuous session after a while of silence -- keep the conversation open
+        if (micOn && !manualMicStop && panel && !panel.hidden) setTimeout(startListening, 250);
+      };
       recog.start();
-    } catch (e) { setListening(false); }
+    } catch (e) { setListening(false); paintMic(); }
   }
-  function stopListening() { if (recog) { try { recog.stop(); } catch (e) {} } setListening(false); }
+  function stopListening() { manualMicStop = true; if (recog) { try { recog.stop(); } catch (e) {} } setListening(false); }
 
   /* ---------- knowledge ---------- */
   var KB = C.kb || [];
@@ -183,7 +202,14 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   paintVoice();
   vbtn.addEventListener('click', function () { voiceOn = !voiceOn; try { localStorage.setItem('rbt_voice', voiceOn ? 'on' : 'off'); } catch (e) {} if (!voiceOn) stopVoice(); paintVoice(); });
   var micBtn = panel.querySelector('.rbt-mic');
-  if (micBtn) micBtn.addEventListener('click', function () { listening ? stopListening() : startListening(); });
+  if (micBtn) {
+    micBtn.addEventListener('click', function () {
+      micOn = !micOn; try { localStorage.setItem('rbt_mic', micOn ? 'on' : 'off'); } catch (e) {}
+      if (micOn) startListening(); else stopListening();
+      paintMic();
+    });
+    paintMic();
+  }
 
   function add(html, me) {
     var d = document.createElement('div'); d.className = 'rbt-msg' + (me ? ' me' : '');
@@ -280,6 +306,7 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
       add(C.greeting || ('Hi, I’m Rachel with ' + BRAND + '. 👋 How can I help you today?'));
     }
     setTimeout(function () { input.focus(); }, 60);
+    if (canListen && micOn) startListening(); // hands-free from the moment she opens, no tap needed
   }
   function close() { stopVoice(); stopListening(); panel.hidden = true; launch.setAttribute('aria-expanded', 'false'); if (lastFocus && lastFocus.focus) lastFocus.focus(); else launch.focus(); }
   launch.addEventListener('click', function () { panel.hidden ? open() : close(); });
