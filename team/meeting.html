@@ -111,27 +111,43 @@ const TEAM = [
   { k: "jenna", n: "Jenna", r: "Market intelligence", male: false, img: "img/jenna.jpg" }
 ];
 const NAME = (k) => (TEAM.find((t) => t.k === k) || { n: k }).n;
-const S = { in: new Set(), mode: new Map(), talkTo: "all", log: [], busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
+const S = { in: new Set(), mode: new Map(), talkTo: "all", log: [], day: "", busy: false, gen: 0, speaking: "", audio: null, rec: null, listening: false, doneAt: 0 };
+// Tania, Nov 23: this page's meeting log is a plain in-memory variable with no day boundary of its
+// own -- if the tab is left open overnight, today's meeting quietly inherits yesterday's whole
+// transcript (sent to every agent as "the meeting so far"), which is why someone referenced names
+// and topics from a meeting that was actually held the day before. Check the calendar day on every
+// turn and start a clean log the moment it changes, so "today's meeting" always actually means today.
+function checkNewDay() {
+  const td = new Date().toLocaleDateString("en-CA");
+  if (S.day && S.day !== td) {
+    S.log = [];
+    $("log").innerHTML = "<p class=\"hint\">New day — yesterday's meeting log was cleared automatically. Nothing said yet today.</p>";
+  }
+  S.day = td;
+}
 try { $("free").checked = localStorage.getItem("wsMeetVoice") === "on"; } catch (e) {}
 $("free").onchange = () => { try { localStorage.setItem("wsMeetVoice", $("free").checked ? "on" : "off"); } catch (e) {} };
 
 function drawAgents() {
-  $("agents").innerHTML = TEAM.map((t) => { const m = S.in.has(t.k) ? (S.mode.get(t.k) || "red") : ""; const tip = !S.in.has(t.k) ? "Tap to add to the meeting (starts red/muted)" : (m === "green" ? "Green: can answer — tap to mute (red)" : "Red: fully muted, won\u2019t answer even if named — tap to let them talk (green), tap again to remove"); return `<button class="ag ${m}" data-k="${t.k}" title="${tip}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`; }).join("");
+  $("agents").innerHTML = TEAM.map((t) => { const m = S.in.has(t.k) ? (S.mode.get(t.k) || "green") : ""; const tip = !S.in.has(t.k) ? "Tap to add to the meeting (starts green/ready to answer)" : (m === "green" ? "Green: can answer — tap to mute (red)" : "Red: fully muted, won\u2019t answer even if named — tap to let them talk (green), tap again to remove"); return `<button class="ag ${m}" data-k="${t.k}" title="${tip}"><img src="${t.img}" alt="" onerror="this.src='img/${t.k}.svg'"><b>${esc(t.n)}</b><small>${esc(t.r)}</small></button>`; }).join("");
 }
 function drawTalkTo() {
   const inList = TEAM.filter((t) => S.in.has(t.k));
   $("talkTo").innerHTML = `<option value="all">🔄 Around the table (everyone answers)</option>` + inList.map((t) => `<option value="${t.k}" ${S.talkTo === t.k ? "selected" : ""}>${esc(t.n)}</option>`).join("");
   if (S.talkTo !== "all" && !S.in.has(S.talkTo)) { S.talkTo = "all"; $("talkTo").value = "all"; }
 }
-// Tania, Nov 17: click cycles each teammate off -> green (can answer, included in "around the table") -> red (listens only, answers ONLY if called on by name) -> off.
+// Tania, Nov 23 (fixed -- the code had it backwards from this very comment): click cycles each
+// teammate off -> green (can answer, included in "around the table") -> red (listens only,
+// answers ONLY if called on by name) -> off. Adding someone to the meeting now actually puts
+// them "at the table" right away instead of silently muting them until a second tap.
 $("agents").onclick = (e) => {
   const b = e.target.closest(".ag"); if (!b) return; const k = b.dataset.k;
-  if (!S.in.has(k)) { S.in.add(k); S.mode.set(k, "red"); }
-  else if ((S.mode.get(k) || "red") === "red") { S.mode.set(k, "green"); }
+  if (!S.in.has(k)) { S.in.add(k); S.mode.set(k, "green"); }
+  else if ((S.mode.get(k) || "green") === "green") { S.mode.set(k, "red"); }
   else { S.in.delete(k); S.mode.delete(k); }
   drawAgents(); drawTalkTo();
 };
-$("selAll").onclick = () => { TEAM.forEach((t) => { S.in.add(t.k); S.mode.set(t.k, "red"); }); drawAgents(); drawTalkTo(); };
+$("selAll").onclick = () => { TEAM.forEach((t) => { S.in.add(t.k); S.mode.set(t.k, "green"); }); drawAgents(); drawTalkTo(); };
 $("selNone").onclick = () => { S.in.clear(); S.mode.clear(); drawAgents(); drawTalkTo(); };
 $("talkTo").onchange = () => { S.talkTo = $("talkTo").value; };
 drawAgents(); drawTalkTo();
@@ -265,6 +281,16 @@ function findAddressed(text, poolKeys, exceptKey) {
     const re = new RegExp("\\b" + cand.n + "\\b\\s*[,?]|\\b" + cand.n + "\\b\\s+(?:can you|what do you|do you|would you|how about you|your thoughts|what's your take|weigh in)", "i");
     if (re.test(t)) return cand.k;
   }
+  // Tania, Nov 23: the two patterns above only catch a name at the very start, or right before one
+  // of a fixed handful of phrases -- real speech names someone anywhere in a sentence ("what do you
+  // think about this, Sebastien", "I want to hear from Kobe on this one"), which those patterns
+  // miss entirely and used to fall through to "around the table" (everyone green answers), which is
+  // what looked like a random person talking instead of the one actually named. If exactly one
+  // eligible teammate's name shows up anywhere in what was said, that's who she meant. Two or more
+  // different names is genuinely ambiguous -- don't guess, fall through to around-the-table instead
+  // of answering as the wrong person.
+  const mentioned = TEAM.filter((cand) => cand.k !== exceptKey && poolKeys.has(cand.k) && new RegExp("\\b" + cand.n + "\\b", "i").test(t));
+  if (mentioned.length === 1) return mentioned[0].k;
   return null;
 }
 
@@ -273,6 +299,7 @@ async function runTurn(text) {
   if (S.busy) return;
   if (!S.in.size) { say("Pick at least one teammate to be in the meeting."); return; }
   if (!text.trim()) return;
+  checkNewDay();
   addLog("Tania", text.trim(), "me");
   if (BRAIN.test(text)) { S.busy = true; try { await brainVoiceCommand(text.trim()); } finally { S.busy = false; $("send").disabled = false; say("Your turn — tap the mic or type."); } return; }
   S.busy = true; $("send").disabled = true;
@@ -281,7 +308,7 @@ async function runTurn(text) {
   // table" mode with nobody named, only GREEN teammates answer. Tania, Nov 19: red now means
   // fully muted -- a RED teammate stays silent even if called on by name, until flipped green.
   const addressed = findAddressed(text, S.in, null);
-  const isGreen = (k) => (S.mode.get(k) || "red") === "green";
+  const isGreen = (k) => (S.mode.get(k) || "green") === "green";
   if (addressed && S.in.has(addressed) && !isGreen(addressed)) { S.busy = false; $("send").disabled = false; say(NAME(addressed) + " is on red right now \u2014 tap them green first so they can talk."); return; }
   if (S.talkTo !== "all" && S.in.has(S.talkTo) && !isGreen(S.talkTo)) { S.busy = false; $("send").disabled = false; say(NAME(S.talkTo) + " is on red right now \u2014 tap them green first so they can talk."); return; }
   const order = (addressed && S.in.has(addressed)) ? [addressed]
