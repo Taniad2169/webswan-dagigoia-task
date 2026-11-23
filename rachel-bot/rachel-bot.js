@@ -2,6 +2,14 @@
  * RachelBot — talking AI web assistant for The WebSwan family of sites.
  * Built by The WebSwan (Tania Domingue). Runs fully in the visitor's browser:
  * no AI service, no API key, nothing typed is sent anywhere.
+ * VOICE INPUT (Tania, Nov 23 -- both sides talking, free/native, not a vendor integration):
+ * tapping the mic uses the browser's own built-in speech recognition (the same browser-level
+ * service already behind the text-to-speech voice below) to turn what a visitor SAYS into the
+ * question, same as typing it would. Chrome/Edge/Safari support it; Firefox and some mobile
+ * browsers don't -- the mic button simply doesn't appear there (same graceful-degrade pattern
+ * already used for text-to-speech). This is not ElevenLabs or Cartesia: a real vendor voice
+ * (nicer TTS, more accurate STT) would need a server-side proxy and a per-minute cost, which
+ * breaks the "nothing sent anywhere, no API key" promise this widget is built on.
  *
  * Install: set window.RACHEL_CONFIG = {...} then load this file.
  *   brand, subtitle, image, color, greeting, quick:[...], kb:[{k:[keywords], a:'html answer'}],
@@ -18,6 +26,7 @@
   var COLOR = C.color || '#1b70c2';
   var DARK = C.dark || '#062743';
   var synth = window.speechSynthesis, canSpeak = !!(synth && window.SpeechSynthesisUtterance);
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, canListen = !!SR;
   var root = document.documentElement;
 
   /* ---------- styles ---------- */
@@ -55,9 +64,12 @@
     '.rbt-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-top:1px solid #e1eef4;background:#fff;max-height:120px;overflow-y:auto}',
     '.rbt-chips button{border:1px solid #b9d6e3;background:#fff;color:#0b4164;border-radius:999px;padding:6px 11px;font:600 12.5px Inter,Arial,sans-serif;cursor:pointer;text-align:left}',
     '.rbt-chips button:hover{border-color:' + COLOR + '}',
-    '.rbt-form{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 12px;border-top:1px solid #e1eef4;background:#fff}',
+    '.rbt-form{display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:10px 12px;border-top:1px solid #e1eef4;background:#fff}',
     '.rbt-form input{border:1.5px solid #b9d6e3;border-radius:12px;padding:10px 12px;font:14px Inter,Arial,sans-serif;min-width:0;color:#18364a;background:#fff}',
-    '.rbt-form button{border:0;background:' + COLOR + ';color:#fff;border-radius:12px;padding:0 16px;font:800 14px Inter,Arial,sans-serif;cursor:pointer}',
+    '.rbt-form button[type=submit]{border:0;background:' + COLOR + ';color:#fff;border-radius:12px;padding:0 16px;font:800 14px Inter,Arial,sans-serif;cursor:pointer}',
+    '.rbt-mic{border:1.5px solid #b9d6e3;background:#fff;color:' + COLOR + ';border-radius:12px;width:42px;flex:none;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}',
+    '.rbt-mic.on{background:#e4403b;border-color:#e4403b;color:#fff;animation:rbtMicPulse 1.1s ease-in-out infinite}',
+    '@keyframes rbtMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(228,64,59,.45)}50%{box-shadow:0 0 0 7px rgba(228,64,59,0)}}',
     '.rbt-foot{padding:0 12px 10px;font-size:10.5px!important;line-height:1.4!important;color:#5c7180;background:#fff}',
     '.rbt-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}',
     '@media(max-width:600px){#rbt-launch .rbt-lbl{display:none}#rbt-launch{padding:5px}#rbt-panel{left:8px;right:8px;width:auto;bottom:80px}}',
@@ -112,6 +124,33 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   }
   function stopVoice() { if (canSpeak) synth.cancel(); if (curBtn) mark(curBtn, false); curBtn = null; talking(false); }
 
+  /* ---------- voice INPUT: visitor speaks instead of types (browser-native, tap-to-talk) ---------- */
+  var recog = null, listening = false, micPlaceholder = 'Type your question here…';
+  function setListening(on) {
+    listening = on; var b = panel && panel.querySelector('.rbt-mic'); if (!b) return;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', on ? 'Stop listening' : 'Speak your question');
+    input.placeholder = on ? 'Listening… speak now' : micPlaceholder;
+  }
+  function startListening() {
+    if (!canListen || listening) return;
+    stopVoice(); // don't let Rachel talk over the visitor while she's listening
+    try {
+      recog = new SR();
+      recog.lang = 'en-US'; recog.interimResults = false; recog.maxAlternatives = 1;
+      recog.onstart = function () { setListening(true); };
+      recog.onresult = function (e) {
+        var text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
+        setListening(false);
+        if (text) ask(text);
+      };
+      recog.onerror = function () { setListening(false); };
+      recog.onend = function () { setListening(false); };
+      recog.start();
+    } catch (e) { setListening(false); }
+  }
+  function stopListening() { if (recog) { try { recog.stop(); } catch (e) {} } setListening(false); }
+
   /* ---------- knowledge ---------- */
   var KB = C.kb || [];
   var FALLBACK = C.fallback || 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>';
@@ -135,7 +174,7 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     '<div class="rbt-bar"><span>Rachel reads her answers out loud</span><button type="button" class="rbt-voice" aria-pressed="true"></button></div>' +
     '<div class="rbt-log" role="log" aria-live="polite"></div>' +
     '<div class="rbt-chips" aria-label="Suggested questions"></div>' +
-    '<form class="rbt-form" autocomplete="off"><label class="rbt-sr" for="rbt-q">Type your question</label><input id="rbt-q" maxlength="300" placeholder="Type your question here…"><button type="submit">Send</button></form>' +
+    '<form class="rbt-form" autocomplete="off">' + (canListen ? '<button type="button" class="rbt-mic" aria-pressed="false" aria-label="Speak your question"><span aria-hidden="true">🎤</span></button>' : '') + '<label class="rbt-sr" for="rbt-q">Type your question</label><input id="rbt-q" maxlength="300" placeholder="Type your question here…"><button type="submit">Send</button></form>' +
     '<div class="rbt-foot">' + (C.foot || 'General information only, not legal or medical advice. Please don’t share sensitive personal details here.') + '</div>';
   panel.querySelector('.rbt-tp').replaceWith(pic());
   var log = panel.querySelector('.rbt-log'), chips = panel.querySelector('.rbt-chips'), input = panel.querySelector('#rbt-q'), vbtn = panel.querySelector('.rbt-voice');
@@ -143,6 +182,8 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   if (!canSpeak) panel.querySelector('.rbt-bar').style.display = 'none';
   paintVoice();
   vbtn.addEventListener('click', function () { voiceOn = !voiceOn; try { localStorage.setItem('rbt_voice', voiceOn ? 'on' : 'off'); } catch (e) {} if (!voiceOn) stopVoice(); paintVoice(); });
+  var micBtn = panel.querySelector('.rbt-mic');
+  if (micBtn) micBtn.addEventListener('click', function () { listening ? stopListening() : startListening(); });
 
   function add(html, me) {
     var d = document.createElement('div'); d.className = 'rbt-msg' + (me ? ' me' : '');
@@ -240,11 +281,12 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     }
     setTimeout(function () { input.focus(); }, 60);
   }
-  function close() { stopVoice(); panel.hidden = true; launch.setAttribute('aria-expanded', 'false'); if (lastFocus && lastFocus.focus) lastFocus.focus(); else launch.focus(); }
+  function close() { stopVoice(); stopListening(); panel.hidden = true; launch.setAttribute('aria-expanded', 'false'); if (lastFocus && lastFocus.focus) lastFocus.focus(); else launch.focus(); }
   launch.addEventListener('click', function () { panel.hidden ? open() : close(); });
   panel.querySelector('.rbt-x').addEventListener('click', close);
   panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
   window.addEventListener('pagehide', stopVoice);
+  window.addEventListener('pagehide', stopListening);
   // any link or button with data-open-rachel, or a link to #ask-rachel, opens her
   document.addEventListener('click', function (e) {
     var t = e.target && e.target.closest && e.target.closest('[data-open-rachel],a[href$="#ask-rachel"]');
