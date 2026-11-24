@@ -374,9 +374,15 @@ export default async (req) => {
       if (!(when > Date.now() - 6e4)) return reply(400, { error: "Pick a date and time in the future." }, origin);
       if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the person's state (for their local time)." }, origin);
       if (String(c.script || "").trim().length < 10) return reply(400, { error: "Write what the agent should say (at least a sentence)." }, origin);
-      const cbAgent = String(c.agent || "").toLowerCase() === "jenna" ? "jenna" : "alek";
+      const cbAgent = ["jenna", "jonathan"].includes(String(c.agent || "").toLowerCase()) ? String(c.agent).toLowerCase() : "alek";
+      // Tania, Nov 23: Jonathan only ever calls back at a pre-booked time (Rachel, Jenna or Rebecca set it up with
+      // the prospect first) -- never double-book him. Reject a new slot within 20 minutes of one he already has.
+      if (cbAgent === "jonathan") {
+        const conflict = list.find((x) => x.agent === "jonathan" && x.status === "scheduled" && Math.abs(Date.parse(x.callAt) - when) < 20 * 60e3);
+        if (conflict) return reply(409, { error: "Jonathan already has a call booked at " + conflict.callAt + " -- pick a time at least 20 minutes away." }, origin);
+      }
       list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), agent: cbAgent, name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
-        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
+        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : cbAgent === "jonathan" ? 900 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
       list = list.slice(-500);
       await store.setJSON("callbacks", list);
     }
