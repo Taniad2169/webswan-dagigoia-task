@@ -104,7 +104,7 @@ const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (
 // Tania, Nov 23: every calling agent gives a full name (first + last) when asked "who is this?", not just a first
 // name -- keeps them unique against other AI callers people get calls from. Keep this in sync with the display
 // names agents are introduced with elsewhere (voice-studio agent cards, team.mjs).
-const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rebecca: "Verna", rachel: "Bennett", rachelout: "Bennett", alek: "Reid" };
+const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rebecca: "Verna", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
 function fullAgentName(agent) {
   const first = agent.charAt(0).toUpperCase() + agent.slice(1);
   const last = LAST_NAMES[agent];

@@ -25,8 +25,11 @@ const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
 // Tania, Nov 23: Sebastien now has his own live Cartesia agent (set up directly in Cartesia, answering
-// inbound as the marketing director); listed here so Voice Studio can actually see/manage him too.
-const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout", "sebastien"];
+// inbound as the Marketing Operations Director, MOD); listed here so Voice Studio can actually see/manage
+// him too. Jonathan is the new, separate OUTBOUND-only agent -- Compliance Tech Coordinator (CID) -- who
+// calls businesses back to go over their real audit findings once Rachel has booked the appointment.
+// Inbound (Sebastien/MOD) and outbound (Jonathan/CID) are never the same call and never mixed.
+const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout", "sebastien", "jonathan"];
 // Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
 const TASKED = (n) => n === "alek" || n === "jenna";
 // Rachel, Tania's virtual coordinator, now answers both compliance and WebSwan Media Network (advertising) questions on one line.
@@ -696,7 +699,11 @@ export default async (req) => {
         // NO initial message (they wait for the person to speak first). voice-watch-background hangs up any call where no
         // human greeted within 2 minutes.
         let turnNote = "";
-        if (!a.startsWith("rachel") || a.startsWith("rachelout")) {
+        // Tania, Nov 23: Sebastien only ANSWERS inbound calls (same as rachel, never rachelout), so he needs
+        // "greet right away" too, never the outbound wait-for-them-to-speak-first treatment below.
+        const base0 = a.split("_")[0];
+        const inboundOnly = (base0 === "rachel") || base0 === "sebastien";
+        if (!inboundOnly) {
           // Tania, Nov 16 (later): with check-ins OFF the agent had no cue to keep talking when a live person went quiet
           // (after "how's it going?"), so it sat in silence and people hung up. Check-in is back at Cartesia's minimum (5 s):
           // before a human speaks the rules make the agent skip_turn silently (and skip_turn stretches the wait to 30 s
@@ -1275,6 +1282,14 @@ export default async (req) => {
     const label = clean(b.label, 120);
     if (!id || label.length < 3) return reply(400, { error: "Pick an agent and a name." }, origin);
     try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { name: label }); return reply(200, { ok: true, agent: name, label }, origin); }
+    catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
+  }
+  // ---------- set an inbound-only agent's fixed greeting (Cartesia initial_message), e.g. Sebastien/Rachel ----------
+  if (b.action === "agent_greeting") {
+    const name = String(b.agent || "").toLowerCase(), id = AGENTS.includes(name) ? agentId(agentKey(name, LANGS[b.lang] ? b.lang : "en")) : "";
+    const greeting = clean(b.greeting, 400);
+    if (!id || greeting.length < 10) return reply(400, { error: "Pick an agent and a greeting." }, origin);
+    try { await cartesia("PATCH", "/v1/agents/" + encodeURIComponent(id), V_READ, { config: { initial_message: greeting } }); return reply(200, { ok: true, agent: name, greeting }, origin); }
     catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
   if (b.action === "agent_raw") {
