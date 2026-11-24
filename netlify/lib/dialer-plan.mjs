@@ -11,7 +11,7 @@
 // = 72 leads/day total, 2 scripts/day (Spanish + English), Mon-Wed only. Alek and Monica stay off the dialer this
 // week (not listed here = silent), same mechanism as before.
 export const DIALER_PLAN = {
-  start: "2026-11-23", end: "2026-11-25",          // Mon Nov 23 – Wed Nov 25
+  start: "2026-11-23", end: "2026-11-30",          // Mon Nov 23 -- Mon Nov 30 (Tania, Nov 23: extended through next Monday)
   tz: "America/Los_Angeles",
   agents: {
     jenna: { windows: [["07:00", "09:00"]], perWindow: 24, lang: "en", takes: ["jenna"], campaign: "Black Friday $499 website redesign" },
@@ -31,10 +31,15 @@ export function agentSilencedToday(agent, silencedAgents, tz = "America/Los_Ange
   const until = silencedAgents && silencedAgents[String(agent || "").toLowerCase().split("_")[0]];
   return !!until && ymd(tz) <= String(until);
 }
+// Tania, Nov 23: "let Jonathan compliance review be an exception" -- his booked compliance-review callbacks go out
+// on schedule even while the Black Friday plan is silencing every other non-listed caller.
+const PLAN_EXEMPT = ["jonathan"];
 // May this agent place any outbound call right now (callbacks, follow-ups, campaigns)?
 export function callerAllowed(agent, silencedAgents) {
   if (agentSilencedToday(agent, silencedAgents)) return false;
-  return !planActive() || !!DIALER_PLAN.agents[String(agent || "").toLowerCase().split("_")[0]];
+  const base = String(agent || "").toLowerCase().split("_")[0];
+  if (PLAN_EXEMPT.includes(base)) return true;
+  return !planActive() || !!DIALER_PLAN.agents[base];
 }
 // Which plan caller (if any) dials this queued lead.
 export function planCallerFor(lead) {
