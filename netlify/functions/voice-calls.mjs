@@ -133,7 +133,9 @@ const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toU
 // Languages: an agent's English version is its base name; other languages are separate Cartesia agents
 // saved as name_es (Latin American Spanish) and name_pt (Brazilian Portuguese).
 const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
-const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"], jenna: ["en", "es"] };
+// Tania, Nov 23: Jenna calls natively in all three languages -- English, Latin American Spanish and Brazilian
+// Portuguese -- each its own Cartesia agent with its own native voice, same pattern as her Spanish agent already.
+const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"], jenna: ["en", "es", "pt"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
 // The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
 const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
