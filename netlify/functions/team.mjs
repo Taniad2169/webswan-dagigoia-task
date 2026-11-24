@@ -1035,6 +1035,24 @@ Pick the ONE finding here that would actually make this specific practice sit up
       const fu = (await teamStore().get("followups", { type: "json" })) || [];
       fu.push({ to, practice: clean(b.practice, 200), phone: clean(b.phone, 40), state: clean(b.state, 40), at: new Date().toISOString(), done: false });
       await teamStore().setJSON("followups", fu.slice(-1000));
+      // Tania, Nov 23: EVERY email Eva sends -- compliance/audit or advertising/SwanDesk -- hands the lead
+      // straight to Sebastien automatically, no need for Tania to ask each time. He profiles the lead (site,
+      // style, social media, the original call recording if there is one) and writes Rachel's individual,
+      // word-for-word callback script for the next day; the appointment it books goes to Jonathan if it's
+      // compliance, or to Sebastien for everything else WebSwan does.
+      try {
+        const practiceName = clean(b.practice, 200) || "(no practice name given)";
+        const kindGuess = /advertis|swandesk|swan desk|media network|directory|visibility|ai receptionist|ai employee/i.test(subject + " " + text) ? "advertising / SwanDesk / WebSwan Media Network (not compliance)" : "compliance / audit";
+        await addMessages("sebastien", [{ role: "user", kind: "handoff", from: "eva", text:
+          "📨 From Eva (automatic -- this email just went to Gmail Drafts):\n\n" +
+          "**Practice/business:** " + practiceName + "\n**Website:** " + (clean(b.website, 300) || "(none on file)") +
+          "\n**Email sent to:** " + to + "\n**State:** " + (clean(b.state, 40) || "(unknown)") +
+          "\n**Phone:** " + (clean(b.phone, 40) || "(unknown)") + "\n**Type:** " + kindGuess +
+          "\n\n**What the email actually said:**\n" + text.slice(0, 2500) +
+          "\n\nProfile this lead the way you always do (their site and its style, their social media, and the original call recording/transcript if WorkPilot has one), then write Rachel's individual, word-for-word callback script for tomorrow (item 34, same as the audit-callback batches). Say plainly whether the appointment it books should go to Jonathan (compliance) or to you (everything else WebSwan does), and tag it approved only once the script is actually checked against this lead's real notes."
+        }]);
+        try { await startJobs(["relay:sebastien|eva|1"]); } catch (e) {}
+      } catch (e) {}
       return reply(200, { ok: true, draftId: r.draftId, subject }, origin);
     }
     // Eva's light grey queue (Tania, Nov 13): WorkPilot hands the lead + Tania's notes + draft + audit PDF to Eva.

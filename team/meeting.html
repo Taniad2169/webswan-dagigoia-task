@@ -307,12 +307,19 @@ async function runTurn(text) {
   // ("Jenna, ...") or picked one from the dropdown, only that person answers. In "around the
   // table" mode with nobody named, only GREEN teammates answer. Tania, Nov 19: red now means
   // fully muted -- a RED teammate stays silent even if called on by name, until flipped green.
-  const addressed = findAddressed(text, S.in, null);
+  const pickedFromDropdown = S.talkTo !== "all" && S.in.has(S.talkTo);
+  // Tania, Nov 23 (fixed -- this is why calling Sebastien from the dropdown kept answering as
+  // Rachel instead): a name mentioned anywhere in what Tania said used to win over her own explicit
+  // "You're talking to" pick. Picking someone from that dropdown is a deliberate, unambiguous choice
+  // -- it must always be the one that answers. Name-detection (findAddressed) now only ever decides
+  // who's up when the dropdown itself is on "around the table" (nobody explicitly picked).
+  const addressed = pickedFromDropdown ? null : findAddressed(text, S.in, null);
   const isGreen = (k) => (S.mode.get(k) || "green") === "green";
-  if (addressed && S.in.has(addressed) && !isGreen(addressed)) { S.busy = false; $("send").disabled = false; say(NAME(addressed) + " is on red right now \u2014 tap them green first so they can talk."); return; }
-  if (S.talkTo !== "all" && S.in.has(S.talkTo) && !isGreen(S.talkTo)) { S.busy = false; $("send").disabled = false; say(NAME(S.talkTo) + " is on red right now \u2014 tap them green first so they can talk."); return; }
-  const order = (addressed && S.in.has(addressed)) ? [addressed]
-    : (S.talkTo !== "all") ? [S.talkTo]
+  if (pickedFromDropdown) {
+    if (!isGreen(S.talkTo)) { S.busy = false; $("send").disabled = false; say(NAME(S.talkTo) + " is on red right now \u2014 tap them green first so they can talk."); return; }
+  } else if (addressed && S.in.has(addressed) && !isGreen(addressed)) { S.busy = false; $("send").disabled = false; say(NAME(addressed) + " is on red right now \u2014 tap them green first so they can talk."); return; }
+  const order = pickedFromDropdown ? [S.talkTo]
+    : (addressed && S.in.has(addressed)) ? [addressed]
     : TEAM.filter((t) => S.in.has(t.k) && isGreen(t.k)).map((t) => t.k);
   if (!order.length) { S.busy = false; $("send").disabled = false; say("Nobody's green to answer that — call on someone by name, or switch a teammate back to green."); return; }
   try {
