@@ -72,6 +72,19 @@ export default async (req) => {
       const list = (await store.get("bookings", { type: "json" })) || [];
       list.unshift({ at: Date.now(), start: start.toISOString(), name, practice, email, phone, leadTz, leadId: clean(b.lead_id, 60), callId: clean(b.call_id, 80), eventId: r.id || "" });
       await store.setJSON("bookings", list.slice(0, 300));
+      // Tania, Nov 24: a booked compliance review must actually get its call -- no one has to remember it. Jonathan
+      // is put on the callback calendar at the booked time (advertising/SwanDesk bookings stay with Sebastien/Tania).
+      try {
+        const ph = e164(phone), st2 = clean(b.lead_state, 2).toUpperCase();
+        if (ph && !/advertis|swandesk|swan desk|media network|directory|ai receptionist/i.test(note + " " + practice)) {
+          const cbs = (await store.get("callbacks", { type: "json" })) || [];
+          if (!cbs.some((x) => x.agent === "jonathan" && x.status === "scheduled" && x.phone === ph && Math.abs(Date.parse(x.callAt) - start.getTime()) < 30 * 60e3)) {
+            cbs.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), agent: "jonathan", name, business: practice, phone: ph, state: /^[A-Z]{2}$/.test(st2) ? st2 : "NY", lineType: "landline", consent: false, callAt: start.toISOString(),
+              subject: "Booked 10-minute compliance review", script: ["Booked 10-minute compliance review (they chose this time on a call).", practice && "Practice: " + practice, name && "Contact: " + name, email && "Email: " + email, note && "Notes: " + note].filter(Boolean).join(" ").slice(0, 900), lang: "en", status: "scheduled", createdAt: new Date().toISOString(), source: "booking" });
+            await store.setJSON("callbacks", cbs.slice(-500));
+          }
+        }
+      } catch (e) {}
     } catch (e) { return text("Booking didn't go through. Don't confirm a time. Tell them Tania will email them a link to pick a time, and confirm their best email."); }
     return text(`Booked: ${say(start, leadTz)}. Tania will call them then.` + (email ? ` A calendar invitation is being emailed to ${email}.` : " Ask for their best email so Tania can send the invitation.") + " Confirm the day and time back to them.");
   }

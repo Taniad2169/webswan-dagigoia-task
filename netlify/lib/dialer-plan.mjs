@@ -50,7 +50,7 @@ export function agentSilencedToday(agent, silencedAgents, tz = "America/Los_Ange
 }
 // Tania, Nov 23: "let Jonathan compliance review be an exception" -- his booked compliance-review callbacks go out
 // on schedule even while the Black Friday plan is silencing every other non-listed caller.
-const PLAN_EXEMPT = ["jonathan"];
+const PLAN_EXEMPT = ["jonathan", "rachelout"]; // Tania, Nov 24: Rachel's next-day follow-ups (8 AM PT) and Jonathan's booked calls always run
 // May this agent place any outbound call right now (callbacks, follow-ups, campaigns)?
 export function callerAllowed(agent, silencedAgents) {
   if (agentSilencedToday(agent, silencedAgents)) return false;

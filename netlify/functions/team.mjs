@@ -9,6 +9,7 @@ import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } f
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
 import { leadsBrief } from "../lib/call-data.mjs";
+import { queueRachelFollowup } from "../lib/rachel-pipeline.mjs";
 import { sentinelReadFile, sentinelReadCommits, sentinelLog, sentinelLogList, sentinelInspectUrl, formatUrlInspection, sentinelScanSite, formatSiteScan, scrubSecrets as sentinelScrub, neutralizeDirectives as sentinelNeutralize } from "../lib/sentinel.mjs";
 
 // Eva's inbox (Tania, Nov 8): Gmail can be slow to read 40 threads, which made Eva say "Gmail didn't answer".
@@ -1057,7 +1058,9 @@ Pick the ONE finding here that would actually make this specific practice sit up
         }]);
         try { await startJobs(["relay:sebastien|eva|1"]); } catch (e) {}
       } catch (e) {}
-      return reply(200, { ok: true, draftId: r.draftId, subject }, origin);
+      // Tania, Nov 24: mandatory, not left to chat -- Rachel's call is scheduled (next weekday 8 AM PT) with Sebastien's script on it.
+      const rq = await queueRachelFollowup({ name: clean(b.contact, 120), business: clean(b.practice, 200), phone: clean(b.phone, 40), email: to, state: clean(b.state, 40), website: clean(b.website, 300), findings: clean(b.findings, 900), emailText: text, subject });
+      return reply(200, { ok: true, draftId: r.draftId, subject, rachel: rq }, origin);
     }
     // Eva's light grey queue (Tania, Nov 13): WorkPilot hands the lead + Tania's notes + draft + audit PDF to Eva.
     if (b.action === "eva_queue_add") {

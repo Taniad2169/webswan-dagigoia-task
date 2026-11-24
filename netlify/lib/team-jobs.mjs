@@ -7,6 +7,7 @@ import { callScript, sanitizeCal } from "./cal.mjs";
 import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 import { preCallHuddle, jennaReview } from "./team-routines.mjs";
+import { queueRachelFollowup } from "./rachel-pipeline.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -648,6 +649,9 @@ APPOINTMENT (Tania, Nov 16): if TANIA'S NOTES say a call, review or appointment 
       const fu = (await st.get("followups", { type: "json" })) || [];
       fu.push({ to: pkg.to, practice: pkg.practice || "", phone: pkg.phone || "", state: pkg.state || "", at: new Date().toISOString(), done: false });
       await st.setJSON("followups", fu.slice(-1000));
+      // Tania, Nov 24: mandatory -- Sebastien writes Rachel's script and Rachel's call is scheduled for the next weekday 8 AM PT.
+      const rq = await queueRachelFollowup({ name: pkg.contact, business: pkg.practice, phone: pkg.phone, email: pkg.to, state: pkg.state, website: pkg.website, findings: pkg.findings, emailText: body, subject });
+      it.rachel = rq.ok ? rq.callAt : "not scheduled: " + rq.why;
       await addMessages("eva", [{ role: "agent", kind: "evaq", text: `## ✉️ Light grey → Gmail Drafts\n**${pkg.practice || pkg.to}** (${pkg.to})${legal ? "\n⚖️ Jonathan added the compliance paragraph" + (pdfText ? " (he read the attached audit PDF)." : ".") : ""}\n**Subject:** ${subject}${pdf ? "\n**Attached:** " + (pkg.filename || "Website-Audit-Report.pdf") : "\n⚠️ No audit PDF was attached in WorkPilot."}${booked}\n\n${body}\n\n*It's in Gmail → Drafts for you to review and send. WorkPilot turns this lead light green.*` }]);
     } catch (e) {
       Object.assign(it, { status: "error", error: String(e.message || e).slice(0, 200), doneAt: new Date().toISOString() });

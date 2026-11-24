@@ -9,6 +9,7 @@ import { leadMemoryText } from "../lib/lead-memory.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
+import { fallbackRachelScript } from "../lib/rachel-pipeline.mjs";
 
 // Tania, Nov 14: the internal rule below already cuts calls off at 6 PM New York, so waking past that was
 // pure wasted credit -- trimmed the cron window to stop at the same 6 PM Eastern cutoff.
@@ -45,7 +46,7 @@ export default async () => {
     if (booked) { c.status = "skipped"; c.note = "already booked"; continue; }
     const tz = STATE_TZ[c.state] || "America/New_York";
     const h = Number(local(tz, { hour: "numeric", hourCycle: "h23" })), wd = local(tz, { weekday: "short" });
-    if (h < 9 || h >= 17 || wd === "Sat" || wd === "Sun") continue; // waits for their business hours
+    if (h < 8 || h >= 17 || wd === "Sat" || wd === "Sun") continue; // waits for their business hours (Tania, Nov 24: from 8 AM)
     const g = await budgetGate(store, 1, 10);
     if (!g.ok) { c.note = "waiting: monthly call budget reached"; continue; }
     const kind = c.kind === "advertising" ? "advertising" : "compliance";
@@ -54,7 +55,7 @@ export default async () => {
         body: JSON.stringify({ agent_id: agent, from_number_id: nums[Math.floor(Math.random() * nums.length)],
           outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: "Rachel follow-up (" + kind + ")", by: "rachel-followups" },
             dynamic_variables: { lead_id: c.id, lead_name: c.name || "", business: c.business || "", lead_state: c.state || "", findings: [c.website && "Website: " + c.website, c.note].filter(Boolean).join(". ") || "none listed", lead_memory: await leadMemoryText(to),
-              lead_language: "English", call_mode: kind === "advertising" ? "follow-up on the advertising information Tania emailed" : "follow-up on the website compliance report Tania emailed", task: kind } }],
+              lead_language: "English", call_mode: kind === "advertising" ? "follow-up on the advertising information Tania emailed" : "follow-up on the website compliance report Tania emailed", task: "SEBASTIEN'S SCRIPT FOR THIS PROSPECT (" + kind + "; follow it in order): " + (String(c.script || "").trim() || fallbackRachelScript(c)) } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { c.status = "error"; c.note = String(d.message || d.error || ("HTTP " + r.status)).slice(0, 160); continue; }
