@@ -7,7 +7,7 @@ import { callScript, sanitizeCal } from "./cal.mjs";
 import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
 import { preCallHuddle, jennaReview } from "./team-routines.mjs";
-import { queueRachelFollowup } from "./rachel-pipeline.mjs";
+import { queueRachelFollowup, prepAndNotify } from "./rachel-pipeline.mjs";
 
 // Tania's Google Apps Script bridge (same one Voice Studio uses for the calendar and Jennifer's emails).
 export async function scriptCall(body) {
@@ -709,5 +709,5 @@ async function evaClean(kind) {
   }
   await addMessages("eva", [{ role: "agent", text: moved ? `🧹 Cleaned **${kind}**: moved **${moved}** emails to Trash (Gmail keeps them 30 days if you need one back). I skipped anything starred, important, from banks or payments, invoices, receipts, contracts, audits and appointments.${samples.length ? " Senders included: " + [...new Set(samples)].join(", ") + "." : ""}` : `✨ Nothing to clean in **${kind}**.` }]);
 }
-export const JOBS = { ...REPLY_JOBS, relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
+export const JOBS = { ...REPLY_JOBS, rachel_prep: (a) => prepAndNotify(a), relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
 export { ptHour };

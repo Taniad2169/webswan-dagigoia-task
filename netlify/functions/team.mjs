@@ -9,7 +9,7 @@ import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } f
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
 import { leadsBrief } from "../lib/call-data.mjs";
-import { queueRachelFollowup } from "../lib/rachel-pipeline.mjs";
+import { queueRachelFollowup, rachelApproval } from "../lib/rachel-pipeline.mjs";
 import { sentinelReadFile, sentinelReadCommits, sentinelLog, sentinelLogList, sentinelInspectUrl, formatUrlInspection, sentinelScanSite, formatSiteScan, scrubSecrets as sentinelScrub, neutralizeDirectives as sentinelNeutralize } from "../lib/sentinel.mjs";
 
 // Eva's inbox (Tania, Nov 8): Gmail can be slow to read 40 threads, which made Eva say "Gmail didn't answer".
@@ -489,6 +489,11 @@ export default async (req) => {
       // and PII before they ever enter his context -- the same filter used on anything he reads from GitHub.
       if (agent === "sentinel") text = sentinelScrub(text);
       if (!text) return reply(400, { error: "Type a message." }, origin);
+      // Tania, Nov 24: her "OK" (or "skip <practice>") in Rachel's chat approves the call scripts waiting there -- in code, not left to the AI.
+      if (agent === "rachel" && !att && !b.meeting && !b.roleplay && !b.rpEnd) {
+        const ap = await rachelApproval(text).catch(() => "");
+        if (ap) { const ms = await addMessages("rachel", [{ role: "user", text }, { role: "agent", kind: "rachel_approved", text: ap }]); return reply(200, { messages: ms.slice(-2) }, origin); }
+      }
       if (att && att.image && String(att.image).length > 5_600_000) return reply(413, { error: "Picture too large (max about 4 MB)." }, origin);
       const meeting = !!b.meeting && !b.roleplay && !b.rpEnd; // live AI Office meeting: don't persist, keep the grounding, feed the shared transcript
       const s = await getSettings();
@@ -1059,7 +1064,8 @@ Pick the ONE finding here that would actually make this specific practice sit up
         try { await startJobs(["relay:sebastien|eva|1"]); } catch (e) {}
       } catch (e) {}
       // Tania, Nov 24: mandatory, not left to chat -- Rachel's call is scheduled (next weekday 8 AM PT) with Sebastien's script on it.
-      const rq = await queueRachelFollowup({ name: clean(b.contact, 120), business: clean(b.practice, 200), phone: clean(b.phone, 40), email: to, state: clean(b.state, 40), website: clean(b.website, 300), findings: clean(b.findings, 900), emailText: text, subject });
+      const rq = await queueRachelFollowup({ name: clean(b.contact, 120), business: clean(b.practice, 200), phone: clean(b.phone, 40), email: to, state: clean(b.state, 40), website: clean(b.website, 300), findings: clean(b.findings, 900), emailText: text, subject, defer: true });
+      if (rq.ok && rq.id) { try { await startJobs(["rachel_prep:" + rq.id]); } catch (e) {} } // Sebastien profiles + inspects + writes, in the background
       return reply(200, { ok: true, draftId: r.draftId, subject, rachel: rq }, origin);
     }
     // Eva's light grey queue (Tania, Nov 13): WorkPilot hands the lead + Tania's notes + draft + audit PDF to Eva.
@@ -1069,8 +1075,8 @@ Pick the ONE finding here that would actually make this specific practice sit up
       const idx = ((await st.get("evaq-index", { type: "json" })) || []).filter((x) => x.status === "done" && Date.parse(x.doneAt || x.at) >= since);
       for (const it of idx.slice(-25)) {
         const pkg = (await st.get("evaq-" + it.id, { type: "json" })) || {};
-        const r = await queueRachelFollowup({ name: pkg.contact, business: pkg.practice, phone: pkg.phone, email: pkg.to, state: pkg.state, website: pkg.website, findings: pkg.findings, emailText: pkg.body || "", subject: it.subject || pkg.subject, skipExisting: true });
-        if (!r.existing && Date.now() - t0 > 18000) { out.push({ more: true }); break; }
+        const r = await queueRachelFollowup({ name: pkg.contact, business: pkg.practice, phone: pkg.phone, email: pkg.to, state: pkg.state, website: pkg.website, findings: pkg.findings, emailText: pkg.body || "", subject: it.subject || pkg.subject, skipExisting: true, defer: true });
+        if (r.ok && r.id && !r.existing) { try { await startJobs(["rachel_prep:" + r.id]); } catch (e) {} }
         out.push({ practice: pkg.practice || it.practice, ok: r.ok, callAt: r.callAt, why: r.why, script: r.script });
       }
       return reply(200, { ok: true, count: out.length, items: out }, origin);

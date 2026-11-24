@@ -9,7 +9,8 @@ import { leadMemoryText } from "../lib/lead-memory.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 import { STATE_TZ } from "../lib/cal.mjs";
-import { fallbackRachelScript } from "../lib/rachel-pipeline.mjs";
+import { fallbackRachelScript, titleOf, ptTime } from "../lib/rachel-pipeline.mjs";
+import { addMessages } from "../lib/team.mjs";
 
 // Tania, Nov 14: the internal rule below already cuts calls off at 6 PM New York, so waking past that was
 // pure wasted credit -- trimmed the cron window to stop at the same 6 PM Eastern cutoff.
@@ -25,10 +26,20 @@ export default async () => {
   // Tania's hard rule (Nov 7): nothing goes out after 6 PM New York time, and never on weekends.
   { const nyH = Number(local("America/New_York", { hour: "numeric", hourCycle: "h23" })), nyD = local("America/New_York", { weekday: "short" }); if (nyH >= 18 || nyD === "Sat" || nyD === "Sun" || nyD === "Fri") return new Response("after 6 PM New York time, Friday or weekend"); }
   const list = (await store.get("rachel-followups", { type: "json" })) || [];
-  const due = list.filter((c) => c.status === "scheduled" && Date.parse(c.callAt) <= Date.now());
-  if (!due.length) return new Response("nothing due");
+  let dirty = await reportFinished(store, list); // Tania, Nov 24: Rachel posts how each call went in her chat
+  // Tania, Nov 24: Rachel dials ONLY scripts Tania approved in Rachel's chat (records from before this rule have no
+  // "approved" field and keep working). Waiting ones get one reminder a day in Rachel's chat.
+  const waiting = list.filter((c) => c.status === "scheduled" && c.approved === false && Date.parse(c.callAt) <= Date.now());
+  const today = new Date().toISOString().slice(0, 10);
+  const remind = waiting.filter((c) => c.notifiedAt && c.remindedOn !== today);
+  if (remind.length) {
+    try { await addMessages("rachel", [{ role: "agent", kind: "rachel_approval", text: "## ⏳ Waiting for your OK before I call\n" + remind.map((c) => "- " + titleOf(c)).join("\n") + "\n\nReply **OK** here and I'll start dialing (or **skip** + the practice name)." }]); } catch (e) {}
+    remind.forEach((c) => { c.remindedOn = today; }); dirty = true;
+  }
+  const due = list.filter((c) => c.status === "scheduled" && c.approved !== false && Date.parse(c.callAt) <= Date.now());
+  if (!due.length) { if (dirty) await store.setJSON("rachel-followups", list); return new Response("nothing due"); }
   const silencedAgentsRO = ((await store.get("queue", { type: "json" })) || {}).silencedAgents; // Tania, Nov 21: manual per-agent silence switch
-  if (!callerAllowed("rachelout", silencedAgentsRO)) return new Response("silent: this week only Jenna and George call (dialer plan)");
+  if (!callerAllowed("rachelout", silencedAgentsRO)) { if (dirty) await store.setJSON("rachel-followups", list); return new Response("silent: this week only Jenna and George call (dialer plan)"); }
   const ids = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};
   const agent = process.env.CARTESIA_AGENT_RACHELOUT || ids.rachelout;
   const nums = String(process.env.CARTESIA_FROM_NUMBER_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -66,3 +77,30 @@ export default async () => {
   await store.setJSON("rachel-followups", list);
   return new Response("ok");
 };
+
+// After each of Rachel's follow-up calls ends, she posts the result in her AI Office chat for Tania.
+async function reportFinished(store, list) {
+  const todo = list.filter((c) => c.status === "called" && c.callId && !c.reportedAt && Date.now() - Date.parse(c.calledAt || 0) > 3 * 60e3).slice(0, 4);
+  if (!todo.length) return false;
+  const bookings = (await store.get("bookings", { type: "json" })) || [], d10 = (x) => String(x || "").replace(/\D/g, "").slice(-10);
+  const cbs = (await store.get("callbacks", { type: "json" })) || [];
+  const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
+  let changed = false;
+  for (const c of todo) {
+    let call = {};
+    try { const r = await fetch(API + "/agents/calls/" + encodeURIComponent(c.callId), { headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ } }); call = await r.json().catch(() => ({})); } catch (e) { continue; }
+    const done = call.end_time || call.ended_at || /complet|ended|failed|cancel|no.?answer|busy/i.test(String(call.status || ""));
+    if (!done && Date.now() - Date.parse(c.calledAt) < 30 * 60e3) continue;
+    const tr = (Array.isArray(call.transcript) ? call.transcript : []).filter((t) => t && (t.text || t.content)).map((t) => (t.role === "user" ? "Them" : "Rachel") + ": " + String(t.text || t.content).trim());
+    const reason = String(call.end_reason || call.endReason || call.status || "").replace(/_/g, " ");
+    const humans = tr.filter((l) => l.startsWith("Them")).length;
+    const booked = bookings.find((x) => Date.parse(x.at) >= Date.parse(c.calledAt) && d10(x.phone) === d10(c.phone));
+    const jon = cbs.find((x) => x.agent === "jonathan" && x.status === "scheduled" && d10(x.phone) === d10(c.phone));
+    const outcome = booked ? "📅 **Booked** " + ptTime(booked.start) + (jon ? " · Jonathan is scheduled to call them" : "")
+      : /voicemail/i.test(reason) ? "📭 Voicemail (I didn't leave a message)" : !humans ? "📵 No one picked up (" + (reason || "no answer") + ")" : "💬 Talked, no appointment yet";
+    const summary = String(call.summary || "").trim();
+    const text = "## 📞 Call report\n" + titleOf(c) + " · " + c.phone + "\n" + outcome + (summary ? "\n\n**Summary:** " + summary.slice(0, 700) : "") + (humans ? "\n\n**Last lines:**\n" + tr.slice(-6).join("\n").slice(0, 900) : "");
+    try { await addMessages("rachel", [{ role: "agent", kind: "rachel_report", text }]); c.reportedAt = new Date().toISOString(); c.outcome = outcome.replace(/\*\*/g, ""); changed = true; } catch (e) {}
+  }
+  return changed;
+}

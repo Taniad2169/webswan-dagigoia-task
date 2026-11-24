@@ -10,7 +10,7 @@ export default async (req) => {
   // A job can carry one argument after a colon, e.g. "c360_push:2026-12".
   for (const job of (Array.isArray(b.jobs) ? b.jobs : []).filter((j) => JOBS[String(j).split(":")[0]])) {
     const [name, ...rest] = String(job).split(":"); const arg = rest.join(":");
-    try { await JOBS[name](name === "eva_clean" ? (/^(spam|promotions|social|old)$/.test(arg || "") ? arg : undefined) : name === "relay" ? (/^[a-z]{2,12}\|[a-z]{0,12}\|\d$/.test(arg || "") ? arg : undefined) : name === "huddle" ? (/^\d{4}-\d{2}-\d{2}\|\d$/.test(arg || "") ? arg : undefined) : /^\d{4}-\d{2}(\|[\w-]{1,60})?$/.test(arg || "") ? arg : undefined); }
+    try { await JOBS[name](name === "eva_clean" ? (/^(spam|promotions|social|old)$/.test(arg || "") ? arg : undefined) : name === "rachel_prep" ? (/^rf_[a-z0-9]{6,12}$/.test(arg || "") ? arg : undefined) : name === "relay" ? (/^[a-z]{2,12}\|[a-z]{0,12}\|\d$/.test(arg || "") ? arg : undefined) : name === "huddle" ? (/^\d{4}-\d{2}-\d{2}\|\d$/.test(arg || "") ? arg : undefined) : /^\d{4}-\d{2}(\|[\w-]{1,60})?$/.test(arg || "") ? arg : undefined); }
     catch (e) { await addMessages(/^(huddle|jenna_review)/.test(name) ? "sebastien" : /^jimmy/.test(name) ? "jimmy" : /^(tatiana|c360|posts)/.test(name) ? "tatiana" : /^clara/.test(name) ? "clara" : "eva", [{ role: "agent", kind: "error", text: `⚠️ I couldn't finish **${name.replace("_", " ")}**: ${String(e.message || e).slice(0, 300)}` }]); }
   }
   return new Response("ok");
