@@ -24,7 +24,9 @@ import { loadBudget, budgetSummary, budgetGate, budgetRecord, budgetSync, allAge
 const PROJECT_ID = "webswan-voice-studio";
 const OWNERS = ["thewebswann@gmail.com", "taniadomingue373@gmail.com"];
 const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billing.netlify.app"];
-const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout"];
+// Tania, Nov 23: Sebastien now has his own live Cartesia agent (set up directly in Cartesia, answering
+// inbound as the marketing director); listed here so Voice Studio can actually see/manage him too.
+const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout", "sebastien"];
 // Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
 const TASKED = (n) => n === "alek" || n === "jenna";
 // Rachel, Tania's virtual coordinator, now answers both compliance and WebSwan Media Network (advertising) questions on one line.
