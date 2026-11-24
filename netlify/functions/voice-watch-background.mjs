@@ -1,7 +1,7 @@
 // Background watcher (Netlify background function, up to 15 min). Started by startWatch() right after a call is placed.
 // Checks the call every 15 seconds; at 2 minutes, if no live human has greeted the agent, it hangs the call up.
 import { humanAnswered, watchToken, NO_HUMAN_LIMIT_SECS } from "../lib/call-watch.mjs";
-import { updateLeadMemory } from "../lib/lead-memory.mjs";
+import { updateLeadMemory, recordIdentityMemory } from "../lib/lead-memory.mjs";
 // Tania, Nov 17: when the call ends, the watcher also writes the lead memory brief for that number (lib/lead-memory.mjs).
 
 const API = "https://api.cartesia.ai";
@@ -16,8 +16,12 @@ export default async (req) => {
   if (!id || !process.env.CARTESIA_API_KEY || b.token !== watchToken(id)) return;
   const placedAt = Number(b.placedAt) || Date.now();
   const phone = String(b.phone || "");
+  const business = String(b.business || ""), docName = String(b.docName || "");
   let human = false;
-  const remember = async (c) => { if (phone) await updateLeadMemory(phone, { agent: b.agent || "", transcript: (c && c.transcript) || [] }); };
+  const remember = async (c) => {
+    if (phone) await updateLeadMemory(phone, { agent: b.agent || "", transcript: (c && c.transcript) || [] });
+    if (business || docName) await recordIdentityMemory(business, docName, { agent: b.agent || "", phone });
+  };
   while (true) {
     const age = (Date.now() - placedAt) / 1000;
     let c = null;

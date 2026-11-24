@@ -25,12 +25,14 @@ export function humanAnswered(transcript) {
 export const watchToken = (callId) => crypto.createHmac("sha256", String(process.env.CARTESIA_API_KEY || "none")).update("watch:" + callId).digest("hex").slice(0, 32);
 
 // Fire-and-forget: start the background watcher for one call. Never throws.
-export async function startWatch(callId, agent, phone) {
+// identity = { business, docName } (Tania, Nov 23): carried through so the watcher can also log the business-name
+// + doctor-name duplicate check (lead-memory.mjs getIdentityMemory/recordIdentityMemory), not just the phone number.
+export async function startWatch(callId, agent, phone, identity) {
   if (!callId) return;
   const base = process.env.URL || process.env.DEPLOY_PRIME_URL || "";
   if (!base) return;
   try {
     await fetch(base + "/.netlify/functions/voice-watch-background", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ callId, agent: agent || "", phone: phone || "", placedAt: Date.now(), token: watchToken(callId) }) });
+      body: JSON.stringify({ callId, agent: agent || "", phone: phone || "", business: (identity && identity.business) || "", docName: (identity && identity.docName) || "", placedAt: Date.now(), token: watchToken(callId) }) });
   } catch (e) { /* the agent's own 2-minute rule and the 120 s silence limit still apply */ }
 }

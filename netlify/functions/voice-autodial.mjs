@@ -7,7 +7,7 @@
 //   - the number is valid, not on the Do Not Call list, not already called today, and the daily cap per number isn't reached
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
-import { getLeadMemory, NO_MEMORY } from "../lib/lead-memory.mjs";
+import { getLeadMemory, getIdentityMemory, isDuplicateContact, NO_MEMORY } from "../lib/lead-memory.mjs";
 import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, planTaskFor, agentSilencedToday } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
@@ -205,11 +205,16 @@ export default async () => {
     const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = (PLAN && DIALER_PLAN.agents[planName].forceLang) || (["es", "pt"].includes(lead.lang) ? lead.lang : "en"), aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
     // Tania, Nov 23: Monica called a practice on Nov 10, then Jenna called the SAME number again on Nov 18 with the
     // same compliance pitch -- a cold-opener re-pitching a business another cold-opener already worked, from a
-    // separate lead record that never checked the number's call history. Rachel/Rachel-out are the one deliberate
-    // exception: Rachel is SUPPOSED to call back after Monica/George/Jenna captured an email or set a time. Any other
-    // agent re-opening a number another agent already called within the last 60 days is a duplicate, not a new lead.
-    if (memo && (memo.calls || 0) > 0 && memo.lastAgent && String(memo.lastAgent).toLowerCase() !== name && !["rachel", "rachelout"].includes(name) && (Date.now() - (memo.updatedAt || 0)) < 60 * 864e5) {
+    // separate lead record that never checked the number's call history. Checked two ways: by phone number, and by
+    // business + doctor name (Tania, Nov 23: "duplicates should be considered by phone number, business name, doctor's
+    // name"), since a re-entered lead can carry a different phone number for the same practice.
+    if (isDuplicateContact(memo, name)) {
       lead.status = "skipped"; lead.note = `Already called by ${memo.lastAgent} on ${new Date(memo.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} -- skipping to avoid a duplicate cold call`;
+      continue;
+    }
+    const idMemo = await getIdentityMemory(lead.business, lead.name);
+    if (isDuplicateContact(idMemo, name)) {
+      lead.status = "skipped"; lead.note = `Already called by ${idMemo.lastAgent} on ${new Date(idMemo.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} (same business/doctor name, different number) -- skipping to avoid a duplicate cold call`;
       continue;
     }
     if (!aid) continue; // agent not connected yet; stays in the queue
@@ -233,7 +238,7 @@ export default async () => {
       const d = await r.json().catch(() => ({}));
       const c0 = (d.calls || [])[0] || {};
       if (!r.ok || !c0.agent_call_id) { lead.status = "error"; lead.note = String((d && (d.message || d.error)) || (c0.error && (c0.error.message || c0.error)) || ("HTTP " + r.status)).slice(0, 160); continue; }
-      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 }); await startWatch(c0.agent_call_id, name, to);
+      allowance--; await budgetRecord(store, { id: c0.agent_call_id, agent: name, by: "auto-dialer", maxMin: 6 }); await startWatch(c0.agent_call_id, name, to, { business: lead.business || "", docName: lead.name || "" });
       lead.status = "called"; lead.callId = c0.agent_call_id; lead.calledAt = Date.now(); lead.note = "";
       if (!(floating && ALEK_NUM())) counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to); placed++; placedBy[ln] = (placedBy[ln] || 0) + 1; winCounts[wk] = (winCounts[wk] || 0) + 1;
     } catch (e) { lead.status = "error"; lead.note = String(e.message || e).slice(0, 160); }

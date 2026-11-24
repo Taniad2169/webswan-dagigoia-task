@@ -14,6 +14,38 @@ export async function getLeadMemory(phone) {
   const k = d10(phone); if (k.length !== 10) return null;
   try { return (await mem().get(k, { type: "json" })) || null; } catch (e) { return null; }
 }
+
+// Tania, Nov 23: phone-number dedup alone missed it -- Monica called Laler Family Dental, then Jenna called the
+// same practice again 8 days later under a different lead record. Same practice/doctor is a duplicate even when
+// the phone number on the new lead record differs (a direct line vs the main line, a typo, etc.), so this is a
+// second, independent check keyed on business name + doctor/decision-maker name, not the phone number.
+const idMem = () => getStore({ name: "lead-identity-memory", consistency: "strong" });
+const normId = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+function identityKey(business, docName) {
+  const b = normId(business), d = normId(docName);
+  if (!b && !d) return ""; // nothing to key on -- never block a lead with no name/business at all
+  return (b || "(no business name)") + "|" + (d || "(no doctor name)");
+}
+export async function getIdentityMemory(business, docName) {
+  const k = identityKey(business, docName); if (!k) return null;
+  try { return (await idMem().get(k, { type: "json" })) || null; } catch (e) { return null; }
+}
+export async function recordIdentityMemory(business, docName, { agent = "", phone = "" } = {}) {
+  const k = identityKey(business, docName); if (!k) return;
+  try { await idMem().setJSON(k, { lastAgent: agent, phone, updatedAt: Date.now() }); } catch (e) {}
+}
+
+// Shared by both the auto-dialer and the manual "start a call" action, for either a phone-memory record or an
+// identity (business + doctor name) record: true when a DIFFERENT agent already called within the window, which
+// means this new call would be a duplicate cold pitch to a practice someone already worked. Rachel/Rachel-out
+// calling back to set an appointment after another agent captured an email or a time is the intended exception.
+export function isDuplicateContact(memo, agent, days = 60) {
+  if (!memo || !memo.lastAgent) return false;
+  const a = String(agent || "").toLowerCase();
+  if (String(memo.lastAgent).toLowerCase() === a) return false;
+  if (["rachel", "rachelout"].includes(a)) return false;
+  return (Date.now() - (memo.updatedAt || 0)) < days * 864e5;
+}
 // The text that goes into the call as {{lead_memory}}.
 export async function leadMemoryText(phone) {
   const m = await getLeadMemory(phone);

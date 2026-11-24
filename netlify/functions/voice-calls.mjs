@@ -11,7 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { startWatch } from "../lib/call-watch.mjs";
-import { leadMemoryText, getLeadMemory } from "../lib/lead-memory.mjs";
+import { leadMemoryText, getLeadMemory, getIdentityMemory, isDuplicateContact } from "../lib/lead-memory.mjs";
 import { runWorkpilotSync, recentProspectorLeads } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -989,12 +989,17 @@ export default async (req) => {
     const day = today(), countsKey = "count-" + day, dialedKey = "dialed-" + day;
     const dialed = (await store.get(dialedKey, { type: "json" })) || [];
     if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
-    // Tania, Nov 23: same duplicate-cold-call guard as the auto-dialer -- Rachel/Rachel-out calling back after
-    // someone else captured an email or a time is the one intended exception.
+    // Tania, Nov 23: same duplicate-cold-call guard as the auto-dialer -- checked by phone number AND by business +
+    // doctor name (a re-entered lead can carry a different number for the same practice) -- Rachel/Rachel-out calling
+    // back after someone else captured an email or a time is the one intended exception.
     if (!b.force) {
       const memo0 = await getLeadMemory(to);
-      if (memo0 && (memo0.calls || 0) > 0 && memo0.lastAgent && String(memo0.lastAgent).toLowerCase() !== name && !["rachel", "rachelout"].includes(name) && (Date.now() - (memo0.updatedAt || 0)) < 60 * 864e5) {
+      if (isDuplicateContact(memo0, name)) {
         return reply(409, { error: `Already called by ${memo0.lastAgent} on ${new Date(memo0.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} -- this would be a duplicate cold call. Pass force to call anyway.` }, origin);
+      }
+      const idMemo0 = await getIdentityMemory(b.business, b.leadName);
+      if (isDuplicateContact(idMemo0, name)) {
+        return reply(409, { error: `Already called by ${idMemo0.lastAgent} on ${new Date(idMemo0.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} (same business/doctor name, different number) -- this would be a duplicate cold call. Pass force to call anyway.` }, origin);
       }
     }
     const counts = (await store.get(countsKey, { type: "json" })) || {};
@@ -1020,7 +1025,7 @@ export default async (req) => {
     counts[pick.id] = (counts[pick.id] || 0) + 1; dialed.push(to);
     await store.setJSON(countsKey, counts); await store.setJSON(dialedKey, dialed);
     await budgetRecord(store, { id: r0.agent_call_id, agent: name, by: email, maxMin: 6 });
-    await startWatch(r0.agent_call_id, name, to);
+    await startWatch(r0.agent_call_id, name, to, { business: b.business || "", docName: b.leadName || "" });
     return reply(200, { callId: r0.agent_call_id, to, fromNumberId: pick.id, agent: name, lang }, origin);
   }
 
