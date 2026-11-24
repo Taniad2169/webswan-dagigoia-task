@@ -60,7 +60,7 @@ async function quickScan(raw) {
       "Google Analytics / Tag Manager: " + (yes(/googletagmanager|google-analytics|gtag\(/i) ? "present" : "not seen"),
       "Google Ads tag: " + (yes(/AW-\d{6,}/) ? "present" : "not seen"),
       "Meta (Facebook) pixel: " + (yes(/connect\.facebook\.net|fbq\(/i) ? "present" : "not seen"),
-      "Cookie consent banner: " + (yes(/cookieyes|cookiebot|onetrust|iubenda|termly|osano|complianz|cookie-law|cookie-notice|cookieconsent/i) ? "present" : "not seen"),
+      "Cookie tool code: " + (yes(/cookieyes|cookiebot|onetrust|iubenda|termly|osano|complianz|cookie-law|cookie-notice|cookieconsent/i) ? "found, but that does NOT prove a real Accept/Reject banner (Tania, Nov 24: K Plastic Surgery had only a cookie button to a policy page) -- never call it a working banner" : "not seen (no cookie consent banner)"),
       "Accessibility overlay widget: " + (yes(/userway|accessibe|acsbapp|audioeye|equalweb/i) ? "present" : "not seen"),
       "Images missing alt text on the home page: " + noAlt + " of " + imgs.length,
       "Forms on the home page: " + ((h.match(/<form\b/gi) || []).length),
