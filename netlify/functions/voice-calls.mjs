@@ -468,7 +468,10 @@ export default async (req) => {
       return reply(400, { error: "This lead has no real name on file (just \"" + (nameCandidate || "blank") + "\") — it can't be sent to any agent. Sent to the Needs Info queue instead so Sebastien can research it." }, origin);
     }
     const want = String(x.agent || "").toLowerCase();
-    if (!["monica", "george", "rebecca", "alek", "jenna"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca, Alek or Jenna." }, origin);
+    // Jonathan, Nov 23: Tania sometimes hands him a one-off number/lead herself (not through the Eva/Rachel
+    // pipeline) to try personally, same push-to-queue path as Monica/George/Rebecca -- never Sebastien, who
+    // doesn't take outbound calls.
+    if (!["monica", "george", "rebecca", "alek", "jenna", "jonathan"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca, Alek, Jenna or Jonathan." }, origin);
     const agent = want, lang = LANGS[x.lang] ? x.lang : "en";
     const contact = clean(x.contact || x.name, 120), business = clean(x.business, 160);
     const notes = clean(x.notes || x.findings || x.comment, TASKED(want) ? 2500 : 820);

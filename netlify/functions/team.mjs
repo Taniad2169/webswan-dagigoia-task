@@ -245,7 +245,10 @@ export default async (req) => {
       if (!target) return { error: "No lead with id " + leadId + " in the current WorkPilot list." };
       const text = clean(f.text, 3000).trim();
       if (!text) return { error: "Missing comment text." };
-      const tag = ["note", "research", "nextaction", "script", "approved"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
+      let tag = ["note", "research", "nextaction", "script", "approved"].includes(String(f.tag || "").toLowerCase()) ? String(f.tag).toLowerCase() : "note";
+      // Tania, Nov 23: script/approved are Jonathan's alone now (the Rachel-script job moved off Sebastien) --
+      // enforced here, not just in either persona's prompt, so a drifted reply can't silently write the wrong tag.
+      if ((tag === "script" || tag === "approved") && by !== "jonathan") return { error: "Only Jonathan can tag a note " + tag + " -- that job moved off Sebastien on Nov 23." };
       Object.assign(item, { leadId, text, tag, leadName: target.company || "" });
     } else if (kind === "assign") {
       const leadId = clean(f.leadId || f.leadid, 80).trim();
