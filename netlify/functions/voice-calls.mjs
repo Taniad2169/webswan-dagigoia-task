@@ -48,7 +48,7 @@ function rachelTransfers(agent) {
   const plusTania = (list) => (list || []).concat(toTania && !(list || []).some((x) => x.destination.phone_number === tania) ? toTania : []);
   // When both lines are the same (our own Rachel answers both), merge them into one transfer: Cartesia needs unique destinations.
   const both = RACHEL_COMPLIANCE === RACHEL_ADVERTISING ? [{ destination: comp.destination, condition: "The person has questions about website compliance (ADA, privacy, HIPAA, the audit findings or the risk) or about WebSwan Media Network (advertising, visibility, the directory), and agrees to be transferred to Rachel." }] : [comp, ads];
-  const map = { monica: [comp], george: both, rebecca: [ads], alek: both, jenna: both, rachel: toTania };
+  const map = { monica: [comp], george: both, rebecca: [ads], alek: both, jenna: both, rachel: toTania, jonathan: toTania }; // Tania, Nov 24: Jonathan hands the prospect to Tania at the end of his review
   // Tania, Nov 13: Jenna NEVER blind-transfers to Tania — she keeps the prospect engaged and books the calendar instead (see her chat briefing). Still fine for Rachel (compliance/ads).
   if (["monica", "george", "rebecca", "alek"].includes(agent)) return plusTania(map[agent]);
   if (agent === "jenna") return map.jenna;
@@ -383,7 +383,7 @@ export default async (req) => {
         if (conflict) return reply(409, { error: "Jonathan already has a call booked at " + conflict.callAt + " -- pick a time at least 20 minutes away." }, origin);
       }
       list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), agent: cbAgent, name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
-        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : cbAgent === "jonathan" ? 900 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
+        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : cbAgent === "jonathan" ? 3000 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
       list = list.slice(-500);
       await store.setJSON("callbacks", list);
     }
@@ -701,7 +701,7 @@ export default async (req) => {
       }
       await store.setJSON("tool-ids", saved);
     } catch (e) { return reply(502, { error: "Couldn't create the calendar tools in Cartesia: " + e.message }, origin); }
-    for (const a of AGENTS.flatMap((n) => (ALLOWED_LANGS[n] || ["en"]).map((l) => agentKey(n, l)))) {
+    for (const a of AGENTS.flatMap((n) => (ALLOWED_LANGS[n] || ["en"]).map((l) => agentKey(n, l))).filter((a) => !Array.isArray(b.only) || b.only.includes(a))) { // b.only: update just these agents
       const id = agentId(a); if (!id) continue;
       try {
         // keypad + human/voicemail rules at the top of the agent's instructions
