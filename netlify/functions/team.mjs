@@ -1063,6 +1063,17 @@ Pick the ONE finding here that would actually make this specific practice sit up
       return reply(200, { ok: true, draftId: r.draftId, subject, rachel: rq }, origin);
     }
     // Eva's light grey queue (Tania, Nov 13): WorkPilot hands the lead + Tania's notes + draft + audit PDF to Eva.
+    // Tania, Nov 24: catch up Eva's drafts from the last few days that never reached Rachel (owner only, like every action here).
+    if (b.action === "rachel_backfill") {
+      const days = Math.max(1, Math.min(7, Number(b.days) || 2)), since = Date.now() - days * 864e5, st = teamStore(), out = [];
+      const idx = ((await st.get("evaq-index", { type: "json" })) || []).filter((x) => x.status === "done" && Date.parse(x.doneAt || x.at) >= since);
+      for (const it of idx.slice(-25)) {
+        const pkg = (await st.get("evaq-" + it.id, { type: "json" })) || {};
+        const r = await queueRachelFollowup({ name: pkg.contact, business: pkg.practice, phone: pkg.phone, email: pkg.to, state: pkg.state, website: pkg.website, findings: pkg.findings, emailText: pkg.body || "", subject: it.subject || pkg.subject });
+        out.push({ practice: pkg.practice || it.practice, ok: r.ok, callAt: r.callAt, why: r.why, script: r.script });
+      }
+      return reply(200, { ok: true, count: out.length, items: out }, origin);
+    }
     if (b.action === "eva_queue_add") {
       const L = b.lead || {}, id = clean(L.id, 80).replace(/[^\w-]/g, "");
       if (!id) return reply(400, { error: "Missing lead id." }, origin);
