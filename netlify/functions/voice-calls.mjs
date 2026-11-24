@@ -403,10 +403,15 @@ export default async (req) => {
     if (!phone) return reply(400, { error: "This lead has no valid US phone number, so no caller can follow up." }, origin);
     if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the lead's state (2 letters) so the caller calls in their business hours." }, origin);
     const txt = (x.industry || "") + " " + (x.business || "") + " " + (x.kind || "");
+    // Tania, Nov 23: "George needs to be my Spanish for attorneys AND Latino doctors too, he will call both" --
+    // a Spanish-speaking/Latino doctor lead with no agent explicitly picked now defaults to George too, same as
+    // an attorney lead already did, instead of falling through to Monica.
+    const latino = x.lang === "es" || /latino|hispanic|spanish[- ]speaking|habla español|se habla español/i.test(txt + " " + (x.notes || "") + " " + (x.reply || ""));
     const want = String(x.agent || "").toLowerCase();
     const agent = ["monica", "george", "rebecca", "alek"].includes(want) ? want
       : /advertis|media network|wsmn|directory|new patients|new clients/i.test(x.kind || "") ? "rebecca"
-      : /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "george" : "monica";
+      : /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "george"
+      : latino ? "george" : "monica";
     const sentAt = Date.parse(x.emailSentAt) || Date.now();
     const notBefore = sentAt + 24 * 3600e3;
     const day = new Date(sentAt).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric" });
@@ -506,13 +511,19 @@ export default async (req) => {
   }
 
   // ---------- Tania, Nov 16: put the attorney leads she just sent from Prospector to WorkPilot into George's queue ----------
-  // { action: "wp_prospector_import", hours: 12, agent: "george", lang: "es", only: "attorney", dry: true|false }
+  // Nov 23: George also takes Latino/Spanish-speaking doctor leads now (only: "doctor"), same import, same queue.
+  // { action: "wp_prospector_import", hours: 12, agent: "george", lang: "es", only: "attorney"|"doctor", dry: true|false }
   if (b.action === "wp_prospector_import") {
     const agent = AGENTS.includes(String(b.agent || "").toLowerCase()) ? String(b.agent).toLowerCase() : "george";
     const lang = LANGS[b.lang] ? b.lang : "en";
     let list; try { list = await recentProspectorLeads(Math.max(1, Math.min(72, Number(b.hours) || 12))); } catch (e) { return reply(502, { error: "Couldn't read WorkPilot: " + e.message }, origin); }
     const ATTY = /attorney|lawyer|law firm|law office|legal|esq|abogad/i;
-    const pick = String(b.only || "") === "attorney" ? list.filter((l) => ATTY.test([l.industry, l.business, l.name, l.comment].join(" "))) : list;
+    const DOCTOR = /doctor|physician|dentist|dental|clinic|medical|chiropract|orthoped|dermatolog|podiatr|\bmd\b|\bdds\b|\bdo\b|médic/i;
+    const only = String(b.only || "");
+    const pick = only === "attorney" ? list.filter((l) => ATTY.test([l.industry, l.business, l.name, l.comment].join(" ")))
+      : only === "doctor" ? list.filter((l) => DOCTOR.test([l.industry, l.business, l.name, l.comment].join(" ")))
+      : list;
+    const campaignLabel = only === "doctor" ? "Website compliance · doctors (from Prospector)" : only === "attorney" ? "Website compliance · attorneys (from Prospector)" : "Website compliance (from Prospector)";
     const stateOf = (l) => { const m = String(l.comment || "").match(/,\s*([A-Z]{2})(?:,\s*\d{5}(?:-\d{4})?)?\s*$/m) || String(l.comment || "").match(/\b([A-Z]{2})\s+\d{5}\b/); return m ? m[1] : ""; };
     const q = (await store.get("queue", { type: "json" })) || { settings: {}, leads: [], paused: true };
     const have = new Set(q.leads.filter((l) => l.status === "queued").map((l) => e164(l.phone)));
@@ -524,12 +535,12 @@ export default async (req) => {
       if (have.has(phone)) { const ex = q.leads.find((x) => x.status === "queued" && e164(x.phone) === phone); if (ex && !b.dry) { ex.agent = agent; ex.lang = lang; ex.addedAt = Date.now(); } added.push(l.business + " (already queued, moved to " + agent + ")"); continue; }
       const issues = (String(l.comment || "").match(/Website issues:[^\n]*/) || [""])[0];
       const item = { id: "wp_" + String(l.id).replace(/[^\w-]/g, "").slice(0, 50), name: clean(l.name, 120), business: clean(l.business, 160), phone, state: st, agent, lang, mode: "selling", task: "",
-        findings: clean([l.website ? "Website: " + l.website : "", issues, l.social ? "Social media: " + l.social : ""].filter(Boolean).join(" · "), 900), campaign: "Website compliance · attorneys (from Prospector)", status: "queued", addedAt: Date.now() };
+        findings: clean([l.website ? "Website: " + l.website : "", issues, l.social ? "Social media: " + l.social : ""].filter(Boolean).join(" · "), 900), campaign: campaignLabel, status: "queued", addedAt: Date.now() };
       if (!b.dry) q.leads.push(item);
       have.add(phone); added.push(l.business);
     }
     if (!b.dry) await store.setJSON("queue", q);
-    return reply(200, { ok: true, dry: !!b.dry, found: list.length, attorneys: pick.length, added: added.length, addedNames: added.slice(0, 60), skipped }, origin);
+    return reply(200, { ok: true, dry: !!b.dry, found: list.length, matched: pick.length, attorneys: pick.length, added: added.length, addedNames: added.slice(0, 60), skipped }, origin);
   }
 
   if (b.action === "queue_get" || b.action === "queue_set") {

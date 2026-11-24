@@ -23,6 +23,13 @@ export const DIALER_PLAN = {
 };
 const ymd = (tz) => new Date().toLocaleDateString("en-CA", { timeZone: tz });
 export function planActive(plan = DIALER_PLAN) { if (!plan) return false; const d = ymd(plan.tz); return d >= plan.start && d <= plan.end; }
+// Tania, Nov 23: "George and Jenna run the show for now, I feel I should train them 2 by 2, see what result we
+// get -- Monica, Rebecca and Alek on pause, starting next week." This isn't a dated campaign like Black Friday
+// above (which still runs its own course through Nov 30) -- it's an open-ended training focus, so it has no
+// end date. It starts the day after the Black Friday plan ends, so it never cuts Rebecca's Black Friday calls
+// short this week. Adjust or clear TRAINING_FOCUS.paused whenever she's ready to bring one of these three back.
+export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["monica", "rebecca", "alek"] };
+function trainingFocusActive() { const d = ymd(TRAINING_FOCUS.tz); return d >= TRAINING_FOCUS.start && d <= TRAINING_FOCUS.end; }
 // Tania, Nov 21: "a box to tick on or off for the agents" -- a manual, per-agent silence switch she sets herself
 // from Voice Studio (a day, a week, a few days), independent of the weekly DIALER_PLAN above. Stored as
 // { agentName: "YYYY-MM-DD" } in the queue blob's silencedAgents field (set via voiceApi action agent_silence) --
@@ -39,6 +46,7 @@ export function callerAllowed(agent, silencedAgents) {
   if (agentSilencedToday(agent, silencedAgents)) return false;
   const base = String(agent || "").toLowerCase().split("_")[0];
   if (PLAN_EXEMPT.includes(base)) return true;
+  if (trainingFocusActive() && TRAINING_FOCUS.paused.includes(base)) return false;
   return !planActive() || !!DIALER_PLAN.agents[base];
 }
 // Which plan caller (if any) dials this queued lead.
