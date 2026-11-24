@@ -61,12 +61,13 @@ RULES: plain text only, no markdown. 6 to 9 short numbered lines; spoken words i
 }
 
 // Called from every Eva draft. Never throws.
-export async function queueRachelFollowup({ name, business, phone, email, state, website, findings, emailText, subject }) {
+export async function queueRachelFollowup({ name, business, phone, email, state, website, findings, emailText, subject, skipExisting }) {
   try {
     if (digits(phone).length !== 10) return { ok: false, why: "no valid phone number" };
     const st = vs();
     const list = (await st.get("rachel-followups", { type: "json" })) || [];
     let c = list.find((x) => x.status === "scheduled" && (digits(x.phone) === digits(phone) || (email && x.email && x.email.toLowerCase() === String(email).toLowerCase())));
+    if (c && skipExisting && c.script) return { ok: true, id: c.id, callAt: c.callAt, script: true, existing: true };
     if (!c) { c = { id: "rf_" + Math.random().toString(36).slice(2, 10), status: "scheduled", createdAt: new Date().toISOString(), source: "eva-auto" }; list.push(c); }
     Object.assign(c, {
       name: clean(name, 120), business: clean(business, 160), phone: clean(phone, 40), email: clean(email, 160), state: clean(state, 2).toUpperCase(),
