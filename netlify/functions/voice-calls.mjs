@@ -754,6 +754,30 @@ export default async (req) => {
     return reply(200, { count: numbers.length, numbers, rawSample: list.slice(0, 1) }, origin);
   }
 
+  // ---------- find a Cartesia agent's real id by name (for an agent set up directly in Cartesia's own
+  // console, outside Voice Studio -- e.g. Sebastien's inbound line) so it can be linked in below ----------
+  if (b.action === "agent_find") {
+    const q = String(b.q || "").toLowerCase();
+    let list = [];
+    for (const path of ["/agents", "/v1/agents"]) {
+      try { const d = await cartesia("GET", path + "?limit=100", V_READ); list = Array.isArray(d) ? d : (d.data || d.agents || d.items || []); if (list.length) break; } catch (e) {}
+    }
+    const matches = list.filter((a) => !q || String(a.name || "").toLowerCase().includes(q)).map((a) => ({ id: a.id, name: a.name || "" }));
+    return reply(200, { count: list.length, matches: matches.slice(0, 20) }, origin);
+  }
+
+  // ---------- link an already-existing Cartesia agent (made directly in Cartesia's console, e.g.
+  // Sebastien) into Voice Studio, so agent_get/agent_prompt/etc. can read and manage it too ----------
+  if (b.action === "agent_link") {
+    const key = String(b.key || "").toLowerCase();
+    const id = String(b.id || "").trim();
+    if (!/^[a-z]+(_(es|pt))?$/.test(key) || !AGENTS.includes(key.split("_")[0])) return reply(400, { error: "Unknown agent." }, origin);
+    if (!id) return reply(400, { error: "Missing Cartesia agent id." }, origin);
+    try { await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ); } catch (e) { return reply(400, { error: "That id isn't a real Cartesia agent: " + e.message }, origin); }
+    EXTRA_IDS[key] = id; await store.setJSON("agent-ids", EXTRA_IDS);
+    return reply(200, { ok: true, key, id }, origin);
+  }
+
   // ---------- Jennifer's back office: one private profile per virtual-receptionist client ----------
   if (b.action === "client_list" || b.action === "client_set" || b.action === "client_delete" || b.action === "client_preview") {
     const list = (await store.get("clients", { type: "json" })) || [];
