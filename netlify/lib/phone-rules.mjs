@@ -114,10 +114,11 @@ export function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
-  // Tania, Nov 19: the fallback expert is Jonathan (compliance audit director) for every compliance caller, and
-  // Sebastien (marketing director for advertising and SwanDesk AI) for Rebecca's ads/SwanDesk calls.
+  // Tania, Nov 19 (titles updated Nov 23): the fallback expert is Jonathan -- our Compliance Tech Coordinator (CID),
+  // who now makes the actual outbound compliance calls -- for every compliance caller, and Sebastien -- our Marketing
+  // Operations Director (MOD), the inbound front door for all three WebSwan companies -- for Rebecca's ads/SwanDesk calls.
   const expertName = agent === "rebecca" ? "Sebastien" : "Jonathan";
-  const title = agent === "rebecca" ? "our marketing director for advertising and SwanDesk AI" : "our compliance audit director";
+  const title = agent === "rebecca" ? "our Marketing Operations Director" : "our Compliance Tech Coordinator";
   const expertFull = agent === "rebecca" ? "Sebastien McIntosh" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
   // Rebecca's pay-per-click block sits INSIDE the rules markers, so saving again replaces it instead of adding a copy.
   const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END);
