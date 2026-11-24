@@ -225,7 +225,7 @@ export default async (req) => {
     const snap = (await st.get("wp-snapshot", { type: "json" })) || { leads: [], manual: [] };
     const allLeads = [...(snap.manual || []), ...(snap.leads || [])];
     const digits = (v) => String(v || "").replace(/\D/g, "").slice(-10);
-    const by = f.__by === "eva" ? "eva" : "sebastien";
+    const by = f.__by === "eva" ? "eva" : f.__by === "jonathan" ? "jonathan" : "sebastien";
     // Tania, Nov 23: Eva earned ONE narrow slice of this (CRM-hygiene flags, see team.mjs job 15) -- comment only,
     // never create/assign/push. The regex gate below already keeps her out of those, this is the second check.
     if (by === "eva" && kind !== "comment") return { error: "Eva can only flag a note on an existing lead, not " + kind + " one." };
@@ -898,8 +898,10 @@ Never invent a source that is not in the research above. If the research above c
       // Eva, Nov 23 (team.mjs job 15): the SAME ((LEAD COMMENT: ...)) directive, but only that one kind -- CRM-hygiene
       // flags only, never create/assign/push. Enforced twice: the regex below only even looks for it from her when
       // it's the COMMENT form, and queueSebastienAction itself rejects any other kind tagged by="eva".
+      // Jonathan ("linda"), Nov 23: the Rachel-script-writing/lead-profiling job moved to him (Eva's automatic
+      // handoff now reaches him, not Sebastien) -- he gets the SAME full set Sebastien has, not Eva's narrower slice.
       if (
-        (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) ||
+        ((agent === "sebastien" || agent === "linda") && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) ||
         (agent === "eva" && /\(\(\s*LEAD\s+COMMENT\s*:/i.test(outText))
       ) {
         const tagPattern = agent === "eva" ? /\(\(\s*LEAD\s+(COMMENT)\s*:\s*([\s\S]*?)\)\)/gi : /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
@@ -908,7 +910,7 @@ Never invent a source that is not in the research above. If the research above c
           const kind = m[1].toLowerCase();
           const f = {};
           m[2].split("|").forEach((pair) => { const i = pair.indexOf("="); if (i > -1) f[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim(); });
-          if (agent === "eva") f.__by = "eva";
+          if (agent === "eva") f.__by = "eva"; else if (agent === "linda") f.__by = "jonathan";
           let note;
           try {
             const r = await queueSebastienAction(kind, f);
@@ -1035,23 +1037,25 @@ Pick the ONE finding here that would actually make this specific practice sit up
       const fu = (await teamStore().get("followups", { type: "json" })) || [];
       fu.push({ to, practice: clean(b.practice, 200), phone: clean(b.phone, 40), state: clean(b.state, 40), at: new Date().toISOString(), done: false });
       await teamStore().setJSON("followups", fu.slice(-1000));
-      // Tania, Nov 23: EVERY email Eva sends -- compliance/audit or advertising/SwanDesk -- hands the lead
-      // straight to Sebastien automatically, no need for Tania to ask each time. He profiles the lead (site,
-      // style, social media, the original call recording if there is one) and writes Rachel's individual,
-      // word-for-word callback script for the next day; the appointment it books goes to Jonathan if it's
-      // compliance, or to Sebastien for everything else WebSwan does.
+      // Tania, Nov 23 (corrected same day -- it's Jonathan, not Sebastien, who profiles and writes Rachel's
+      // script; Sebastien is inbound-only and never touches lead profiling): EVERY email Eva sends --
+      // compliance/audit, advertising, or SwanDesk -- hands the lead straight to Jonathan automatically, no
+      // need for Tania to ask each time. He investigates/inspects/profiles the lead (site, style, social
+      // media, the original call recording if there is one) and writes Rachel's individual, word-for-word
+      // script for the next day; Rachel calls to set the appointment, routed to Jonathan if it's compliance,
+      // or landing as an inbound call for Sebastien for everything else WebSwan does.
       try {
         const practiceName = clean(b.practice, 200) || "(no practice name given)";
         const kindGuess = /advertis|swandesk|swan desk|media network|directory|visibility|ai receptionist|ai employee/i.test(subject + " " + text) ? "advertising / SwanDesk / WebSwan Media Network (not compliance)" : "compliance / audit";
-        await addMessages("sebastien", [{ role: "user", kind: "handoff", from: "eva", text:
+        await addMessages("linda", [{ role: "user", kind: "handoff", from: "eva", text:
           "📨 From Eva (automatic -- this email just went to Gmail Drafts):\n\n" +
           "**Practice/business:** " + practiceName + "\n**Website:** " + (clean(b.website, 300) || "(none on file)") +
           "\n**Email sent to:** " + to + "\n**State:** " + (clean(b.state, 40) || "(unknown)") +
           "\n**Phone:** " + (clean(b.phone, 40) || "(unknown)") + "\n**Type:** " + kindGuess +
           "\n\n**What the email actually said:**\n" + text.slice(0, 2500) +
-          "\n\nProfile this lead the way you always do (their site and its style, their social media, and the original call recording/transcript if WorkPilot has one), then write Rachel's individual, word-for-word callback script for tomorrow (item 34, same as the audit-callback batches). Say plainly whether the appointment it books should go to Jonathan (compliance) or to you (everything else WebSwan does), and tag it approved only once the script is actually checked against this lead's real notes."
+          "\n\nInvestigate/inspect/profile this lead (their site and its style, their social media, and the original call recording/transcript if WorkPilot has one), then write Rachel's individual, word-for-word script for this prospect for tomorrow. Say plainly whether the appointment it books should go to you, Jonathan (compliance), or land as an inbound call for Sebastien (everything else WebSwan does), and tag it approved only once the script is actually checked against this lead's real notes."
         }]);
-        try { await startJobs(["relay:sebastien|eva|1"]); } catch (e) {}
+        try { await startJobs(["relay:linda|eva|1"]); } catch (e) {}
       } catch (e) {}
       return reply(200, { ok: true, draftId: r.draftId, subject }, origin);
     }
