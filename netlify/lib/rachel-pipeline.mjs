@@ -129,6 +129,9 @@ export async function queueRachelFollowup({ name, business, phone, email, state,
     const st = vs();
     const list = (await st.get("rachel-followups", { type: "json" })) || [];
     let c = list.find((x) => x.status === "scheduled" && (digits(x.phone) === digits(phone) || (email && x.email && x.email.toLowerCase() === String(email).toLowerCase())));
+    const same = (x) => digits(x.phone) === digits(phone) || (email && x.email && x.email.toLowerCase() === String(email).toLowerCase());
+    // Tania cancelled or skipped this prospect (e.g. Jonathan already owns the call): never bring it back on its own.
+    if (!c && list.some((x) => x.status === "cancelled" && same(x) && Date.now() - Date.parse(x.createdAt || 0) < 21 * 864e5)) return { ok: false, why: "cancelled earlier by Tania" };
     if (c && skipExisting && c.notifiedAt) return { ok: true, id: c.id, callAt: c.callAt, existing: true };
     if (!c) { c = { id: "rf_" + Math.random().toString(36).slice(2, 10), status: "scheduled", createdAt: new Date().toISOString(), source: "eva-auto" }; list.push(c); }
     Object.assign(c, {
