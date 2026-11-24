@@ -220,6 +220,9 @@ export default async () => {
     if (!aid) continue; // agent not connected yet; stays in the queue
     const slots = PLAN ? null : (s.agentHours || DEFAULT_AGENT_HOURS)[name];
     if (slots && !slots.some(([a, b]) => now.mins >= toMins(a) && now.mins < toMins(b))) continue; // not this agent's hour; stays in the queue
+    // Tania, Nov 24: George's English agent was set to Spanish-first, so he said "Hola" to English greetings. English
+    // leads now get his English agent with English first (Spanish ready); Spanish leads keep his Spanish agent.
+    if (name === "george" && lang === "en") { try { await alekLanguage(aid, "en", store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
     if (name === "alek" && !agentId("alek_pt")) { try { await alekLanguage(aid, lang, store); } catch (e) { lead.note = "language switch: " + String(e.message).slice(0, 100); continue; } }
     const floating = name === "alek" && lead.mode === "floating" && String(lead.task || "").length >= 10;
     const pick = floating && ALEK_NUM() ? { id: ALEK_NUM() } : numberIds().map((id) => ({ id, n: counts[id] || 0 })).filter((x) => x.n < cap()).sort((x, y) => x.n - y.n)[0];

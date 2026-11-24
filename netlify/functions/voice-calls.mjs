@@ -151,8 +151,9 @@ const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "
 // Tania, Nov 16 (later): every agent speaks English AND Latin American Spanish and switches with ease when the person
 // needs the other language. Alek starts in the lead's language with the other one ready; Portuguese stays single-language.
 const ALEK_LANGS = { en: { primary: "en", additional: ["es-MX"] }, es: { primary: "es-MX", additional: ["en"] }, pt: { primary: "pt-BR", additional: [] } };
-// Starting language per agent (all bilingual): George opens in Spanish, everyone else in English.
-const AGENT_LANGS = (n) => n === "george" ? { primary: "es-MX", additional: ["en"] } : { primary: "en", additional: ["es-MX"] };
+// Starting language per agent (all bilingual): English first, Spanish ready. Tania, Nov 24: George's English agent is
+// English-first too (his Spanish agent, george_es, handles Spanish leads) -- he was saying "Hola" to English greetings.
+const AGENT_LANGS = (n) => ({ primary: "en", additional: ["es-MX"] });
 async function alekLanguage(id, lang, store) {
   const want = ALEK_LANGS[lang] || ALEK_LANGS.en;
   const d = await cartesia("GET", "/v1/agents/" + encodeURIComponent(id), V_READ);
