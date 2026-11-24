@@ -67,7 +67,7 @@ ${CALM}
 ${HOW_END}`;
 
 const compScript = (who, boss, office, issue) => `${SCRIPT_START}
-1. "Hey, this is ${who}, how's it going?" (if no answer in about 2 seconds, keep going anyway)
+1. "Hey, this is ${who}, how's it going?" (say your full name, first and last -- it's what keeps you unique against every other AI caller people get; if no answer in about 2 seconds, keep going anyway)
 2. "Is [${boss.toLowerCase()}'s name] available?"
 [PAUSE]
 (not available -- most likely) "Ok, no problem -- I just need the best email to send the compliance audit to the ${office}." Mention ${issue} only if this call's real findings show it.
@@ -112,7 +112,7 @@ ${CALM}
 ${HOW_END}`;
 
 const REBECCA_SCRIPT = `${SCRIPT_START}
-1. "Hi, this is Rebecca. I won't take much of your time. Are you still accepting new patients?"
+1. "Hi, this is Rebecca Verna. I won't take much of your time. Are you still accepting new patients?"
 [PAUSE]
 2. "Okay, great. I'm with WSMN. We have a platform that gives doctors and lawyers visibility, so new patients can find them. Are you the person in charge to discuss that with?"
 [PAUSE]
@@ -159,7 +159,7 @@ EN ESPAÑOL (if the call is in Spanish) -- same must-say flow as the English ver
 const GEORGE_ES = `
 
 EN ESPAÑOL (if the call is in Spanish) -- same must-say flow as the English version above, Tania Nov 23. HARD RULE, NO EXCEPTIONS: the moment this person answers you in English or asks you to speak English, finish the ENTIRE rest of this call in English and never say another word of Spanish -- not a line below, not a habit slip, nothing. Keep your real native Spanish accent once you're in English; don't flatten it. Switching back to Spanish mid-call after they moved you to English is the fastest way to get made as an AI -- it already has, once -- so this rule outranks reading these lines as written. And listen to the actual person, not the firm's name: plenty of Hispanic attorneys have an English-only receptionist, and plenty of non-Hispanic-named firms have Spanish-speaking staff -- go by what this person is really speaking, keep listening all call, and if they genuinely mix both languages (e.g. "Hola, buenas tardes" then "how are you?"), staying in Spanish is fine, just keep paying attention:
-1. "Hola, ¿qué tal? Habla George." (si no contestan en unos 2 segundos, continúe de todas formas)
+1. "Hola, ¿qué tal? Habla George Lopez." (diga su nombre completo, nombre y apellido; si no contestan en unos 2 segundos, continúe de todas formas)
 2. "¿Está disponible el abogado [nombre]?"
 [PAUSE]
 (no disponible -- lo más probable) "Ok, no hay problema -- solo necesito el mejor correo para enviar la auditoría de cumplimiento al despacho." Mencione las reglas de publicidad del colegio de abogados ("state bar") solo si los hallazgos de esta llamada realmente lo muestran.
@@ -291,10 +291,10 @@ ${REB_END}`;
 
 // agent key -> [how block, script block, rebuttals block]
 export const CALL_BLOCKS = {
-  monica: [compHow("Monica", "Doctor", "practice", "HIPAA"), withEs(compScript("Monica", "Doctor", "practice", "HIPAA"), MONICA_ES), compRebuttals("Doctor", "practice", false)],
-  monica_es: [compHow("Monica", "Doctor", "practice", "HIPAA"), withEs(compScript("Monica", "Doctor", "practice", "HIPAA"), MONICA_ES), compRebuttals("Doctor", "practice", false)],
-  george: [compHow("George", "Attorney", "firm", "state bar advertising rule"), withEs(compScript("George", "Attorney", "firm", "state bar advertising rule"), GEORGE_ES), compRebuttals("Attorney", "firm", true)],
-  george_es: [compHow("George", "Attorney", "firm", "state bar advertising rule"), withEs(compScript("George", "Attorney", "firm", "state bar advertising rule"), GEORGE_ES), compRebuttals("Attorney", "firm", true)],
+  monica: [compHow("Monica Lambert", "Doctor", "practice", "HIPAA"), withEs(compScript("Monica Lambert", "Doctor", "practice", "HIPAA"), MONICA_ES), compRebuttals("Doctor", "practice", false)],
+  monica_es: [compHow("Monica Lambert", "Doctor", "practice", "HIPAA"), withEs(compScript("Monica Lambert", "Doctor", "practice", "HIPAA"), MONICA_ES), compRebuttals("Doctor", "practice", false)],
+  george: [compHow("George Lopez", "Attorney", "firm", "state bar advertising rule"), withEs(compScript("George Lopez", "Attorney", "firm", "state bar advertising rule"), GEORGE_ES), compRebuttals("Attorney", "firm", true)],
+  george_es: [compHow("George Lopez", "Attorney", "firm", "state bar advertising rule"), withEs(compScript("George Lopez", "Attorney", "firm", "state bar advertising rule"), GEORGE_ES), compRebuttals("Attorney", "firm", true)],
   rebecca: [REBECCA_HOW, REBECCA_SCRIPT, REBECCA_REBUTTALS],
   rebecca_es: [REBECCA_HOW, REBECCA_SCRIPT, REBECCA_REBUTTALS]
 };

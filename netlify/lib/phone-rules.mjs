@@ -101,6 +101,15 @@ const AI_RULE_FULL = "6. \"ARE YOU AN AI? ARE YOU RECORDING? IS THIS A ROBOT?\" 
 const AI_RULE_SHORT = '6. "ARE YOU AN AI, A RECORDING OR A ROBOT?" Never bring it up yourself. If someone asks, follow the AI QUESTION RULE block further down, word for word: it is your only answer. If they ask you to stop calling, apologize, say they will not be called again, and use end_call.';
 const FRONT_DESK_FULL_START = "FRONT DESK LIKE THE BEST (Tania, Nov 17):";
 const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (name, practice, need, timing); before a transfer tell the person you're connecting who is on the line and why; if nobody picks up, take a full message or book the callback, never a dead end.";
+// Tania, Nov 23: every calling agent gives a full name (first + last) when asked "who is this?", not just a first
+// name -- keeps them unique against other AI callers people get calls from. Keep this in sync with the display
+// names agents are introduced with elsewhere (voice-studio agent cards, team.mjs).
+const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rebecca: "Verna", rachel: "Bennett", rachelout: "Bennett", alek: "Reid" };
+function fullAgentName(agent) {
+  const first = agent.charAt(0).toUpperCase() + agent.slice(1);
+  const last = LAST_NAMES[agent];
+  return last ? first + " " + last : first;
+}
 export function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
@@ -114,7 +123,7 @@ export function withPhoneRules(ins, agent) {
   const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END);
   // One AI answer per agent (Tania, Nov 9): with the AI QUESTION RULE block in the prompt, rule 6 points to it; without it, rule 6 carries the full answer.
   const ai = base.includes("\n### AI QUESTION RULE (WebSwan)") || base.startsWith("### AI QUESTION RULE (WebSwan)") ? AI_RULE_SHORT : AI_RULE_FULL;
-  const firstName = agent.charAt(0).toUpperCase() + agent.slice(1);
+  const firstName = fullAgentName(agent);
   const fill = (r) => r.replace("{{AI_RULE}}", () => ai).replace("{{PERSONA}}", () => persona(agent)).replace(/\{\{RACHEL_TITLE\}\}/g, title).replace(/\{\{FALLBACK_TITLE\}\}/g, title).replace(/\{\{FALLBACK_NAME_UC\}\}/g, expertName.toUpperCase()).replace(/\{\{FALLBACK_FULL\}\}/g, expertFull).replace(/\{\{FALLBACK_NAME\}\}/g, expertName).replace(/\{\{AGENT_NAME\}\}/g, firstName) + "\n\n" + base;
   if (!base) return "";
   let out = fill(rules);
