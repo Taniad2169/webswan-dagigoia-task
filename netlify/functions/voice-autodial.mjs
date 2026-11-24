@@ -203,6 +203,15 @@ export default async () => {
     if (memo && memo.dnc) { lead.status = "skipped"; lead.note = "Asked not to be called (lead memory)"; continue; }
     if (!leadOpen(lead)) continue; // outside the lead's business hours; stays in the queue
     const name = PLAN ? planName : String(lead.agent || s.agent || "").toLowerCase(), lang = (PLAN && DIALER_PLAN.agents[planName].forceLang) || (["es", "pt"].includes(lead.lang) ? lead.lang : "en"), aid = agentId(lang === "en" ? name : name + "_" + lang) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
+    // Tania, Nov 23: Monica called a practice on Nov 10, then Jenna called the SAME number again on Nov 18 with the
+    // same compliance pitch -- a cold-opener re-pitching a business another cold-opener already worked, from a
+    // separate lead record that never checked the number's call history. Rachel/Rachel-out are the one deliberate
+    // exception: Rachel is SUPPOSED to call back after Monica/George/Jenna captured an email or set a time. Any other
+    // agent re-opening a number another agent already called within the last 60 days is a duplicate, not a new lead.
+    if (memo && (memo.calls || 0) > 0 && memo.lastAgent && String(memo.lastAgent).toLowerCase() !== name && !["rachel", "rachelout"].includes(name) && (Date.now() - (memo.updatedAt || 0)) < 60 * 864e5) {
+      lead.status = "skipped"; lead.note = `Already called by ${memo.lastAgent} on ${new Date(memo.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} -- skipping to avoid a duplicate cold call`;
+      continue;
+    }
     if (!aid) continue; // agent not connected yet; stays in the queue
     const slots = PLAN ? null : (s.agentHours || DEFAULT_AGENT_HOURS)[name];
     if (slots && !slots.some(([a, b]) => now.mins >= toMins(a) && now.mins < toMins(b))) continue; // not this agent's hour; stays in the queue

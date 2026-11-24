@@ -11,7 +11,7 @@
 //   VOICE_CALLING_ENABLED     "on" to allow live calls (anything else = practice only)
 //   VOICE_DAILY_CAP           optional: max calls per number per day (default 80)
 import { startWatch } from "../lib/call-watch.mjs";
-import { leadMemoryText } from "../lib/lead-memory.mjs";
+import { leadMemoryText, getLeadMemory } from "../lib/lead-memory.mjs";
 import { runWorkpilotSync, recentProspectorLeads } from "./ai-calls-workpilot.mjs";
 import { askAI, webSearch, fmtResults, researchWeb, getSettings, brainFor, teamStore, addMessages } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -989,6 +989,14 @@ export default async (req) => {
     const day = today(), countsKey = "count-" + day, dialedKey = "dialed-" + day;
     const dialed = (await store.get(dialedKey, { type: "json" })) || [];
     if (dialed.includes(to) && !b.force) return reply(409, { error: "This number was already called today." }, origin);
+    // Tania, Nov 23: same duplicate-cold-call guard as the auto-dialer -- Rachel/Rachel-out calling back after
+    // someone else captured an email or a time is the one intended exception.
+    if (!b.force) {
+      const memo0 = await getLeadMemory(to);
+      if (memo0 && (memo0.calls || 0) > 0 && memo0.lastAgent && String(memo0.lastAgent).toLowerCase() !== name && !["rachel", "rachelout"].includes(name) && (Date.now() - (memo0.updatedAt || 0)) < 60 * 864e5) {
+        return reply(409, { error: `Already called by ${memo0.lastAgent} on ${new Date(memo0.updatedAt).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" })} -- this would be a duplicate cold call. Pass force to call anyway.` }, origin);
+      }
+    }
     const counts = (await store.get(countsKey, { type: "json" })) || {};
     const alekNum = String(process.env.CARTESIA_ALEK_NUMBER_ID || "").trim(), jennaNum = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim(), camp = nums.filter((id) => id !== alekNum && id !== jennaNum);
     const chosen = String(b.fromNumberId || "").trim();
