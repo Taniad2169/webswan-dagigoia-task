@@ -1261,8 +1261,24 @@ function speechChunks(text) {
   if (cur.trim()) out.push(cur.trim());
   return out.filter(Boolean);
 }
+// Tania, Nov 25: Mariska's prompt promises to speak French, Spanish and Brazilian Portuguese natively, matching
+// whatever language she just replied in -- but nothing ever told the TTS call which language that was, so every
+// voice turn defaulted to English no matter what the text was actually in. This is a light heuristic (diacritics
+// plus a handful of very common, language-distinctive words), not a real language detector, but it's enough to
+// pick the right Cartesia voice for a chat reply. Defaults to "en" whenever it isn't confident -- harmless for
+// every other agent, who never reply in anything but English anyway.
+function detectSpokenLang(text) {
+  const t = " " + String(text || "").toLowerCase() + " ";
+  const score = (re) => (t.match(re) || []).length;
+  const fr = score(/[çœ]|\b(bonjour|merci|vous|être|où|ça|je suis|c'est|voici|très|avec|pour|aujourd'hui)\b/g);
+  const es = score(/[¿¡ñ]|\b(gracias|usted|está|cómo|hola|señor|señora|muy|con|para|hoy)\b/g);
+  const pt = score(/[ãõ]|\b(você|obrigad[oa]|não|está|olá|muito|com|para|hoje)\b/g);
+  const best = Math.max(fr, es, pt);
+  if (best < 2) return "en";
+  return fr === best ? "fr" : es === best ? "es" : "pt";
+}
 async function ttsUrl(text, who) {
-  const r = await api({ action: "tts", agent: who || cur, text: text.slice(0, 2400) });
+  const r = await api({ action: "tts", agent: who || cur, text: text.slice(0, 2400), lang: detectSpokenLang(text) });
   const bin = atob(r.audio), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return URL.createObjectURL(new Blob([u8], { type: r.mime || "audio/mpeg" }));
 }
