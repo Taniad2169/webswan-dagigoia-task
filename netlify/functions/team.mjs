@@ -217,7 +217,7 @@ export default async (req) => {
   // No Firebase Admin credential exists anywhere server-side, so this only QUEUES the action in
   // Netlify Blobs; WorkPilot's own signed-in browser session (sebq-index polling) applies it and
   // reports back via sebastien_actions_ack. Eva's separate queue (evaq-index) is untouched.
-  const SEB_AGENTS = ["jenna", "monica", "george", "rebecca", "alek", "rachel", "tatiana", "eva"];
+  const SEB_AGENTS = ["jenna", "monica", "george", "rebecca", "alek", "rachel", "sentinel", "eva"];
   async function queueSebastienAction(kind, f) {
     kind = String(kind || "").toLowerCase();
     f = f || {};
@@ -456,14 +456,14 @@ export default async (req) => {
       return reply(200, { awards: agent ? (all[agent] || []) : [], totals }, origin);
     }
     // Jimmy: make a picture or a video (from his panels, or when Tania asks for one in his chat). Done in the background.
-    // Jimmy + Tatiana (Tania, Nov 9): asking Jimmy for the pictures for Tatiana's posts really starts them. They land on the post cards in Tatiana's chat.
-    if (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && /\b(tatiana|posts?|templates?|content|this week)\b/i.test(String(b.text || "")) && /\b(graphics?|pictures?|images?|photos?|visuals?)\b/i.test(String(b.text || "")) && /\b(all|every|each|\d{1,2}|posts|templates|this week)\b/i.test(String(b.text || "")) && !/\?\s*$/.test(String(b.text || "").trim())) {
+    // Jimmy + Sentinel (Tania, Nov 9; content/graphics moved from Tatiana to Sentinel Nov 24): asking Jimmy for the pictures for Sentinel's posts really starts them. They land on the post cards in Sentinel's chat.
+    if (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && /\b(sentinel|tatiana|posts?|templates?|content|this week)\b/i.test(String(b.text || "")) && /\b(graphics?|pictures?|images?|photos?|visuals?)\b/i.test(String(b.text || "")) && /\b(all|every|each|\d{1,2}|posts|templates|this week)\b/i.test(String(b.text || "")) && !/\?\s*$/.test(String(b.text || "").trim())) {
       const text = clean(b.text, 4000).trim(), today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
       const months = [...new Set([today.slice(0, 7), targetMonth()])]; let need = 0; const run = [];
       for (const m of months) { const n = ((await getPlan(m)).items || []).filter((x) => x.kind !== "blog" && !x.aiImage && x.image !== "own" && !["scheduled", "skip"].includes(x.status) && x.date >= today).length; if (n) { need += n; run.push("tatiana_pics:" + m); } }
       if (need) {
         let started = true, why = ""; try { await startJobs(run); } catch (e) { started = false; why = String(e.message || e).slice(0, 160); }
-        const saved = await addMessages("jimmy", [{ role: "user", text }, { role: "agent", text: started ? `🎨 On it. I'm painting the pictures for ${need} of Tatiana's upcoming posts right now, each from the picture idea she wrote for it. They appear on the post cards in Tatiana's chat within a few minutes (about ${Math.ceil(need * 4)}¢ total). If any picture fails, the reason shows up in Tatiana's chat.` : `⚠️ I couldn't start the pictures: ${why}. Please ask me again.` }]);
+        const saved = await addMessages("jimmy", [{ role: "user", text }, { role: "agent", text: started ? `🎨 On it. I'm painting the pictures for ${need} of Sentinel's upcoming posts right now, each from the picture idea he wrote for it. They appear on the post cards in Sentinel's chat within a few minutes (about ${Math.ceil(need * 4)}¢ total). If any picture fails, the reason shows up in Sentinel's chat.` : `⚠️ I couldn't start the pictures: ${why}. Please ask me again.` }]);
         return reply(200, { messages: saved.slice(-2) }, origin);
       }
     }
@@ -528,7 +528,7 @@ export default async (req) => {
       }
       let extra = "", fileKept = false, attached = "";
       // Tatiana: a picture sent in her chat goes straight onto the next post (or the post number Tania says).
-      if (att && att.image && agent === "tatiana" && !b.roleplay && !b.voice) {
+      if (att && att.image && agent === "sentinel" && !b.roleplay && !b.voice) {
         try { const r = await attachChatPicture(String(att.image), clean(b.text, 300) + "\n" + attName);
           attached = `🖼️ Attached to post ${r.n} of ${r.of}: ${r.label}. ${r.left ? r.left + " upcoming post" + (r.left === 1 ? "" : "s") + " still need" + (r.left === 1 ? "s" : "") + " your picture." : "Every upcoming post now has your picture."}`;
           extra += "\n\nDONE AUTOMATICALLY BY THE OFFICE: the picture Tania just sent is now attached to this post and will go out with it: " + r.label + ". You CAN attach her pictures this way: every picture she sends here goes onto the next post in date order, or onto the post number she names. Confirm it in one short sentence; never say you can't attach pictures.";
@@ -542,7 +542,7 @@ export default async (req) => {
         extra += "\n\nTania attached this file in the chat. Use it to answer her; you DID receive it.";
       }
       // Jonathan, Tatiana and Jenna: if Tania pastes a website, read it before answering.
-      const site = (agent === "linda" || agent === "tatiana" || agent === "jenna" || agent === "sebastien") && (text.match(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/i) || [])[1];
+      const site = (agent === "linda" || agent === "sentinel" || agent === "jenna" || agent === "sebastien") && (text.match(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/i) || [])[1];
       const siteIsVideo = site && /(?:youtube\.com|youtu\.be)\//i.test(site);
       if (site && siteIsVideo) {
         // Bug fix, Tania Nov 20: this used to fall into readSite() below, which only works on a normal
@@ -636,7 +636,7 @@ Never invent a source that is not in the research above. If the research above c
       }
       // WorkPilot's lead list as WorkPilot last saved it on the server (any device), when the page couldn't attach it itself.
       // Tania, Nov 14: Jenna and Tatiana get this too (not just Eva) -- they need to see a lead's social media once WorkPilot has it.
-      if ((agent === "eva" || agent === "jenna" || agent === "tatiana" || agent === "rebecca") && !(att && att.text && /LIVE WORKPILOT LEADS/.test(att.text)) && /lead|workpilot|work pilot|lavender|purple|grey|gray|silver|audit|call|appointment|doctor|attorney|practice|clinic|dentist|website|social|review|draft|who|name|note/i.test(text)) {
+      if ((agent === "eva" || agent === "jenna" || agent === "sentinel" || agent === "rebecca") && !(att && att.text && /LIVE WORKPILOT LEADS/.test(att.text)) && /lead|workpilot|work pilot|lavender|purple|grey|gray|silver|audit|call|appointment|doctor|attorney|practice|clinic|dentist|website|social|review|draft|who|name|note/i.test(text)) {
         try {
           const snap = await teamStore().get("wp-snapshot", { type: "json" });
           if (snap && snap.leads && snap.leads.length) {
@@ -654,7 +654,7 @@ Never invent a source that is not in the research above. If the research above c
         try { const q = ((await teamStore().get("evaq-index", { type: "json" })) || []).slice(-30); extra += "\n\nYOUR LIGHT GREY QUEUE (from WorkPilot; data): " + (q.length ? JSON.stringify(q.map((x) => ({ practice: x.practice, to: x.to, status: x.status, subject: x.subject || "", error: x.error || "", at: x.at }))) : "empty: nothing has been handed to you with Ready for Eva yet.") + "\nIf Tania asks you to retry, end with ((QUEUE: run))."; } catch (e) {}
       }
       // Tatiana: live Content360 status and her post plan, so she can say what is scheduled and what is waiting (Tania, Nov 6).
-      if (agent === "tatiana" && !b.roleplay) {
+      if (agent === "sentinel" && !b.roleplay) {
         try {
           const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
           const months = [...new Set([today.slice(0, 7), targetMonth()])];
@@ -764,7 +764,7 @@ Never invent a source that is not in the research above. If the research above c
       } catch (e) {}
       // Content Library (Tania, Nov 20): Kobe, Sebastien, Jenna, Jonathan and Tatiana herself always see what's
       // saved -- titles/tags/links only (cheap), never the full PDF/article text unless they ask to read one.
-      if (["sdr", "sebastien", "jenna", "linda", "tatiana"].includes(agent)) {
+      if (["sdr", "sebastien", "jenna", "linda", "sentinel"].includes(agent)) {
         try { extra += libraryBrief(await libraryIndex()); } catch (e) {}
       }
       // Kobe: the Buyer Psychology reports Tania has run, plus live web research when she asks him to look something up (Tania, Nov 11).
@@ -894,7 +894,7 @@ Never invent a source that is not in the research above. If the research above c
       if (agent === "eva" && /\(\(\s*QUEUE:\s*run\s*\)\)/i.test(outText)) { outText = outText.replace(/\(\(\s*QUEUE:\s*run\s*\)\)/gi, "").trim(); try { await startJobs(["eva_queue"]); outText += "\n\n🔁 Working through my light grey queue now; each draft appears here when it's in Gmail."; } catch (e) { outText += "\n\n❌ I couldn't restart my queue (" + String(e.message || e).slice(0, 100) + ")."; } }
       // Tatiana's Content Library save directive (Tania, Nov 20): ((LIBRARY SAVE: type=video|pdf|article|link|title=...|url=...|tags=...)).
       // When she just saved a PDF/article Tania attached in this same turn, the already-extracted att.text becomes the saved text.
-      if (agent === "tatiana" && /\(\(\s*LIBRARY\s+SAVE\s*:/i.test(outText)) {
+      if (agent === "sentinel" && /\(\(\s*LIBRARY\s+SAVE\s*:/i.test(outText)) {
         const matches = [...outText.matchAll(/\(\(\s*LIBRARY\s+SAVE\s*:\s*([\s\S]*?)\)\)/gi)];
         for (const m of matches.slice(0, 5)) {
           const f = {};
