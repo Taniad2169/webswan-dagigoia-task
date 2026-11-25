@@ -38,11 +38,14 @@ export function planActive(plan = DIALER_PLAN) { if (!plan) return false; const 
 // above (which still runs its own course through Nov 30) -- it's an open-ended training focus, so it has no
 // end date. It starts the day after the Black Friday plan ends, so it never cuts Rebecca's Black Friday calls
 // short this week. Adjust or clear TRAINING_FOCUS.paused whenever she's ready to bring one of these three back.
-// Tania, Nov 24: Monica got her own permanent doctor/attorney compliance role (MONICA_COMPLIANCE_TASK above) --
-// she's no longer a pause-after-training name, so she comes OFF this list. Rebecca and Alek are retired from the
-// active roster for real (not a "still in training" pause); this list is what keeps them silent once Black
-// Friday's dated campaign above ends on its own Nov 30 -- never cut short mid-campaign.
-export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["rebecca", "alek"] };
+// Tania, Nov 24 (earlier that day): Monica got her own permanent doctor/attorney compliance role
+// (MONICA_COMPLIANCE_TASK above) -- taken off this list for that reason.
+// Tania, Nov 24 (later, same day -- cost-reduction pass): "keep Sebastien, Kobe, Jonathan, Sentinel, George with
+// Jenna for outbounds, Rachel" live; Monica, Rebecca and Alek back on PAUSE (not retired -- code, scripts and
+// MONICA_COMPLIANCE_TASK all stay, she's just silent) until WebSwan grows bigger and Voice Studio's usage can
+// take more live callers again. This supersedes the "Monica comes off this list" note right above it.
+// Rebecca and Alek are the same open-ended pause as before, not tied to the Black Friday campaign's own end date.
+export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["monica", "rebecca", "alek"] };
 function trainingFocusActive() { const d = ymd(TRAINING_FOCUS.tz); return d >= TRAINING_FOCUS.start && d <= TRAINING_FOCUS.end; }
 // Tania, Nov 21: "a box to tick on or off for the agents" -- a manual, per-agent silence switch she sets herself
 // from Voice Studio (a day, a week, a few days), independent of the weekly DIALER_PLAN above. Stored as

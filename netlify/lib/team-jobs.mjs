@@ -621,6 +621,13 @@ export async function postsReminder() {
   await addMessages("tatiana", [{ role: "agent", kind: "reminder", text: `## ⏰ Posts waiting for you${waiting.length ? `\n**${waiting.length} due today or tomorrow are not scheduled yet.** Nothing goes out until you tap ✅ Approve & schedule on the cards above.\n${waiting.slice(0, 12).map(line).join("\n")}` : ""}${missed.length ? `\n\n**${missed.length} from the last 3 days never went out:**\n${missed.slice(0, 12).map(line).join("\n")}\nChange their date on the card and approve them if you still want them.` : ""}` }]);
 }
 
+// Tania, Nov 24: "put a few agents to sleep until we grow bigger" to cut Netlify usage -- Clara and Tatiana's
+// own scheduled background jobs (this is the actual cost, not the chat agent existing). PAUSED, not retired:
+// their system prompts, chat and manual buttons (e.g. the "Make this month's plan" button) stay fully live --
+// only their automatic daily/weekly/monthly wake-ups stop firing. Jimmy needs no separate pause: he only ever
+// runs off Tatiana's own queued picture requests, so pausing her stops his automatic queue too; asking him
+// directly in chat still works. Clear this set (or remove a name from it) to bring an agent's automatic jobs back.
+const PAUSED_OFFICE_AGENTS = new Set(["clara", "tatiana"]);
 export function dueJobs(now = new Date()) {
   const wd = now.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/Los_Angeles" });
   const day = Number(now.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/Los_Angeles" }));
@@ -629,7 +636,7 @@ export function dueJobs(now = new Date()) {
   if (day === 25) jobs.push("tatiana_month");
   if (day === 1 || day === 15) jobs.push("tatiana_blogs");
   if (wd !== "Sat" && wd !== "Sun") jobs.push("tatiana_linkedin");
-  return jobs;
+  return jobs.filter((j) => { const agent = j.split("_")[0]; return !PAUSED_OFFICE_AGENTS.has(agent); });
 }
 // A chat answer that took too long for the live request: finish it here and post it in the agent's chat.
 // Eva's light grey queue (Tania, Nov 13): Tania presses "Ready for Eva" in WorkPilot, which sends the lead, her notes, the
