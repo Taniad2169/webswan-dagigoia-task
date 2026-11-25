@@ -370,7 +370,11 @@ async function openAgent(k) {
   const tl = (TOOLS[k] || []).concat([["🧠 Brain notes", () => brainPanel(k)], ["🏆 Awards", () => awardPanel(k)], ["🎭 Voice role play", () => { G.on = false; V.rp = true; voiceStart(k === "rachel" ? RP_RACHEL : RP_OPEN) }]]);
   $("tools").innerHTML = tl.map((t, i) => `<button class="btn" data-t="${i}">${esc(t[0])}</button>`).join("");
   $("tools").querySelectorAll("[data-t]").forEach((b) => b.onclick = tl[b.dataset.t][1]);
-  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…",  jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / give me a video idea for…", linda: "Paste a website or ask about a law, disclaimer or script wording…", sentinel: "Ask Sentinel for a post, a reel script, a blog… or a security/build question…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k];
+  // Tania, Nov 25: this used to be a hand-picked placeholder for 6 agents only -- every other agent (Dispatch,
+  // Mariska, Sebastien, Jenna, Monica, George, Rebecca, Alek...) fell through to `undefined`, and setting
+  // .placeholder to undefined renders the literal text "undefined" in the box. Added a generic fallback so any
+  // agent not in the hand-picked list gets a sensible "Message <Name>…" instead.
+  $("extra").innerHTML = ""; $("txt").placeholder = { eva: "Ask Eva: check my email, draft a reply, what's on my calendar…",  jimmy: "Ask Jimmy: make a flyer for… / create a picture of… / give me a video idea for…", linda: "Paste a website or ask about a law, disclaimer or script wording…", sentinel: "Ask Sentinel for a post, a reel script, a blog… or a security/build question…", clara: "Ask Clara: should I pay for this? Paste the price or Jimmy's research…", rachel: "Tell me how Rachel should answer…" }[k] || ("Message " + ((S.agents || FALLBACK)[k] || FALLBACK[k] || {}).name + "…");
   document.querySelector(".app").classList.add("chat"); drawList();
   $("msgs").innerHTML = '<p class="hint">Loading…</p>';
   // Same race the other way round: two quick switches could land the first agent's history in the second chat.
