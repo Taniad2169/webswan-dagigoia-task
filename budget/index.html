@@ -248,6 +248,7 @@ input,textarea,select,[contenteditable],[data-selectable]{-webkit-user-select:te
       <button class="mbtn" type="button" onclick="shiftMonth(-1)" aria-label="Previous month">‹</button>
       <div class="mname" id="mname">Month</div>
       <button class="mbtn" type="button" onclick="shiftMonth(1)" aria-label="Next month">›</button>
+      <select class="in" id="monthpick" style="max-width:220px;width:auto" onchange="goToMonth(this.value)" aria-label="Jump to month"></select>
       <button class="today" type="button" onclick="goToday()">This month</button>
     </div>
 
@@ -417,7 +418,7 @@ input,textarea,select,[contenteditable],[data-selectable]{-webkit-user-select:te
     if(ready) return;
     ready = true;
     try{ var c=localStorage.getItem(CACHE); if(c) state=normalize(JSON.parse(c)); }catch(e){}
-    fillCats(); render();
+    fillCats(); buildMonthOptions(); render();
     pill('☁️ Loading…');
     window._cloud.load().then(function(data){
       if(data && data.json){ state = normalize(JSON.parse(data.json)); cache(); render(); }
@@ -569,6 +570,18 @@ input,textarea,select,[contenteditable],[data-selectable]{-webkit-user-select:te
   /* ---------- month ---------- */
   function shiftMonth(n){ var p=ui.month.split('-'); ui.month=monthKey(new Date(+p[0], +p[1]-1+n, 1)); if(ui.when==='extra') setWhen('extra'); render(); }
   function goToday(){ ui.month=monthKey(new Date()); if(ui.when==='extra') setWhen('extra'); render(); }
+  function goToMonth(k){ if(!k) return; ui.month=k; if(ui.when==='extra') setWhen('extra'); render(); }
+  function buildMonthOptions(){
+    var sel=document.getElementById('monthpick'); if(!sel) return;
+    var now=new Date(), y0=now.getFullYear()-2, y1=now.getFullYear()+1, opts=[];
+    for(var y=y0;y<=y1;y++){
+      for(var mo=0;mo<12;mo++){
+        var k=y+'-'+String(mo+1).padStart(2,'0');
+        opts.push('<option value="'+k+'">'+monthLabel(k)+'</option>');
+      }
+    }
+    sel.innerHTML=opts.join('');
+  }
 
   /* ---------- reset / export / import ---------- */
   function askReset(){
@@ -626,6 +639,7 @@ input,textarea,select,[contenteditable],[data-selectable]{-webkit-user-select:te
     var pct=function(v){ return inc>0?Math.round(v/inc*100)+'%':'0%'; };
 
     document.getElementById('mname').textContent=monthLabel(ui.month);
+    var mp=document.getElementById('monthpick'); if(mp && mp.value!==ui.month) mp.value=ui.month;
     document.getElementById('st-inc').textContent=money(inc);
     document.getElementById('st-inc-d').textContent='Fixed '+money(fi)+' · Extra '+money(ei);
     document.getElementById('st-exp').textContent=money(exp);
