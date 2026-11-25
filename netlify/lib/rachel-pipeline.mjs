@@ -234,12 +234,14 @@ export async function listForBoard() {
   }));
 }
 // Tania can also approve/skip right from WorkPilot's mirror card instead of only in Rachel's chat -- same record,
-// just a second door into it.
-export async function setBoardApproval(id, approved) {
+// just a second door into it. An edited script here is the one Rachel actually reads from at call time (same
+// field rachel-followups.mjs's cron job uses), never a WorkPilot-only copy.
+export async function setBoardApproval(id, approved, script) {
   const st = vs(); const list = (await st.get("rachel-followups", { type: "json" })) || [];
   const c = list.find((x) => x.id === id); if (!c) return { ok: false, why: "not found" };
   if (c.status !== "scheduled") return { ok: false, why: "already " + c.status };
-  c.approved = !!approved; c.approvedAt = approved ? new Date().toISOString() : null;
+  if (approved != null) { c.approved = !!approved; c.approvedAt = approved ? new Date().toISOString() : null; }
+  if (script != null) c.script = String(script).slice(0, 1800);
   await st.setJSON("rachel-followups", list.slice(-500));
   return { ok: true };
 }

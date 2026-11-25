@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN } from "../lib/team.mjs";
-import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture } from "../lib/team-jobs.mjs";
+import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
@@ -512,6 +512,19 @@ export default async (req) => {
         let ok = true; try { await startJobs(["jenna_review"]); } catch (e) { ok = false; }
         const ms = await addMessages("sebastien", [{ role: "agent", text: ok ? "📋 On it. I'm listening to Jenna's calls from the last 7 days now, I'll ask her my questions, and the finished review will appear right here in a few minutes." : "⚠️ I couldn't start Jenna's review just now (the background worker didn't answer). Please try again in a minute." }]);
         return reply(200, { messages: [userMsg, ms[ms.length - 1]] }, origin);
+      }
+      // Tania, Nov 24, hardcore: "I need Sebastien to be able to screen ALL leads, no exception" -- dialer campaign
+      // leads, Voice Studio leads, Lead Prospector leads. The normal lead context below caps at 70 leads per
+      // source so one chat reply never blows its budget; a real "screen all" request runs instead as an
+      // uncapped background job (team-jobs.mjs's sebastienScreenAll) and posts the full result back here.
+      if (agent === "sebastien" && !b.roleplay && !b.voice && !meeting) {
+        const src = screenSourceFromText(text);
+        if (src) {
+          let ok = true; try { await startJobs(["sebastien_screen:" + src]); } catch (e) { ok = false; }
+          const label = { dialer: "the WorkPilot dialer campaign leads", studio: "the Voice Studio leads", prospector: "the Lead Prospector leads", manual: "the manually-typed WorkPilot leads", all: "every WorkPilot lead" }[src] || "those leads";
+          const ms = await addMessages("sebastien", [{ role: "agent", text: ok ? "🧠 On it -- screening " + label + " now, every one of them, no cap this time. I'll post the full result right here in a minute or two." : "⚠️ I couldn't start the screen just now (the background worker didn't answer). Please try again in a minute." }]);
+          return reply(200, { messages: [userMsg, ms[ms.length - 1]] }, origin);
+        }
       }
       let extra = "", fileKept = false, attached = "";
       // Tatiana: a picture sent in her chat goes straight onto the next post (or the post number Tania says).
@@ -1087,7 +1100,7 @@ Pick the ONE finding here that would actually make this specific practice sit up
     if (b.action === "rachel_board") { return reply(200, { items: await listForBoard() }, origin); }
     if (b.action === "rachel_board_set") {
       const id = clean(b.id, 40); if (!/^rf_[a-z0-9]{6,12}$/.test(id)) return reply(400, { error: "Bad id." }, origin);
-      const r = await setBoardApproval(id, !!b.approved);
+      const r = await setBoardApproval(id, b.approved == null ? null : !!b.approved, b.script != null ? clean(b.script, 1800) : null);
       return reply(r.ok ? 200 : 409, r, origin);
     }
     if (b.action === "rachel_board_skip") {

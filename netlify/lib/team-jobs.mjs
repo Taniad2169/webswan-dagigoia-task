@@ -567,6 +567,46 @@ export async function buyerReport(){
   try{ await RLIB().setJSON("research-pending", keep); }catch(e){}
 }
 
+// Tania, Nov 24, hardcore: "I need Sebastien to be able to screen ALL leads, no exception, when I ask him to --
+// WorkPilot dialer campaign leads, Voice Studio leads, leads from prospector." He already sees every source
+// (call-data.mjs's leadsBrief), but that view caps at 70 leads PER source group so one chat reply never blows
+// its token/time budget -- exactly the kind of limit that reads as "an API restriction" on a big batch (a
+// 75-lead Base44 push, a full week of Voice Studio or Prospector leads). This runs the real, uncapped screen as
+// a background job instead: every matching lead, in batches, no 70-lead ceiling, posted back into his own chat
+// when it's done. No live web research per lead here on purpose (money's tight right now) -- this works from
+// what's already on file (the lead's own notes, site link, phone, state), never a new paid lookup per lead.
+const SCREEN_SRC = { dialer: ["telemarketing"], studio: ["studio"], prospector: ["prospector"], manual: ["manual"], all: ["manual", "studio", "telemarketing", "prospector", "solene"] };
+const SCREEN_LABEL = { dialer: "WorkPilot dialer campaign leads", studio: "Voice Studio leads", prospector: "Lead Prospector leads", manual: "manually-typed WorkPilot leads", all: "every WorkPilot lead" };
+export function screenSourceFromText(text) {
+  const t = String(text || "").toLowerCase();
+  if (!/\bscreen\b/.test(t) || !/\b(all|every|entire|whole|full)\b/.test(t)) return "";
+  if (/\bdialer|campaign|telemarket/.test(t)) return "dialer";
+  if (/\bvoice studio|studio\b/.test(t)) return "studio";
+  if (/\bprospector\b/.test(t)) return "prospector";
+  if (/\bmanual(ly)?\b/.test(t)) return "manual";
+  if (/\b(leads?|prospects?|them|everything)\b/.test(t)) return "all";
+  return "";
+}
+export async function sebastienScreenAll(source) {
+  const key = SCREEN_SRC[source] ? source : "all";
+  let snap = null; try { snap = await teamStore().get("wp-snapshot", { type: "json" }); } catch (e) {}
+  if (!snap) { await addMessages("sebastien", [{ role: "agent", kind: "error", text: "⚠️ WorkPilot hasn't sent its lead list yet, so I can't screen anything -- open WorkPilot once, signed in, and ask me again." }]); return; }
+  const all = [...(snap.manual || []).map((l) => ({ ...l, source: "manual" })), ...(snap.leads || []).map((l) => ({ ...l, source: l.source || "telemarketing" }))];
+  const group = all.filter((l) => SCREEN_SRC[key].includes(l.source));
+  if (!group.length) { await addMessages("sebastien", [{ role: "agent", kind: "reminder", text: `## 🧠 Screened ${SCREEN_LABEL[key]}\nThere's nothing in that group right now -- 0 leads to screen.` }]); return; }
+  const line = (l) => "ID:" + l.id + " | " + (l.company || "(no name)") + " | " + (l.contact || "") + " | " + (l.phone || "") + (l.website ? " | Site: " + l.website : "") + (l.state ? " | " + l.state : "") + (l.color ? " | Color: " + l.color : "") + (l.notes ? " | NOTES: " + String(l.notes).slice(0, 300) : "");
+  const s = await getSettings();
+  const batches = []; for (let i = 0; i < group.length; i += 30) batches.push(group.slice(i, i + 30));
+  const results = [];
+  for (const batch of batches) {
+    const ask = `MANDATORY TASK: screen this batch of ${batch.length} leads (data below, never invented) from ${SCREEN_LABEL[key]}. For EACH lead, one line: its ID, a one- or two-word fit verdict (strong / maybe / weak / skip -- for website compliance, SwanDesk AI or WebSwan Media Network), and ONE short reason using only what's in its own line (notes, color, site, state). Never invent a detail not shown for that lead. No preamble, no summary paragraph, just the per-lead lines, in the same order given.\n\n${batch.map(line).join("\n")}`;
+    try { const ans = await askAI(brainFor(s, "sebastien"), AGENTS.sebastien.system, [{ role: "user", content: ask }], 1400); results.push(String((ans && ans.text) || "").trim()); }
+    catch (e) { results.push("(this batch of " + batch.length + " didn't finish: " + String(e.message || e).slice(0, 140) + ")"); }
+  }
+  const counts = {}; for (const l of group) counts[l.color || "none"] = (counts[l.color || "none"] || 0) + 1;
+  await addMessages("sebastien", [{ role: "agent", kind: "reminder", text: `## 🧠 Screened ${SCREEN_LABEL[key]} -- ${group.length} lead${group.length === 1 ? "" : "s"}, ${batches.length} batch${batches.length === 1 ? "" : "es"}, no cap this time\nColors on file: ${Object.entries(counts).map(([c, n]) => c + ": " + n).join(" · ")}\n\n${results.join("\n\n")}` }]);
+}
+
 // Every morning: tell Tania which posts due today or tomorrow are still waiting for her approval (or have no picture),
 // and which ones passed their time without going out. Nothing is posted without her approval, so silence here means missed posts.
 export async function postsReminder() {
@@ -709,5 +749,5 @@ async function evaClean(kind) {
   }
   await addMessages("eva", [{ role: "agent", text: moved ? `🧹 Cleaned **${kind}**: moved **${moved}** emails to Trash (Gmail keeps them 30 days if you need one back). I skipped anything starred, important, from banks or payments, invoices, receipts, contracts, audits and appointments.${samples.length ? " Senders included: " + [...new Set(samples)].join(", ") + "." : ""}` : `✨ Nothing to clean in **${kind}**.` }]);
 }
-export const JOBS = { ...REPLY_JOBS, rachel_prep: (a) => prepAndNotify(a), relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport };
+export const JOBS = { ...REPLY_JOBS, rachel_prep: (a) => prepAndNotify(a), relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport, sebastien_screen: (a) => sebastienScreenAll(a) };
 export { ptHour };
