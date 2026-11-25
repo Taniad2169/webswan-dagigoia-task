@@ -802,7 +802,24 @@
     .totals-grid div { background:rgba(255,255,255,0.05); border:1px solid rgba(249,199,79,0.18); border-radius:var(--radius-sm); padding:0.55rem 0.7rem; }
     .totals-grid b { display:block; font-family:'Playfair Display',serif; color:var(--gold); font-size:1.05rem; }
     .totals-grid span { font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+    body{-webkit-user-select:none;user-select:none}
+    input,textarea,select,[contenteditable],[data-selectable]{-webkit-user-select:text;user-select:text}
   </style>
+  <script>
+  (function(){
+    document.addEventListener('contextmenu',function(e){e.preventDefault()});
+    document.addEventListener('dragstart',function(e){e.preventDefault()});
+    document.addEventListener('keydown',function(e){
+      var k=(e.key||'').toUpperCase();
+      if(k==='F12'||(e.ctrlKey&&e.shiftKey&&(k==='I'||k==='J'||k==='C'))||(e.ctrlKey&&k==='U')){e.preventDefault()}
+    });
+    console.log('%cThe WebSwan','font-size:20px;font-weight:800;color:#12233a','\nThis app and its code belong to The WebSwan. Please don\'t copy or reuse it without permission.');
+  })();
+  // Tania, Nov 25: "put the same lock on all our software so no one copies our page source."
+  // Only the live app page -- not the printable invoice/receipt this same file generates
+  // further down as its own standalone HTML, since that one is meant to leave her hands
+  // and be read/printed by the client it's addressed to.
+  </script>
 </head>
 <body>
 
