@@ -65,6 +65,9 @@
       <label><input type="checkbox" id="phones"> 🎧 I'm wearing headphones (I can interrupt just by talking)</label>
       <label><input type="checkbox" id="free"> 🆓 No-cost practice voices (browser voices, no Cartesia credits). Uncheck to hear their real Cartesia voices</label>
     </div>
+    <div class="row" style="margin-top:8px">
+      <label><input type="checkbox" id="mariskaObs"> 📝 Mariska sits in silently and writes you a report</label>
+    </div>
   </div>
 
   <div class="card" style="text-align:center">
@@ -367,6 +370,14 @@ async function start() {
 }
 async function finish() {
   if (!S.on) return; hush(); const who = S.agent; S.on = false; S.finishing = true; S.huddle = ""; $("huddle").style.display = "none"; try { S.rec && S.rec.abort(); } catch (e) {} S.rec = null; micLook(""); say("📝 Getting feedback…");
+  // Tania, Nov 25: "role play as an observer, I don't want her to talk at all but take notes to
+  // share with me after." Mariska never joins the call -- she only gets the finished transcript,
+  // once, here, and writes her own report in her own chat (the same one WorkPilot's green dot
+  // watches), so there's nothing else to wire up on the WorkPilot side.
+  if ($("mariskaObs").checked && S.log.length) {
+    const transcript = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-8000);
+    api({ action: "chat", agent: "mariska", text: "You sat in on a practice Roleplay call between Tania and " + first(who) + " as a silent observer (you did not speak). Here is the full call, in order:\n\n" + transcript + "\n\nGive Tania a short report: composure, confidence, and whether " + first(who) + " stayed on script or drifted." }).catch(() => {});
+  }
   if (who === "tania") {
     try { const t = S.log.map((x) => x.who + ": " + x.text).join("\n").slice(-6000); const c = await ask("sdr", "You just played the prospect in a practice cold call made by Tania herself (the founder and CEO, a born closer who doesn't love telemarketing). Step out of character and coach her like her SDR: what worked, the one thing to tighten, and the exact line you'd change, in 3 or 4 short spoken sentences. The call:\n" + t, { roleplay: false }); addLog("Kobe · coaching for Tania", c, "fb"); S.on = true; await speak(c, "sdr"); S.on = false; } catch (e) {}
     S.finishing = false; say("Done. Press 🎙️ to go again."); return;
