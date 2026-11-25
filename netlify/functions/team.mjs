@@ -352,18 +352,25 @@ export default async (req) => {
       const ck = process.env.CARTESIA_API_KEY; if (!ck) return reply(400, { error: "Voice isn't connected (CARTESIA_API_KEY)." }, origin);
       const text = clean(b.text, 2500).replace(/[*_#`>|]/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/https?:\/\/\S+/g, "").trim();
       if (!text) return reply(400, { error: "Nothing to say." }, origin);
+      // Tania, Nov 24: Mariska speaks English, French, Spanish and Brazilian Portuguese, each natively -- any agent
+      // can now pass a spoken language and get a real voice in that language, not just English. "pt" covers
+      // Brazilian Portuguese (Cartesia's own language code); default stays "en" so every other agent's TTS call,
+      // unchanged, behaves exactly as it always has.
+      const LANGS_TTS = { en: 1, fr: 1, es: 1, pt: 1 };
+      const lang = LANGS_TTS[String(b.lang || "").toLowerCase()] ? String(b.lang).toLowerCase() : "en";
       const H = { "X-API-Key": ck, Authorization: "Bearer " + ck, "Cartesia-Version": process.env.CARTESIA_TTS_VERSION || "2025-04-16", "Content-Type": "application/json" };
       const s = await getSettings(); const voices = Object.assign({}, s.voices || {});
       // Phone agents always use the voice of their live Cartesia agent (so a meeting sounds exactly like her calls); the cache is only for office-only agents.
       // Tania, Nov 17: Sebastien and Kobe speak with Jonathan's voice (Kobe sounded too robotic).
       const SHARED = { sebastien: "linda", sdr: "linda" }; // Jonathan's agent key is still "linda"
       const live = !SHARED[agent] && (agent === "rachel" || (AGENTS[agent].caller && agent !== "sdr"));
-      const male = !!AGENTS[agent].male || !!SHARED[agent], vkey = male ? (SHARED[agent] || agent) + "_m" : agent; // a male agent never reuses a cached female voice
+      const male = !!AGENTS[agent].male || !!SHARED[agent];
+      const vkey = (male ? (SHARED[agent] || agent) + "_m" : agent) + (lang === "en" ? "" : "_" + lang); // a male agent never reuses a cached female voice; a non-English voice never reuses the English one
       let vid = live ? "" : voices[vkey];
       if (!vid) {
         try {
-          if (agent === "rachel" || AGENTS[agent].caller) {
-            // Rachel and the Voice Studio phone agents speak with the same voice as their live Cartesia agent.
+          if (lang === "en" && (agent === "rachel" || AGENTS[agent].caller)) {
+            // Rachel and the Voice Studio phone agents speak with the same voice as their live Cartesia agent (English only -- their own calls pick their own language live).
             const ids = (await getStore({ name: "voice-studio", consistency: "strong" }).get("agent-ids", { type: "json" }).catch(() => null)) || {};
             const aid = process.env["CARTESIA_AGENT_" + agent.toUpperCase()] || ids[agent];
             const ag = aid && await (await fetch("https://api.cartesia.ai/agents/" + aid, { headers: H })).json().catch(() => null);
@@ -371,22 +378,25 @@ export default async (req) => {
           }
           if (!vid) {
             const d = await (await fetch("https://api.cartesia.ai/voices?limit=100", { headers: H })).json();
-            const fem = (Array.isArray(d) ? d : d.data || []).filter((v) => (!v.language || v.language === "en") && (male ? /^(masc|male|man)/i : /^(fem|female|woman)/i).test(String(v.gender || "")));
+            const pool = Array.isArray(d) ? d : d.data || [];
+            const byLang = pool.filter((v) => (lang === "en" ? (!v.language || v.language === "en") : v.language === lang) && (male ? /^(masc|male|man)/i : /^(fem|female|woman)/i).test(String(v.gender || "")));
+            // Brazilian Portuguese: prefer a voice whose name/description actually says Brazilian when Cartesia exposes that, since "pt" alone can mean European Portuguese too.
+            const fem = lang === "pt" ? (byLang.filter((v) => /brazil/i.test(String(v.name || "") + " " + String(v.description || ""))).concat(byLang)) : byLang;
             const taken = Object.values(voices); const pick = fem.find((v) => !taken.includes(v.id)) || fem[0];
             vid = pick && pick.id;
           }
           if (vid && !live) { voices[vkey] = vid; await teamStore().setJSON("settings", Object.assign({}, (await teamStore().get("settings", { type: "json" })) || {}, { voices })); }
         } catch (e) { /* fall back below */ }
       }
-      if (!vid) return reply(502, { error: "No voice found." }, origin);
+      if (!vid) return reply(502, { error: lang === "en" ? "No voice found." : "No " + lang + " voice found for this agent." }, origin);
       let r, lastErr = "";
-      for (const model of [process.env.CARTESIA_TTS_MODEL, "sonic-2", "sonic-english"].filter(Boolean)) {
-        r = await fetch("https://api.cartesia.ai/tts/bytes", { method: "POST", headers: H, body: JSON.stringify({ model_id: model, transcript: text, voice: { mode: "id", id: vid }, language: "en", output_format: { container: "mp3", sample_rate: 44100, bit_rate: 128000 } }) });
+      for (const model of [process.env.CARTESIA_TTS_MODEL, "sonic-2"].concat(lang === "en" ? ["sonic-english"] : []).filter(Boolean)) {
+        r = await fetch("https://api.cartesia.ai/tts/bytes", { method: "POST", headers: H, body: JSON.stringify({ model_id: model, transcript: text, voice: { mode: "id", id: vid }, language: lang, output_format: { container: "mp3", sample_rate: 44100, bit_rate: 128000 } }) });
         if (r.ok) break; lastErr = (await r.text().catch(() => "")).slice(0, 200) || String(r.status);
       }
       if (!r.ok) return reply(502, { error: "Voice: " + lastErr }, origin);
       const audio = Buffer.from(await r.arrayBuffer()).toString("base64");
-      return reply(200, { audio, mime: "audio/mpeg", voiceId: vid, provider: "cartesia" }, origin);
+      return reply(200, { audio, mime: "audio/mpeg", voiceId: vid, lang, provider: "cartesia" }, origin);
     }
     if (b.action === "brain_list") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
