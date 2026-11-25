@@ -24,8 +24,14 @@ export const DIALER_PLAN = {
     // Tania, Nov 24: George kept speaking Spanish to people who answered in English (forceLang "es" sent every lead,
     // even English-speaking GA law firms, to his Spanish agent). Now each lead uses its own language: English leads go
     // to his English agent (English first), Spanish leads to his Spanish agent -- and he always follows the greeting.
+    // Tania, Nov 24 (later, same day): pulled George's SCRIPT back off Black Friday and onto his own standing
+    // bilingual doctor/lawyer compliance scripts (see planTaskFor below) -- Netlify's paused, and by the time it's
+    // back up and he's dialing again the Black Friday promo will likely already be over. He keeps this same window,
+    // cap and lead pool for now; only which script he reads changed. Campaign label below is for call-log/huddle
+    // display only -- it is NOT what picks his script anymore (planTaskFor special-cases "george" before any
+    // campaign check, on purpose, so re-labeling this string can never silently put him back on Black Friday).
     george: { windows: [["09:00", "11:00"]], perWindow: 24, lang: "any",
-      takes: ["george"], campaign: "Black Friday $499 website redesign (Spanish)" },
+      takes: ["george"], campaign: "Doctor/attorney compliance outreach (standing bilingual script)" },
     rebecca: { windows: [["11:00", "13:00"]], perWindow: 24, lang: "en", takes: ["rebecca"], campaign: "Black Friday $499 website redesign" },
     // Monica, Nov 23: brought onto this week's Black Friday push for the new 75-lead Base44 doctor/chiro/dental batch.
     monica: { windows: [["13:00", "15:00"]], perWindow: 24, lang: "en", takes: ["monica"], campaign: "Black Friday $499 website redesign" }
@@ -294,11 +300,17 @@ export function planTaskFor(name, lead, findings) {
   const planCamp = planActive() && DIALER_PLAN.agents[name] && DIALER_PLAN.agents[name].campaign;
   const camp = String(planCamp || lead.campaign || "");
   const fx = (s) => s.replace(/\{\{findings\}\}/g, String(findings || "none listed").slice(0, 600)).replace(/\{\{agentName\}\}/g, name === "jenna" ? "Jenna" : name === "rebecca" ? "Rebecca" : name === "monica" ? "Monica" : "George");
-  if (/black friday/i.test(camp)) return fx(name === "george" && lead && lead.lang === "es" ? BLACK_FRIDAY_TASK_ES : BLACK_FRIDAY_TASK_EN);
-  if (/sentinel diy/i.test(camp)) return fx(name === "george" ? SENTINEL_DIY_TASK_ES : SENTINEL_DIY_TASK_EN);
+  // Tania, Nov 24 (later, same day): George is OFF the Black Friday script for good (see his DIALER_PLAN entry
+  // above) -- checked first, before any campaign string, so neither the plan's own campaign label nor a leftover
+  // "black friday" tag on an individual lead can ever route him back onto it. He goes straight back to his
+  // standing bilingual doctor/lawyer scripts, which already listen to the actual greeting and switch language on
+  // their own -- the gap the Black Friday script had (it only went bilingual when a lead's own lang tag said "es",
+  // with no live-listen fallback if that tag was ever wrong) doesn't exist here.
+  if (name === "george") return fx(georgeFocusToday(lead) === "doctor" ? GEORGE_DOCTOR_TASK : GEORGE_COMPLIANCE_TASK);
+  if (/black friday/i.test(camp)) return fx(BLACK_FRIDAY_TASK_EN);
+  if (/sentinel diy/i.test(camp)) return fx(SENTINEL_DIY_TASK_EN);
   if (/wsmn|swandesk/i.test(camp)) return fx(WSMN_SWANDESK_TASK_EN);
   if (name === "jenna") { const focus = jennaFocusToday(); return focus === "swandesk" ? fx(WSMN_SWANDESK_TASK_EN) : focus === "compliance" ? fx(JENNA_COMPLIANCE_TASK) : ""; }
-  if (name === "george") return fx(georgeFocusToday(lead) === "doctor" ? GEORGE_DOCTOR_TASK : GEORGE_COMPLIANCE_TASK);
   if (name === "monica") return fx(MONICA_COMPLIANCE_TASK);
   return "";
 }

@@ -58,6 +58,10 @@
       <button class="btn" id="selNone">Clear</button>
       <label style="margin-left:auto"><input type="checkbox" id="free" style="width:auto"> 🎧 Use each person's real voice (uses Cartesia minutes)</label>
     </div>
+    <div class="row" style="margin-top:8px">
+      <label><input type="checkbox" id="mariskaObs" style="width:auto"> 📝 Mariska sits in silently and writes you a report</label>
+      <span class="hint">She never speaks in the room — tap "End meeting" when you're done and her report lands in her WorkPilot panel.</span>
+    </div>
   </div>
 
   <div class="card">
@@ -75,6 +79,7 @@
       <input type="text" id="box" placeholder="Type to the meeting, or tap the mic…" style="flex:1;min-width:220px">
       <button class="btn pri" id="send">Send</button>
       <button class="btn red" id="stop" title="Stop whoever is talking">✋ Stop</button>
+      <button class="btn" id="endMtg" title="Send the meeting so far to Mariska for her written report">🏁 End meeting</button>
     </div>
   </div>
 
@@ -356,6 +361,28 @@ async function runTurn(text) {
 $("send").onclick = () => { const t = $("box").value.trim(); if (!t) return; $("box").value = ""; runTurn(t); };
 $("box").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("send").click(); } });
 $("stop").onclick = () => { hush(); say("Stopped. Your turn."); micLook(""); };
+
+// Tania, Nov 25: "I don't want her to talk at all but take notes to share with me after the meetings,
+// and once she's back I want the green button to give me a notification she's done and has a report."
+// Mariska never joins the live room (no mic turn, never asked a question mid-meeting) -- she only ever
+// gets the finished transcript, once, when this is pressed, and writes her own report from it in her
+// own chat. That chat is the exact same one her WorkPilot panel polls for the green dot, so nothing
+// extra is needed there: the moment her reply lands here, WorkPilot picks it up on its own next check.
+let S_mtgSentThrough = 0;
+async function endMeeting() {
+  if (!$("mariskaObs").checked) { say("Meeting log kept. (Tick \"Mariska sits in\" before ending if you want her report next time.)"); return; }
+  const fresh = S.log.slice(S_mtgSentThrough);
+  if (!fresh.length) { say("Nothing new since her last report."); return; }
+  $("endMtg").disabled = true; say("📝 Sending the meeting to Mariska…");
+  try {
+    const transcript = fresh.map((x) => x.who + ": " + x.text).join("\n").slice(-12000);
+    await api({ action: "chat", agent: "mariska", text: "You sat in on today's Brain Room meeting as a silent observer (you did not speak). Here is the full transcript, in order:\n\n" + transcript + "\n\nWrite Tania a clear report now: what was discussed, what got decided or proposed, and what's left open." });
+    S_mtgSentThrough = S.log.length;
+    say("📝 Sent — her report will be waiting in her WorkPilot panel (green dot).");
+  } catch (e) { say("Couldn't reach Mariska: " + e.message); }
+  finally { $("endMtg").disabled = false; }
+}
+$("endMtg").onclick = endMeeting;
 
 /* ---------- her mic: tap to talk, tap again to send ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
