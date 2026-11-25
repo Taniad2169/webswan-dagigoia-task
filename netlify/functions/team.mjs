@@ -226,10 +226,14 @@ export default async (req) => {
     const snap = (await st.get("wp-snapshot", { type: "json" })) || { leads: [], manual: [] };
     const allLeads = [...(snap.manual || []), ...(snap.leads || [])];
     const digits = (v) => String(v || "").replace(/\D/g, "").slice(-10);
-    const by = f.__by === "eva" ? "eva" : "sebastien";
+    const by = f.__by === "eva" ? "eva" : f.__by === "mariska" ? "mariska" : "sebastien";
     // Tania, Nov 23: Eva earned ONE narrow slice of this (CRM-hygiene flags, see team.mjs job 15) -- comment only,
     // never create/assign/push. The regex gate below already keeps her out of those, this is the second check.
     if (by === "eva" && kind !== "comment") return { error: "Eva can only flag a note on an existing lead, not " + kind + " one." };
+    // Tania, Nov 25: "give her full access too on lead prospector to search leads for me cherry pick the best."
+    // Mariska's slice is the mirror image of Eva's: PUSH only (pull a Prospector lead she cherry-picked into
+    // WorkPilot), never create/comment/assign -- ongoing lead notes and profiling stay Sebastien's job.
+    if (by === "mariska" && kind !== "push") return { error: "Mariska can only push a Lead Prospector lead she can already see into WorkPilot, not " + kind + " one." };
     const item = { id: "sq" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind, at: new Date().toISOString(), status: "pending", by };
     if (kind === "create") {
       const name = clean(f.name, 160).trim(), phone = clean(f.phone, 40).trim(), email = clean(f.email, 160).trim();
@@ -271,7 +275,7 @@ export default async (req) => {
       if (dup) return { error: "That lead is already in WorkPilot (" + (dup.company || dup.id) + ", id " + dup.id + "). Use a comment or assign action instead, not a new push.", existingId: dup.id };
       const ag = clean(f.agent, 30).toLowerCase().trim();
       if (ag && !SEB_AGENTS.includes(ag)) return { error: "Unknown agent " + JSON.stringify(ag) + ". Use one of: " + SEB_AGENTS.join(", ") + "." };
-      const note = ("Pushed from Lead Prospector by Sebastien." + (source.notes ? " Prospector notes: " + clean(source.notes, 500) : "") + (f.comment ? " " + clean(f.comment, 1000) : "")).trim();
+      const note = ("Pushed from Lead Prospector by " + (by === "mariska" ? "Mariska" : "Sebastien") + "." + (source.notes ? " Prospector notes: " + clean(source.notes, 500) : "") + (f.comment ? " " + clean(f.comment, 1000) : "")).trim();
       Object.assign(item, { kind: "create", name, phone, email, website: clean(source.website, 200), comment: note, agent: ag, prospectorId: leadId });
     }
     const idx = ((await st.get("sebq-index", { type: "json" })) || []).filter((x) => x.status === "pending" || Date.now() - new Date(x.at).getTime() < 7 * 86400000);
@@ -753,6 +757,18 @@ Never invent a source that is not in the research above. If the research above c
           }
         } catch (e) { extra += "\n\n(Could not load the WorkPilot leads right now: " + String(e.message || e).slice(0, 100) + ".)"; }
       }
+      // Mariska (Tania, Nov 25 -- "give her full access too on lead prospector to search leads for me cherry
+      // pick the best, use lead spotter as well"): same real lead brief as Dispatch/Sebastien just above, every
+      // source including the Lead Prospector, PLUS her own queued ((LEAD PUSH: ...)) (see the LEAD tag block
+      // further down) so she can actually pull the ones she cherry-picks into WorkPilot herself. Everything else
+      // about a lead once it's in WorkPilot -- ongoing notes, profiling, assignment -- still stays Sebastien's job.
+      if (agent === "mariska" && !b.roleplay && !b.voice && !(att && att.text && /LIVE WORKPILOT LEADS|ALL WORKPILOT LEADS/.test(att.text)) && /\b(leads?|workpilot|work pilot|prospector|prospects?|pipeline|cherry[- ]?pick|spotter|client|clients|customer|who is|find|lookup|look up)\b/i.test(text)) {
+        try {
+          const lb = await within(leadsBrief(22000), 8000, "WorkPilot leads");
+          extra += lb ? "\n\n" + lb + "\nThis IS your WorkPilot access, every source including the Lead Prospector. Never say you can't see her leads. When she wants you to search and cherry-pick the best, go through what's here, name the strongest handful and why (how bad/outdated/non-compliant the site is, how good a fit, what the notes already say), and queue the ones she wants pulled into WorkPilot with ((LEAD PUSH: leadId=...|agent=...|comment=...)) using an id you can actually see above -- never invent one, and never push one that's already in WorkPilot. You don't hold Lead Spotter's own live search yourself: tell her to run WorkPilot's own 🔭 Lead Spotter button for that, or, when she pastes or attaches its results here, read them and tell her plainly which are worth a push."
+            : "\n\n(WorkPilot hasn't sent its lead list yet: Tania just needs to open WorkPilot once, signed in, and it sends automatically. Say that in one line.)";
+        } catch (e) { extra += "\n\n(Could not load the WorkPilot leads right now: " + String(e.message || e).slice(0, 100) + ".)"; }
+      }
       // Eva (Tania, Nov 19): full read access to EVERY WorkPilot lead (not just her own silver "Ready for Eva"
       // queue) and to real Cartesia call transcripts across every phone agent -- see the calls block right below
       // -- so Tania can ask Eva about any lead or call instead of going to a different agent for leads vs. calls.
@@ -964,15 +980,17 @@ Never invent a source that is not in the research above. If the research above c
       // WorkPilot lead. This stays Sebastien's (and Eva's one narrow CRM-hygiene slice) alone.
       if (
         (agent === "sebastien" && /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:/i.test(outText)) ||
-        (agent === "eva" && /\(\(\s*LEAD\s+COMMENT\s*:/i.test(outText))
+        (agent === "eva" && /\(\(\s*LEAD\s+COMMENT\s*:/i.test(outText)) ||
+        (agent === "mariska" && /\(\(\s*LEAD\s+PUSH\s*:/i.test(outText))
       ) {
-        const tagPattern = agent === "eva" ? /\(\(\s*LEAD\s+(COMMENT)\s*:\s*([\s\S]*?)\)\)/gi : /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
+        const tagPattern = agent === "eva" ? /\(\(\s*LEAD\s+(COMMENT)\s*:\s*([\s\S]*?)\)\)/gi : agent === "mariska" ? /\(\(\s*LEAD\s+(PUSH)\s*:\s*([\s\S]*?)\)\)/gi : /\(\(\s*LEAD\s+(CREATE|COMMENT|ASSIGN|PUSH)\s*:\s*([\s\S]*?)\)\)/gi; // Nov 18 fix: a comment/text field containing a literal ")" (e.g. a parenthetical date) used to truncate the match early and silently drop the directive; now it matches up to the real "))" terminator.
         const matches = [...outText.matchAll(tagPattern)];
         for (const m of matches.slice(0, 5)) {
           const kind = m[1].toLowerCase();
           const f = {};
           m[2].split("|").forEach((pair) => { const i = pair.indexOf("="); if (i > -1) f[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim(); });
           if (agent === "eva") f.__by = "eva";
+          if (agent === "mariska") f.__by = "mariska";
           let note;
           try {
             const r = await queueSebastienAction(kind, f);
