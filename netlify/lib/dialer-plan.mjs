@@ -233,17 +233,17 @@ Despedida: después de tu última línea, espera su respuesta ("adiós", "gracia
 // stored advertising script, which is exactly the "compliance and advertising instead of the promotion" bug Tania
 // flagged. Now the plan's own campaign wins outright whenever it's set, so every lead a plan-active agent dials
 // this week reads the one campaign Tania actually configured, with no dependence on how that lead was tagged.
-// Tania, Nov 24: Jenna keeps her title but goes "floating" -- a weekly-assigned focus (compliance, SwanDesk AI /
-// advertising, or the WebSwan PWA web-design landing page), set once a week rather than always compliance by
-// default. A specific lead or one-off campaign assigned straight to her (the per-lead "task" field in Voice
-// Studio, the same mechanism Alek used) always wins over this weekly default -- that part needed no new building,
-// it already runs through the existing floating/lead.task path (see voice-autodial.mjs's call_mode for "jenna").
-// PWA-landing-page day has no script yet (needs Tania's actual offer/pricing before one can be written without
-// inventing numbers), so it falls back to compliance until she gives the real pitch content.
-export const JENNA_WEEKLY_FOCUS = { mon: "compliance", tue: "compliance", wed: "swandesk", thu: "swandesk", fri: "pwa", sat: "compliance", sun: "compliance" };
+// Tania, Nov 24: Jenna keeps her title but goes "floating" -- a weekly-assigned focus (compliance or SwanDesk AI /
+// advertising), set once a week rather than always compliance by default. Calling days are Monday-Thursday only --
+// no standing dialer Friday (Tania, Nov 24 clarification: "it doesn't have weekly dialer"). Friday, Saturday and
+// Sunday are left open on purpose, for ONLY the occasional one-off: a specific lead or campaign assigned straight
+// to her (the per-lead "task" field in Voice Studio, the same mechanism Alek used) -- that part needed no new
+// building, it already runs through the existing floating/lead.task path (see voice-autodial.mjs's call_mode for
+// "jenna"). With no weekly focus and no one-off lead.task set, she simply has nothing to read that day.
+export const JENNA_WEEKLY_FOCUS = { mon: "compliance", tue: "compliance", wed: "swandesk", thu: "swandesk" };
 function jennaFocusToday() {
   const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3);
-  return JENNA_WEEKLY_FOCUS[day] || "compliance";
+  return JENNA_WEEKLY_FOCUS[day] || "";
 }
 export function planTaskFor(name, lead, findings) {
   const planCamp = planActive() && DIALER_PLAN.agents[name] && DIALER_PLAN.agents[name].campaign;
@@ -252,7 +252,7 @@ export function planTaskFor(name, lead, findings) {
   if (/black friday/i.test(camp)) return fx(name === "george" && lead && lead.lang === "es" ? BLACK_FRIDAY_TASK_ES : BLACK_FRIDAY_TASK_EN);
   if (/sentinel diy/i.test(camp)) return fx(name === "george" ? SENTINEL_DIY_TASK_ES : SENTINEL_DIY_TASK_EN);
   if (/wsmn|swandesk/i.test(camp)) return fx(WSMN_SWANDESK_TASK_EN);
-  if (name === "jenna") return fx(jennaFocusToday() === "swandesk" ? WSMN_SWANDESK_TASK_EN : JENNA_COMPLIANCE_TASK);
+  if (name === "jenna") { const focus = jennaFocusToday(); return focus === "swandesk" ? fx(WSMN_SWANDESK_TASK_EN) : focus === "compliance" ? fx(JENNA_COMPLIANCE_TASK) : ""; }
   if (name === "george") return fx(GEORGE_COMPLIANCE_TASK);
   if (name === "monica") return fx(MONICA_COMPLIANCE_TASK);
   return "";
