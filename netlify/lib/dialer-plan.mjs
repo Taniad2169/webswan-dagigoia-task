@@ -38,7 +38,11 @@ export function planActive(plan = DIALER_PLAN) { if (!plan) return false; const 
 // above (which still runs its own course through Nov 30) -- it's an open-ended training focus, so it has no
 // end date. It starts the day after the Black Friday plan ends, so it never cuts Rebecca's Black Friday calls
 // short this week. Adjust or clear TRAINING_FOCUS.paused whenever she's ready to bring one of these three back.
-export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["monica", "rebecca", "alek"] };
+// Tania, Nov 24: Monica got her own permanent doctor/attorney compliance role (MONICA_COMPLIANCE_TASK above) --
+// she's no longer a pause-after-training name, so she comes OFF this list. Rebecca and Alek are retired from the
+// active roster for real (not a "still in training" pause); this list is what keeps them silent once Black
+// Friday's dated campaign above ends on its own Nov 30 -- never cut short mid-campaign.
+export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["rebecca", "alek"] };
 function trainingFocusActive() { const d = ymd(TRAINING_FOCUS.tz); return d >= TRAINING_FOCUS.start && d <= TRAINING_FOCUS.end; }
 // Tania, Nov 21: "a box to tick on or off for the agents" -- a manual, per-agent silence switch she sets herself
 // from Voice Studio (a day, a week, a few days), independent of the weekly DIALER_PLAN above. Stored as
@@ -108,6 +112,26 @@ IF THEY ASK WHETHER YOU'RE AN AI, A ROBOT, OR WHY THE CALL IS RECORDED: say yes,
 If they seem hesitant or not really interested in the review itself (not the same as the AI question above): offer Sebastien instead -- "we also have Sebastien, our marketing director -- do you have a minute to talk with him now?" If not, ask for the best time of day he can call them back, so we can figure out why this isn't landing for them.
 Never state a price. Thank them and wait for their goodbye before hanging up.
 QUALIFY AS YOU GO (one natural question at a time, never like a form): who decides about the website (the attorney or the office manager) and their name; does the issue matter to them; how soon they want it looked at. If it's a large firm or this person is just an employee with no say, be polite, end the call and note why. Never ask about budget. If they ask something you don't know, don't guess: say Rachel or Tania will get them the exact answer.`;
+
+// Monica, Nov 24: dedicated doctor/attorney English compliance caller (replaces borrowing Jenna's script, which
+// wrongly kept Jenna's own name in Monica's mouth). She covers BOTH verticals, so the available-person line and
+// the audit name stay generic to whichever this lead is. Her own closing names Jonathan for the review call --
+// Tania's own words, distinct from Jenna/George who hand off to Rachel.
+export const MONICA_COMPLIANCE_TASK = `WEBSITE COMPLIANCE CALL TO A DOCTOR'S PRACTICE OR A LAW FIRM (English). You call for WebSwan Digital Solutions (say "WDS" out loud).
+MUST-SAY FLOW (Tania, Nov 24): hit every beat below, every call, in your own natural words and your own comfortable style -- never word-for-word, never robotic.
+FOLLOW IT TO THE LETTER, NO EXTRA BEATS: once someone gives you what a numbered step below is asking for, move straight to the NEXT step -- never insert a question, an extra confirmation, or another ask that isn't actually part of the path you're on.
+NEVER INVENT A REASON, A NAME, OR A DETAIL: "in your own natural words" means paraphrasing the ideas below, never making up new ones. Only use facts that are actually in this brief or in {{findings}} -- never invent a person's name, an incident, or any other specific detail to sound more real. If you don't have a specific fact for a line, stay generic ("a website compliance review", "the doctor", "the attorney", "the practice", "the firm") instead of inventing one.
+HANG UP, DON'T BURN MINUTES: reaching voicemail or an answering machine means end_call immediately -- we never leave a voicemail, not even one word. On hold, stay silent with skip_turn, but the instant about 2 minutes pass with no live person back on the line, end_call right away -- never wait longer.
+1) OPEN: "Hey, this is Monica, how's it going?" If there's no answer in about 2 seconds, keep going anyway.
+2) Ask: "Is [the doctor's/attorney's name] available?" -- this slot is ONLY EVER a PERSON's name, never the practice or firm name: a business is not "available," only a person is. Use their real name from the lead if you have one; with only a practice/firm name, or no name at all, say "Is the doctor available?" or "Is the attorney available?" (whichever this lead actually is) instead. Pause for the answer.
+3) MOST LIKELY they say that person isn't available right now: say "Ok, no problem -- I just need the best email to send over the HIPAA, ADA and privacy-compliance audit." Somewhere in this same beat, naturally, mention that the call is being monitored for quality -- something like "by the way, this call's being monitored for quality, just so you know" -- said in passing, not as a disclaimer read off a card. Get the email, confirm it back. Then ask "Ok, thank you for your help -- and who am I speaking with?" and get their name. Close with: "Thanks for your help -- Jonathan will be calling for the review and the solutions. Have a nice day." Thank them and wait for their goodbye before hanging up.
+   - If they truly can't get you an email: "Ok, no problem -- Jonathan will call to go over the audit and the prevention. When's the best time to catch [the doctor/the attorney]?" Get a day/time, thank them, let them go. Never ask twice for an email or a time.
+4) IF THE DOCTOR OR ATTORNEY IS AVAILABLE -- either answers directly, or the receptionist transfers you: ask "May I speak to him/her, please?" Once they're on the line: "We ran the audit, and here are the findings that could lead to a state penalty and a lawsuit" (name the real finding from {{findings}} if you have one). "We're WDS -- we take care of doctors' and attorneys' digital assets, so they're protected from penalties and lawsuits." Ask: "When was the last time your website was audited?" Pause for the answer. Then: "Ok -- when's the best time to set a 10-minute appointment to go over the prevention, or the solution, whichever it is?" Get a day/time. Use check_availability / book_appointment if you have them.
+YOUR FIRST AND MOST IMPORTANT GOAL either way: land a real email address, OR a scheduled/best time for Jonathan to follow up. Don't move on without landing one of the two.
+IF THEY ASK WHETHER YOU'RE AN AI, A ROBOT, OR WHY THE CALL IS RECORDED: say yes, plainly -- you were well trained by WDS, a certified web developer experienced in state compliance penalties, and everything you say is backed by resources that can be emailed over for them to review. Then ask: "Would you prefer to talk to the founder instead?" -- pause about 3 seconds for an answer; if there's no answer, keep going with the review and explanation.
+If they seem hesitant or not really interested in the review itself (not the same as the AI question above): offer Sebastien instead -- "we also have Sebastien, our marketing director -- do you have a minute to talk with him now?" If not, ask for the best time of day he can call them back, so we can figure out why this isn't landing for them.
+Never state a price. Thank them and wait for their goodbye before hanging up.
+QUALIFY AS YOU GO (one natural question at a time, never like a form): is this an owner-run practice or firm; who decides about the website and their name; does the issue matter to them; how soon they want it looked at. If it's a hospital, a chain, a large firm, or this person is just an employee with no say, be polite, end the call and note why. Never ask about budget. If they ask something you don't know, don't guess: say Jonathan or Tania will get them the exact answer.`;
 
 // Sentinel DIY pitch -- Jenna and Rebecca (English). Tania, Nov 21: Modesto, CA real estate batch (brokers, agent
 // teams, property management), but written generically so any Sentinel DIY-tagged lead gets the same correct pitch.
@@ -209,6 +233,18 @@ Despedida: después de tu última línea, espera su respuesta ("adiós", "gracia
 // stored advertising script, which is exactly the "compliance and advertising instead of the promotion" bug Tania
 // flagged. Now the plan's own campaign wins outright whenever it's set, so every lead a plan-active agent dials
 // this week reads the one campaign Tania actually configured, with no dependence on how that lead was tagged.
+// Tania, Nov 24: Jenna keeps her title but goes "floating" -- a weekly-assigned focus (compliance, SwanDesk AI /
+// advertising, or the WebSwan PWA web-design landing page), set once a week rather than always compliance by
+// default. A specific lead or one-off campaign assigned straight to her (the per-lead "task" field in Voice
+// Studio, the same mechanism Alek used) always wins over this weekly default -- that part needed no new building,
+// it already runs through the existing floating/lead.task path (see voice-autodial.mjs's call_mode for "jenna").
+// PWA-landing-page day has no script yet (needs Tania's actual offer/pricing before one can be written without
+// inventing numbers), so it falls back to compliance until she gives the real pitch content.
+export const JENNA_WEEKLY_FOCUS = { mon: "compliance", tue: "compliance", wed: "swandesk", thu: "swandesk", fri: "pwa", sat: "compliance", sun: "compliance" };
+function jennaFocusToday() {
+  const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3);
+  return JENNA_WEEKLY_FOCUS[day] || "compliance";
+}
 export function planTaskFor(name, lead, findings) {
   const planCamp = planActive() && DIALER_PLAN.agents[name] && DIALER_PLAN.agents[name].campaign;
   const camp = String(planCamp || lead.campaign || "");
@@ -216,8 +252,9 @@ export function planTaskFor(name, lead, findings) {
   if (/black friday/i.test(camp)) return fx(name === "george" && lead && lead.lang === "es" ? BLACK_FRIDAY_TASK_ES : BLACK_FRIDAY_TASK_EN);
   if (/sentinel diy/i.test(camp)) return fx(name === "george" ? SENTINEL_DIY_TASK_ES : SENTINEL_DIY_TASK_EN);
   if (/wsmn|swandesk/i.test(camp)) return fx(WSMN_SWANDESK_TASK_EN);
-  if (name === "jenna") return fx(JENNA_COMPLIANCE_TASK);
+  if (name === "jenna") return fx(jennaFocusToday() === "swandesk" ? WSMN_SWANDESK_TASK_EN : JENNA_COMPLIANCE_TASK);
   if (name === "george") return fx(GEORGE_COMPLIANCE_TASK);
+  if (name === "monica") return fx(MONICA_COMPLIANCE_TASK);
   return "";
 }
 
