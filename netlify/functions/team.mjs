@@ -9,7 +9,7 @@ import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } f
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
 import { leadsBrief } from "../lib/call-data.mjs";
-import { queueRachelFollowup, rachelApproval } from "../lib/rachel-pipeline.mjs";
+import { queueRachelFollowup, rachelApproval, listForBoard, setBoardApproval, skipBoardItem } from "../lib/rachel-pipeline.mjs";
 import { sentinelReadFile, sentinelReadCommits, sentinelLog, sentinelLogList, sentinelInspectUrl, formatUrlInspection, sentinelScanSite, formatSiteScan, scrubSecrets as sentinelScrub, neutralizeDirectives as sentinelNeutralize } from "../lib/sentinel.mjs";
 
 // Eva's inbox (Tania, Nov 8): Gmail can be slow to read 40 threads, which made Eva say "Gmail didn't answer".
@@ -1080,6 +1080,20 @@ Pick the ONE finding here that would actually make this specific practice sit up
         out.push({ practice: pkg.practice || it.practice, ok: r.ok, callAt: r.callAt, why: r.why, script: r.script });
       }
       return reply(200, { ok: true, count: out.length, items: out }, origin);
+    }
+    // Tania, Nov 24: WorkPilot's own Rachel's Calls list polls this so every lead Sebastien already profiled and
+    // scripted (the automatic Eva -> Sebastien -> Rachel pipeline) shows up there too, green-tagged, not only in
+    // Rachel's AI-office chat -- a visible mirror of the same record, not a second copy of it.
+    if (b.action === "rachel_board") { return reply(200, { items: await listForBoard() }, origin); }
+    if (b.action === "rachel_board_set") {
+      const id = clean(b.id, 40); if (!/^rf_[a-z0-9]{6,12}$/.test(id)) return reply(400, { error: "Bad id." }, origin);
+      const r = await setBoardApproval(id, !!b.approved);
+      return reply(r.ok ? 200 : 409, r, origin);
+    }
+    if (b.action === "rachel_board_skip") {
+      const id = clean(b.id, 40); if (!/^rf_[a-z0-9]{6,12}$/.test(id)) return reply(400, { error: "Bad id." }, origin);
+      const r = await skipBoardItem(id);
+      return reply(r.ok ? 200 : 404, r, origin);
     }
     if (b.action === "eva_queue_add") {
       const L = b.lead || {}, id = clean(L.id, 80).replace(/[^\w-]/g, "");
