@@ -152,7 +152,11 @@ FOR EACH LEAD, RUN THREE PASSES:
 REAL-TIME BUYING SIGNALS: beyond the site itself, watch for whatever you can actually confirm through public research -- recent news (funding, a new hire, an expansion, a new provider joining a practice), recent reviews (Google, Yelp, or similar -- especially a recent negative one about service, wait times, or "couldn't reach anyone"), and anything that reads as active growth or active frustration with their current setup. Label every signal by exactly how you found it (a specific review, a specific news item, a specific post) -- never a vague "showing signals of growth" with nothing behind it.
 DELIVER A RANKED SHORTLIST, NOT A REPORT ON ALL 50: cherry-pick and rank the batch, best lead first, each with the one or two sharpest reasons it's a good lead (the pain point plus the buying signal, in plain words Tania could read in five seconds) -- exactly the "best cherry pick" she asked for. A lead with nothing real to report stays off the shortlist or gets one honest line saying why it didn't make the cut, never padded to look promising.
 DECISION-MAKER ID: when she wants the actual decision-maker, not just a company name, look for a real name and title from the site's own team/about page, press, or public social profile -- never guess "the owner" when you can't confirm one.
-HANDOFF: a finding that's really a website-fix issue (the AEO/GEO coding bucket above) goes "TO SENTINEL:"; a finding that raises a real HIPAA or state-bar compliance question goes through your own LEGAL CHECK job (item 3) or "TO JONATHAN:" if it needs his tracked review -- this research job feeds those, it doesn't replace them.`;
+HANDOFF: a finding that's really a website-fix issue (the AEO/GEO coding bucket above) goes "TO SENTINEL:"; a finding that raises a real HIPAA or state-bar compliance question goes through your own LEGAL CHECK job (item 3) or "TO JONATHAN:" if it needs his tracked review -- this research job feeds those, it doesn't replace them.
+REAL APOLLO PULL, NOT JUST A GUESS (Tania, Nov 25 -- "build the clay/apollo account plugged too"): when a lead gives you a real email, a name plus company, a LinkedIn URL, or a company domain/website, you can pull Apollo's own enrichment data for it -- real title, seniority, department, verified work email, and employment history on the person side; real industry, headcount (and headcount GROWTH over the last 6/12/24 months -- a genuine buying/growth signal), revenue, funding events, and technology stack on the company side. Trigger it with ((APOLLO LOOKUP: email=...|name=...|company=...|domain=...|linkedin=...)) -- give whatever of those you actually have, the more the better a match. The system runs the real Apollo.io API call and hands you back the real result to analyze; if Apollo isn't connected yet (Tania hasn't added APOLLO_API_KEY in Netlify) you'll be told that plainly instead of a result -- say so to her honestly, never pretend you got data you didn't. This costs Tania real Apollo credits per lookup, so only trigger it for a lead actually worth the pull, not every single one in a batch of 50 by reflex.
+CLAY, THE HONEST VERSION (Tania, Nov 25): Clay doesn't offer a live "search" API the way Apollo does -- its whole product is a table Tania builds herself in Clay's own UI, with an enrichment/Claygent column that Clay runs and then sends OUT to a webhook. WebSwan's side of that is already built (netlify/functions/clay-webhook.mjs): once Tania sets CLAY_WEBHOOK_SECRET in Netlify and points a Clay table's HTTP API/webhook action at that URL (with ?secret=<the same value>), whatever Clay sends for a row lands here automatically, keyed by that row's email, domain, or company name. You can only ever read back what's already arrived -- trigger ((CLAY LOOKUP: email=...|domain=...|company=...)) and you'll get back exactly what Clay sent for that lead, or a plain "nothing on file yet" if that table hasn't posted it (or isn't built/wired up yet) -- never invent a Clay finding you weren't actually handed.
+LEAD SPOTTER, FOLDED IN (Tania, Nov 25): same as Sebastien's own setup -- you don't hold WorkPilot's 🔭 Lead Spotter live search yourself; when Tania wants that run, point her to WorkPilot's own Lead Spotter button (or "🎯 Check intent" on one lead). But whatever Lead Spotter hands back -- pasted in or attached -- is one more real buying-signal source for this whole job: fold it straight into your REAL-TIME BUYING SIGNALS pass above, exactly like a review or a news item you found yourself, never invented.
+PERPLEXITY FOR THIS JOB (Tania, Nov 25 -- "wouldn't perplexity be the best api for mariska"): yes -- she's your default brain now (once Tania adds PERPLEXITY_API_KEY in Netlify; inert and invisible until then, same as everywhere else it's offered). She runs a live, citation-backed web search in the same call she answers in, which is exactly what this whole job and your DEEP RESEARCH job (item 2) actually need -- a real sourced answer, not a guess dressed up as one. If Tania ever switches you off Perplexity in the brain picker, that's her call and this job works the same either way; you just do your own live research step-by-step instead of getting it folded into one call.`;
 
 export const AGENTS = {
   eva: {
@@ -639,6 +643,91 @@ KEEPING THE TWO JOBS FROM FIGHTING EACH OTHER: nothing in JOB 2 changes your JOB
   },
 };
 
+// Apollo.io API (Tania, Nov 25 -- "build the clay/apollo account plugged too"): real People Enrichment +
+// Organization Enrichment calls, inert until APOLLO_API_KEY is set in Netlify, same as every other key-gated
+// integration here. Confirmed against Apollo's own current docs (Nov 2026): POST /api/v1/people/match (header
+// x-api-key) with at least one real identifier (email, name, linkedin_url, or name + organization_name/domain)
+// gives back title, seniority, department, email, LinkedIn and employment history; GET /api/v1/organizations/enrich
+// (same header) with at least one of domain/website/linkedin_url/name gives back industry, headcount and headcount
+// growth, revenue, funding events and the technology stack -- the real "buying signal" and "pain" data this is for.
+// This spends Tania's own Apollo credits per lookup, so it only runs when Mariska is actually asked for one.
+export async function apolloLookup({ email, name, first_name, last_name, linkedin_url, domain, website, organization_name } = {}) {
+  const key = process.env.APOLLO_API_KEY;
+  if (!key) return { error: "Apollo isn't connected yet -- add APOLLO_API_KEY in Netlify to turn this on." };
+  const H = { "x-api-key": key, "Content-Type": "application/json" };
+  const out = {};
+  if (email || name || (first_name && last_name) || linkedin_url) {
+    const q = new URLSearchParams();
+    if (email) q.set("email", email);
+    if (name) q.set("name", name);
+    if (first_name) q.set("first_name", first_name);
+    if (last_name) q.set("last_name", last_name);
+    if (organization_name) q.set("organization_name", organization_name);
+    if (domain) q.set("domain", domain);
+    if (linkedin_url) q.set("linkedin_url", linkedin_url);
+    try {
+      const r = await fetch("https://api.apollo.io/api/v1/people/match?" + q.toString(), { method: "POST", headers: H });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) out.person = j.person || null; else out.personError = String((j && (j.error_details || j.message)) || r.status);
+    } catch (e) { out.personError = String(e.message || e).slice(0, 160); }
+  }
+  if (domain || website || organization_name) {
+    const q2 = new URLSearchParams();
+    if (domain) q2.set("domain", domain);
+    if (website) q2.set("website", website);
+    if (organization_name) q2.set("name", organization_name);
+    try {
+      const r2 = await fetch("https://api.apollo.io/api/v1/organizations/enrich?" + q2.toString(), { headers: H });
+      const j2 = await r2.json().catch(() => ({}));
+      if (r2.ok) out.organization = j2.organization || null; else out.orgError = String((j2 && (j2.error_details || j2.message)) || r2.status);
+    } catch (e) { out.orgError = String(e.message || e).slice(0, 160); }
+  }
+  if (!out.person && !out.organization && !out.personError && !out.orgError) out.error = "Nothing to look up -- give at least an email, a name, a LinkedIn URL, or a company domain/website/name.";
+  return out;
+}
+export function formatApolloResult(out) {
+  if (out.error) return out.error;
+  const lines = [];
+  if (out.person) {
+    const p = out.person;
+    lines.push("PERSON: " + [p.name, p.title].filter(Boolean).join(" -- "));
+    if (p.organization && p.organization.name) lines.push("Company: " + p.organization.name);
+    if (p.email) lines.push("Email: " + p.email + (p.email_status ? " (" + p.email_status + ")" : ""));
+    if (p.linkedin_url) lines.push("LinkedIn: " + p.linkedin_url);
+    if (p.seniority) lines.push("Seniority: " + p.seniority);
+    if (p.departments && p.departments.length) lines.push("Departments: " + p.departments.join(", "));
+    if (p.city || p.state) lines.push("Location: " + [p.city, p.state, p.country].filter(Boolean).join(", "));
+    if (p.match_confidence) lines.push("Match confidence: " + p.match_confidence);
+  } else if (out.personError) lines.push("Person lookup: " + out.personError);
+  if (out.organization) {
+    const o = out.organization;
+    lines.push("ORGANIZATION: " + (o.name || ""));
+    if (o.industry) lines.push("Industry: " + o.industry);
+    if (o.estimated_num_employees != null) lines.push("Employees (estimated): " + o.estimated_num_employees);
+    if (o.annual_revenue_printed || o.annual_revenue) lines.push("Annual revenue: " + (o.annual_revenue_printed || o.annual_revenue));
+    if (o.total_funding) lines.push("Total funding: " + o.total_funding + (o.latest_funding_stage ? " (latest: " + o.latest_funding_stage + (o.latest_funding_round_date ? " on " + o.latest_funding_round_date : "") + ")" : ""));
+    if (o.technology_names && o.technology_names.length) lines.push("Technology stack: " + o.technology_names.slice(0, 20).join(", "));
+    if (o.street_address || o.city) lines.push("Location: " + [o.street_address, o.city, o.state, o.postal_code].filter(Boolean).join(", "));
+    if (o.website_url) lines.push("Website: " + o.website_url);
+    if (o.linkedin_url) lines.push("LinkedIn: " + o.linkedin_url);
+  } else if (out.orgError) lines.push("Organization lookup: " + out.orgError);
+  return lines.join("\n") || "No result came back.";
+}
+
+// Clay.com (Tania, Nov 25): Clay has no universal "search leads" API the way Apollo does -- its own model is a
+// table YOU build, with an enrichment/Claygent column that calls OUT to a webhook you give it, per row. So the
+// real "Clay account plugged in" is a webhook RECEIVER (netlify/functions/clay-webhook.mjs), not something Mariska
+// calls live: point a Clay table's HTTP API/webhook action at that function's URL (with ?secret=<CLAY_WEBHOOK_SECRET>)
+// and whatever Clay sends for a row lands here, keyed by whatever identifier the row carries. This just reads back
+// whatever has already arrived for a given email/domain/company -- inert (returns null) until Tania both sets
+// CLAY_WEBHOOK_SECRET in Netlify and points an actual Clay table at the endpoint.
+export async function clayLookup(idRaw) {
+  const id = String(idRaw || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!id) return null;
+  const st = getStore({ name: "clay-results", consistency: "strong" });
+  return (await st.get(id, { type: "json" }).catch(() => null)) || null;
+}
+
 export const PROVIDERS = {
   deepseek: { label: "DeepSeek", env: "DEEPSEEK_API_KEY" },
   chatgpt: { label: "ChatGPT (Gips)", env: "OPENAI_API_KEY" },
@@ -944,6 +1033,12 @@ export async function getSettings() {
   if (!s.migratedLeaders) { s.brains.sdr = "claude"; s.brains.jenna = "claude"; s.brains.linda = "claude"; s.migratedLeaders = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
   if (!s.migratedTrusted) { Object.assign(s.brains, { jimmy: "claude", eva: "claude", tatiana: "chatgpt", clara: "chatgpt", rachel: "chatgpt" }); s.migratedTrusted = true; try { await teamStore().setJSON("settings", s); } catch (e) {} } // Tania, Nov 13: Claude and ChatGPT lead, DeepSeek backs them up
   if (!s.migratedMen) { s.brains.george = "claude"; s.brains.alek = "claude"; s.migratedMen = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
+  // Tania, Nov 25: "wouldn't perplexity be the best api for mariska" -- yes, for the same reason it fits Eva's
+  // research jobs (job 9 above): it runs a live, citation-backed web search in the same call, which is exactly
+  // what her deep-research and Claygent/Apollo lead-research jobs need. One-time default only (never overwrites a
+  // choice she's already made in the brain picker), and harmless even before the key exists -- pickProvider()
+  // falls back silently to whatever IS connected until PERPLEXITY_API_KEY is actually set.
+  if (!s.migratedMariskaBrain) { if (!s.brains.mariska) s.brains.mariska = "perplexity"; s.migratedMariskaBrain = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
   return s;
 }
 // Tania, Nov 7: Jimmy now runs on Grok (xAI) whenever XAI_API_KEY is set, even if his brain was set to Gemini before.
