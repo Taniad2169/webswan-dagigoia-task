@@ -355,8 +355,8 @@ export default async (req) => {
       const H = { "X-API-Key": ck, Authorization: "Bearer " + ck, "Cartesia-Version": process.env.CARTESIA_TTS_VERSION || "2025-04-16", "Content-Type": "application/json" };
       const s = await getSettings(); const voices = Object.assign({}, s.voices || {});
       // Phone agents always use the voice of their live Cartesia agent (so a meeting sounds exactly like her calls); the cache is only for office-only agents.
-      // Tania, Nov 17: Sebastien and both Kobe desks speak with Jonathan's voice (Kobe sounded too robotic).
-      const SHARED = { sebastien: "linda", sdr: "linda", kobe: "linda" }; // Jonathan's agent key is still "linda"
+      // Tania, Nov 17: Sebastien and Kobe speak with Jonathan's voice (Kobe sounded too robotic).
+      const SHARED = { sebastien: "linda", sdr: "linda" }; // Jonathan's agent key is still "linda"
       const live = !SHARED[agent] && (agent === "rachel" || (AGENTS[agent].caller && agent !== "sdr"));
       const male = !!AGENTS[agent].male || !!SHARED[agent], vkey = male ? (SHARED[agent] || agent) + "_m" : agent; // a male agent never reuses a cached female voice
       let vid = live ? "" : voices[vkey];
