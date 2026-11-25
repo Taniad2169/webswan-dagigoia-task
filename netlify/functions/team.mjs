@@ -363,16 +363,27 @@ export default async (req) => {
       // Phone agents always use the voice of their live Cartesia agent (so a meeting sounds exactly like her calls); the cache is only for office-only agents.
       // Tania, Nov 17: Sebastien and Kobe speak with Jonathan's voice (Kobe sounded too robotic).
       const SHARED = { sebastien: "linda", sdr: "linda" }; // Jonathan's agent key is still "linda"
+      // Tania, Nov 25: Monica and Rebecca are being retired as calling agents next week -- rather than stand up a
+      // brand-new Cartesia voice for Mariska, she inherits Monica's existing one. This is a ONE-TIME borrow: the
+      // voice id is fetched once (below) from Monica's still-live Cartesia agent and cached under Mariska's own
+      // voice key forever after, so Mariska keeps that voice even once Monica's agent is gone -- nothing to relink
+      // in Voice Studio, and no new agent to create. Swap the value to "rebecca" instead if that's the one Tania
+      // wants, any time before Mariska's voice has been generated for the first time.
+      const REUSE_VOICE_FROM = { mariska: "monica" };
       const live = !SHARED[agent] && (agent === "rachel" || (AGENTS[agent].caller && agent !== "sdr"));
       const male = !!AGENTS[agent].male || !!SHARED[agent];
       const vkey = (male ? (SHARED[agent] || agent) + "_m" : agent) + (lang === "en" ? "" : "_" + lang); // a male agent never reuses a cached female voice; a non-English voice never reuses the English one
       let vid = live ? "" : voices[vkey];
       if (!vid) {
         try {
-          if (lang === "en" && (agent === "rachel" || AGENTS[agent].caller)) {
-            // Rachel and the Voice Studio phone agents speak with the same voice as their live Cartesia agent (English only -- their own calls pick their own language live).
+          if (lang === "en" && (agent === "rachel" || AGENTS[agent].caller || REUSE_VOICE_FROM[agent])) {
+            // Rachel and the Voice Studio phone agents speak with the same voice as their live Cartesia agent
+            // (English only -- their own calls pick their own language live). Mariska borrows Monica's (or
+            // Rebecca's) the same way, by voice id, not by becoming that agent -- her own prompt, task and brain
+            // never change.
+            const voiceAgent = REUSE_VOICE_FROM[agent] || agent;
             const ids = (await getStore({ name: "voice-studio", consistency: "strong" }).get("agent-ids", { type: "json" }).catch(() => null)) || {};
-            const aid = process.env["CARTESIA_AGENT_" + agent.toUpperCase()] || ids[agent];
+            const aid = process.env["CARTESIA_AGENT_" + voiceAgent.toUpperCase()] || ids[voiceAgent];
             const ag = aid && await (await fetch("https://api.cartesia.ai/agents/" + aid, { headers: H })).json().catch(() => null);
             vid = ag && ((ag.config || ag) .audio || {}).output && (ag.config || ag).audio.output.voice_id;
           }
