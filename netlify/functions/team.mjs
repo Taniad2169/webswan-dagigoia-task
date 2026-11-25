@@ -1200,15 +1200,32 @@ Pick the ONE finding here that would actually make this specific practice sit up
       if (!name && !business) return reply(400, { error: "Need at least a name or a business name to profile this lead." }, origin);
       const website = clean(lead.website || lead.url, 200).trim();
       const notes = clean(lead.notes || lead.comment || lead.myNotes, 2000).trim();
-      const calledBy = lead.calledBy === "jenna" ? "Jenna" : "Tania";
+      const recording = clean(lead.recordingTranscript, 6000).trim();
+      const calledByRaw = clean(lead.calledBy, 40).trim();
+      const calledBy = calledByRaw ? calledByRaw[0].toUpperCase() + calledByRaw.slice(1) : "Tania";
+      // Tania, Nov 24: Sebastien now actually looks the prospect up instead of working from the lead card alone --
+      // their own website, a quick social-media/reputation search, and (if this lead was called before) what was
+      // actually said on that call -- so the script responds to a real person, not a guess.
+      let siteExcerpt = "";
+      if (website) {
+        try { const pages = await within(readSite(website), 9000, "site read"); siteExcerpt = pages.map((p) => `${p.url}\n${p.text}`).join("\n\n").slice(0, 4000); }
+        catch (e) { siteExcerpt = "(could not open " + website + ": " + String((e && e.message) || e).slice(0, 120) + ")"; }
+      }
+      let socialExcerpt = "";
+      if (business || name) {
+        try {
+          const rs = await within(webSearch(`"${business || name}" reviews OR Instagram OR Facebook OR LinkedIn`, 5), 8000, "social search");
+          socialExcerpt = fmtResults("Social media / reputation signals", rs).slice(0, 2000);
+        } catch (e) { socialExcerpt = ""; }
+      }
       const s = await getSettings();
-      const ask = "A lead was just pushed to " + calledBy + "'s call list in WorkPilot. Profile this prospect using everything you know about buyer psychology for WebSwan's services, then write the actual call script " + calledBy + " (or whoever picks it up) will read from -- opening line through close, objection-ready, real spoken language, no markdown, no headers, no labels like \"Opening:\". Keep the whole script under 900 characters so it fits WorkPilot's 1000-character script box.\n\nLead: " + (name || "(no contact name)") + (business ? " -- " + business : "") + "\nWebsite: " + (website || "(none on file)") + "\nNotes on file: " + (notes || "(none yet -- this is a cold lead)");
+      const ask = "A lead was just pushed to " + calledBy + "'s call list in WorkPilot. Profile this prospect using everything below -- their own website, what's findable about them online, and what already happened on a prior call with them if there is one -- then write the actual call script " + calledBy + " (or whoever picks it up) will read from -- opening line through close, objection-ready, real spoken language, no markdown, no headers, no labels like \"Opening:\". Reference something specific and real from the research below (their actual services, a review, something they said on the prior call) rather than a generic opener. Keep the whole script under 900 characters so it fits WorkPilot's 1000-character script box.\n\nLead: " + (name || "(no contact name)") + (business ? " -- " + business : "") + "\nWebsite: " + (website || "(none on file)") + "\nNotes on file: " + (notes || "(none yet -- this is a cold lead)") + (recording ? "\n\nPRIOR CALL WITH THIS LEAD (what was actually said):\n" + recording : "") + (siteExcerpt ? "\n\nTHEIR WEBSITE (data):\n" + siteExcerpt : "") + (socialExcerpt ? "\n\n" + socialExcerpt : "");
       let ans;
-      try { ans = await within(askAI(brainFor(s, "sebastien"), AGENTS.sebastien.system, [{ role: "user", content: ask }], 500), 20000, "Sebastien's script"); }
+      try { ans = await within(askAI(brainFor(s, "sebastien"), AGENTS.sebastien.system, [{ role: "user", content: ask }], 600), 25000, "Sebastien's script"); }
       catch (e) { return reply(502, { error: "Sebastien couldn't finish in time: " + String((e && e.message) || e).slice(0, 200) }, origin); }
       const script = clean(String((ans && ans.text) || "").trim(), 1000);
       if (!script) return reply(502, { error: "Sebastien didn't return a script this time -- try again." }, origin);
-      return reply(200, { ok: true, script }, origin);
+      return reply(200, { ok: true, script, researched: { website: !!siteExcerpt, social: !!socialExcerpt, recording: !!recording } }, origin);
     }
         // Sentinel's diagnostic audit trail (Tania, Nov 18). Owner-only -- already gated by verifyOwnerEither at
     // the top of this function, same as every action here. Read-only: no action anywhere edits or deletes a
