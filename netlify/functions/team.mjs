@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, intentSearch, formatIntentResult, makerPaused, agentPaused } from "../lib/team.mjs";
+import { readSwanBudget, formatSwanBudget, addSwanExpense, formatExpenseAdd } from "../lib/swan-budget.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText, hotLeadsRequested } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -1035,6 +1036,34 @@ Never invent a source that is not in the research above. If the research above c
             else if (kind === "push") note = "\n\n📝 Queued: push Lead Prospector lead \"" + (r.item.name || f.leadid) + "\" into WorkPilot" + (f.agent ? " and assign to " + f.agent : "") + " (applies the next time WorkPilot is open).";
             else note = "\n\n📝 Queued: assign " + (r.item.leadName || "lead " + f.leadid) + " to " + f.agent + " (applies the next time WorkPilot is open).";
           } catch (e) { note = "\n\n❌ That didn't queue (" + String(e.message || e).slice(0, 120) + ")."; }
+          outText = outText.replace(m[0], note);
+        }
+        outText = outText.replace(/\n{3,}/g, "\n\n").trim();
+      }
+      // Clara's read/write access into Swan Budget (Tania, Nov 26: "she needs to see what is going on so she can
+      // help me out ... if i give her an expense to enter she should be trained to do it properly"). Tania's own
+      // first-party data (the same doc her own Swan Budget app reads/writes), so no untrusted-evidence analysis
+      // pass is needed here -- this is a direct read or a direct, validated write, same shape as the LEAD tags
+      // above. ((BUDGET READ)) or ((BUDGET READ: month=YYYY-MM)) for a snapshot; ((BUDGET EXPENSE: name=...|amount=...
+      // |category=...|type=need/want|when=fixed/extra|month=YYYY-MM)) to log one -- category must be one of Tania's
+      // real categories (never invented), when defaults to "extra" (a one-off expense for that month) unless she
+      // said this is a recurring monthly expense, and month defaults to the current month unless she named one.
+      if (agent === "clara" && /\(\(\s*BUDGET\s+(READ|EXPENSE)\s*(:[\s\S]*?)?\)\)/i.test(outText)) {
+        const matches = [...outText.matchAll(/\(\(\s*BUDGET\s+(READ|EXPENSE)\s*(?::\s*([\s\S]*?))?\)\)/gi)];
+        for (const m of matches.slice(0, 5)) {
+          const kind = m[1].toUpperCase();
+          const f = {};
+          (m[2] || "").split("|").forEach((pair) => { const i = pair.indexOf("="); if (i > -1) f[pair.slice(0, i).trim().toLowerCase()] = pair.slice(i + 1).trim(); });
+          let note;
+          try {
+            if (kind === "READ") {
+              const snap = await readSwanBudget(f.month);
+              note = "\n\n💰 " + formatSwanBudget(snap);
+            } else {
+              const out = await addSwanExpense({ name: f.name, amount: f.amount, category: f.category, type: f.type, when: f.when, month: f.month });
+              note = "\n\n💰 " + formatExpenseAdd(out);
+            }
+          } catch (e) { note = "\n\n❌ Swan Budget didn't go through (" + String(e.message || e).slice(0, 160) + ")."; }
           outText = outText.replace(m[0], note);
         }
         outText = outText.replace(/\n{3,}/g, "\n\n").trim();
