@@ -8,7 +8,7 @@
 // The queue and settings are saved by Voice Studio through the voice-calls function (Netlify Blobs store "voice-studio").
 import { startWatch } from "../lib/call-watch.mjs";
 import { getLeadMemory, getIdentityMemory, isDuplicateContact, NO_MEMORY } from "../lib/lead-memory.mjs";
-import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, planTaskFor, agentSilencedToday } from "../lib/dialer-plan.mjs";
+import { DIALER_PLAN, planActive, planCallerFor, planWindow, planCap, planTaskFor, agentSilencedToday, dialerBlackoutActive } from "../lib/dialer-plan.mjs";
 import { getStore } from "@netlify/blobs";
 import { budgetGate, budgetRecord } from "../lib/budget.mjs";
 
@@ -91,6 +91,10 @@ function leadOpen(lead) {
 }
 
 export default async () => {
+  // Tania, Nov 25: "turn off dialer for the whole weekend starting now until Monday" -- Thursday (Thanksgiving)
+  // still falls inside the Mon-Thu cron/plan windows below, so it needs its own explicit stop, not just the
+  // existing Fri/Sat/Sun rules further down.
+  if (dialerBlackoutActive()) return new Response("off: weekend blackout (resumes Monday)");
   if (!liveOn() || !process.env.CARTESIA_API_KEY || !numberIds().length) return new Response("off");
   const store = getStore({ name: "voice-studio", consistency: "strong" });
   EXTRA_IDS = (await store.get("agent-ids", { type: "json" }).catch(() => null)) || {};

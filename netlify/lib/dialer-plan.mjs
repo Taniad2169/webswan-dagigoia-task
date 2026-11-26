@@ -61,11 +61,26 @@ export function agentSilencedToday(agent, silencedAgents, tz = "America/Los_Ange
   const until = silencedAgents && silencedAgents[String(agent || "").toLowerCase().split("_")[0]];
   return !!until && ymd(tz) <= String(until);
 }
+// Tania, Nov 25 ("turn off dialer for the whole weekend starting now until Monday it resumed, any leads for today
+// push for Monday"): a full dialer blackout, no exceptions -- not even Jonathan's booked compliance callbacks or
+// Rachel's next-day follow-ups, since she said "the dialer" with nothing carved out. Day-granularity (like
+// DIALER_PLAN/TRAINING_FOCUS above) is enough: setting start to today blocks every call attempt made from the
+// moment this deploys through the end date, whatever today's clock time is. End date is the LAST silent day
+// (inclusive) -- Nov 29 (Sun) means Monday Nov 30 runs normally again under the still-active Black Friday plan
+// above, and Tuesday Dec 1 narrows on its own via TRAINING_FOCUS to just George + Jenna, as she separately asked.
+// Rachel's INBOUND line is untouched by this (it's not the dialer); only outbound placing of calls is blocked.
+const WEEKEND_BLACKOUT = { start: "2026-11-25", end: "2026-11-29", tz: "America/Los_Angeles" };
+// Exported (not just used inside callerAllowed() below) because the main campaign dialer, voice-autodial.mjs,
+// doesn't route through callerAllowed() at all -- it checks planActive()/planWindow()/planCap() directly -- so
+// it needs this same check called at its own entry point too, or Thursday's (Thanksgiving) Black Friday plan
+// windows would still fire even with this file's callerAllowed() gate in place.
+export function dialerBlackoutActive() { const d = ymd(WEEKEND_BLACKOUT.tz); return d >= WEEKEND_BLACKOUT.start && d <= WEEKEND_BLACKOUT.end; }
 // Tania, Nov 23: "let Jonathan compliance review be an exception" -- his booked compliance-review callbacks go out
 // on schedule even while the Black Friday plan is silencing every other non-listed caller.
 const PLAN_EXEMPT = ["jonathan", "rachelout"]; // Tania, Nov 24: Rachel's next-day follow-ups (8 AM PT) and Jonathan's booked calls always run
 // May this agent place any outbound call right now (callbacks, follow-ups, campaigns)?
 export function callerAllowed(agent, silencedAgents) {
+  if (dialerBlackoutActive()) return false; // checked first, overrides PLAN_EXEMPT -- the whole dialer is off, no exceptions
   if (agentSilencedToday(agent, silencedAgents)) return false;
   const base = String(agent || "").toLowerCase().split("_")[0];
   if (PLAN_EXEMPT.includes(base)) return true;

@@ -2,7 +2,7 @@
 // Tatiana's Monday social content and twice-monthly blogs + Google Business Profile posts,
 // and the 3-day "time to call" reminders after an audit email.
 import { getStore } from "@netlify/blobs";
-import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb, readPdfText } from "./team.mjs";
+import { AGENTS, askAI, brainFor, addMessages, getSettings, teamStore, webSearch, fmtResults, readSite, researchWeb, readPdfText, makerPaused } from "./team.mjs";
 import { callScript, sanitizeCal } from "./cal.mjs";
 import { actionsHelp, runActions, MAX_HOPS, CLEAN_Q } from "./agent-actions.mjs";
 import { accounts as c360Accounts, uploadMedia, createPost, brandMap, suggestedMap, servesBrand, isGBP, TEXT_OK, IMAGE_OK, BRANDS } from "./content360.mjs";
@@ -341,6 +341,10 @@ export async function makeImage(prompt, aspect = "1:1") {
 const imgMime = (buf) => buf[0] === 0xff && buf[1] === 0xd8 ? "image/jpeg" : buf[0] === 0x52 && buf[1] === 0x49 ? "image/webp" : "image/png";
 const scenePrompt = (it) => `Create a high-quality, realistic, square marketing photograph for a social media post. ${it.scene ? "Scene: " + it.scene : `Topic: ${String(it.headline || it.title || "").replace(/^Blog on Google:\s*/, "")}, for ${it.brand}${it.service ? " (" + it.service + ")" : ""}. Show a believable moment with a doctor, dentist, attorney or their front-desk team, or a phone or laptop in a modern practice.`} Warm, bright, professional lighting, modern clean office, colors leaning to blue and white. Keep the bottom third calm and uncluttered so text can sit on it. Absolutely no text, letters, words, numbers, logos or watermarks anywhere in the image.`;
 export async function tatianaPics(arg) {
+  // Tania, Nov 25: Jimmy's paused (Netlify cost cut) -- skip picture generation everywhere this is called from
+  // (the chat trigger in team.mjs is already short-circuited; this covers the weekly/monthly scheduled jobs too).
+  // Posts still go out, just text-only, exactly as the existing "no picture" messaging already describes.
+  if (makerPaused("jimmy")) return { made: 0, failed: 0, err: "Jimmy is paused for now (Netlify cost cut)." };
   let [month, id] = String(arg || "").split("|"); month = month || targetMonth();
   const plan = await getPlan(month), vs = videoStore();
   const todo = plan.items.filter((it) => it.kind !== "blog" && it.status !== "scheduled" && (id ? it.id === id : !it.aiImage)).slice(0, 60);
@@ -386,6 +390,7 @@ export async function veoVideo(prompt, aspect = "16:9", secs = 8) {
 }
 const BRAND_LOOK = "Brand look: The WebSwan, a premium web design and digital marketing agency for doctors and attorneys. Colors bright blue #3898f5, sky blue #6aa8e6 and aqua #48d6fa with white; clean, modern, warm and professional. If any words appear, spell them exactly and keep them short. No fake reviews, no statistics, no other companies' logos, no celebrities.";
 export async function jimmyMake() {
+  if (makerPaused("jimmy")) return; // defense in depth -- the queue should already be empty since team.mjs stopped enqueueing
   const st = teamStore(), q = (await st.get("jimmy-queue", { type: "json" })) || [];
   const todo = q.filter((x) => !x.done).slice(0, 6); if (!todo.length) return;
   for (const t of todo) { t.done = true; } await st.setJSON("jimmy-queue", q.slice(-60)); // claim them so a second worker doesn't repeat

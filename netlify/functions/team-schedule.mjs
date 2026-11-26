@@ -8,7 +8,7 @@ import { AGENTS, addMessages, teamStore } from "../lib/team.mjs";
 import { startJobs } from "./team-daily.mjs";
 import { sweepExpiredScripts } from "./voice-calls.mjs";
 import { ptClock, toMins } from "../lib/team-routines.mjs";
-import { DIALER_PLAN, planActive } from "../lib/dialer-plan.mjs";
+import { DIALER_PLAN, planActive, dialerBlackoutActive } from "../lib/dialer-plan.mjs";
 
 const first = (k) => String((AGENTS[k] || {}).name || k).split(" ")[0];
 
@@ -38,8 +38,12 @@ export default async () => {
   try {
     const c = ptClock(), done = (await st.get("routines-done", { type: "json" })) || [];
     const mark = async (k) => { done.push(k); await st.setJSON("routines-done", done.slice(-80)); };
-    if (c.day === "fri" && c.mins >= 15 * 60 && c.mins < 19 * 60 && !done.includes("jr-" + c.date)) { await mark("jr-" + c.date); await startJobs(["jenna_review"]); routines += " review started;"; }
-    if (planActive() && ["mon", "tue", "wed", "thu"].includes(c.day)) {
+    // Tania, Nov 25 ("turn off dialer for the whole weekend... having the meetings in brain roleplay... chewing my
+    // credits -- block it, seal it"): both the huddle prep below and Jenna's Friday call review are themselves
+    // LLM roleplay jobs tied to a calling week that isn't happening this week, so they're paused for the same
+    // window as the dialer blackout, not just the calls themselves.
+    if (!dialerBlackoutActive() && c.day === "fri" && c.mins >= 15 * 60 && c.mins < 19 * 60 && !done.includes("jr-" + c.date)) { await mark("jr-" + c.date); await startJobs(["jenna_review"]); routines += " review started;"; }
+    if (!dialerBlackoutActive() && planActive() && ["mon", "tue", "wed", "thu"].includes(c.day)) {
       const wins = ((DIALER_PLAN.agents || {}).jenna || {}).windows || [];
       for (let i = 0; i < wins.length; i++) {
         const t = toMins(wins[i][0]), key = "hd-" + c.date + "-" + i;

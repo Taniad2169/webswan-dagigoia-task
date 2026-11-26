@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
-import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup } from "../lib/team.mjs";
+import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, makerPaused } from "../lib/team.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -479,6 +479,12 @@ export default async (req) => {
       const totals = {};
       for (const [k, v] of Object.entries(all)) totals[k] = (v || []).length;
       return reply(200, { awards: agent ? (all[agent] || []) : [], totals }, origin);
+    }
+    // Tania, Nov 25 ("put Jimmy on pause as well" -- Netlify cost cut): his chat stays open, but the two
+    // triggers below that actually spend on Gemini/Veo generation are short-circuited while he's paused.
+    if (makerPaused("jimmy") && (b.action === "jimmy_make" || (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && (jimmyWants(clean(b.text, 4000)) || /\b(graphics?|pictures?|images?|photos?|visuals?)\b/i.test(String(b.text || "")))))) {
+      const saved = await addMessages("jimmy", [{ role: "user", text: clean(b.prompt || b.text, 4000).trim() }, { role: "agent", text: "⏸️ I'm paused for now to save on Netlify credits -- no new pictures or videos until Tania turns me back on. Happy to just talk in the meantime." }]);
+      return reply(200, { messages: saved.slice(-2) }, origin);
     }
     // Jimmy: make a picture or a video (from his panels, or when Tania asks for one in his chat). Done in the background.
     // Jimmy + Sentinel (Tania, Nov 9; content/graphics moved from Tatiana to Sentinel Nov 24): asking Jimmy for the pictures for Sentinel's posts really starts them. They land on the post cards in Sentinel's chat.

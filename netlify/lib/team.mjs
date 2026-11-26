@@ -1126,6 +1126,12 @@ export async function addMessages(agent, msgs) {
 // Each agent has her own default "brain": DeepSeek is cheapest for drafting and content,
 // Claude is more careful with legal reasoning, so Jonathan defaults to it (falls back to DeepSeek if no Claude key).
 export const DEFAULT_BRAINS = { eva: "claude", tatiana: "chatgpt", jimmy: "claude", linda: "claude", clara: "chatgpt", rachel: "chatgpt", sdr: "claude", jenna: "claude", sebastien: "claude", sentinel: "claude", george: "claude", alek: "claude" }; // Nov 13: the men think and talk like Jonathan // Tania, Nov 13: Kobe and Jenna think like Jonathan (Claude)
+// Tania, Nov 25 ("put Jimmy on pause as well" -- part of a Netlify cost-cutting pass alongside the dialer
+// blackout): Jimmy's own ongoing conversation is unaffected (he can still talk), but the actual image/video
+// generation calls (the expensive Gemini/Veo part) stop while he's listed here. Open-ended, like TRAINING_FOCUS
+// in dialer-plan.mjs -- remove his name whenever she's ready to turn picture/video making back on.
+export const PAUSED_MAKERS = ["jimmy"];
+export const makerPaused = (agent) => PAUSED_MAKERS.includes(String(agent || "").toLowerCase());
 export async function getSettings() {
   const s = Object.assign({ provider: "deepseek", competitors: [], bestClients: [], compliancePhone: "(316) 248-6839", advertisingPhone: "(316) 248-6839" }, (await teamStore().get("settings", { type: "json" })) || {});
   s.brains = Object.assign({}, DEFAULT_BRAINS, s.brains || {});
