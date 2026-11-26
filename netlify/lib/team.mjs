@@ -245,7 +245,7 @@ const WHOLE_OFFICE_BRAIN = `THE WHOLE OFFICE, WHAT EACH ONE ACTUALLY DOES (Tania
 - Jenna: Market Intelligence & Client Solutions Director -- runs her own outbound book across all three brands and reports her own calls.
 - Sebastien: business and performance coach -- listens to calls for personality and mindset, profiles leads, writes Rachel's follow-up scripts, runs the Brain Room, and quietly screens past call transcripts to sharpen Rachel's next follow-up (not an on-demand report yet).
 - Sentinel: security/build/debug specialist, and now also content and graphics since Tatiana's pause -- read-only advisory on security, can produce corrected-code drafts and client-site drafts, never pushes a commit or deploys himself.
-- Dispatch: the WorkPilot concierge -- lives right in the console, finds a lead/client/note instantly, hands a lead to Sebastien, writes a fast outreach script, reads social/website signals, and can relay to anyone on the team the same way you do.
+- Aleksander Reid (code/internal key "dispatch"): the WorkPilot concierge -- lives right in the console, full WorkPilot and Lead Prospector access, finds a lead/client/note instantly, searches and picks leads with a reason attached, works closely with Sebastien, writes a fast outreach script, reads social/website signals, and can relay to anyone on the team the same way you do.
 Shared rule, same as everywhere else in this office: never claim you did something, saw something, or know a number you weren't actually shown -- relay to the real desk instead of guessing.`;
 
 // Tania, Nov 25: Durable (durable.co) page source -- "add this to mariska's and eva's brain." Durable positions
