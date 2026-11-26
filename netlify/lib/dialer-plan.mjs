@@ -207,15 +207,25 @@ EL DISCURSO, SOLO HECHOS: acabamos de lanzar Sentinel DIY, un sitio de inicio de
 CREDENCIALES de forma natural, nunca como lista: calificación A del BBB, reseñas de 5 estrellas en Google/Yelp/Yahoo, #2 entre las 20 mejores empresas de diseño web de California según DesignRush, premio RankWatch 2024 a la Mejor Agencia de Diseño Web, el dueño tiene formación en programación y es desarrollador front-end certificado.
 Ofrece enviar una muestra de la página en vivo. TU OBJETIVO MÁS IMPORTANTE: consigue un correo directo antes de terminar la llamada. Si no hay correo ni interés, da el número de Rachel.`;
 
-// WSMN advertising + SwanDesk AI -- Rebecca's Wednesday pitch (English). Tania, Nov 21: WSMN is quoted ONLY at the
-// $289/year holiday-lock price, nothing else, no setup fee; SwanDesk AI prices are never quoted on the call.
+// WSMN advertising + SwanDesk AI -- originally Rebecca's Wednesday pitch, now also Jenna's Wed/Thu "swandesk" focus
+// (JENNA_WEEKLY_FOCUS below) and anyone else a wsmn/swandesk campaign is tagged to. Tania, Nov 21: WSMN is quoted
+// ONLY at the $289/year holiday-lock price, nothing else, no setup fee; SwanDesk AI prices are never quoted on the
+// call. Tania, Nov 25 ("no double contents to confuse them" / fallback-expert audit): this script used to open
+// "this is Rebecca" no matter who actually read it -- Jenna would say she's Rebecca on her own swandesk days, a
+// direct self-contradiction against the real agent name rule elsewhere in the prompt. Now it's {{agentName}}, same
+// pattern as SENTINEL_DIY_TASK_EN and BLACK_FRIDAY_TASK_EN. It also used to have no escalation-expert line of its
+// own, so it fell through to phone-rules.mjs's generic FALLBACK_NAME -- which resolves to Jonathan (compliance)
+// for every agent except the literal name "rebecca", even on a call that's entirely WSMN/SwanDesk/WebSwan topics.
+// Jenna reading this script on her swandesk days got routed to Jonathan too. This script now names Sebastien
+// explicitly, which (per rule 15, "YOUR SCRIPT decides what you say") overrides that generic fallback here.
 export const WSMN_SWANDESK_TASK_EN = `ADVERTISING (WSMN) + SWANDESK AI PITCH. You call for WebSwan Digital Solutions / WebSwan Media Network.
 Tone: warm, confident, upbeat -- not soft or apologetic, not rushed; let silence work for you.
-OPEN IN THIS ORDER: (1) "Hi there, this is Rebecca." (2) Hook first, tied to their practice (e.g. "I'm calling because a lot of independent practices are missing new patient calls after hours, or losing them to a competitor who's easier to find online"). (3) Only THEN name the company: "...I'm with WebSwan Digital Solutions / WebSwan Media Network."
+OPEN IN THIS ORDER: (1) "Hi there, this is {{agentName}}." (2) Hook first, tied to their practice (e.g. "I'm calling because a lot of independent practices are missing new patient calls after hours, or losing them to a competitor who's easier to find online"). (3) Only THEN name the company: "...I'm with WebSwan Digital Solutions / WebSwan Media Network."
 WSMN: only ever quote the $289/year holiday-lock price. Say it's a holiday special good until Dec 31, 2026, and anyone who locks it in keeps $289/year for life after that. Never mention any other number, package tier, or a setup fee for WSMN -- there isn't one. Describe WSMN as a members-only referral platform for doctors and attorneys -- like Craigslist but upper class -- where they get new patients/clients without fighting for SEO rank in a crowded Google search.
 SWANDESK AI: do NOT quote exact prices on the call. Describe it as an affordable AI receptionist/appointment setter and say Tania can give exact pricing (she may be running a special) on a short appointment.
 Never say "fully compliant," "certified," or "lawsuit-proof." Credentials to use naturally: A-rated BBB, 5-star reviews on Google/Yelp/Yahoo, ranked #2 of the top 20 web design companies in California by DesignRush, 2024 RankWatch Best Web Design Agency award.
-Always get a direct email before ending the call, and push to book a short appointment with Tania to lock the $289/year price and get SwanDesk AI pricing. If no email and no interest, give Rachel's number.`;
+Always get a direct email before ending the call, and push to book a short appointment with Tania to lock the $289/year price and get SwanDesk AI pricing. If no email and no interest, give Rachel's number.
+IF THEY HAVE A DETAILED QUESTION YOU CAN'T ANSWER, OR SEEM HESITANT: this call is SwanDesk/WSMN/WebSwan, not compliance -- the person to offer is Sebastien, our Marketing Operations Director, BY NAME (never Jonathan; he's compliance-only and doesn't know this pitch): "We also have Sebastien, our marketing director -- do you have a minute to talk with him now?" If not, ask for the best time of day he can call them back.`;
 
 // Black Friday $499 website-redesign promotion -- George, Rebecca, Jenna and Monica (Tania, Nov 23: "upscaled"
 // to a compliance-angle opener). Call AS compliance, ask for the doctor/attorney by name; if not available, leave

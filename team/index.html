@@ -952,9 +952,17 @@ async function notifPoll() {
   notifSave(seen);
   S.last = Object.assign(S.last || {}, st.last || {});
 }
+// Tania, Nov 25 (Netlify credit leak): this used to poll the team function every 15 seconds no matter what --
+// including with the tab just sitting open in the background for hours, which is real function-invocation
+// volume for zero benefit (nobody's there to see a notification pop while the tab isn't even showing). Desktop
+// notifications still need to work while the tab is in the background (that's the whole point of them), so this
+// doesn't stop polling when hidden -- it just slows way down: every 15s while the tab is the one she's actually
+// looking at, every 90s (6x less often) once it's in the background. Still catches new messages promptly either way.
 function notifStart() {
   $("notifBell").style.display = "none";
-  notifPoll(); setInterval(notifPoll, 15000);
+  let timer = null;
+  const tick = async () => { await notifPoll(); timer = setTimeout(tick, document.visibilityState === "visible" ? 15000 : 90000); };
+  tick();
 }
 function notifInit() {
   if (!("Notification" in window)) return;
