@@ -1004,26 +1004,54 @@ export async function readYouTube(raw, max = 9000) {
     return { url: link, title, text: (head + "\n\nWHAT IS SAID IN THE VIDEO:\n" + words).slice(0, max) };
   } finally { clearTimeout(t); }
 }
+// Tania, Nov 25 ("it didn't pick up the url, it gave me an error message"): a plain research user-agent gets
+// blocked by some hosts' bot protection, and a bare domain can be wired for only "www." or only the apex --
+// so one fetch attempt with a bot-ish UA and no fallback was too fragile. Now we look like a real browser and,
+// if the first try fails, we automatically try the other www./apex form once before giving up.
+const BROWSER_HEADERS = {
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  "accept-language": "en-US,en;q=0.9",
+};
+function wwwToggle(url) {
+  try {
+    const u = new URL(url);
+    u.hostname = u.hostname.startsWith("www.") ? u.hostname.slice(4) : "www." + u.hostname;
+    return u.href;
+  } catch { return null; }
+}
+async function fetchHtml(url, timeoutMs) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: BROWSER_HEADERS });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return { url: r.url || url, html: (await r.text()).slice(0, 800000) };
+  } finally { clearTimeout(t); }
+}
 export async function readPage(raw, max = 7000) {
   if (YT_ID(raw)) return readYouTube(raw, Math.max(max, 9000));
   let url = String(raw || "").trim().replace(/[).,;]+$/, "");
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 9000);
-  try {
-    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; WebSwanResearch/1.0)" } });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const h = (await r.text()).slice(0, 800000);
-    const title = ((h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "").replace(/\s+/g, " ").trim();
-    const txt = h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#36;|&dollar;/g, "$").replace(/\s+/g, " ").trim();
-    return { url: r.url || url, title, text: txt.slice(0, max) };
-  } finally { clearTimeout(t); }
+  const msg = (e) => String((e && e.message) || e || "").slice(0, 160);
+  let got;
+  try { got = await fetchHtml(url, 9000); }
+  catch (e1) {
+    const alt = wwwToggle(url);
+    if (!alt) throw new Error(msg(e1) + " (" + new URL(url).hostname + ")");
+    try { got = await fetchHtml(alt, 9000); }
+    catch (e2) { throw new Error(msg(e1) + " (" + new URL(url).hostname + ")"); }
+  }
+  const h = got.html;
+  const title = ((h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "").replace(/\s+/g, " ").trim();
+  const txt = h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#36;|&dollar;/g, "$").replace(/\s+/g, " ").trim();
+  return { url: got.url, title, text: txt.slice(0, max) };
 }
 // Tania, Nov 17: Sebastien profiles a prospect from how their site LOOKS and sounds: fonts, colors, headlines, buttons, social links.
 export async function siteStyle(raw) {
   let url = String(raw || "").trim().replace(/[).,;]+$/, "");
   if (!/^https?:\/\//i.test(url)) url = "https://" + url;
   const get = async (u, max) => { const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
-    try { const r = await fetch(u, { signal: ctl.signal, redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; WebSwanResearch/1.0)" } }); if (!r.ok) throw new Error("HTTP " + r.status); return { url: r.url || u, body: (await r.text()).slice(0, max) }; } finally { clearTimeout(t); } };
+    try { const r = await fetch(u, { signal: ctl.signal, redirect: "follow", headers: BROWSER_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); return { url: r.url || u, body: (await r.text()).slice(0, max) }; } finally { clearTimeout(t); } };
   const { url: finalUrl, body: h } = await get(url, 600000);
   let css = (h.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || []).join("\n") + "\n" + (h.match(/style="[^"]*"/gi) || []).join("\n");
   const sheet = (h.match(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi) || []).map((x) => (x.match(/href=["']([^"']+)["']/i) || [])[1]).filter((x) => x && !/fonts\.googleapis|fontawesome|cdnjs|bootstrap/i.test(x))[0];
