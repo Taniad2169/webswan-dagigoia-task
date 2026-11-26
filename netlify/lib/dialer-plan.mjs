@@ -32,7 +32,11 @@ export const DIALER_PLAN = {
     // campaign check, on purpose, so re-labeling this string can never silently put him back on Black Friday).
     george: { windows: [["09:00", "11:00"]], perWindow: 24, lang: "any",
       takes: ["george"], campaign: "Doctor/attorney compliance outreach (standing bilingual script)" },
-    rebecca: { windows: [["11:00", "13:00"]], perWindow: 24, lang: "en", takes: ["rebecca"], campaign: "Black Friday $499 website redesign" },
+    // Tania, Nov 25: "remove rebecca completely... when monica comes back i can handle jenna george monica alek
+    // without rebecca" -- her Black Friday window is removed (not just paused) so she can never get a calling
+    // window from this plan again, even the one day (Mon Nov 30) that would otherwise have sat between this
+    // weekend's blackout ending and TRAINING_FOCUS.paused below taking effect on Dec 1. Her old line is being
+    // freed up for Mariska's new on-demand dial feature (separate build).
     // Monica, Nov 23: brought onto this week's Black Friday push for the new 75-lead Base44 doctor/chiro/dental batch.
     monica: { windows: [["13:00", "15:00"]], perWindow: 24, lang: "en", takes: ["monica"], campaign: "Black Friday $499 website redesign" }
   }

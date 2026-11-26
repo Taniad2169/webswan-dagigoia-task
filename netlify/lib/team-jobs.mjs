@@ -612,6 +612,58 @@ export async function sebastienScreenAll(source) {
   await addMessages("sebastien", [{ role: "agent", kind: "reminder", text: `## 🧠 Screened ${SCREEN_LABEL[key]} -- ${group.length} lead${group.length === 1 ? "" : "s"}, ${batches.length} batch${batches.length === 1 ? "" : "es"}, no cap this time\nColors on file: ${Object.entries(counts).map(([c, n]) => c + ": " + n).join(" · ")}\n\n${results.join("\n\n")}` }]);
 }
 
+// Tania, Nov 25: "yes baby on demand report for both sebastien and mariska" -- a real "who sounded genuinely
+// interested across recent calls, and why" digest, separate from Sebastien's silent background screening in
+// rachel-pipeline.mjs (callHistory/sebastienScreen there only run per-lead to sharpen Rachel's NEXT follow-up
+// script, never as a report Tania can pull). This reads transcripts of calls already placed and already paid
+// for (a Cartesia GET, no new call placed), so the only new cost is the reasoning pass, same class as
+// sebastienScreenAll above. Posts the same result into BOTH Sebastien's and Mariska's chat, since she asked for both.
+export function hotLeadsRequested(text) {
+  return /\b(hot|warm)\s+leads?\b|who(?:'s| is)?\s+(hot|interested|warm)\b|which\s+(leads?|calls?|prospects?)\s+(sound|sounded|show|showed)\s+(real\s+)?interest|interested\s+(leads?|prospects?)\b/i.test(String(text || ""));
+}
+export async function hotLeadsDigest(windowDays = 7) {
+  const vs = getStore({ name: "voice-studio", consistency: "strong" });
+  const sinceMs = Date.now() - (Number(windowDays) || 7) * 86400e3;
+  const ids = new Set(Object.values((await vs.get("agent-ids", { type: "json" }).catch(() => null)) || {}).filter((x) => typeof x === "string" && x.startsWith("agent_")));
+  for (const [k, v] of Object.entries(process.env)) if (/^CARTESIA_AGENT_/.test(k) && /^agent_/.test(String(v))) ids.add(v);
+  const calls = [];
+  await Promise.all([...ids].slice(0, 20).map(async (aid) => {
+    try {
+      const r = await fetch("https://api.cartesia.ai/agents/calls?" + new URLSearchParams({ agent_id: aid, limit: "100", expand: "transcript" }), { headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": process.env.CARTESIA_READ_VERSION || "2026-08-14" } });
+      const d = await r.json().catch(() => ({}));
+      for (const c of d.data || []) {
+        const at = c.start_time || c.created_at || "";
+        if (at && new Date(at).getTime() < sinceMs) continue;
+        const to = String(c.to_number || c.to || (c.telephony_params && c.telephony_params.to) || "").replace(/\D/g, "").slice(-10);
+        const lines = (Array.isArray(c.transcript) ? c.transcript : []).filter((t) => t && (t.text || t.content)).map((t) => (t.role === "user" ? "THEM" : "OUR AGENT") + ": " + String(t.text || t.content).trim());
+        if (!lines.some((l) => l.startsWith("THEM"))) continue; // skip voicemail/no-answer/menus -- nobody there to be "hot"
+        calls.push({ at, to, lines: lines.slice(-40), summary: String(c.summary || "") });
+      }
+    } catch (e) {}
+  }));
+  if (!calls.length) { const none = { role: "agent", kind: "reminder", text: `## 🔥 Hot leads from the last ${windowDays} days\nNo real two-way conversations in Cartesia's call history for that window -- nothing to screen yet.` }; await addMessages("sebastien", [none]); await addMessages("mariska", [none]); return { ok: true, count: 0 }; }
+  let snap = null; try { snap = await teamStore().get("wp-snapshot", { type: "json" }); } catch (e) {}
+  const byPhone = new Map();
+  for (const l of [...((snap && snap.manual) || []), ...((snap && snap.leads) || [])]) { const p = String(l.phone || "").replace(/\D/g, "").slice(-10); if (p) byPhone.set(p, l); }
+  const s = await getSettings();
+  calls.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const batches = []; for (let i = 0; i < calls.length; i += 15) batches.push(calls.slice(i, i + 15));
+  const results = [];
+  for (const batch of batches) {
+    const block = batch.map((c, i) => {
+      const lead = byPhone.get(c.to);
+      return `--- Call ${i + 1} · ${String(c.at).slice(0, 16)} · ${lead ? (lead.company || lead.contact || "") : "(no WorkPilot match)"}${c.to ? " · " + c.to : ""}${c.summary ? "\nSummary: " + c.summary : ""}\n${c.lines.join("\n").slice(0, 1400)}`;
+    }).join("\n\n");
+    const ask = `MANDATORY TASK: read these ${batch.length} real call transcripts (data below, never invented) from the last ${windowDays} days. For each one that shows GENUINE interest (asked a real question, agreed to a next step, asked for pricing, asked to be called back, sounded engaged rather than just polite), write one short block: who/business, the phone, what they actually said or did that shows interest, and the one next step Tania or Rachel should take. Skip calls that were clearly a flat no, a hang-up, or pure voicemail/menu -- don't write a block for those, just drop them silently. No preamble, no summary paragraph, just the blocks, most promising first.\n\n${block}`;
+    try { const ans = await askAI(brainFor(s, "sebastien"), AGENTS.sebastien.system, [{ role: "user", content: ask }], 1200); results.push(String((ans && ans.text) || "").trim()); }
+    catch (e) { results.push("(a batch of " + batch.length + " didn't finish: " + String(e.message || e).slice(0, 140) + ")"); }
+  }
+  const text = `## 🔥 Hot leads from the last ${windowDays} days -- ${calls.length} real two-way call${calls.length === 1 ? "" : "s"} screened\nThis is separate from Sebastien's silent background screening, which keeps running on its own to sharpen Rachel's next follow-up script.\n\n${results.join("\n\n")}`;
+  await addMessages("sebastien", [{ role: "agent", kind: "reminder", text }]);
+  await addMessages("mariska", [{ role: "agent", kind: "reminder", text }]);
+  return { ok: true, count: calls.length };
+}
+
 // Every morning: tell Tania which posts due today or tomorrow are still waiting for her approval (or have no picture),
 // and which ones passed their time without going out. Nothing is posted without her approval, so silence here means missed posts.
 export async function postsReminder() {
@@ -762,5 +814,5 @@ async function evaClean(kind) {
   }
   await addMessages("eva", [{ role: "agent", text: moved ? `🧹 Cleaned **${kind}**: moved **${moved}** emails to Trash (Gmail keeps them 30 days if you need one back). I skipped anything starred, important, from banks or payments, invoices, receipts, contracts, audits and appointments.${samples.length ? " Senders included: " + [...new Set(samples)].join(", ") + "." : ""}` : `✨ Nothing to clean in **${kind}**.` }]);
 }
-export const JOBS = { ...REPLY_JOBS, rachel_prep: (a) => prepAndNotify(a), relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport, sebastien_screen: (a) => sebastienScreenAll(a) };
+export const JOBS = { ...REPLY_JOBS, rachel_prep: (a) => prepAndNotify(a), relay: (a) => relay(a), huddle: (a) => preCallHuddle(a), jenna_review: () => jennaReview(), eva_clean: (a) => evaClean(a), eva_queue: () => evaQueue(),  eva_daily: evaDaily, eva_monday: evaMonday, clara_monday: claraMonday, tatiana_weekly: tatianaWeekly, tatiana_blogs: tatianaBlogs, tatiana_linkedin: tatianaLinkedin, tatiana_month: (m) => tatianaMonth(m), c360_push: (a) => c360Push(a), tatiana_pics: (a) => tatianaPics(a), posts_reminder: postsReminder, jimmy_make: jimmyMake, c360_videos: c360Videos, buyer_report: buyerReport, sebastien_screen: (a) => sebastienScreenAll(a), hot_leads: (a) => hotLeadsDigest(a ? Number(a) : 7) };
 export { ptHour };

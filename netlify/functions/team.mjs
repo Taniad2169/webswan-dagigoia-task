@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
 import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, makerPaused, agentPaused } from "../lib/team.mjs";
-import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText } from "../lib/team-jobs.mjs";
+import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText, hotLeadsRequested } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
 import { actionsHelp, runActions } from "../lib/agent-actions.mjs";
@@ -487,6 +487,14 @@ export default async (req) => {
       const saved = await addMessages("tatiana", [{ role: "user", text: clean(b.text, 4000).trim() }, { role: "agent", text: "💤 I'm asleep for now -- Sentinel handles content and graphics these days. Head to his chat and he'll take care of it." }]);
       return reply(200, { messages: saved.slice(-2) }, origin);
     }
+    // Tania, Nov 25 ("remove rebecca completely... when monica comes back i can handle jenna george monica
+    // alek without rebecca"): retired the same safe way as Tatiana above -- whole chat paused, no LLM call made,
+    // nothing deleted from the dialer/voice code (so nothing else that still references her by name breaks).
+    // Her phone number/line is being freed up for Mariska's new on-demand dial feature (separate build, not live yet).
+    if (agentPaused("rebecca") && b.action === "chat" && agent === "rebecca") {
+      const saved = await addMessages("rebecca", [{ role: "user", text: clean(b.text, 4000).trim() }, { role: "agent", text: "💤 I'm retired as of Nov 25 -- Jenna, George, Monica and Alek cover outbound now. Tania's moving my old line over to Mariska's on-demand dialing instead." }]);
+      return reply(200, { messages: saved.slice(-2) }, origin);
+    }
     // Tania, Nov 25 ("put Jimmy on pause as well" -- Netlify cost cut): his chat stays open, but the two
     // triggers below that actually spend on Gemini/Veo generation are short-circuited while he's paused.
     if (makerPaused("jimmy") && (b.action === "jimmy_make" || (b.action === "chat" && agent === "jimmy" && !b.voice && !b.roleplay && (jimmyWants(clean(b.text, 4000)) || /\b(graphics?|pictures?|images?|photos?|visuals?)\b/i.test(String(b.text || "")))))) {
@@ -563,6 +571,15 @@ export default async (req) => {
           const ms = await addMessages("sebastien", [{ role: "agent", text: ok ? "🧠 On it -- screening " + label + " now, every one of them, no cap this time. I'll post the full result right here in a minute or two." : "⚠️ I couldn't start the screen just now (the background worker didn't answer). Please try again in a minute." }]);
           return reply(200, { messages: [userMsg, ms[ms.length - 1]] }, origin);
         }
+      }
+      // Tania, Nov 25: "on demand report for both sebastien and mariska" -- who sounded genuinely interested
+      // across recent real calls, separate from Sebastien's silent background screening (that only sharpens
+      // Rachel's next follow-up script). Either desk can ask for it; the result posts into both chats.
+      if ((agent === "sebastien" || agent === "mariska") && !b.roleplay && !b.voice && !meeting && hotLeadsRequested(text)) {
+        let ok = true; try { await startJobs(["hot_leads"]); } catch (e) { ok = false; }
+        const other = agent === "sebastien" ? "Mariska's" : "Sebastien's";
+        const ms = await addMessages(agent, [{ role: "agent", text: ok ? "🔥 On it -- pulling the last week's real calls and screening them for genuine interest. I'll post the result here, and in " + other + " chat too, in a minute or two." : "⚠️ I couldn't start that just now (the background worker didn't answer). Please try again in a minute." }]);
+        return reply(200, { messages: [userMsg, ms[ms.length - 1]] }, origin);
       }
       let extra = "", fileKept = false, attached = "";
       // Tatiana: a picture sent in her chat goes straight onto the next post (or the post number Tania says).
