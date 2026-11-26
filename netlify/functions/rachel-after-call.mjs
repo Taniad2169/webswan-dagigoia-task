@@ -1,5 +1,5 @@
 // Rachel after-call emails: every 5 minutes, finds Rachel's finished calls (callers and transfers from
-// Rebecca, Monica, George and Alek) and emails Tania the summary, so no message or appointment request is lost.
+// Mariska, Monica, George and Alek) and emails Tania the summary, so no message or appointment request is lost.
 // Sends through the same Google Apps Script bridge as the calendar (action "mail"), to RACHEL_NOTIFY_EMAIL
 // (default thewebswann@gmail.com).
 import { getStore } from "@netlify/blobs";
@@ -38,26 +38,10 @@ PRICES: give only the SwanDesk AI starting prices from rule 2c, then: "Tania goe
 If they ask something not listed here, say you'll have Tania answer it personally and take a message.
 ${RULES_END}`;
 const PHONE_RULES_END = "### END PHONE RULES";
-// Rebecca: which opener to use when the lead is known to pay for Google PPC or a billboard / bus bench (from the lead's notes).
-const REB_START = "### REBECCA ADVERTISING RULES (WebSwan)", REB_END = "### END REBECCA ADVERTISING RULES";
-const REBECCA_RULES = `${REB_START}
-OPENING (Tania, Nov 6, final; wins over STEP 1 and STEP 2 and any other greeting in your script; the rest stays the same). No "how are you today?". Confident, calm, friendly, and get to the point. Natural words, close to these, never sounding read.
-1. "Hi, this is Rebecca. I don't know if I'm talking to the right person. I wanted to know if you're still accepting new patients?" (Law firm: "new clients?") Then STOP and wait. If no: thank them warmly and end the call.
-2. If yes: "Okay, great. Just so you know, this call is recorded for quality control. I'm with WSMN. We run an advertising platform for doctors and lawyers where you can get new patients looking for your services." (Law firm: "new clients".) Always say NEW patients or clients, people who are looking for a practice like theirs, never "your patients".
-3. "Tania, our founder, would love to take 10 minutes of your time for a quick demo. Are you the person in charge?" Then STOP and wait.
-4. If yes: book the 10-minute demo (two weekday options from your calendar tool). If no: "Okay, who do I need to set the appointment with?" Get the name, then the best day and time for that person.
-4b. IF THEY DON'T KNOW THE DOCTOR'S (OR ATTORNEY'S) SCHEDULE: do NOT keep asking for a day or time. Say: "No problem. Would you prefer to call Rachel, our advertising coordinator, when you have the calendar handy? She can answer any questions and set the demo with Tania. Do you have a pen handy to take down the number?" Wait, then give it slowly: "three one six, two four eight, six eight three nine", that's (316) 248-6839, and repeat it once. Then thank them warmly and end the call. You are not Rachel's receptionist: never ask for a day or time again after offering Rachel.
-5. Questions about the platform: answer them from what you know, briefly, then come back to the demo. More than you can answer: offer the transfer to Rachel, or give Rachel's number.
-PRICE AND QUALIFICATION (Tania, Nov 6; wins over the PRICE section of your script). If they ask how much it costs to get new patients (or clients): "It's 289 dollars a year, and that's our holiday price: it's only good until December 31st. Pricing changes in January 2027, but whoever locks in at 289 keeps it for life, as long as their membership stays active. That's exactly why I'm calling, to set up your appointment with Tania so you can lock your price. It's an amazing platform that only caters to doctors and lawyers, kind of like Craigslist but upper class. No one is fighting for SEO rankings or stuck in a pool full of businesses like on a Google search. Once you qualify, you can be added." If they ask about qualifications: "One of them is that you need to have an active license. Do you?" STOP and wait. Then: "Tania can go through the others with you in detail. What's the best day and time for you?"
-IF THEY CAN'T TAKE AN APPOINTMENT: "Okay. Would you want to call Rachel instead? She can work around your busy schedule, answer your questions, and if you're interested, she can book the appointment with Tania. What do you say?" Then offer the transfer, or give Rachel's number.
-NEVER REPEAT: say your greeting once. If they say "Hello?" after you spoke, don't greet again; just go to your point. Never say the same sentence twice in a call.
-If someone asks who is calling, give your first name: "This is Rebecca with WSMN."
-ADVERTISING LINE: these rules win over STEP 3 of your script. After step 2 of the OPENING ("We run an advertising platform...") and before "Tania, our founder, would love...", look at this lead's notes: {{findings}}
-- PPC: ONLY if the notes show the practice or firm pays for Google Ads or pay-per-click (PPC), say: "We're reaching out to a list of practices like yours that pay for Google pay-per-click to stay visible. But what happens when the credits run out? You're off the screen. On our platform, you stay visible all year." For a law firm say "firms like yours".
-- BILLBOARD: ONLY if the notes mention a billboard, bus bench, bus stop, radio or TV ad, say: "We're reaching out to a list of practices like yours that advertise on billboards and bus benches. Those reach people driving by, but when someone searches online for a doctor, our platform keeps you visible all year." For a law firm say "firms like yours" and "an attorney".
-- If the notes mention none of these, skip the advertising line and use your regular script. Never guess or claim they advertise.
-Then continue with the person-in-charge question.
-${REB_END}`;
+// Tania, Nov 25: the old Rebecca/WSMN-only advertising rules block is retired -- she's Mariska Lightborn now,
+// no longer WSMN-only, and runs on the objective-driven calling brain (see call-scripts.mjs CALL_BLOCKS.rebecca
+// and team.mjs's mariska brain) instead of this fixed opening. The header strings stay live in call-scripts.mjs's
+// OLD_BLOCKS so this sync still strips any leftover copy of the old text out of her live Cartesia agent.
 // Monica (doctors) and George (attorneys): Tania's compliance opening, Nov 6. Kept short: George's script is near Cartesia's 30,000 limit.
 const COMP_START = "### COMPLIANCE OPENING (WebSwan)", COMP_END = "### END COMPLIANCE OPENING";
 const RACHEL_NUMBER = "(316) 248-6839", RACHEL_SPOKEN = "three one six, two four eight, six eight three nine";
@@ -125,7 +109,7 @@ If someone asks whether you are an AI, a robot, a computer or a recording:
 3. Only if they ask whether the call is being recorded: "Yes, it's recorded for quality control."
 "I don't have any problem", "no problem", "I'm fine", "okay" or "whatever" after that line are NOT a refusal and NOT a request to stop calling: keep going with your script. Only end the call or promise to remove them from the list when they clearly say "don't call me", "remove me", "take me off your list", "stop calling" or "not interested".
 ${AI_END}`;
-const AI_AGENTS = [["rebecca", "WebSwan Media Network"], ["rebecca_es", "WebSwan Media Network"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
+const AI_AGENTS = [["rebecca", "WebSwan (Mariska Lightborn)"], ["rebecca_es", "WebSwan (Mariska Lightborn)"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
 
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");

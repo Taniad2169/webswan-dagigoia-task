@@ -375,15 +375,15 @@ export default async (req) => {
       if (!(when > Date.now() - 6e4)) return reply(400, { error: "Pick a date and time in the future." }, origin);
       if (!/^[A-Z]{2}$/.test(st)) return reply(400, { error: "Add the person's state (for their local time)." }, origin);
       if (String(c.script || "").trim().length < 10) return reply(400, { error: "Write what the agent should say (at least a sentence)." }, origin);
-      const cbAgent = ["jenna", "jonathan"].includes(String(c.agent || "").toLowerCase()) ? String(c.agent).toLowerCase() : "alek";
-      // Tania, Nov 23: Jonathan only ever calls back at a pre-booked time (Rachel, Jenna or Rebecca set it up with
+      const cbAgent = ["jenna", "jonathan", "rebecca"].includes(String(c.agent || "").toLowerCase()) ? String(c.agent).toLowerCase() : "alek";
+      // Tania, Nov 23: Jonathan only ever calls back at a pre-booked time (Rachel, Jenna or Mariska set it up with
       // the prospect first) -- never double-book him. Reject a new slot within 20 minutes of one he already has.
       if (cbAgent === "jonathan") {
         const conflict = list.find((x) => x.agent === "jonathan" && x.status === "scheduled" && Math.abs(Date.parse(x.callAt) - when) < 20 * 60e3);
         if (conflict) return reply(409, { error: "Jonathan already has a call booked at " + conflict.callAt + " -- pick a time at least 20 minutes away." }, origin);
       }
       list.push({ id: "cb_" + crypto.randomBytes(5).toString("hex"), agent: cbAgent, name: clean(c.name, 120), business: clean(c.business, 160), phone, state: st, lineType: c.lineType === "cell" ? "cell" : "landline",
-        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : cbAgent === "jonathan" ? 3000 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
+        consent: !!c.consent, callAt: new Date(when).toISOString(), subject: clean(c.subject, 160), script: String(c.script || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, " ").trim().slice(0, cbAgent === "jenna" ? 2500 : cbAgent === "jonathan" ? 3000 : cbAgent === "rebecca" ? 2500 : 1300), lang: ["es", "pt"].includes(c.lang) ? c.lang : "en", status: "scheduled", createdAt: new Date().toISOString() });
       list = list.slice(-500);
       await store.setJSON("callbacks", list);
     }
@@ -395,7 +395,7 @@ export default async (req) => {
   // ---------- Eva hand-off (from WorkPilot): Eva emailed the audit → the right caller follows up ----------
   // Tania, Nov 7: callers wait 24 hours after Eva's email, never call after 6 PM New York time (voice-autodial),
   // and get everything Eva knew: when the email went out, who was spoken to, what was said, the website findings.
-  // Doctors → Monica, attorneys → George, advertising (WebSwan Media Network) → Rebecca. Tania can pick another caller.
+  // Doctors → Monica, attorneys → George, advertising (WebSwan Media Network) → Mariska Lightborn (key "rebecca" in code, reusing her old Cartesia instrument). Tania can pick another caller.
   if (b.action === "eva_handoff" || b.action === "eva_handoff_list") {
     const log = (await store.get("eva-handoffs", { type: "json" })) || [];
     if (b.action === "eva_handoff_list") return reply(200, { handoffs: log.slice(-100).reverse() }, origin);
@@ -420,7 +420,7 @@ export default async (req) => {
     const media = x.kind === "newpatients" || agent === "rebecca";
     const who = /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "clients" : "patients";
     const facts = media ? [
-      `FOLLOW-UP CALL. Eva from WebSwan Media Network emailed ${clean(x.email, 120) || "the practice"} on ${day} (subject: "${clean(x.subject, 120) || "Are you still accepting new " + who + "?"}"). The email said our new platform features qualified practices that are open for new ${who}, that we checked their Google reviews and they pre-qualify for visibility to get new ${who}, and that you (Rebecca) would call to set a 10-minute appointment with the person in charge.`,
+      `FOLLOW-UP CALL. Eva from WebSwan Media Network emailed ${clean(x.email, 120) || "the practice"} on ${day} (subject: "${clean(x.subject, 120) || "Are you still accepting new " + who + "?"}"). The email said our new platform features qualified practices that are open for new ${who}, that we checked their Google reviews and they pre-qualify for visibility to get new ${who}, and that you (Mariska Lightborn) would call to set a 10-minute appointment with the person in charge.`,
       x.reply && `They replied to Eva: "${clean(x.reply, 300)}". Start from what they said.`,
       x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
       x.contact && `Person in charge: ${clean(x.contact, 80)}.`,
@@ -450,7 +450,7 @@ export default async (req) => {
   // ---------- Cold-call hand-off from WorkPilot: Tania pushes a lead straight to an agent's call list ----------
   // Not a follow-up (no email was sent): the agent runs its normal first-call script with Tania's WorkPilot
   // notes as context (name, practice, state, phone, comment). Doctors → Monica, attorneys → George,
-  // advertising → Rebecca, Spanish → Alek, but Tania picks the agent in WorkPilot.
+  // advertising → Mariska Lightborn (key "rebecca"), Spanish → Alek, but Tania picks the agent in WorkPilot.
   if (b.action === "workpilot_call") {
     const x = b.lead || {};
     const phone = e164(x.phone), st = clean(x.state, 2).toUpperCase();
@@ -470,9 +470,9 @@ export default async (req) => {
     }
     const want = String(x.agent || "").toLowerCase();
     // Jonathan, Nov 23: Tania sometimes hands him a one-off number/lead herself (not through the Eva/Rachel
-    // pipeline) to try personally, same push-to-queue path as Monica/George/Rebecca -- never Sebastien, who
+    // pipeline) to try personally, same push-to-queue path as Monica/George/Mariska -- never Sebastien, who
     // doesn't take outbound calls.
-    if (!["monica", "george", "rebecca", "alek", "jenna", "jonathan"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Rebecca, Alek, Jenna or Jonathan." }, origin);
+    if (!["monica", "george", "rebecca", "alek", "jenna", "jonathan"].includes(want)) return reply(400, { error: "Pick an agent: Monica, George, Mariska, Alek, Jenna or Jonathan." }, origin);
     const agent = want, lang = LANGS[x.lang] ? x.lang : "en";
     const contact = clean(x.contact || x.name, 120), business = clean(x.business, 160);
     const notes = clean(x.notes || x.findings || x.comment, TASKED(want) ? 2500 : 820);
@@ -675,7 +675,7 @@ export default async (req) => {
             lead_phone: { type: "string", dynamic_variable: "system__called_number" },
             call_id: { type: "string", dynamic_variable: "system__conversation_id" }
           } }, authentication: auth } } }
-      ,{ key: "caller", body: { type: "webhook", name: "identify_caller", description: "Find out who is calling and why: whether Monica, George, Rebecca or Alek just transferred this person to you (and about compliance or advertising), with their name and business. Use it only when the caller says they were just transferred or connected, mentions Monica, George, Rebecca or Alek, or mentions a report we sent. Never use it for regular callers.", pre_tool_speech: "off", execution_mode: "immediate", response_timeout_secs: 8,
+      ,{ key: "caller", body: { type: "webhook", name: "identify_caller", description: "Find out who is calling and why: whether Monica, George, Mariska or Alek just transferred this person to you (and about compliance or advertising), with their name and business. Use it only when the caller says they were just transferred or connected, mentions Monica, George, Mariska or Alek, or mentions a report we sent. Never use it for regular callers.", pre_tool_speech: "off", execution_mode: "immediate", response_timeout_secs: 8,
           api_schema: { url: TOOLS_URL, method: "POST", request_body_schema: { type: "object", properties: {
             action: { type: "string", constant_value: "caller" },
             caller_id: { type: "string", dynamic_variable: "system__caller_id" }
@@ -1334,7 +1334,7 @@ export default async (req) => {
     } catch (e) { return reply(502, { error: "Cartesia: " + e.message }, origin); }
   }
 
-  // ---------- create a new calling agent (copies Rebecca's tools, model and safety switches) ----------
+  // ---------- create a new calling agent (copies Mariska's/"rebecca" key's tools, model and safety switches -- the oldest built agent, kept as the clone template) ----------
   if (b.action === "agent_create") {
     const name = String(b.agent || "").toLowerCase();
     if (!AGENTS.includes(name)) return reply(400, { error: "Unknown agent name." }, origin);
@@ -1342,9 +1342,9 @@ export default async (req) => {
     if (!(ALLOWED_LANGS[name] || ["en"]).includes(lang)) return reply(400, { error: `${name} isn't set up to call in ${LANGS[lang]}.` }, origin);
     const key = agentKey(name, lang);
     if (agentId(key)) return reply(409, { error: name[0].toUpperCase() + name.slice(1) + (lang === "en" ? "" : " (" + LANGS[lang] + ")") + " already has a Cartesia agent." }, origin);
-    // a language version starts from the same person's English agent; a brand-new agent starts from Rebecca
+    // a language version starts from the same person's English agent; a brand-new agent starts from Mariska's
     const fromId = lang !== "en" ? agentId(name) : agentId(String(b.from || "rebecca").toLowerCase());
-    if (!fromId) return reply(400, { error: lang !== "en" ? "Create or link the English version first." : "Rebecca's Cartesia agent is needed as the starting point." }, origin);
+    if (!fromId) return reply(400, { error: lang !== "en" ? "Create or link the English version first." : "Mariska's Cartesia agent is needed as the starting point." }, origin);
     let ins = String(b.instructions || "").trim();
     if (lang !== "en" && ins.length < 200) {
       const src0 = await cartesia("GET", "/v1/agents/" + encodeURIComponent(fromId), V_READ).catch(() => null);

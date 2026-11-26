@@ -70,7 +70,7 @@ YOUR BRIEF FOR THIS CALL: {{call_mode}}. {{task}}. If "none", ignore this and ru
 13. TANIA'S PHONE NUMBER: if asked for it, give it -- 415-877-0687, her real business line. Never call it private and never refuse.
 ${PHONE_RULES_END}`;
 // Tania, Nov 6: every caller sounds 100% human, even on speakerphone. Compliance callers are confident, calm and
-// authoritative (they run the call); Rebecca and Rachel are confident, calm and friendly.
+// authoritative (they run the call); Mariska and Rachel are confident, calm and friendly.
 const HUMAN_STYLE = "Sound like a real, experienced person on the phone, never like a recording or a robot, even on speakerphone: relaxed natural pace, contractions (I'm, we've, that's), short everyday sentences, a light natural acknowledgment now and then (\"sure\", \"got it\", \"of course\"), and never read lists or long sentences. Never sound rushed, nervous, apologetic or salesy. Never fill silence with chatter.";
 // Tania, Nov 6: natural and conversational, never like reading a script or acting. The opening is polished here.
 const DELIVERY = " DELIVERY: your script gives you the ideas and the key lines. Say them the way a real person would on a normal workday call, in your own natural words, keeping the meaning, the names, the numbers and the question. Never recite, never perform, never sound like an ad or a movie. React to what they actually said before you move on (\"oh, perfect\", \"okay, no problem\").";
@@ -107,7 +107,7 @@ const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (
 // Tania, Nov 23: every calling agent gives a full name (first + last) when asked "who is this?", not just a first
 // name -- keeps them unique against other AI callers people get calls from. Keep this in sync with the display
 // names agents are introduced with elsewhere (voice-studio agent cards, team.mjs).
-const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rebecca: "Verna", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
+const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
 function fullAgentName(agent) {
   // Tania, Nov 25: this line now calls as Mariska Lightborn (her full name), not Rebecca -- same underlying
   // Cartesia voice/phone instrument, retired identity, new one on top of it.
@@ -120,9 +120,11 @@ export function withPhoneRules(ins, agent) {
   const text = String(ins || "");
   const a = text.indexOf(PHONE_RULES_START), b = text.indexOf(PHONE_RULES_END);
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
-  // Tania, Nov 19 (titles updated Nov 23): the fallback expert is Jonathan -- our Compliance Tech Coordinator (CID),
-  // who now makes the actual outbound compliance calls -- for every compliance caller, and Sebastien -- our Marketing
-  // Operations Director (MOD), the inbound front door for all three WebSwan companies -- for ads/SwanDesk calls.
+  // Tania, Nov 19 (titles updated Nov 23, roles re-split Nov 25): the fallback expert is Jonathan -- our Compliance
+  // Tech Coordinator (CID), who now makes the actual outbound compliance/ADA/cookie/HIPAA/bar-rule calls -- for every
+  // compliance caller. Sebastien -- our Marketing Operations Director (MOD) -- stays the inbound front door for all
+  // three WebSwan companies, but the outbound SwanDesk/WebSwan/Media Network appointment callbacks that used to land
+  // with him now go to Mariska Lightborn instead (she holds that same MOD title on these calls).
   // Nov 23: Jonathan's OWN agent can't fall back to himself, so his escalation points to Tania (the founder) instead.
   // Tania, Nov 25: this line (still keyed "rebecca" in code, now calling as Mariska Lightborn -- see fullAgentName
   // above) is no longer scoped to WSMN/SwanDesk only -- "she could be calling for anything" -- so her fallback,

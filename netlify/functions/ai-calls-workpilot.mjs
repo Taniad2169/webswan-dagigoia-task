@@ -1,5 +1,5 @@
 // v3 (Nov 18): needs WORKPILOT_SYNC_CLIENT_EMAIL + WORKPILOT_SYNC_PRIVATE_KEY on webswan-billing (dedicated GCP service account, not the Firebase web key).
-// AI calls -> WorkPilot: every 15 minutes, every finished call by Rebecca, Monica, George, Alek (outbound)
+// AI calls -> WorkPilot: every 15 minutes, every finished call by Mariska, Monica, George, Alek (outbound)
 // and Rachel (inbound) becomes a row in WorkPilot's "From AI Calls (Voice Studio)" list (blue), with the agent's
 // name, the outcome (Hang up, Call back, Voicemail, Talked, Email captured, Transferred to Rachel, Got Rachel's number,
 // Appointment booked, Do not call),
@@ -18,7 +18,7 @@ const API = "https://api.cartesia.ai";
 const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
 const PROJECT = process.env.WORKPILOT_FIREBASE_PROJECT || "webswan-marketing";
 // Nov 16: Jenna was missing here, so her calls never reached WorkPilot even though WorkPilot can send her leads.
-const AGENTS = [["rebecca", "Rebecca"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["jenna", "Jenna"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
+const AGENTS = [["rebecca", "Mariska Lightborn"], ["monica", "Monica"], ["george", "George"], ["alek", "Alek"], ["jenna", "Jenna"], ["rachel", "Rachel"], ["rachelout", "Rachel (follow-up)"]];
 const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 // Tania's own phones: test calls to these never go to WorkPilot.
 const TEST_PHONES = new Set(["4156189200", "4158770687", "5166100203"]);

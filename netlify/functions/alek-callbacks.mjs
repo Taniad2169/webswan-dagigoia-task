@@ -33,12 +33,17 @@ export default async () => {
   const jenna = process.env.CARTESIA_AGENT_JENNA || ids.jenna;
   const fromJenna = String(process.env.CARTESIA_JENNA_NUMBER_ID || "").trim() || from;
   // Tania, Nov 23: Jonathan (Compliance Tech Coordinator, outbound-only) calls back at the exact time Rachel,
-  // Jenna or Rebecca already booked with the prospect, going over that lead's real audit findings. No dedicated
+  // Jenna or Mariska already booked with the prospect, going over that lead's real audit findings. No dedicated
   // number of his own yet -- he shares the general caller-ID pool.
   const jonathan = process.env.CARTESIA_AGENT_JONATHAN || ids.jonathan;
+  // Tania, Nov 25: Mariska Lightborn (Rebecca's old line and Cartesia agent, reused -- no new number purchased)
+  // calls back for SwanDesk AI / The WebSwan / WebSwan Media Network appointments Rachel booked. These replace
+  // what used to land as an inbound call for Sebastien; Sebastien is back to coaching only.
+  const mariska = process.env.CARTESIA_AGENT_REBECCA || ids.rebecca;
+  const fromMariska = String(process.env.CARTESIA_REBECCA_NUMBER_ID || "").trim() || from;
   const dnc = (await store.get("dnc", { type: "json" })) || [];
   const silencedAgents = ((await store.get("queue", { type: "json" })) || {}).silencedAgents; // Tania, Nov 21: manual per-agent silence switch
-  for (const c of due.filter((c) => callerAllowed(["jenna", "jonathan"].includes(c.agent) ? c.agent : "alek", silencedAgents)).slice(0, 2)) { // Nov 16 plan: only Jenna/George call this week
+  for (const c of due.filter((c) => callerAllowed(["jenna", "jonathan", "rebecca"].includes(c.agent) ? c.agent : "alek", silencedAgents)).slice(0, 2)) { // Nov 16 plan: only Jenna/George call this week
     const to = e164(c.phone);
     if (!to) { c.status = "skipped"; c.note = "invalid number"; continue; }
     if (dnc.includes(to)) { c.status = "skipped"; c.note = "Do Not Call"; continue; }
@@ -46,17 +51,18 @@ export default async () => {
     if (h < 8 || h >= 20) continue; // waits for 8 AM their time
     const g = await budgetGate(store, 1, 10);
     if (!g.ok) { c.note = "waiting: monthly call budget reached"; continue; }
-    const who = ["jenna", "jonathan"].includes(c.agent) ? c.agent : "alek", aid = who === "jenna" ? jenna : who === "jonathan" ? jonathan : alek;
-    if (!aid) { c.status = "error"; c.note = (who === "jenna" ? "Jenna" : who === "jonathan" ? "Jonathan" : "Alek") + " is not connected to Cartesia yet"; continue; }
+    const who = ["jenna", "jonathan", "rebecca"].includes(c.agent) ? c.agent : "alek", aid = who === "jenna" ? jenna : who === "jonathan" ? jonathan : who === "rebecca" ? mariska : alek;
+    if (!aid) { c.status = "error"; c.note = (who === "jenna" ? "Jenna" : who === "jonathan" ? "Jonathan" : who === "rebecca" ? "Mariska" : "Alek") + " is not connected to Cartesia yet"; continue; }
     const task = who === "jenna" ? `LEAD FROM TANIA. ${c.subject ? "Subject: " + c.subject + ". " : ""}${c.name ? "Ask for: " + c.name + ". " : ""}Her brief for this call: ${c.script}`.slice(0, 9000) /* Nov 16: room for an attached document */
       : who === "jonathan" ? "" // Jonathan isn't floating/tasked -- he runs his own fixed script and reads {{findings}} directly, set below.
+      : who === "rebecca" ? `APPOINTMENT CALLBACK (SwanDesk AI / The WebSwan / WebSwan Media Network). Rachel already booked this with the prospect -- this is not a cold call, skip your cold opener and call as the confirmed appointment. ${c.subject ? "Subject: " + c.subject + ". " : ""}${c.name ? "Ask for: " + c.name + ". " : ""}What's already known: ${c.script}`.slice(0, 2500)
       : `CALLBACK Tania scheduled. Subject: ${c.subject}. ${c.name ? "They asked to be called back; you are Alek, Tania's virtual assistant." : ""} Instructions and script: ${c.script}`.slice(0, 1500);
-    // Jonathan's whole call is going over the real findings Rachel/Jenna/Rebecca entered when they booked this -- never "none listed" for him.
+    // Jonathan's whole call is going over the real findings Rachel/Jenna/Mariska entered when they booked this -- never "none listed" for him.
     const findings = who === "jonathan" ? (String(c.script || "").trim() || "none listed") : "none listed";
     try {
       const r = await fetch(API + "/agents/calls", { method: "POST", headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "Cartesia-Version": V_CREATE, "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: aid, from_number_id: who === "jenna" ? fromJenna : from,
-          outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: who === "jenna" ? "Jenna: lead from Tania" : who === "jonathan" ? "Jonathan: compliance review callback" : "Alek callback", by: "callback-calendar" },
+        body: JSON.stringify({ agent_id: aid, from_number_id: who === "jenna" ? fromJenna : who === "rebecca" ? fromMariska : from,
+          outbound_calls: [{ to_number: to, metadata: { leadId: c.id, lead: c.name || "", business: c.business || "", campaign: who === "jenna" ? "Jenna: lead from Tania" : who === "jonathan" ? "Jonathan: compliance review callback" : who === "rebecca" ? "Mariska: SwanDesk/WebSwan/Media Network appointment callback" : "Alek callback", by: "callback-calendar" },
             dynamic_variables: { lead_id: c.id, lead_name: c.name || "", business: c.business || "", lead_state: c.state || "", findings, lead_memory: await leadMemoryText(to), lead_language: c.lang === "es" ? "Latin American Spanish" : c.lang === "pt" ? "Brazilian Portuguese" : "English", call_mode: who === "jonathan" ? "standard" : "Floating: follow Tania's task below", task } }],
           ringing_timeout_seconds: 30, max_call_duration_minutes: 10 }) });
       const d = await r.json().catch(() => ({})); const c0 = (d.calls || [])[0] || {};
