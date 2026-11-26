@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
-import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, makerPaused } from "../lib/team.mjs";
+import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, makerPaused, agentPaused } from "../lib/team.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
 import { startJobs } from "./team-daily.mjs";
@@ -479,6 +479,13 @@ export default async (req) => {
       const totals = {};
       for (const [k, v] of Object.entries(all)) totals[k] = (v || []).length;
       return reply(200, { awards: agent ? (all[agent] || []) : [], totals }, origin);
+    }
+    // Tania, Nov 25 ("put Tatiana to sleep too" -- content/graphics already fully Sentinel's since Nov 24):
+    // unlike Jimmy, her whole chat is paused, not just one generation call -- there's a real completion-call
+    // cost to short-circuit here, and nothing left only she can do. A canned reply, no LLM call made.
+    if (agentPaused("tatiana") && b.action === "chat" && agent === "tatiana") {
+      const saved = await addMessages("tatiana", [{ role: "user", text: clean(b.text, 4000).trim() }, { role: "agent", text: "💤 I'm asleep for now -- Sentinel handles content and graphics these days. Head to his chat and he'll take care of it." }]);
+      return reply(200, { messages: saved.slice(-2) }, origin);
     }
     // Tania, Nov 25 ("put Jimmy on pause as well" -- Netlify cost cut): his chat stays open, but the two
     // triggers below that actually spend on Gemini/Veo generation are short-circuited while he's paused.
