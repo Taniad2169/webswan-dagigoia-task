@@ -31,7 +31,10 @@ const ENGINES = {
   veo: { fal: "fal-ai/veo3.1/fast/image-to-video", needs: "image", noVoice: true, cost: () => 8 * 0.15 },
   veo_myvoice: { fal: "fal-ai/veo3.1/fast/image-to-video", needs: "image", maxVoice: 8, cost: () => 8 * 0.10 + 0.028 }
 };
-const UPLOAD_TYPES = /^(image\/(jpeg|png|webp)|video\/(mp4|quicktime)|audio\/(wav|x-wav|mpeg|mp3))$/;
+// webm added Nov 25 for the scene-export gallery backup below -- MediaRecorder falls back to video/webm on most
+// browsers when it can't record mp4 directly, and that finished export needs to go through the same signed
+// upload as everything else here.
+const UPLOAD_TYPES = /^(image\/(jpeg|png|webp)|video\/(mp4|quicktime|webm)|audio\/(wav|x-wav|mpeg|mp3))$/;
 
 let jwksCache = { keys: null, at: 0 };
 const cors = (origin) => ({
@@ -216,6 +219,32 @@ Reply with ONLY JSON: {"title": "...", "scenes": [{"text": "...", "action": "...
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.upload_url || !j.file_url) return reply(502, { error: "Upload storage didn't answer (" + r.status + ")." }, origin);
       return reply(200, { upload_url: j.upload_url, file_url: j.file_url }, origin);
+    }
+
+    // ---------- cloud video gallery (Tania, Nov 25: "i can't view any of my videos ... were they saved?") ----------
+    // Finished scene-exports were only ever saved to IndexedDB in the one browser that rendered them -- never
+    // backed up anywhere, so a different device, a different browser, or that browser clearing its storage
+    // (Safari in particular evicts IndexedDB for sites not opened recently) meant they looked gone, because for
+    // that browser they really were. This keeps IndexedDB as the fast local copy and ALSO keeps a small metadata
+    // record here (name/size/length/when, plus the real file_url from the same fal upload_init/PUT flow every
+    // other upload in this file already uses) so "My videos" can show up on any device she signs into, and a
+    // video someone's IndexedDB lost can still be found and re-downloaded from here.
+    if (b.action === "gallery_save") {
+      const url = String(b.file_url || "");
+      if (!isFalUrl(url)) return reply(400, { error: "That doesn't look like a real uploaded file." }, origin);
+      const list = (await store.get("gallery", { type: "json" })) || [];
+      const entry = { id: clean(b.id, 60) || ("vid-" + Date.now()), name: clean(b.name, 120) || "WebSwan-video", ext: /^(mp4|webm)$/.test(b.ext) ? b.ext : "mp4", url, size: parseInt(b.size, 10) || 0, secs: parseInt(b.secs, 10) || 0, at: parseInt(b.at, 10) || Date.now() };
+      list.unshift(entry);
+      await store.setJSON("gallery", list.slice(0, 200));
+      return reply(200, { ok: true }, origin);
+    }
+    if (b.action === "gallery_list") {
+      return reply(200, { gallery: (await store.get("gallery", { type: "json" })) || [] }, origin);
+    }
+    if (b.action === "gallery_delete") {
+      const id = clean(b.id, 60);
+      await store.setJSON("gallery", ((await store.get("gallery", { type: "json" })) || []).filter((v) => v.id !== id));
+      return reply(200, { ok: true }, origin);
     }
 
     // ---------- start a talking video ----------
