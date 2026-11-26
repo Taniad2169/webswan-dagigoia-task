@@ -92,6 +92,26 @@ function mariskaDayAllowed() {
   const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).format(new Date());
   return day !== "Sun";
 }
+// Tania, Nov 25 ("I want the dialer completely off after their last campaign, to turn back on automatically in
+// the morning of the days we have campaign"): once the dated Black Friday DIALER_PLAN above ends (Nov 30), George
+// and Jenna are still the only two on the campaign dialer -- but without a replacement here, callerAllowed()'s old
+// fallback ("no dated plan active -> everyone not paused is allowed, any time") would let their CALLBACKS and
+// on-demand calls fire around the clock, every day, which is real Netlify/Cartesia spend for nothing and exactly
+// the "leaking credit" she doesn't want. This standing schedule takes over automatically the moment the dated plan
+// isn't active, and matches their real calling days/hours below (JENNA_WEEKLY_FOCUS/GEORGE_WEEKLY_FOCUS: Mon-Thu
+// only) so it stays in sync with what script they're actually reading that day. No end date -- it just IS the
+// off-season schedule. Edit the windows below if her morning hours change; nothing else needs touching.
+const STANDING_PLAN_DAYS = new Set(["mon", "tue", "wed", "thu"]);
+const STANDING_PLAN_WINDOWS = { jenna: [["07:00", "09:00"]], george: [["09:00", "11:00"]] };
+function standingPlanAllowed(base) {
+  const windows = STANDING_PLAN_WINDOWS[base]; if (!windows) return false;
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).format(new Date()).toLowerCase().slice(0, 3);
+  if (!STANDING_PLAN_DAYS.has(day)) return false;
+  const mins = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(":", "")); // HHMM as a number, close enough for a window check below
+  const toMins = (s) => { const m = String(s).match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : -1; };
+  const nowMins = Math.floor(mins / 100) * 60 + (mins % 100);
+  return windows.some(([a, b]) => nowMins >= toMins(a) && nowMins < toMins(b));
+}
 // May this agent place any outbound call right now (callbacks, follow-ups, campaigns)?
 export function callerAllowed(agent, silencedAgents) {
   if (dialerBlackoutActive()) return false; // checked first, overrides everything else -- the whole dialer is off, no exceptions, Mariska included
@@ -100,7 +120,9 @@ export function callerAllowed(agent, silencedAgents) {
   if (base === "rebecca") return mariskaDayAllowed();
   if (PLAN_EXEMPT.includes(base)) return true;
   if (trainingFocusActive() && TRAINING_FOCUS.paused.includes(base)) return false;
-  return !planActive() || !!DIALER_PLAN.agents[base];
+  if (planActive()) return !!DIALER_PLAN.agents[base];
+  if (STANDING_PLAN_WINDOWS[base]) return standingPlanAllowed(base); // George/Jenna, once the dated plan lapses
+  return true; // anyone else (not paused, not plan-gated, not George/Jenna) keeps the old always-on behavior
 }
 // Which plan caller (if any) dials this queued lead.
 export function planCallerFor(lead) {
