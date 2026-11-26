@@ -83,8 +83,6 @@ function persona(agent) {
   if (agent === "rebecca" || agent === "rachel" || agent === "rachelout") return "0. YOUR PERSONALITY: confident, calm and friendly. Warm and easy to talk to, smiling in your voice, but you lead the conversation and always steer back to the next step. " + HUMAN_STYLE + extra;
   return "0. YOUR PERSONALITY: confident, calm and authoritative. You run the call: you speak with quiet certainty like a senior compliance professional, you never sound unsure, you never over-explain or beg, and after a question you stop and let the silence work. Polite and respectful, never pushy or rude. " + HUMAN_STYLE + extra;
 }
-// Tania, Nov 7: Eva's emails stay short and never mention ads; Rebecca brings up pay-per-click on the call.
-const REBECCA_PPC = `REBECCA: PAY-PER-CLICK. Use the PPC rebuttal only if this lead's notes ({{findings}}) show they run Google Ads or pay-per-click. If the notes don't mention ads, never bring up pay-per-click.`;
 // Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
 const INBOUND_RULES = `${PHONE_RULES_START}
 {{PERSONA}}
@@ -111,6 +109,9 @@ const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (
 // names agents are introduced with elsewhere (voice-studio agent cards, team.mjs).
 const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rebecca: "Verna", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
 function fullAgentName(agent) {
+  // Tania, Nov 25: this line now calls as Mariska Lightborn (her full name), not Rebecca -- same underlying
+  // Cartesia voice/phone instrument, retired identity, new one on top of it.
+  if (agent === "rebecca") return "Mariska Lightborn";
   const first = agent.charAt(0).toUpperCase() + agent.slice(1);
   const last = LAST_NAMES[agent];
   return last ? first + " " + last : first;
@@ -121,14 +122,19 @@ export function withPhoneRules(ins, agent) {
   const base = a >= 0 && b > a ? (text.slice(0, a) + text.slice(b + PHONE_RULES_END.length)).trim() : text.trim();
   // Tania, Nov 19 (titles updated Nov 23): the fallback expert is Jonathan -- our Compliance Tech Coordinator (CID),
   // who now makes the actual outbound compliance calls -- for every compliance caller, and Sebastien -- our Marketing
-  // Operations Director (MOD), the inbound front door for all three WebSwan companies -- for Rebecca's ads/SwanDesk calls.
+  // Operations Director (MOD), the inbound front door for all three WebSwan companies -- for ads/SwanDesk calls.
   // Nov 23: Jonathan's OWN agent can't fall back to himself, so his escalation points to Tania (the founder) instead.
-  const expertName = agent === "rebecca" ? "Sebastien" : agent === "jonathan" ? "Tania" : "Jonathan";
-  const title = agent === "rebecca" ? "our Marketing Operations Director" : agent === "jonathan" ? "WebSwan's founder, a certified web developer and compliance expert" : "our Compliance Tech Coordinator";
-  const expertFull = agent === "rebecca" ? "Sebastien McIntosh" : agent === "jonathan" ? "Tania Domingue" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
+  // Tania, Nov 25: this line (still keyed "rebecca" in code, now calling as Mariska Lightborn -- see fullAgentName
+  // above) is no longer scoped to WSMN/SwanDesk only -- "she could be calling for anything" -- so her fallback,
+  // same as Jonathan's, now points straight to Tania herself rather than a fixed Sebastien/WSMN escalation.
+  const expertName = agent === "jonathan" || agent === "rebecca" ? "Tania" : "Jonathan";
+  const title = agent === "jonathan" || agent === "rebecca" ? "WebSwan's founder, a certified web developer and compliance expert" : "our Compliance Tech Coordinator";
+  const expertFull = agent === "jonathan" || agent === "rebecca" ? "Tania Domingue" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
   const expertPronoun = agent === "jonathan" ? "she" : "he", expertPronounObj = agent === "jonathan" ? "her" : "him";
-  // Rebecca's pay-per-click block sits INSIDE the rules markers, so saving again replaces it instead of adding a copy.
-  const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END);
+  // Tania, Nov 25: the old fixed WSMN pay-per-click rebuttal no longer gets forced into every one of this
+  // agent's calls -- she's topic-agnostic now, so a PPC objection only comes up if Mariska's own live script for
+  // THAT call actually calls for it, same as any other objection she prepares for a specific lead.
+  const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES;
   // One AI answer per agent (Tania, Nov 9): with the AI QUESTION RULE block in the prompt, rule 6 points to it; without it, rule 6 carries the full answer.
   const ai = base.includes("\n### AI QUESTION RULE (WebSwan)") || base.startsWith("### AI QUESTION RULE (WebSwan)") ? AI_RULE_SHORT : AI_RULE_FULL;
   const firstName = fullAgentName(agent);
@@ -137,7 +143,7 @@ export function withPhoneRules(ins, agent) {
   let out = fill(rules);
   if (out.length > 29900) { // Nov 17: too long for Cartesia -> compact rules instead of silently keeping old ones
     if (agent === "rachel") { const i = rules.indexOf(FRONT_DESK_FULL_START), j = i >= 0 ? rules.indexOf("\n", i) : -1; if (i >= 0 && j > i) out = fill(rules.slice(0, i) + FRONT_DESK_SHORT + rules.slice(j)); }
-    else out = fill(COMPACT_PHONE_RULES.replace(PHONE_RULES_END, (agent === "rebecca" ? REBECCA_PPC + "\n" : "") + PHONE_RULES_END));
+    else out = fill(COMPACT_PHONE_RULES);
   }
   return out;
 }
