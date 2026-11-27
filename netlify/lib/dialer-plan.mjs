@@ -98,11 +98,17 @@ function mariskaDayAllowed() {
 // fallback ("no dated plan active -> everyone not paused is allowed, any time") would let their CALLBACKS and
 // on-demand calls fire around the clock, every day, which is real Netlify/Cartesia spend for nothing and exactly
 // the "leaking credit" she doesn't want. This standing schedule takes over automatically the moment the dated plan
-// isn't active, and matches their real calling days/hours below (JENNA_WEEKLY_FOCUS/GEORGE_WEEKLY_FOCUS: Mon-Thu
-// only) so it stays in sync with what script they're actually reading that day. No end date -- it just IS the
-// off-season schedule. Edit the windows below if her morning hours change; nothing else needs touching.
-const STANDING_PLAN_DAYS = new Set(["mon", "tue", "wed", "thu"]);
-const STANDING_PLAN_WINDOWS = { jenna: [["07:00", "09:00"]], george: [["09:00", "11:00"]] };
+// isn't active, and matches their real calling days/hours below so it stays in sync with what script they're
+// actually reading that day. No end date -- it just IS the off-season schedule.
+// Tania, Nov 26 ("set dialer for tuesday wednesday and thursday... since now it is only the 2 of them calling"):
+// replaces the old Mon-Thu/one-campaign-a-day shape. Monday dropped. Both George and Jenna now run TWO back-to-
+// back campaigns the SAME day, in the SAME two shared windows (30 leads/campaign, set live in Voice Studio's
+// own schedule settings -- q.settings.days/start/end/start2/end2/perWindow, which this file doesn't control):
+// window A 7:00-8:30 = George doctors (Spanish) + Jenna doctor compliance (English); window B 8:30-10:00 =
+// George lawyers + Jenna doctor compliance (English) again. See STANDING_WINDOW_A/B below and georgeFocusToday().
+const STANDING_PLAN_DAYS = new Set(["tue", "wed", "thu"]);
+const STANDING_WINDOW_A = ["07:00", "08:30"], STANDING_WINDOW_B = ["08:30", "10:00"];
+const STANDING_PLAN_WINDOWS = { jenna: [STANDING_WINDOW_A, STANDING_WINDOW_B], george: [STANDING_WINDOW_A, STANDING_WINDOW_B] };
 function standingPlanAllowed(base) {
   const windows = STANDING_PLAN_WINDOWS[base]; if (!windows) return false;
   const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).format(new Date()).toLowerCase().slice(0, 3);
@@ -341,21 +347,33 @@ Despedida: después de tu última línea, espera su respuesta ("adiós", "gracia
 // to her (the per-lead "task" field in Voice Studio, the same mechanism Alek used) -- that part needed no new
 // building, it already runs through the existing floating/lead.task path (see voice-autodial.mjs's call_mode for
 // "jenna"). With no weekly focus and no one-off lead.task set, she simply has nothing to read that day.
-export const JENNA_WEEKLY_FOCUS = { mon: "compliance", tue: "compliance", wed: "swandesk", thu: "swandesk" };
+// Tania, Nov 26: both of Jenna's windows are doctor compliance (English) now, Tue-Thu -- no more swandesk split.
+// JENNA_WEEKLY_FOCUS kept below only as history/fallback for any day outside Tue-Thu.
+export const JENNA_WEEKLY_FOCUS = { tue: "compliance", wed: "compliance", thu: "compliance" };
 function jennaFocusToday() {
+  if (STANDING_PLAN_DAYS.has(new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3))) return "compliance";
   const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3);
   return JENNA_WEEKLY_FOCUS[day] || "";
 }
-// Tania, Nov 24: George's compliance book is now doctors AND attorneys, one vertical per calling day so he never
-// mixes HIPAA with a law firm or state bar rules with a doctor. Same shape as JENNA_WEEKLY_FOCUS above -- edit this
-// to change which vertical he reads on which day. A lead can still override the day's default with its own
-// lead.vertical field ("doctor" or "lawyer") if one is ever set when pushing his batch, same pattern as
-// lead.campaign already overrides below for a dated plan.
+// Tania, Nov 24: George's compliance book is doctors AND attorneys, so he never mixes HIPAA with a law firm or
+// state bar rules with a doctor. GEORGE_WEEKLY_FOCUS below is kept only as a fallback for any day outside Tue-Thu.
+// Tania, Nov 26: on Tue/Wed/Thu he no longer alternates by DAY -- he now runs BOTH verticals the SAME day, each
+// in its own window (window A = doctors (Spanish), window B = lawyers -- see STANDING_WINDOW_A/B above). A lead
+// still overrides either default with its own lead.vertical field ("doctor"/"lawyer") if one is tagged on it.
 export const GEORGE_WEEKLY_FOCUS = { mon: "lawyer", tue: "doctor", wed: "lawyer", thu: "doctor" };
+function georgeWindowVertical() {
+  const toMins = (s) => { const m = String(s).match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : -1; };
+  const hhmm = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  const nowMins = toMins(hhmm);
+  if (nowMins >= toMins(STANDING_WINDOW_A[0]) && nowMins < toMins(STANDING_WINDOW_A[1])) return "doctor";
+  if (nowMins >= toMins(STANDING_WINDOW_B[0]) && nowMins < toMins(STANDING_WINDOW_B[1])) return "lawyer";
+  return "";
+}
 function georgeFocusToday(lead) {
   const tagged = String((lead && lead.vertical) || "").toLowerCase();
   if (tagged === "doctor" || tagged === "lawyer") return tagged;
   const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3);
+  if (STANDING_PLAN_DAYS.has(day)) { const wv = georgeWindowVertical(); if (wv) return wv; }
   return GEORGE_WEEKLY_FOCUS[day] || "lawyer";
 }
 export function planTaskFor(name, lead, findings) {
