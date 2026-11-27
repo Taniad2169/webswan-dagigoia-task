@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { reply, cors, verifyOwner, ALLOWED_ORIGINS, OWNERS } from "../lib/auth.mjs";
-import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, intentSearch, formatIntentResult, makerPaused, agentPaused } from "../lib/team.mjs";
+import { AGENTS, PROVIDERS, providerReady, askAI, brainFor, history, addMessages, getSettings, teamStore, readSite, siteStyle, webSearch, fmtResults, readPage, researchWeb, readImage, LIKE_JONATHAN, apolloLookup, formatApolloResult, clayLookup, intentSearch, formatIntentResult, makerPaused, agentPaused, PHONE, cart, phoneIds, liveScript, getNotes, getArchive, syncPhone, addBrainNote } from "../lib/team.mjs";
 import { readSwanBudget, formatSwanBudget, addSwanExpense, formatExpenseAdd } from "../lib/swan-budget.mjs";
 import { JOBS, scriptCall, getPlan, savePlan, targetMonth, videoStore, attachChatPicture, screenSourceFromText, hotLeadsRequested } from "../lib/team-jobs.mjs";
 import { c360Ready, accounts as c360Accounts, brandMap, suggestedMap, BRANDS } from "../lib/content360.mjs";
@@ -28,66 +28,8 @@ async function evaInbox() {
 const clean = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, n);
 
 // ---------- Coaching notes ("add it to your brain") ----------
-// Every agent keeps Tania's coaching notes. For the phone agents the notes are also written into their live
-// Cartesia call script, inside a marked block, so the next real call uses them. Nothing changes without Tania pressing Save.
-const PHONE = ["monica", "george", "rebecca", "alek", "jenna", "rachel"];
-const NOTES_START = "=== TANIA'S COACHING NOTES = CORRECTIONS (your brain). Each note corrects HOW you do something in your script. It does not change your script, your opening or your personality, and it is never extra words or sentences to add. Never duplicate a word, a sentence or a question: if a note covers something your script also says, say it once, the corrected way. ===";
-const NOTES_END = "=== END OF TANIA'S COACHING NOTES ===";
-const V_READ = process.env.CARTESIA_READ_VERSION || "2026-08-14";
-async function cart(method, path, body) {
-  const r = await fetch("https://api.cartesia.ai" + path, { method, headers: { Authorization: "Bearer " + process.env.CARTESIA_API_KEY, "X-API-Key": process.env.CARTESIA_API_KEY, "Cartesia-Version": V_READ, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text(); let d; try { d = JSON.parse(t); } catch (e) { d = { message: t.slice(0, 200) }; }
-  if (!r.ok) throw new Error(String(d.message || d.error || ("Cartesia " + r.status)).slice(0, 200));
-  return d;
-}
-async function phoneIds(name) {
-  const ids = (await getStore({ name: "voice-studio", consistency: "strong" }).get("agent-ids", { type: "json" }).catch(() => null)) || {};
-  const out = new Set();
-  for (const k of [name, name + "_es", name + "_pt"]) { const v = process.env["CARTESIA_AGENT_" + k.toUpperCase()] || ids[k]; if (v) out.add(v); }
-  return [...out];
-}
-const instrOf = (a) => String(((a && (a.config || (a.agent && a.agent.config))) || {}).instructions || "");
-async function liveScript(name) { const [id] = await phoneIds(name); if (!id) return ""; return instrOf(await cart("GET", "/v1/agents/" + encodeURIComponent(id))); }
-// Tania, Nov 27: "i want to be able to add that to their brain temporarily or permanently" -- a note can now carry
-// an optional expiresAt (ISO timestamp). getNotes() is the one place every brain read goes through (brain_list,
-// brain_add, brain_remove, and every live chat turn's sysPrompt build via notesText below), so pruning expired
-// notes here, once, keeps the live 40-note set and the live phone script (synced right after, in brain_add/
-// brain_remove) both honest without a separate cleanup job. The permanent archive is never touched -- an expired
-// note's full history stays exactly as real as a permanent one's.
-async function getNotes() {
-  const all = (await teamStore().get("brain-notes", { type: "json" })) || {};
-  const now = Date.now();
-  let changed = false;
-  for (const k of Object.keys(all)) {
-    const before = (all[k] || []).length;
-    all[k] = (all[k] || []).filter((n) => !n.expiresAt || new Date(n.expiresAt).getTime() > now);
-    if (all[k].length !== before) changed = true;
-  }
-  if (changed) { try { await teamStore().setJSON("brain-notes", all); } catch (e) {} }
-  return all;
-}
-// Tania, Nov 23: "brain-notes" above is the LIVE set -- capped at 40 per agent so it never blows Cartesia's
-// 30,000-character instructions limit, and only this capped set is ever written into a live phone script.
-// Past 40, the oldest note used to just fall off the end and be gone for good. This second store is the
-// permanent one: every note ever approved, kept here forever (well past any real agent's lifetime), never
-// synced to Cartesia, never costing a single live character. Brain Room's "full history" view reads this.
-async function getArchive() { return (await teamStore().get("brain-notes-archive", { type: "json" })) || {}; }
-async function syncPhone(name, notes) {
-  if (!PHONE.includes(name) || !process.env.CARTESIA_API_KEY) return { updated: 0, errors: [] };
-  const block = notes.length ? NOTES_START + "\n" + notes.map((n) => "- " + n.note).join("\n") + "\n" + NOTES_END : "";
-  let updated = 0; const errors = [];
-  for (const id of await phoneIds(name)) {
-    try {
-      const ins = instrOf(await cart("GET", "/v1/agents/" + encodeURIComponent(id)));
-      const a = ins.indexOf(NOTES_START), z = ins.indexOf(NOTES_END);
-      const base = (a >= 0 && z > a ? ins.slice(0, a) + ins.slice(z + NOTES_END.length) : ins).trim();
-      if (!base) { errors.push("empty script"); continue; }
-      await cart("PATCH", "/v1/agents/" + encodeURIComponent(id), { config: { instructions: block ? base + "\n\n" + block : base } });
-      updated++;
-    } catch (e) { errors.push(e.message); }
-  }
-  return { updated, errors };
-}
+// Moved to lib/team.mjs (Nov 27) so a scheduled job (Eva's Monday briefing) can push a note into several
+// agents' brains directly, the same way the UI's brain_add does -- see addBrainNote there.
 // Recent real calls with word-for-word transcripts, for ONE agent only (Monica sees only Monica's calls).
 async function callTranscripts(name, n) {
   const ids = await phoneIds(name);
