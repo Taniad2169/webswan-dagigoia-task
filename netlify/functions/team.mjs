@@ -48,7 +48,24 @@ async function phoneIds(name) {
 }
 const instrOf = (a) => String(((a && (a.config || (a.agent && a.agent.config))) || {}).instructions || "");
 async function liveScript(name) { const [id] = await phoneIds(name); if (!id) return ""; return instrOf(await cart("GET", "/v1/agents/" + encodeURIComponent(id))); }
-async function getNotes() { return (await teamStore().get("brain-notes", { type: "json" })) || {}; }
+// Tania, Nov 27: "i want to be able to add that to their brain temporarily or permanently" -- a note can now carry
+// an optional expiresAt (ISO timestamp). getNotes() is the one place every brain read goes through (brain_list,
+// brain_add, brain_remove, and every live chat turn's sysPrompt build via notesText below), so pruning expired
+// notes here, once, keeps the live 40-note set and the live phone script (synced right after, in brain_add/
+// brain_remove) both honest without a separate cleanup job. The permanent archive is never touched -- an expired
+// note's full history stays exactly as real as a permanent one's.
+async function getNotes() {
+  const all = (await teamStore().get("brain-notes", { type: "json" })) || {};
+  const now = Date.now();
+  let changed = false;
+  for (const k of Object.keys(all)) {
+    const before = (all[k] || []).length;
+    all[k] = (all[k] || []).filter((n) => !n.expiresAt || new Date(n.expiresAt).getTime() > now);
+    if (all[k].length !== before) changed = true;
+  }
+  if (changed) { try { await teamStore().setJSON("brain-notes", all); } catch (e) {} }
+  return all;
+}
 // Tania, Nov 23: "brain-notes" above is the LIVE set -- capped at 40 per agent so it never blows Cartesia's
 // 30,000-character instructions limit, and only this capped set is ever written into a live phone script.
 // Past 40, the oldest note used to just fall off the end and be gone for good. This second store is the
@@ -454,7 +471,11 @@ export default async (req) => {
       if (b.action === "brain_add") {
         const note = clean(b.note, 1200).replace(/\s*\n\s*/g, " ").trim();
         if (note.length < 4) return reply(400, { error: "The note is empty." }, origin);
-        const entry = { id: Date.now().toString(36), note, at: new Date().toISOString() };
+        // ttlHours: how many hours from now this note should auto-expire; omit or 0 for permanent. Capped at
+        // 24*90 (90 days) so a typo can't silently create a note that outlives any real need for one.
+        const ttl = Math.max(0, Math.min(Number(b.ttlHours) || 0, 24 * 90));
+        const expiresAt = ttl ? new Date(Date.now() + ttl * 3600 * 1000).toISOString() : null;
+        const entry = { id: Date.now().toString(36), note, at: new Date().toISOString(), expiresAt };
         list = list.concat([entry]).slice(-40);
         // Archive every approved note, uncapped by Cartesia's limit -- this is "she just remembers", forever,
         // whether or not it stays in the live 40 that actually get written into her phone script.
