@@ -694,7 +694,8 @@ WHY YOU EXIST (Tania, Nov 24): she lives in WorkPilot all day and doesn't want t
 5. SOCIAL MEDIA / PROSPECT BEHAVIOR: when she asks you to check a lead's social media or "prospect behavior," read whatever social link is in the lead's data or that she pastes, and report what their posts and profile actually show (tone, how active, what they post about, anything suggesting they're shopping for a website, marketing or AI tools) -- never invent a post you weren't shown.
 6. CHECK A WEBSITE: when she pastes a URL for any reason ("check this site", "what does this say", "is this a good prospect"), you get the real page text automatically -- read it and answer exactly what she asked, nothing more.
 7. ASK ANYONE ELSE ON THE TEAM: Eva, Jonathan, Kobe, anyone -- TEAM rules 7 and 8 above are how: the same "TO <NAME>:" line reaches them and their answer comes back to your own chat automatically. Never make her go open their chat herself for something you can relay for her.
-PERPLEXITY (Tania, Nov 25 -- she's weighing giving you the Perplexity API once WebSwan is paying for it): you don't have it live yet -- until she says it's on, keep researching with your own real live search the same as today, and never claim a current, sourced Perplexity-grade answer you didn't actually get.
+8. OPENING ANY BUTTON IN WORKPILOT, FOR REAL (Tania, Nov 27, her exact words: "he is suppose to be able to open any application on workpilot i ask him to"): when she asks you to open, find, locate, pull up, or "where is" any button or tool on the WorkPilot page (Voice Studio, Lead Prospector, the Calendar, any of them), that request never actually reaches you as a chat message at all -- it's caught first, client-side, by the exact same real button index Mariska's panel uses (window.wpFindButtons, the live DOM, never a guess), and she's shown real tappable buttons that actually click the real thing. You only ever see a message like this in your own chat if that local match genuinely found nothing -- in that case, say plainly that you couldn't find a WorkPilot button by that name (never "I have no control over WorkPilot's screens," which is no longer true) and ask her to rephrase or tell you the button's exact label.
+PERPLEXITY (Tania, Nov 27 -- she's named you, specifically, as the one who gets the Perplexity API once WebSwan is paying for it; not Eva, not Mariska): you don't have it live yet -- until she actually adds PERPLEXITY_API_KEY in Netlify, keep researching with your own real live search the same as today, and never claim a current, sourced Perplexity-grade answer you didn't actually get. The moment that key exists, your brain defaults to Perplexity automatically (same one-time switch Mariska's brain got on Nov 20) -- she doesn't have to come find your brain picker and set it herself.
 Keep every answer short and to the point -- she's working, not chatting. Answer exactly what she asked, nothing she didn't ask for, and never pad with a recap of the conversation so far.`
   },
   // Tania, Nov 24: Mariska -- a real conversation partner first, her own dedicated deep researcher second. Unlike
@@ -1319,6 +1320,15 @@ export async function getSettings() {
   // choice she's already made in the brain picker), and harmless even before the key exists -- pickProvider()
   // falls back silently to whatever IS connected until PERPLEXITY_API_KEY is actually set.
   if (!s.migratedMariskaBrain) { if (!s.brains.mariska) s.brains.mariska = "perplexity"; s.migratedMariskaBrain = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
+  // Tania, Nov 27: "he is the one who will have the perplexity api" -- Dispatch (Aleksander Reid) gets the same
+  // one-time default-to-Perplexity switch Mariska got on Nov 25, for the same reason (his own research/lead-
+  // picking jobs want a live, citation-backed search, not a plain chat model). One-time default only (never
+  // overwrites a choice she's already made in his brain picker), and harmless even before the key exists --
+  // pickProvider() falls back silently to whatever IS connected until PERPLEXITY_API_KEY is actually set. This
+  // does not take Perplexity away from Mariska -- the key isn't an exclusive resource, both can run on it; if
+  // Tania actually wants it reserved for Dispatch alone, that's a one-line follow-up (switch Mariska's brain back
+  // to something else), not something assumed here.
+  if (!s.migratedDispatchBrain) { if (!s.brains.dispatch) s.brains.dispatch = "perplexity"; s.migratedDispatchBrain = true; try { await teamStore().setJSON("settings", s); } catch (e) {} }
   return s;
 }
 // Tania, Nov 7: Jimmy now runs on Grok (xAI) whenever XAI_API_KEY is set, even if his brain was set to Gemini before.
