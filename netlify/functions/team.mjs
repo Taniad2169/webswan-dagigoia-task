@@ -366,7 +366,24 @@ export default async (req) => {
     }
     if (b.action === "history") {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
-      return reply(200, { messages: (await history(agent)).slice(-200) }, origin);
+      const msgs = (await history(agent)).slice(-200);
+      // Tania, Nov 27 ("it seems like it just goes on for no reason after i read the notification"): Mariska's
+      // green dot used to track "seen" per-browser (localStorage), so reading her on one device/browser never
+      // told any OTHER device/browser it had been read -- the dot would come back lit there with nothing
+      // actually new. seenId now comes from here (one shared, server-side value, same account everywhere),
+      // so "read" means read, period.
+      const s = await getSettings();
+      return reply(200, { messages: msgs, seenId: ((s.lastSeen || {})[agent]) || "" }, origin);
+    }
+    if (b.action === "mark_seen") {
+      if (!agent) return reply(400, { error: "Unknown agent." }, origin);
+      const msgs = await history(agent);
+      const last = msgs.filter((m) => m.role !== "user").slice(-1)[0];
+      const s = await getSettings();
+      s.lastSeen = s.lastSeen || {};
+      s.lastSeen[agent] = (last && last.id) || "";
+      try { await teamStore().setJSON("settings", s); } catch (e) {}
+      return reply(200, { ok: true, seenId: s.lastSeen[agent] }, origin);
     }
     // Voice office: speak an agent's answer with a natural Cartesia voice (her own voice, kept the same every time).
     if (b.action === "tts") {
