@@ -109,12 +109,13 @@ const FRONT_DESK_SHORT = "FRONT DESK: learn why they're calling first; qualify (
 // Tania, Nov 23: every calling agent gives a full name (first + last) when asked "who is this?", not just a first
 // name -- keeps them unique against other AI callers people get calls from. Keep this in sync with the display
 // names agents are introduced with elsewhere (voice-studio agent cards, team.mjs).
-const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
+// Tania, Nov 27: George -> Dominguez, Jenna -> Lightborn (Mariska takes Verna instead, handled in fullAgentName below).
+const LAST_NAMES = { monica: "Lambert", george: "Dominguez", jenna: "Lightborn", rachel: "Bennett", rachelout: "Bennett", alek: "Reid", jonathan: "Peters" };
 function fullAgentName(agent) {
-  // Tania, Nov 25: this line now calls as Mariska Lightborn (her full name), not Rebecca -- same underlying
+  // Tania, Nov 25: this line now calls as Mariska Verna (her full name), not Rebecca -- same underlying
   // Cartesia voice/phone instrument, retired identity, new one on top of it.
   // Tania, Nov 27: "rebeccain" is her new separate inbound agent (same person) -- same name either way.
-  if (agent === "rebecca" || agent === "rebeccain") return "Mariska Lightborn";
+  if (agent === "rebecca" || agent === "rebeccain") return "Mariska Verna";
   const first = agent.charAt(0).toUpperCase() + agent.slice(1);
   const last = LAST_NAMES[agent];
   return last ? first + " " + last : first;
@@ -127,9 +128,9 @@ export function withPhoneRules(ins, agent) {
   // Tech Coordinator (CID), who now makes the actual outbound compliance/ADA/cookie/HIPAA/bar-rule calls -- for every
   // compliance caller. Sebastien -- our Marketing Operations Director (MOD) -- stays the inbound front door for all
   // three WebSwan companies, but the outbound SwanDesk/WebSwan/Media Network appointment callbacks that used to land
-  // with him now go to Mariska Lightborn instead (she holds that same MOD title on these calls).
+  // with him now go to Mariska Verna instead (she holds that same MOD title on these calls).
   // Nov 23: Jonathan's OWN agent can't fall back to himself, so his escalation points to Tania (the founder) instead.
-  // Tania, Nov 25: this line (still keyed "rebecca" in code, now calling as Mariska Lightborn -- see fullAgentName
+  // Tania, Nov 25: this line (still keyed "rebecca" in code, now calling as Mariska Verna -- see fullAgentName
   // above) is no longer scoped to WSMN/SwanDesk only -- "she could be calling for anything" -- so her fallback,
   // same as Jonathan's, now points straight to Tania herself rather than a fixed Sebastien/WSMN escalation.
   const isMariska = agent === "rebecca" || agent === "rebeccain";

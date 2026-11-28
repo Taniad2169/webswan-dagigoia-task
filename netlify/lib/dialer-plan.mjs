@@ -55,7 +55,7 @@ export function planActive(plan = DIALER_PLAN) { if (!plan) return false; const 
 // MONICA_COMPLIANCE_TASK all stay, she's just silent) until WebSwan grows bigger and Voice Studio's usage can
 // take more live callers again. This supersedes the "Monica comes off this list" note right above it.
 // Rebecca and Alek are the same open-ended pause as before, not tied to the Black Friday campaign's own end date.
-// Tania, Nov 25: Rebecca (Mariska Lightborn now) comes OFF this pause -- she's not part of the Dec 1 training
+// Tania, Nov 25: Rebecca (Mariska Verna now) comes OFF this pause -- she's not part of the Dec 1 training
 // focus at all anymore, she's on-demand Mon-Sat (see mariskaDayAllowed() / callerAllowed() below).
 export const TRAINING_FOCUS = { start: "2026-12-01", end: "2099-12-31", tz: "America/Los_Angeles", paused: ["monica", "alek"] };
 function trainingFocusActive() { const d = ymd(TRAINING_FOCUS.tz); return d >= TRAINING_FOCUS.start && d <= TRAINING_FOCUS.end; }
@@ -85,7 +85,7 @@ export function dialerBlackoutActive() { const d = ymd(WEEKEND_BLACKOUT.tz); ret
 // on schedule even while the Black Friday plan is silencing every other non-listed caller.
 const PLAN_EXEMPT = ["jonathan", "rachelout"]; // Tania, Nov 24: Rachel's next-day follow-ups (8 AM PT) and Jonathan's booked calls always run
 // Tania, Nov 25: "rebecca should stay open to make calls anytime from mondays to saturdays... when i feel like
-// prospecting" -- Mariska Lightborn (Rebecca's old line) isn't tied to a campaign window or the Dec 1 training
+// prospecting" -- Mariska Verna (Rebecca's old line) isn't tied to a campaign window or the Dec 1 training
 // focus at all: she's on-demand only (Tania picks the lead and taps Go, or Rachel books her a SwanDesk/WebSwan/
 // Media Network appointment). The one standing rule on top of that is no Sunday calls.
 function mariskaDayAllowed() {
@@ -268,7 +268,7 @@ WSMN: only ever quote the $289/year holiday-lock price. Say it's a holiday speci
 SWANDESK AI: do NOT quote exact prices on the call. Describe it as an affordable AI receptionist/appointment setter and say Tania can give exact pricing (she may be running a special) on a short appointment.
 Never say "fully compliant," "certified," or "lawsuit-proof." Credentials to use naturally: A-rated BBB, 5-star reviews on Google/Yelp/Yahoo, ranked #2 of the top 20 web design companies in California by DesignRush, 2024 RankWatch Best Web Design Agency award.
 Always get a direct email before ending the call, and push to book a short appointment with Tania to lock the $289/year price and get SwanDesk AI pricing. If no email and no interest, give Rachel's number.
-IF THEY HAVE A DETAILED QUESTION YOU CAN'T ANSWER, OR SEEM HESITANT: this call is SwanDesk/WSMN/WebSwan, not compliance -- the person to offer is Mariska Lightborn, our Marketing Operations Director, BY NAME (never Jonathan; he's compliance-only and doesn't know this pitch): "We also have Mariska, our marketing director -- do you have a minute to talk with her now?" If not, ask for the best time of day she can call them back.`;
+IF THEY HAVE A DETAILED QUESTION YOU CAN'T ANSWER, OR SEEM HESITANT: this call is SwanDesk/WSMN/WebSwan, not compliance -- the person to offer is Mariska Verna, our Marketing Operations Director, BY NAME (never Jonathan; he's compliance-only and doesn't know this pitch): "We also have Mariska, our marketing director -- do you have a minute to talk with her now?" If not, ask for the best time of day she can call them back.`;
 
 // Black Friday $499 website-redesign promotion -- George, Rebecca, Jenna and Monica (Tania, Nov 23: "upscaled"
 // to a compliance-angle opener). Call AS compliance, ask for the doctor/attorney by name; if not available, leave
@@ -355,7 +355,7 @@ CUELGA, NO GASTES MINUTOS: si te contesta un buzón de voz o contestadora, termi
 5) SI PREGUNTAN SOBRE PRIVACIDAD O SEGURIDAD DE DATOS: responde con tranquilidad y de frente -- "Entendemos que eso es importante, sobre todo con información de pacientes/clientes -- todo lo que hacemos respeta esa privacidad, y Tania puede darle los detalles exactos en la cita." Nunca minimices la pregunta ni la evites.
 Nunca digas "totalmente conforme," "certificado," ni "a prueba de demandas." CREDENCIALES, de forma natural, nunca como lista: calificación A del BBB, reseñas de 5 estrellas en Google/Yelp/Yahoo, #2 entre las 20 mejores empresas de diseño web de California según DesignRush, premio RankWatch 2024 a la Mejor Agencia de Diseño Web.
 SIEMPRE consigue un correo directo antes de terminar la llamada, y empuja para agendar una cita corta con Tania para confirmar el precio de WSMN (si aplica) y el de SwanDesk AI. Si no hay correo ni interés, da el número de Rachel.
-SI TIENEN UNA PREGUNTA DETALLADA QUE NO PUEDES RESPONDER, O PARECEN DUDOSOS: esta llamada es de SwanDesk/WSMN, no de cumplimiento -- ofrece a Mariska Lightborn, nuestra Directora de Marketing, POR NOMBRE (nunca a Jonathan; él es solo de cumplimiento y no conoce este tema): "También tenemos a Mariska, nuestra directora de marketing -- ¿tiene un minuto para hablar con ella ahora?" Si no, pregunta el mejor horario para que ella les devuelva la llamada.
+SI TIENEN UNA PREGUNTA DETALLADA QUE NO PUEDES RESPONDER, O PARECEN DUDOSOS: esta llamada es de SwanDesk/WSMN, no de cumplimiento -- ofrece a Mariska Verna, nuestra Directora de Marketing, POR NOMBRE (nunca a Jonathan; él es solo de cumplimiento y no conoce este tema): "También tenemos a Mariska, nuestra directora de marketing -- ¿tiene un minuto para hablar con ella ahora?" Si no, pregunta el mejor horario para que ella les devuelva la llamada.
 SI PREGUNTAN SI ERES UNA IA: di que sí, con naturalidad -- fuiste bien entrenado por WDS. Luego pregunta: "¿Preferiría hablar con la fundadora en su lugar?" -- espera unos 3 segundos; si no hay respuesta, continúa.
 Agradece y espera su despedida antes de colgar. CALIFICA SOBRE LA MARCHA (una pregunta natural a la vez): quién decide sobre el marketing/recepción (el dueño o el gerente de oficina) y su nombre; si el tema les interesa; qué tan pronto lo quieren ver. Nunca preguntes sobre presupuesto.`;
 
@@ -413,7 +413,7 @@ function georgeFocusToday(lead) {
 export function planTaskFor(name, lead, findings) {
   const planCamp = planActive() && DIALER_PLAN.agents[name] && DIALER_PLAN.agents[name].campaign;
   const camp = String(planCamp || lead.campaign || "");
-  const fx = (s) => s.replace(/\{\{findings\}\}/g, String(findings || "none listed").slice(0, 600)).replace(/\{\{agentName\}\}/g, name === "jenna" ? "Jenna" : name === "rebecca" ? "Mariska Lightborn" : name === "monica" ? "Monica" : "George");
+  const fx = (s) => s.replace(/\{\{findings\}\}/g, String(findings || "none listed").slice(0, 600)).replace(/\{\{agentName\}\}/g, name === "jenna" ? "Jenna" : name === "rebecca" ? "Mariska Verna" : name === "monica" ? "Monica" : "George");
   // Tania, Nov 24 (later, same day): George is OFF the Black Friday script for good (see his DIALER_PLAN entry
   // above) -- checked first, before any campaign string, so neither the plan's own campaign label nor a leftover
   // "black friday" tag on an individual lead can ever route him back onto it. He goes straight back to his

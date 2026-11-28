@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Mariska Lightborn's Calls · WebSwan Voice Studio</title>
+<title>Mariska Verna's Calls · WebSwan Voice Studio</title>
 <style>
 :root{--blue:#339cde;--sky:#93e5fa;--navy:#082a48;--ink:#17324c;--muted:#5f7891;--line:#dce8f1;--bg:#f3f8fc;--ok:#12805c;--bad:#b42318;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
 *{box-sizing:border-box}body{margin:0}
@@ -42,14 +42,14 @@ audio{width:100%;margin-top:10px}
 </head>
 <body>
 <header><div class="in">
-  <div><h1>📞 Mariska Lightborn's Calls</h1><p>Every call Mariska Lightborn made or answered (her own line -- the one that used to be Rebecca's, inbound and outbound both, like Rachel). Listen, read, save.</p></div>
+  <div><h1>📞 Mariska Verna's Calls</h1><p>Every call Mariska Verna made or answered (her own line -- the one that used to be Rebecca's, inbound and outbound both, like Rachel). Listen, read, save.</p></div>
   <span class="sp"></span><span id="who" style="font-size:13px"></span>
   <a class="back" href="./">← Voice Studio</a>
 </div></header>
 
 <div id="gate" class="card" hidden>
   <h2 style="margin-top:0;color:var(--navy)">Private page</h2>
-  <p>Sign in with your WebSwan Google account to hear Mariska Lightborn's calls.</p>
+  <p>Sign in with your WebSwan Google account to hear Mariska Verna's calls.</p>
   <button class="btn" id="signin">Sign in with Google</button>
   <div class="msg" id="gateMsg" role="alert"></div>
 </div>
@@ -57,7 +57,7 @@ audio{width:100%;margin-top:10px}
 <main id="app" hidden>
   <div class="bar">
     <div class="f"><label for="range">Show</label><select id="range"><option value="1">Today and yesterday</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></div>
-    <div class="f"><label for="kind">Which calls</label><select id="kind"><option value="all">All of Mariska Lightborn's calls</option><option value="in">Calls she answered</option><option value="out">Calls she made</option></select></div>
+    <div class="f"><label for="kind">Which calls</label><select id="kind"><option value="all">All of Mariska Verna's calls</option><option value="in">Calls she answered</option><option value="out">Calls she made</option></select></div>
     <div class="f" style="flex:1;min-width:200px"><label for="q">Find a caller</label><input id="q" type="search" placeholder="Phone number or a word from the call"></div>
     <button class="btn" id="refresh">↻ Refresh</button>
   </div>
@@ -83,14 +83,14 @@ async function post(body) {
 async function api(body) { const r = await post(body); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ('Error ' + r.status)); return j; }
 
 async function load() {
-  $('gate').hidden = true; $('app').hidden = false; $('count').textContent = 'Loading Mariska Lightborn\'s calls…'; $('list').innerHTML = '';
+  $('gate').hidden = true; $('app').hidden = false; $('count').textContent = 'Loading Mariska Verna\'s calls…'; $('list').innerHTML = '';
   const since = Date.now() - Number($('range').value) * 864e5 - (Number($('range').value) === 1 ? 864e5 : 0);
   const all = []; const problems = [];
   // Tania, Nov 27: Mariska now has two Cartesia agents on the same line, same split as Rachel --
   // "rebecca" = the calls she places (on-demand + appointment callbacks); "rebeccain" = calls she answers.
   for (const [agent, dir] of [['rebecca', 'out'], ['rebeccain', 'in']]) {
     try { const d = await api({ action: 'list', agent, since, limit: 100 }); for (const c of d.calls || []) all.push({ ...c, dir }); if (d.hasMore) problems.push('There are more calls than fit here; pick a shorter range to see them all.'); }
-    catch (e) { problems.push('Mariska Lightborn\'s calls could not be loaded: ' + e.message); }
+    catch (e) { problems.push('Mariska Verna\'s calls could not be loaded: ' + e.message); }
   }
   const seen = new Set();
   calls = all.filter(c => c.id && !seen.has(c.id) && seen.add(c.id)).sort((a, b) => String(b.start || '').localeCompare(String(a.start || '')));
@@ -109,7 +109,7 @@ function draw(note) {
     const other = c.dir === 'in' ? c.from : c.to;
     const when = st ? st.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' Pacific' : 'Time unknown';
     return `<article class="card" data-id="${esc(c.id)}">
-      <div class="top"><b>${esc(phone(other))}</b><span class="pill ${c.dir === 'out' ? 'out' : ''}">${c.dir === 'in' ? 'Mariska Lightborn answered' : 'Mariska Lightborn called'}</span><span class="meta">${esc(when)}${len ? ' · ' + len : ''}${c.endReason ? ' · ended: ' + esc(String(c.endReason).replace(/_/g, ' ')) : ''}</span></div>
+      <div class="top"><b>${esc(phone(other))}</b><span class="pill ${c.dir === 'out' ? 'out' : ''}">${c.dir === 'in' ? 'Mariska Verna answered' : 'Mariska Verna called'}</span><span class="meta">${esc(when)}${len ? ' · ' + len : ''}${c.endReason ? ' · ended: ' + esc(String(c.endReason).replace(/_/g, ' ')) : ''}</span></div>
       ${c.summary ? `<p class="sum">${esc(c.summary)}</p>` : '<p class="sum meta">No summary for this call.</p>'}
       <div class="acts">
         <button class="btn small" data-play="${esc(c.id)}">▶ Play recording</button>
@@ -117,7 +117,7 @@ function draw(note) {
         <span class="msg" data-msg="${esc(c.id)}" role="status" aria-live="polite" style="margin:0"></span>
       </div>
       <div data-audio="${esc(c.id)}"></div>
-      <div class="tr" data-trbox="${esc(c.id)}" hidden>${c.transcript.filter(x => x.text).map(x => `<p><span class="r">${x.role === 'user' ? 'Caller' : 'Mariska Lightborn'}:</span> ${esc(x.text)}</p>`).join('')}</div>
+      <div class="tr" data-trbox="${esc(c.id)}" hidden>${c.transcript.filter(x => x.text).map(x => `<p><span class="r">${x.role === 'user' ? 'Caller' : 'Mariska Verna'}:</span> ${esc(x.text)}</p>`).join('')}</div>
     </article>`;
   }).join('');
 }

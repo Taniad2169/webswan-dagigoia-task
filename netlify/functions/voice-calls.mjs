@@ -401,7 +401,7 @@ export default async (req) => {
   // ---------- Eva hand-off (from WorkPilot): Eva emailed the audit → the right caller follows up ----------
   // Tania, Nov 7: callers wait 24 hours after Eva's email, never call after 6 PM New York time (voice-autodial),
   // and get everything Eva knew: when the email went out, who was spoken to, what was said, the website findings.
-  // Doctors → Monica, attorneys → George, advertising (WebSwan Media Network) → Mariska Lightborn (key "rebecca" in code, reusing her old Cartesia instrument). Tania can pick another caller.
+  // Doctors → Monica, attorneys → George, advertising (WebSwan Media Network) → Mariska Verna (key "rebecca" in code, reusing her old Cartesia instrument). Tania can pick another caller.
   if (b.action === "eva_handoff" || b.action === "eva_handoff_list") {
     const log = (await store.get("eva-handoffs", { type: "json" })) || [];
     if (b.action === "eva_handoff_list") return reply(200, { handoffs: log.slice(-100).reverse() }, origin);
@@ -426,7 +426,7 @@ export default async (req) => {
     const media = x.kind === "newpatients" || agent === "rebecca";
     const who = /attorney|lawyer|law firm|\blaw\b|legal|esq/i.test(txt) ? "clients" : "patients";
     const facts = media ? [
-      `FOLLOW-UP CALL. Eva from WebSwan Media Network emailed ${clean(x.email, 120) || "the practice"} on ${day} (subject: "${clean(x.subject, 120) || "Are you still accepting new " + who + "?"}"). The email said our new platform features qualified practices that are open for new ${who}, that we checked their Google reviews and they pre-qualify for visibility to get new ${who}, and that you (Mariska Lightborn) would call to set a 10-minute appointment with the person in charge.`,
+      `FOLLOW-UP CALL. Eva from WebSwan Media Network emailed ${clean(x.email, 120) || "the practice"} on ${day} (subject: "${clean(x.subject, 120) || "Are you still accepting new " + who + "?"}"). The email said our new platform features qualified practices that are open for new ${who}, that we checked their Google reviews and they pre-qualify for visibility to get new ${who}, and that you (Mariska Verna) would call to set a 10-minute appointment with the person in charge.`,
       x.reply && `They replied to Eva: "${clean(x.reply, 300)}". Start from what they said.`,
       x.spokeWith && `${caller} spoke with ${clean(x.spokeWith, 60)} at the office${x.spokeWhen ? " on " + clean(x.spokeWhen, 40) : ""}: ask for ${clean(x.spokeWith, 60)} by name.`,
       x.contact && `Person in charge: ${clean(x.contact, 80)}.`,
@@ -456,7 +456,7 @@ export default async (req) => {
   // ---------- Cold-call hand-off from WorkPilot: Tania pushes a lead straight to an agent's call list ----------
   // Not a follow-up (no email was sent): the agent runs its normal first-call script with Tania's WorkPilot
   // notes as context (name, practice, state, phone, comment). Doctors → Monica, attorneys → George,
-  // advertising → Mariska Lightborn (key "rebecca"), Spanish → Alek, but Tania picks the agent in WorkPilot.
+  // advertising → Mariska Verna (key "rebecca"), Spanish → Alek, but Tania picks the agent in WorkPilot.
   if (b.action === "workpilot_call") {
     const x = b.lead || {};
     const phone = e164(x.phone), st = clean(x.state, 2).toUpperCase();

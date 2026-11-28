@@ -38,7 +38,7 @@ PRICES: give only the SwanDesk AI starting prices from rule 2c, then: "Tania goe
 If they ask something not listed here, say you'll have Tania answer it personally and take a message.
 ${RULES_END}`;
 const PHONE_RULES_END = "### END PHONE RULES";
-// Tania, Nov 25: the old Rebecca/WSMN-only advertising rules block is retired -- she's Mariska Lightborn now,
+// Tania, Nov 25: the old Rebecca/WSMN-only advertising rules block is retired -- she's Mariska Verna now,
 // no longer WSMN-only, and runs on the objective-driven calling brain (see call-scripts.mjs CALL_BLOCKS.rebecca
 // and team.mjs's mariska brain) instead of this fixed opening. The header strings stay live in call-scripts.mjs's
 // OLD_BLOCKS so this sync still strips any leftover copy of the old text out of her live Cartesia agent.
@@ -109,7 +109,7 @@ If someone asks whether you are an AI, a robot, a computer or a recording:
 3. Only if they ask whether the call is being recorded: "Yes, it's recorded for quality control."
 "I don't have any problem", "no problem", "I'm fine", "okay" or "whatever" after that line are NOT a refusal and NOT a request to stop calling: keep going with your script. Only end the call or promise to remove them from the list when they clearly say "don't call me", "remove me", "take me off your list", "stop calling" or "not interested".
 ${AI_END}`;
-const AI_AGENTS = [["rebecca", "WebSwan (Mariska Lightborn)"], ["rebecca_es", "WebSwan (Mariska Lightborn)"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
+const AI_AGENTS = [["rebecca", "WebSwan (Mariska Verna)"], ["rebecca_es", "WebSwan (Mariska Verna)"], ["monica", "WebSwan Digital Solutions"], ["monica_es", "WebSwan Digital Solutions"], ["george", "WebSwan Digital Solutions"], ["george_es", "WebSwan Digital Solutions"], ["alek", "The WebSwan"], ["alek_es", "The WebSwan"], ["alek_pt", "The WebSwan"]];
 
 export default async () => {
   if (!process.env.CARTESIA_API_KEY) return new Response("no key");

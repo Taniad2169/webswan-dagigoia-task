@@ -36,7 +36,7 @@ export default async () => {
   // Jenna or Mariska already booked with the prospect, going over that lead's real audit findings. No dedicated
   // number of his own yet -- he shares the general caller-ID pool.
   const jonathan = process.env.CARTESIA_AGENT_JONATHAN || ids.jonathan;
-  // Tania, Nov 25: Mariska Lightborn (Rebecca's old line and Cartesia agent, reused -- no new number purchased)
+  // Tania, Nov 25: Mariska Verna (Rebecca's old line and Cartesia agent, reused -- no new number purchased)
   // calls back for SwanDesk AI / The WebSwan / WebSwan Media Network appointments Rachel booked. These replace
   // what used to land as an inbound call for Sebastien; Sebastien is back to coaching only.
   const mariska = process.env.CARTESIA_AGENT_REBECCA || ids.rebecca;

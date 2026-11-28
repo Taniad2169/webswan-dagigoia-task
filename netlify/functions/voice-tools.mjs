@@ -209,7 +209,7 @@ async function clientInfo(store, called) {
 // Rachel's heads-up: who is calling and why. Works for transfers from Monica, George, Mariska or Alek
 // (looks at their calls from the last few minutes) and for people they called earlier who call back.
 const OUR_LINES = ["6812936217", "2512946344", "9783818982", "3162486839"];
-const AGENT_TOPIC = { monica: ["Monica", "website compliance (ADA, privacy, HIPAA) for a medical practice"], george: ["George", "website compliance (ADA, privacy, attorney advertising rules) for a law firm"], rebecca: ["Mariska Lightborn", "SwanDesk AI, The WebSwan or WebSwan Media Network"], alek: ["Alek", "WebSwan follow-up"] };
+const AGENT_TOPIC = { monica: ["Monica", "website compliance (ADA, privacy, HIPAA) for a medical practice"], george: ["George", "website compliance (ADA, privacy, attorney advertising rules) for a law firm"], rebecca: ["Mariska Verna", "SwanDesk AI, The WebSwan or WebSwan Media Network"], alek: ["Alek", "WebSwan follow-up"] };
 async function callerBrief(store, callerRaw) {
   const d10 = (x) => String(x || "").replace(/\D/g, "").slice(-10);
   const caller = d10(callerRaw);

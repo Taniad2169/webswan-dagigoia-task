@@ -2,10 +2,10 @@
 (function () {
   var R = '<a href="tel:+13162486839">(316) 248-6839</a>', P = '<a href="tel:+14158770687">(415) 877-0687</a>';
   // Tania, Nov 27: Sebastien no longer makes or takes calls -- WebSwan Media Network (and WebSwan) questions
-  // now point to Mariska Lightborn, Marketing Operations Director, via Rachel (her own on-demand line isn't
+  // now point to Mariska Verna, Marketing Operations Director, via Rachel (her own on-demand line isn't
   // wired for inbound calls yet). Digital Solutions/compliance topics point to Jonathan, Compliance Tech
   // Coordinator, whose line below is real (Sebastien's old number, reassigned to him).
-  var MARISKA = '<b>Mariska Lightborn</b>, our Marketing Operations Director';
+  var MARISKA = '<b>Mariska Verna</b>, our Marketing Operations Director';
   var ADS = '<a href="https://ads.webswanmedianetwork.com/" target="_blank" rel="noopener">ads.webswanmedianetwork.com</a>';
   window.RACHEL_CONFIG = {
     name: 'Rachel Bennet',
