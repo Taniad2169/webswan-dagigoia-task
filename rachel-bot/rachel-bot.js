@@ -119,6 +119,7 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
     if (!canSpeak) return;
     try {
       var words = plain(el); if (!words) return;
+      lastSpoken = norm(words); lastSpokenAt = Date.now();
       synth.cancel(); if (synth.paused) synth.resume();
       var u = new SpeechSynthesisUtterance(words), v = pickVoice();
       if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
@@ -131,6 +132,18 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   function stopVoice() { if (canSpeak) synth.cancel(); if (curBtn) mark(curBtn, false); curBtn = null; talking(false); }
 
   /* ---------- voice INPUT: visitor can talk any time, even over her -- always-on while the chat is open ---------- */
+  // Tania, Nov 27: "she's talking... Hi, I don't know the answer... not going by the flow of conversation" --
+  // without a phone-grade echo canceller (the honest limitation already noted above), the mic can pick up a
+  // beat of RACHEL'S OWN voice coming back through the visitor's speakers, and the old code treated that pickup
+  // as if the visitor had asked a real question -- which, since it's rarely a real KB match, mostly produced the
+  // fallback ("I don't know the answer"), which she then spoke, which the mic picked up AGAIN, looping into
+  // exactly what Tania saw: Rachel talking to herself instead of following the conversation.
+  // lastSpoken/lastSpokenAt track the plain text of whatever Rachel most recently said; a "final" mic result
+  // that's really just a chunk of her own last reply (not something the visitor actually said) gets dropped
+  // instead of answered. Only applies for a few seconds after she spoke, and only for an overlap long enough
+  // that a short genuine reply like "yes" or "ok" can't be mistaken for an echo.
+  var lastSpoken = '', lastSpokenAt = 0;
+  function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim(); }
   var recog = null, listening = false, manualMicStop = false, micPlaceholder = 'Type your question here…';
   var micOn = canListen;
   try { if (localStorage.getItem('rbt_mic') === 'off') micOn = false; } catch (e) {}
@@ -153,7 +166,12 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
         // the instant any speech comes in, let the visitor talk OVER Rachel -- cut her voice right away
         if (synth && synth.speaking) stopVoice();
         var r = e.results[e.results.length - 1];
-        if (r && r.isFinal) { var text = ((r[0] && r[0].transcript) || '').trim(); if (text) ask(text); }
+        if (!r || !r.isFinal) return;
+        var text = ((r[0] && r[0].transcript) || '').trim();
+        if (!text) return;
+        var n = norm(text);
+        if (lastSpoken && (Date.now() - lastSpokenAt) < 6000 && n.length >= 8 && lastSpoken.indexOf(n) > -1) return; // echo of her own last reply, not a real question
+        ask(text);
       };
       recog.onerror = function (e) {
         setListening(false);
