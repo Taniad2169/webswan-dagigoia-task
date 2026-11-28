@@ -115,6 +115,15 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
       .replace(/\(?(\d{3})\)?[ -.]?(\d{3})-(\d{4})/g, function (m, a, b, d) { return a.split('').join(' ') + ', ' + b.split('').join(' ') + ', ' + d.split('').join(' '); })
       .replace(/\s+/g, ' ').trim();
   }
+  // Tania, Nov 27 (found while digging into "stopped then said I don't know the answer" on a longer reply):
+  // Chrome has a long-documented bug where speechSynthesis just silently halts an utterance after roughly
+  // 15 seconds of continuous speech (unrelated to the echo issue above) -- many of Rachel's real answers
+  // (bullet lists, the "how it works" steps, pricing breakdowns) run longer than that. The standard
+  // workaround is to nudge the engine with pause()/resume() every few seconds while it's talking, which
+  // resets Chrome's internal timer; it's a no-op on browsers that don't have the bug.
+  var keepAliveTimer = null;
+  function startKeepAlive() { stopKeepAlive(); keepAliveTimer = setInterval(function () { if (synth.speaking) { synth.pause(); synth.resume(); } else stopKeepAlive(); }, 9000); }
+  function stopKeepAlive() { if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; } }
   function speak(el, btn) {
     if (!canSpeak) return;
     try {
@@ -126,12 +135,12 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
       var u = new SpeechSynthesisUtterance(words), v = pickVoice();
       if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
       u.rate = 1; u.pitch = 1;
-      u.onstart = function () { if (curBtn && curBtn !== btn) mark(curBtn, false); curBtn = btn; mark(btn, true); talking(true); };
-      u.onend = u.onerror = function () { mark(btn, false); if (curBtn === btn) curBtn = null; };
+      u.onstart = function () { if (curBtn && curBtn !== btn) mark(curBtn, false); curBtn = btn; mark(btn, true); talking(true); startKeepAlive(); };
+      u.onend = u.onerror = function () { mark(btn, false); if (curBtn === btn) curBtn = null; stopKeepAlive(); };
       synth.speak(u);
     } catch (e) { mark(btn, false); }
   }
-  function stopVoice() { if (canSpeak) synth.cancel(); if (curBtn) mark(curBtn, false); curBtn = null; talking(false); }
+  function stopVoice() { if (canSpeak) synth.cancel(); if (curBtn) mark(curBtn, false); curBtn = null; talking(false); stopKeepAlive(); }
 
   /* ---------- voice INPUT: visitor can talk any time, even over her -- always-on while the chat is open ---------- */
   // Tania, Nov 27 (first pass): tried a straight substring match against her last reply within a flat 6-second
