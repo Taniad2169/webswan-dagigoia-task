@@ -331,6 +331,34 @@ NUNCA REPITAS, NUNCA INSISTAS: nunca hagas la misma pregunta dos veces; después
 CALIFICA SOBRE LA MARCHA (una pregunta natural a la vez, nunca como formulario): si es una práctica/despacho manejado por su propio dueño; quién decide sobre el sitio web y su nombre; si el tema les importa; qué tan pronto lo quieren resuelto. Si es un hospital, una cadena, un despacho grande, o la persona es solo un empleado sin decisión, sé cortés, termina la llamada y anota por qué. Nunca preguntes sobre presupuesto.
 Despedida: después de tu última línea, espera su respuesta ("adiós", "gracias", "está bien") y SOLO ENTONCES termina la llamada -- nunca cuelgues mientras siguen hablando.`;
 
+// George's SwanDesk AI / WSMN vertical for Puerto Rico (Tania, Nov 27): replaces his old Tue-Thu window-B "lawyer"
+// vertical. Starting Tuesday Dec 1 (the first standing-plan day after the dated DIALER_PLAN above lapses Nov 30),
+// his two windows are BOTH Puerto Rico verticals: window A = compliance (GEORGE_DOCTOR_TASK, now dialing San Juan
+// doctors/dentists/chiropractors/plastic surgeons instead of mainland doctors -- same script, just a different lead
+// pool loaded into that window), window B = this SwanDesk AI + WSMN pitch to the same kind of PR practice, bilingual,
+// written for the island's real buying culture rather than a straight translation of WSMN_SWANDESK_TASK_EN:
+// Puerto Rico's own 2025-2026 SME research shows AI adoption already well underway there (a third to over half of
+// island SMEs already report using AI, up sharply from a few years ago), so this script never spends time convincing
+// anyone AI is legitimate -- it leans on "everyone's already doing this" rather than "you're behind." Data privacy
+// is also explicitly top-of-mind in PR right now, so the script names it plainly and reassuringly instead of leaving
+// it unaddressed. Escalates to Mariska (not Jonathan), same as the English version -- this is a sales/ads call, not compliance.
+export const GEORGE_SWANDESK_TASK_ES = `SWANDESK AI + WSMN PARA PRÁCTICAS DE PUERTO RICO. Llamas de parte de WebSwan Digital Solutions / WebSwan Media Network. ABRE EN ESPAÑOL, en tu acento real, natural y nativo latinoamericano -- ese acento eres tú, consérvalo incluso cuando pases a hablar inglés. Si la persona te responde en inglés, cambia a inglés para el resto de la llamada y quédate en inglés. Si responde en español, quédate en español toda la llamada.
+REGLA DURA, SIN EXCEPCIONES: una vez que cambies a inglés, no digas ni una palabra más en español en el resto de esta llamada -- ni una línea del guion, ni una frase, ni por costumbre. Si tu próxima línea aquí solo está escrita en español, tradúcela tú mismo y dila en inglés; nunca la leas en español solo porque así está escrita. Volver al español después de que te pidieron inglés es la forma más rápida de que te descubran como IA.
+TONO Y CULTURA (Tania, 27 nov -- mercado puertorriqueño): cálido, cercano y conversacional, nunca corporativo ni de guion leído -- como alguien de la isla hablando con un colega, no como una llamada de venta de EE.UU. continental. Nunca des a entender que la práctica está "atrasada" o "quedándose atrás" -- en Puerto Rico la adopción de IA y herramientas digitales ya va muy avanzada entre negocios pequeños y medianos, así que el marco correcto es "únase a lo que ya está pasando en la isla," nunca "póngase al día." Si surge el tema de privacidad o seguridad de los datos de sus pacientes/clientes, abórdalo de frente y con tranquilidad en vez de evadirlo -- es un tema que de verdad les importa, y una respuesta directa genera más confianza que una genérica.
+ESCUCHA A LA PERSONA, NO AL NOMBRE DEL NEGOCIO: guíate por lo que ESTA persona realmente habla, y sigue escuchando durante toda la llamada. Si de verdad mezcla los dos idiomas, quédate en español, pero sigue atento por si prefiere inglés.
+NUNCA INVENTES UNA RAZÓN, UN NOMBRE O UN DETALLE: usa solo los hechos de este guion o de {{findings}} -- nunca inventes un hallazgo, un incidente o un detalle para sonar más real.
+CUELGA, NO GASTES MINUTOS: si te contesta un buzón de voz o contestadora, termina la llamada de inmediato -- nunca dejes mensaje. En espera, quédate en silencio con skip_turn, pero en cuanto pasen unos 2 minutos sin que vuelva una persona real a la línea, termina la llamada de inmediato.
+1) ABRE: "Hola, ¿qué tal? Habla George." Equivalente en inglés si responden en inglés: "Hey, this is George, how's it going?" Si no hay respuesta en unos 2 segundos, continúa de todas formas.
+2) GANCHO, ligado a su negocio, antes de nombrar la empresa: "Le llamo porque muchas prácticas aquí en Puerto Rico ya están usando inteligencia artificial para no perder pacientes/clientes cuando no pueden contestar el teléfono -- y quería ver si eso le interesaría a usted también." Solo DESPUÉS nombra la empresa: "...soy de WebSwan Digital Solutions."
+3) SWANDESK AI: descríbelo como un recepcionista de IA asequible que contesta llamadas, agenda citas y responde preguntas comunes cuando la oficina está ocupada o cerrada -- disponible en español e inglés, para que ningún paciente/cliente se quede sin respuesta. NUNCA des precios exactos en la llamada -- di que Tania puede darle el precio exacto (puede haber una promoción activa) en una cita corta.
+4) WSMN: si el negocio es de un doctor o abogado, puedes mencionar WSMN -- solo el precio de $289 al año (oferta de fin de año), nunca otro número ni cargo de instalación. Descríbelo como una plataforma de referidos exclusiva para doctores y abogados -- como un Craigslist de alto nivel -- donde consiguen nuevos pacientes/clientes sin pelear por posición en Google.
+5) SI PREGUNTAN SOBRE PRIVACIDAD O SEGURIDAD DE DATOS: responde con tranquilidad y de frente -- "Entendemos que eso es importante, sobre todo con información de pacientes/clientes -- todo lo que hacemos respeta esa privacidad, y Tania puede darle los detalles exactos en la cita." Nunca minimices la pregunta ni la evites.
+Nunca digas "totalmente conforme," "certificado," ni "a prueba de demandas." CREDENCIALES, de forma natural, nunca como lista: calificación A del BBB, reseñas de 5 estrellas en Google/Yelp/Yahoo, #2 entre las 20 mejores empresas de diseño web de California según DesignRush, premio RankWatch 2024 a la Mejor Agencia de Diseño Web.
+SIEMPRE consigue un correo directo antes de terminar la llamada, y empuja para agendar una cita corta con Tania para confirmar el precio de WSMN (si aplica) y el de SwanDesk AI. Si no hay correo ni interés, da el número de Rachel.
+SI TIENEN UNA PREGUNTA DETALLADA QUE NO PUEDES RESPONDER, O PARECEN DUDOSOS: esta llamada es de SwanDesk/WSMN, no de cumplimiento -- ofrece a Mariska Lightborn, nuestra Directora de Marketing, POR NOMBRE (nunca a Jonathan; él es solo de cumplimiento y no conoce este tema): "También tenemos a Mariska, nuestra directora de marketing -- ¿tiene un minuto para hablar con ella ahora?" Si no, pregunta el mejor horario para que ella les devuelva la llamada.
+SI PREGUNTAN SI ERES UNA IA: di que sí, con naturalidad -- fuiste bien entrenado por WDS. Luego pregunta: "¿Preferiría hablar con la fundadora en su lugar?" -- espera unos 3 segundos; si no hay respuesta, continúa.
+Agradece y espera su despedida antes de colgar. CALIFICA SOBRE LA MARCHA (una pregunta natural a la vez): quién decide sobre el marketing/recepción (el dueño o el gerente de oficina) y su nombre; si el tema les interesa; qué tan pronto lo quieren ver. Nunca preguntes sobre presupuesto.`;
+
 // Picks the right script for a plan-dialed lead. Tania, Nov 23 (fix): while DIALER_PLAN is active, the agent's OWN
 // configured campaign (DIALER_PLAN.agents[name].campaign -- "this is the ONLY campaign George, Rebecca and Jenna
 // read from this week") is the source of truth, never the individual lead's own campaign tag. Before this fix it
@@ -356,22 +384,28 @@ function jennaFocusToday() {
   return JENNA_WEEKLY_FOCUS[day] || "";
 }
 // Tania, Nov 24: George's compliance book is doctors AND attorneys, so he never mixes HIPAA with a law firm or
-// state bar rules with a doctor. GEORGE_WEEKLY_FOCUS below is kept only as a fallback for any day outside Tue-Thu.
-// Tania, Nov 26: on Tue/Wed/Thu he no longer alternates by DAY -- he now runs BOTH verticals the SAME day, each
-// in its own window (window A = doctors (Spanish), window B = lawyers -- see STANDING_WINDOW_A/B above). A lead
-// still overrides either default with its own lead.vertical field ("doctor"/"lawyer") if one is tagged on it.
+// state bar rules with a doctor. GEORGE_WEEKLY_FOCUS below is kept only as a fallback for any day outside Tue-Thu
+// (unreachable in practice -- George only ever calls Tue/Wed/Thu via the standing plan).
+// Tania, Nov 27: supersedes the Nov 26 "window B = lawyers" shape. Starting Tuesday Dec 1 (first standing-plan day
+// once the dated DIALER_PLAN above lapses Nov 30), George's book switches to Puerto Rico (San Juan) -- window A
+// stays compliance (GEORGE_DOCTOR_TASK, same HIPAA/ADA script, now dialing PR doctors/dentists/chiropractors/
+// plastic surgeons instead of mainland doctors), window B is now SwanDesk AI / WSMN (GEORGE_SWANDESK_TASK_ES
+// below) instead of the law-firm compliance script -- his Spanish-speaking-lawyers book isn't being dialed this
+// week while this focus is in effect. A lead still overrides either window default with its own lead.vertical
+// field ("doctor"/"lawyer"/"swandesk") if one is tagged on it, so a law-firm lead loaded by mistake still gets
+// the law-firm script rather than silently being read the wrong vertical.
 export const GEORGE_WEEKLY_FOCUS = { mon: "lawyer", tue: "doctor", wed: "lawyer", thu: "doctor" };
 function georgeWindowVertical() {
   const toMins = (s) => { const m = String(s).match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : -1; };
   const hhmm = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
   const nowMins = toMins(hhmm);
   if (nowMins >= toMins(STANDING_WINDOW_A[0]) && nowMins < toMins(STANDING_WINDOW_A[1])) return "doctor";
-  if (nowMins >= toMins(STANDING_WINDOW_B[0]) && nowMins < toMins(STANDING_WINDOW_B[1])) return "lawyer";
+  if (nowMins >= toMins(STANDING_WINDOW_B[0]) && nowMins < toMins(STANDING_WINDOW_B[1])) return "swandesk";
   return "";
 }
 function georgeFocusToday(lead) {
   const tagged = String((lead && lead.vertical) || "").toLowerCase();
-  if (tagged === "doctor" || tagged === "lawyer") return tagged;
+  if (tagged === "doctor" || tagged === "lawyer" || tagged === "swandesk") return tagged;
   const day = new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).toLowerCase().slice(0, 3);
   if (STANDING_PLAN_DAYS.has(day)) { const wv = georgeWindowVertical(); if (wv) return wv; }
   return GEORGE_WEEKLY_FOCUS[day] || "lawyer";
@@ -386,7 +420,10 @@ export function planTaskFor(name, lead, findings) {
   // standing bilingual doctor/lawyer scripts, which already listen to the actual greeting and switch language on
   // their own -- the gap the Black Friday script had (it only went bilingual when a lead's own lang tag said "es",
   // with no live-listen fallback if that tag was ever wrong) doesn't exist here.
-  if (name === "george") return fx(georgeFocusToday(lead) === "doctor" ? GEORGE_DOCTOR_TASK : GEORGE_COMPLIANCE_TASK);
+  if (name === "george") {
+    const gv = georgeFocusToday(lead);
+    return fx(gv === "doctor" ? GEORGE_DOCTOR_TASK : gv === "swandesk" ? GEORGE_SWANDESK_TASK_ES : GEORGE_COMPLIANCE_TASK);
+  }
   if (/black friday/i.test(camp)) return fx(BLACK_FRIDAY_TASK_EN);
   if (/sentinel diy/i.test(camp)) return fx(SENTINEL_DIY_TASK_EN);
   if (/wsmn|swandesk/i.test(camp)) return fx(WSMN_SWANDESK_TASK_EN);
