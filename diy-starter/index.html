@@ -266,7 +266,7 @@
           payStatus.textContent = "Payment received -- you're all set!";
           setTimeout(() => {
             hidePayCard();
-            const msg = "Payment confirmed -- that's with Tania now, and your finished design will be emailed to you within a couple of days. Questions in the meantime? Sebastien's happy to help at (229) 544-6718.";
+            const msg = "Payment confirmed -- that's with Tania now, and your finished design will be emailed to you within a couple of days. Questions in the meantime? Jonathan's happy to help at (229) 544-6718.";
             addLine('sent', msg); say(msg);
           }, 900);
         }
@@ -549,7 +549,7 @@
         showPayCard(data.payLink, data.disclaimerText);
       } else if (data.approved) {
         hidePayCard();
-        const confirm = "You're all set -- that's with Tania now. Keep an eye out for a confirmation of your appointment, and your finished design will be emailed to you that day. Questions before then? Sebastien's happy to help at (229) 544-6718.";
+        const confirm = "You're all set -- that's with Tania now. Keep an eye out for a confirmation of your appointment, and your finished design will be emailed to you that day. Questions before then? Jonathan's happy to help at (229) 544-6718.";
         setTimeout(() => { addLine('sent', confirm); say(confirm); }, 600);
       }
     }).catch(() => { thinking.remove(); addLine('sent', "Sorry, I couldn't connect just now -- please try again in a moment."); });
