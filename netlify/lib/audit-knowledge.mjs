@@ -27,6 +27,11 @@ const LAW_FACTS = {
         name: 'Florida',
         ada: 'Florida had the second-most ADA lawsuits in the country in 2025 (1,823 federal filings).'
       },
+      PR: {
+        name: 'Puerto Rico',
+        ada: 'The DOJ has confirmed in writing that ADA Title III applies fully to entities in Puerto Rico, the same as any U.S. state -- federal accessibility exposure is not reduced because a practice is on the island. Local firms are already litigating ADA claims against Puerto Rico businesses (a dozen-plus filings from one law firm alone in recent months), so this is active local risk, not a hypothetical.',
+        territory: 'Puerto Rico is a U.S. territory on the North American Numbering Plan, so calls to it are domestic, not international -- but federal law (ADA, HIPAA) still applies exactly as it would in any state. Puerto Rico also has its own disability-rights law (Ley 238-2004, the Carta de Derechos de las Personas con Impedimentos) establishing a public policy of full accessibility, which sits alongside federal ADA exposure rather than replacing it.'
+      },
       OTHER: { name: 'the U.S. (federal rules)' }
     };
 export const AUDIT_KNOWLEDGE = `
