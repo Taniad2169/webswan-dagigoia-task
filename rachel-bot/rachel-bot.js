@@ -213,10 +213,46 @@ C.launchCss ? '@media(min-width:601px){#rbt-launch{' + C.launchCss + '}}' : '',
   /* ---------- knowledge ---------- */
   var KB = C.kb || [];
   var FALLBACK = C.fallback || 'Hmm 🤔 I don’t know the answer to that question, but you can call the number on the screen to ask Tania: <a href="tel:+14158770687"><b>📞 (415) 877-0687</b></a>';
+  // Tania, Nov 27: "I want Rachel to read, inspect, study all my website links and content... she should
+  // answer the question if they are on the webswan, she give all answers that are displayed on my page" --
+  // rather than only ever answering from this hand-written KB (which drifts out of date whenever the page
+  // copy changes), Rachel now also reads the ACTUAL live page she's sitting on, section by section (by
+  // heading), and will pull a real answer out of it when nothing in the KB scored well enough. Works the
+  // same way on all 4 sites with zero per-site code, and stays correct automatically as the pages change.
+  function pageSections() {
+    var out = [];
+    try {
+      document.querySelectorAll('h1,h2,h3,h4').forEach(function (h) {
+        if (h.closest && h.closest('#rbt-panel,#rbt-launch')) return; // never read Rachel's own widget back to herself
+        var title = (h.textContent || '').trim(); if (!title) return;
+        var txt = '', n = h.nextElementSibling, steps = 0;
+        while (n && steps < 25 && !/^H[1-4]$/.test(n.tagName)) {
+          if (!(n.closest && n.closest('#rbt-panel,#rbt-launch'))) txt += ' ' + (n.textContent || '');
+          n = n.nextElementSibling; steps++;
+        }
+        txt = txt.replace(/\s+/g, ' ').trim();
+        if (txt.length > 20) out.push({ title: title, text: txt.slice(0, 700) });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function pageAnswer(text) {
+    var secs = pageSections(); if (!secs.length) return null;
+    var words = text.toLowerCase().split(/\s+/).filter(function (w) { return w.replace(/[^a-z0-9]/g, '').length >= 4; });
+    if (!words.length) return null;
+    var best = null, score = 0;
+    secs.forEach(function (s) {
+      var hay = ' ' + (s.title + ' ' + s.text).toLowerCase() + ' ', hit = 0;
+      words.forEach(function (w) { if (hay.indexOf(w.replace(/[^a-z0-9]/g, '')) > -1) hit++; });
+      if (hit > score) { score = hit; best = s; }
+    });
+    return (best && score >= 2) ? ('Here’s what’s on our <b>' + best.title + '</b> section of this page: ' + best.text) : null;
+  }
   function answer(text) {
     var t = ' ' + text.toLowerCase().replace(/[’']/g, "'") + ' ', best = null, score = 0;
     KB.forEach(function (e) { var s = 0; e.k.forEach(function (k) { if (t.indexOf(k) > -1) s += k.length > 3 ? 2 + (k.indexOf(' ') > -1 ? 1 : 0) : 1; }); if (s > score) { score = s; best = e; } });
-    return best && score >= 2 ? best.a : FALLBACK;
+    if (best && score >= 2) return best.a;
+    return pageAnswer(text) || FALLBACK;
   }
 
   /* ---------- interface ---------- */
