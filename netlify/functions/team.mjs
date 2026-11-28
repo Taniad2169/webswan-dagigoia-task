@@ -407,6 +407,28 @@ export default async (req) => {
       if (!agent) return reply(400, { error: "Unknown agent." }, origin);
       return reply(200, { notes: ((await getArchive())[agent] || []).slice().reverse() }, origin);
     }
+    // Tania, Nov 27 ("build me a version of this pipeline script shot list in our video maker so we can use it
+    // in sentinel set up as well"): Claude as the DIRECTOR -- turns a script + its scenes into a real shot list
+    // (shot type, camera move, mood/lighting) plus one ready-to-paste cinematic generation prompt per scene, for
+    // her to paste into whichever AI video tool she's using that day (HyperFrames, Higgsfield, Filmora, or the
+    // Veo/Hedra/Kling path Video Maker already drives). This never calls those three tools' own APIs directly --
+    // no WebSwan account or key exists for any of them yet -- it only writes the prompt text; she pastes it in
+    // herself. Same action powers Sentinel's own chat (team.mjs routes his "build me a shot list" asks here too),
+    // so there is one director brain, not two copies that can drift apart.
+    if (b.action === "director_shotlist") {
+      const script = clean(b.script, 6000).trim();
+      let scenes = Array.isArray(b.scenes) ? b.scenes.slice(0, 40) : [];
+      if (!script && !scenes.length) return reply(400, { error: "Send a script or at least one scene first." }, origin);
+      if (!scenes.length) scenes = script.split(/\n\s*\n/).map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean);
+      const brand = clean(b.brand, 60).trim() || "WebSwan";
+      const list = scenes.map((s, i) => (i + 1) + ". " + clean(typeof s === "string" ? s : s.text, 500)).join("\n");
+      const system = `You are the DIRECTOR for ${brand}'s short-form marketing videos. Given a voiceover script already split into numbered scenes, you write the real shot list a director would hand a camera operator and an AI video tool, one entry per scene, in the SAME order and the SAME count as the scenes you were given -- never merge, split, drop, or add a scene. For each scene decide: the shot type and framing (e.g. medium close-up, over-the-shoulder, wide establishing), the camera move if any (static, slow push-in, handheld, pan), the mood and lighting (e.g. bright and clean, warm golden-hour, high-contrast and serious), and then write ONE ready-to-paste generation prompt an AI video tool (HyperFrames, Higgsfield, Filmora's AI video, Veo, Kling or similar) could take as-is -- plain cinematic English, concrete and visual, naming the subject, setting, action, camera move and lighting in one or two sentences, never the spoken words of the script itself (voiceover is added separately) and never a brand name, logo or real person's name inside the generated prompt. Respond with ONLY a JSON array, no markdown fence, no prose before or after, one object per scene in order: [{"shot":"...", "camera":"...", "mood":"...", "prompt":"..."}, ...]`;
+      const ans = await askAI("claude-only", system, [{ role: "user", content: "SCENES:\n" + list }], 3000);
+      let shots; try { shots = JSON.parse(String(ans.text).trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim()); } catch (e) { return reply(502, { error: "The director brain didn't come back as clean JSON -- try again." }, origin); }
+      if (!Array.isArray(shots)) return reply(502, { error: "The director brain's answer wasn't a list -- try again." }, origin);
+      shots = shots.slice(0, scenes.length).map((s, i) => ({ scene: i + 1, shot: clean((s && s.shot) || "", 200), camera: clean((s && s.camera) || "", 200), mood: clean((s && s.mood) || "", 200), prompt: clean((s && s.prompt) || "", 800) }));
+      return reply(200, { shots }, origin);
+    }
     // Tania, Nov 23: edit a live note in place (same id, same spot in the list) instead of remove-then-add.
     // The correction re-syncs to the live phone script right away. The ORIGINAL wording stays untouched in
     // Full history (it really happened), and the corrected wording is archived too, as its own dated entry --
