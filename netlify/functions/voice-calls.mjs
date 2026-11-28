@@ -29,7 +29,13 @@ const ALLOWED_ORIGINS = ["https://taniad2169.github.io", "https://webswan-billin
 // him too. Jonathan is the new, separate OUTBOUND-only agent -- Compliance Tech Coordinator (CID) -- who
 // calls businesses back to go over their real audit findings once Rachel has booked the appointment.
 // Inbound (Sebastien/MOD) and outbound (Jonathan/CID) are never the same call and never mixed.
-const AGENTS = ["george", "rebecca", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout", "sebastien", "jonathan"];
+// Tania, Nov 27: "Mariska should have Rebecca's number... she is inbound and outbound like Rachel" --
+// same split as rachel/rachelout: "rebecca" stays her existing OUTBOUND identity (on-demand calls,
+// appointment callbacks, dialer-plan safety windows -- none of that changes). "rebeccain" is a NEW,
+// separate Cartesia agent (same voice/identity, same phone number, built via the existing "agent_create"
+// action cloning from "rebecca") that answers when someone calls her line IN, so her outbound calls keep
+// their voicemail-safe "wait for a human to speak first" behavior while her inbound line greets right away.
+const AGENTS = ["george", "rebecca", "rebeccain", "monica", "alek", "jenna", "jennifer", "rachel", "rachelout", "sebastien", "jonathan"];
 // Tania, Nov 12: Alek and Jenna never work from a fixed script. They only call with her task/brief for that call.
 const TASKED = (n) => n === "alek" || n === "jenna";
 // Rachel, Tania's virtual coordinator, now answers both compliance and WebSwan Media Network (advertising) questions on one line.
@@ -48,7 +54,7 @@ function rachelTransfers(agent) {
   const plusTania = (list) => (list || []).concat(toTania && !(list || []).some((x) => x.destination.phone_number === tania) ? toTania : []);
   // When both lines are the same (our own Rachel answers both), merge them into one transfer: Cartesia needs unique destinations.
   const both = RACHEL_COMPLIANCE === RACHEL_ADVERTISING ? [{ destination: comp.destination, condition: "The person has questions about website compliance (ADA, privacy, HIPAA, the audit findings or the risk) or about WebSwan Media Network (advertising, visibility, the directory), and agrees to be transferred to Rachel." }] : [comp, ads];
-  const map = { monica: [comp], george: both, rebecca: [ads], alek: both, jenna: both, rachel: toTania, jonathan: toTania }; // Tania, Nov 24: Jonathan hands the prospect to Tania at the end of his review
+  const map = { monica: [comp], george: both, rebecca: [ads], rebeccain: toTania, alek: both, jenna: both, rachel: toTania, jonathan: toTania }; // Tania, Nov 24: Jonathan hands the prospect to Tania at the end of his review
   // Tania, Nov 13: Jenna NEVER blind-transfers to Tania — she keeps the prospect engaged and books the calendar instead (see her chat briefing). Still fine for Rachel (compliance/ads).
   if (["monica", "george", "rebecca", "alek"].includes(agent)) return plusTania(map[agent]);
   if (agent === "jenna") return map.jenna;
@@ -60,7 +66,7 @@ const RECEPTIONISTS = ["jennifer"];
 // Every calling agent gets Tania's calendar (check_availability reads her Google Calendar busy times; book_appointment re-checks before booking).
 // Receptionists answer calls that Voice Studio didn't start, so there are no dynamic variables (lead_state, lead_id):
 // they get the "In" versions of the calendar tools, which ask the model for those details instead.
-const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "bookIn"] : a === "rachel" ? ["caller", "provider", "slotsIn", "bookIn"] : ["slots", "book", "headsUp"];
+const TOOLSET = (a) => a === "jennifer" ? ["provider", "client", "slotsIn", "bookIn"] : a === "rachel" ? ["caller", "provider", "slotsIn", "bookIn"] : a === "rebeccain" ? ["caller", "slotsIn", "bookIn", "headsUp"] : ["slots", "book", "headsUp"];
 // Virtual-receptionist plans. "basic" = appointment setter only: Jennifer gets name, practice, phone and hours, nothing else.
 const CLIENT_PLANS = {
   basic299: { label: "$299 Partial (standalone): appointment setter only", full: false },
@@ -140,7 +146,7 @@ const agentId = (name) => process.env["CARTESIA_AGENT_" + String(name || "").toU
 const LANGS = { en: "English", es: "Latin American Spanish", pt: "Brazilian Portuguese" };
 // Tania, Nov 23: Jenna calls natively in all three languages -- English, Latin American Spanish and Brazilian
 // Portuguese -- each its own Cartesia agent with its own native voice, same pattern as her Spanish agent already.
-const ALLOWED_LANGS = { rebecca: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"], jenna: ["en", "es", "pt"] };
+const ALLOWED_LANGS = { rebecca: ["en", "es"], rebeccain: ["en", "es"], monica: ["en", "es"], george: ["en", "es"], alek: ["en", "es", "pt"], jennifer: ["en", "es"], jenna: ["en", "es", "pt"] };
 const agentKey = (name, lang) => (lang && lang !== "en" ? name + "_" + lang : name);
 // The English agents are multilingual (English + Mexican Spanish), so Spanish calls use them when no separate Spanish agent exists.
 const callAgentId = (name, lang) => agentId(agentKey(name, lang)) || (lang === "es" || (name === "alek" && lang === "pt") ? agentId(name) : "");
@@ -722,8 +728,12 @@ export default async (req) => {
         let turnNote = "";
         // Tania, Nov 23: Sebastien only ANSWERS inbound calls (same as rachel, never rachelout), so he needs
         // "greet right away" too, never the outbound wait-for-them-to-speak-first treatment below.
+        // Tania, Nov 27: same rule now for "rebeccain" -- Mariska's new, separate INBOUND agent -- so she
+        // greets the instant someone calls her line in. "rebecca" itself (her outbound identity) stays OUT
+        // of this list on purpose: her cold calls and appointment callbacks still need to wait for a human
+        // to actually speak first, so she never talks over an answering machine.
         const base0 = a.split("_")[0];
-        const inboundOnly = (base0 === "rachel") || base0 === "sebastien";
+        const inboundOnly = (base0 === "rachel") || base0 === "sebastien" || base0 === "rebeccain";
         if (!inboundOnly) {
           // Tania, Nov 16 (later): with check-ins OFF the agent had no cue to keep talking when a live person went quiet
           // (after "how's it going?"), so it sat in silence and people hung up. Check-in is back at Cartesia's minimum (5 s):

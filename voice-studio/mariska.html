@@ -42,7 +42,7 @@ audio{width:100%;margin-top:10px}
 </head>
 <body>
 <header><div class="in">
-  <div><h1>📞 Mariska Lightborn's Calls</h1><p>Every call Mariska Lightborn made or answered (her own line -- the one that used to be Rebecca's). Listen, read, save. Nothing shows here until the on-demand dial feature is actually wired up and Tania starts tapping Go.</p></div>
+  <div><h1>📞 Mariska Lightborn's Calls</h1><p>Every call Mariska Lightborn made or answered (her own line -- the one that used to be Rebecca's, inbound and outbound both, like Rachel). Listen, read, save.</p></div>
   <span class="sp"></span><span id="who" style="font-size:13px"></span>
   <a class="back" href="./">← Voice Studio</a>
 </div></header>
@@ -57,7 +57,7 @@ audio{width:100%;margin-top:10px}
 <main id="app" hidden>
   <div class="bar">
     <div class="f"><label for="range">Show</label><select id="range"><option value="1">Today and yesterday</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></div>
-    <div class="f"><label for="kind">Which calls</label><select id="kind"><option value="all">All of Mariska Lightborn's calls</option></select></div>
+    <div class="f"><label for="kind">Which calls</label><select id="kind"><option value="all">All of Mariska Lightborn's calls</option><option value="in">Calls she answered</option><option value="out">Calls she made</option></select></div>
     <div class="f" style="flex:1;min-width:200px"><label for="q">Find a caller</label><input id="q" type="search" placeholder="Phone number or a word from the call"></div>
     <button class="btn" id="refresh">↻ Refresh</button>
   </div>
@@ -86,8 +86,9 @@ async function load() {
   $('gate').hidden = true; $('app').hidden = false; $('count').textContent = 'Loading Mariska Lightborn\'s calls…'; $('list').innerHTML = '';
   const since = Date.now() - Number($('range').value) * 864e5 - (Number($('range').value) === 1 ? 864e5 : 0);
   const all = []; const problems = [];
-  // Mariska Lightborn has one line: the calls she places and the call-backs she takes on it.
-  for (const [agent, dir] of [['rebecca', 'out']]) {
+  // Tania, Nov 27: Mariska now has two Cartesia agents on the same line, same split as Rachel --
+  // "rebecca" = the calls she places (on-demand + appointment callbacks); "rebeccain" = calls she answers.
+  for (const [agent, dir] of [['rebecca', 'out'], ['rebeccain', 'in']]) {
     try { const d = await api({ action: 'list', agent, since, limit: 100 }); for (const c of d.calls || []) all.push({ ...c, dir }); if (d.hasMore) problems.push('There are more calls than fit here; pick a shorter range to see them all.'); }
     catch (e) { problems.push('Mariska Lightborn\'s calls could not be loaded: ' + e.message); }
   }

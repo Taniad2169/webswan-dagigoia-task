@@ -82,7 +82,7 @@ const OPENINGS = {}; // Tania, Nov 6: the openings live only in each agent's ope
 const SALES_APPROACH = " You have 20+ years closing for Fortune 500 cold-call teams — you know how to sell the appointment. Sell the benefit, not the feature: find their real pain, then the solution. After you point out one or two specific issues with their website or compliance, pivot straight to what fixing it gets them (fewer legal risks, more patients or clients) — that's what books the appointment.";
 function persona(agent) {
   const extra = DELIVERY + SALES_APPROACH + (OPENINGS[agent] || "");
-  if (agent === "rebecca" || agent === "rachel" || agent === "rachelout") return "0. YOUR PERSONALITY: confident, calm and friendly. Warm and easy to talk to, smiling in your voice, but you lead the conversation and always steer back to the next step. " + HUMAN_STYLE + extra;
+  if (agent === "rebecca" || agent === "rebeccain" || agent === "rachel" || agent === "rachelout") return "0. YOUR PERSONALITY: confident, calm and friendly. Warm and easy to talk to, smiling in your voice, but you lead the conversation and always steer back to the next step. " + HUMAN_STYLE + extra;
   return "0. YOUR PERSONALITY: confident, calm and authoritative. You run the call: you speak with quiet certainty like a senior compliance professional, you never sound unsure, you never over-explain or beg, and after a question you stop and let the silence work. Polite and respectful, never pushy or rude. " + HUMAN_STYLE + extra;
 }
 // Rachel only ANSWERS calls (inbound and transfers), so she gets "greet right away" instead of the outbound phone rules.
@@ -113,7 +113,8 @@ const LAST_NAMES = { monica: "Lambert", george: "Lopez", jenna: "Kennedy", rache
 function fullAgentName(agent) {
   // Tania, Nov 25: this line now calls as Mariska Lightborn (her full name), not Rebecca -- same underlying
   // Cartesia voice/phone instrument, retired identity, new one on top of it.
-  if (agent === "rebecca") return "Mariska Lightborn";
+  // Tania, Nov 27: "rebeccain" is her new separate inbound agent (same person) -- same name either way.
+  if (agent === "rebecca" || agent === "rebeccain") return "Mariska Lightborn";
   const first = agent.charAt(0).toUpperCase() + agent.slice(1);
   const last = LAST_NAMES[agent];
   return last ? first + " " + last : first;
@@ -131,14 +132,15 @@ export function withPhoneRules(ins, agent) {
   // Tania, Nov 25: this line (still keyed "rebecca" in code, now calling as Mariska Lightborn -- see fullAgentName
   // above) is no longer scoped to WSMN/SwanDesk only -- "she could be calling for anything" -- so her fallback,
   // same as Jonathan's, now points straight to Tania herself rather than a fixed Sebastien/WSMN escalation.
-  const expertName = agent === "jonathan" || agent === "rebecca" ? "Tania" : "Jonathan";
-  const title = agent === "jonathan" || agent === "rebecca" ? "WebSwan's founder, a certified web developer and compliance expert" : "our Compliance Tech Coordinator";
-  const expertFull = agent === "jonathan" || agent === "rebecca" ? "Tania Domingue" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
+  const isMariska = agent === "rebecca" || agent === "rebeccain";
+  const expertName = agent === "jonathan" || isMariska ? "Tania" : "Jonathan";
+  const title = agent === "jonathan" || isMariska ? "WebSwan's founder, a certified web developer and compliance expert" : "our Compliance Tech Coordinator";
+  const expertFull = agent === "jonathan" || isMariska ? "Tania Domingue" : "Jonathan Peters"; // Tania, Nov 19: full name said once at the fallback intro line
   const expertPronoun = agent === "jonathan" ? "she" : "he", expertPronounObj = agent === "jonathan" ? "her" : "him";
   // Tania, Nov 25: the old fixed WSMN pay-per-click rebuttal no longer gets forced into every one of this
   // agent's calls -- she's topic-agnostic now, so a PPC objection only comes up if Mariska's own live script for
   // THAT call actually calls for it, same as any other objection she prepares for a specific lead.
-  const rules = agent === "rachel" ? INBOUND_RULES : PHONE_RULES;
+  const rules = (agent === "rachel" || agent === "rebeccain") ? INBOUND_RULES : PHONE_RULES;
   // One AI answer per agent (Tania, Nov 9): with the AI QUESTION RULE block in the prompt, rule 6 points to it; without it, rule 6 carries the full answer.
   const ai = base.includes("\n### AI QUESTION RULE (WebSwan)") || base.startsWith("### AI QUESTION RULE (WebSwan)") ? AI_RULE_SHORT : AI_RULE_FULL;
   const firstName = fullAgentName(agent);
